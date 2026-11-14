@@ -5,7 +5,9 @@
 [ext_resource type="PackedScene" uid="uid://ctpxspmu38gym" path="res://res/models/rover_kit/power_unit.glb" id="3_model"]
 
 [node name="BatteryPart" instance=ExtResource("1_base")]
+mass = 5.0
 script = ExtResource("2_script")
+catalog_id = "battery"
 part_type = 2
 tint_material = &"rover_dark"
 

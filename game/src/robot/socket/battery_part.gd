@@ -28,7 +28,8 @@ func _ready() -> void:
 
 
 func get_stat_lines() -> PackedStringArray:
-	return PackedStringArray(["Charge %d%% (%.0f of %.0f Wh)" % [roundi(get_charge_fraction() * 100.0), charge, capacity]])
+	return PackedStringArray(["Charge %d%% (%.0f of %.0f Wh)" % [roundi(get_charge_fraction() * 100.0), charge, capacity],
+		"Mass %.1f kg" % mass])
 
 
 ## Charge as a fraction of capacity, 0..1

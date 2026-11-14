@@ -4,8 +4,8 @@ and reports the triangle count of the whole kit (ROVER_KIT.md 3.3, 5, 6.2).
 
     blender -b --factory-startup -P tools/blender/scripts/make_power_antenna_motor.py [-- --previews DIR | --no-previews]
 
-Writes tools/blender/parts/{power_unit,antenna,motor}.blend, game/res/models/rover_kit/
-{power_unit,antenna,motor}.glb and previews in tools/blender/previews/power_antenna_motor/.
+Writes tools/blender/parts/{power_unit,power_unit_light,antenna,motor}.blend, game/res/models/rover_kit/
+{power_unit,power_unit_light,antenna,motor}.glb and previews in tools/blender/previews/power_antenna_motor/.
 Needs every other kit part's .blend file.
 
 Blender world coordinates, rover at rest:
@@ -17,7 +17,8 @@ Blender world coordinates, rover at rest:
                   tilts it +-90 degrees. Stand-off, flat hexagonal dish 0.22 m across, gold boss.
     motor         origin (0.12, 0.33, 0.30) on its back face on the hatch floor: keyed plug, a
                   0.154 x 0.112 x 0.134 m body and four cooling ribs flush with the front face
-Budgets: power_unit 400, antenna 250, motor 200 triangles.
+    power_unit_light  same mounting, a shorter (0.24 m), thinner, six-finned cylinder
+Budgets: power_unit 400, power_unit_light 400, antenna 250, motor 200 triangles.
 """
 
 import itertools
@@ -34,7 +35,7 @@ import rover_kit_common as kit  # noqa: E402
 import make_rocker_bogie as rb  # noqa: E402
 import make_arm as arm_kit  # noqa: E402
 
-BUDGETS = {"power_unit": 400, "antenna": 250, "motor": 200}
+BUDGETS = {"power_unit": 400, "power_unit_light": 400, "antenna": 250, "motor": 200}
 MIN_CLEARANCE = 0.020
 
 # Power unit
@@ -43,10 +44,14 @@ RTG_ANGLE = math.radians(40.0)                     # up from horizontal, pointin
 RTG_AXIS = Vector((0.0, -math.cos(RTG_ANGLE), math.sin(RTG_ANGLE)))
 RTG_UP = Vector((0.0, math.sin(RTG_ANGLE), math.cos(RTG_ANGLE)))
 RTG_START = Vector((0.0, -0.58, 0.30))
-RTG_LENGTH = 0.35
-RTG_RADIUS = 0.07
-FIN_OUTER = 0.11
-FIN_COUNT = 8
+# Battery variants: same boss, strut, axis and start point, so the light one lies inside the
+# standard one's envelope and inherits its clearances (ROVER_KIT.md 3.3). Wh and kg are in
+# game/src/robot/socket/battery_*.tscn (20 Wh/kg both: a smaller cell stack, not better chemistry).
+VARIANTS = {
+    "power_unit": {"length": 0.35, "radius": 0.07, "fin_outer": 0.11, "fins": 8},
+    "power_unit_light": {"length": 0.24, "radius": 0.055, "fin_outer": 0.085, "fins": 6},
+}
+RTG_LENGTH = VARIANTS["power_unit"]["length"]
 
 # Antenna
 ANTENNA = Vector((-0.15, -0.25, 0.44))
@@ -79,7 +84,7 @@ def solid(bm, outline, place, w0, w1, material):
     return tag(faces, material)
 
 
-def build_power_unit():
+def build_power_unit(variant: dict = VARIANTS["power_unit"]):
     bm = bmesh.new()
     along_y = lambda u, v, w: (POWER.x + u, w, POWER.z + v)  # noqa: E731  key (+v) toward +Z
     tag(kit.keyed_plug(bm, along_y, POWER.y, POWER.y + kit.CONNECTOR_DEPTH), DARK)
@@ -93,20 +98,21 @@ def build_power_unit():
         c, s = math.cos(angle), math.sin(angle)
         return lambda u, v, w: tuple(RTG_START + RTG_AXIS * w + side * (u * c - v * s) + RTG_UP * (u * s + v * c))
 
-    solid(bm, kit.circle_outline(RTG_RADIUS, 8, math.pi / 8), rtg(), 0.0, RTG_LENGTH, DARK)
-    for k in range(FIN_COUNT):
-        fin = [(RTG_RADIUS - 0.005, -0.004), (FIN_OUTER, -0.004), (FIN_OUTER, 0.004), (RTG_RADIUS - 0.005, 0.004)]
-        solid(bm, fin, rtg(2.0 * math.pi * k / FIN_COUNT), 0.03, RTG_LENGTH - 0.03, DARK)
+    length, radius, fin_outer = variant["length"], variant["radius"], variant["fin_outer"]
+    solid(bm, kit.circle_outline(radius, 8, math.pi / 8), rtg(), 0.0, length, DARK)
+    for k in range(variant["fins"]):
+        fin = [(radius - 0.005, -0.004), (fin_outer, -0.004), (fin_outer, 0.004), (radius - 0.005, 0.004)]
+        solid(bm, fin, rtg(2.0 * math.pi * k / variant["fins"]), 0.03, length - 0.03, DARK)
     bmesh.ops.translate(bm, vec=-POWER, verts=bm.verts)
     return bm
 
 
-def power_collision():
+def power_collision(variant: dict = VARIANTS["power_unit"]):
     """Convex hull points: the finned cylinder as an octagonal prism plus the boss."""
     bm = bmesh.new()
     side = Vector((1.0, 0.0, 0.0))
-    for w in (0.0, RTG_LENGTH):
-        for u, v in kit.circle_outline(FIN_OUTER, 8):
+    for w in (0.0, variant["length"]):
+        for u, v in kit.circle_outline(variant["fin_outer"], 8):
             bm.verts.new(RTG_START + RTG_AXIS * w + side * u + RTG_UP * v)
     for x in (-0.03, 0.03):
         for z in (POWER.z - 0.03, POWER.z + 0.03):
@@ -187,6 +193,14 @@ def make_parts() -> dict:
     kit.save_blend(os.path.join(kit.PARTS_DIR, "power_unit.blend"))
     kit.export_part(power, os.path.join(kit.EXPORT_DIR, "power_unit.glb"))
     tris["power_unit"] = kit.triangle_count(power)
+
+    kit.reset_scene()
+    light = kit.mesh_object("power_unit_light", build_power_unit(VARIANTS["power_unit_light"]), materials())
+    light.location = POWER
+    kit.make_collision_child(light, power_collision(VARIANTS["power_unit_light"]))
+    kit.save_blend(os.path.join(kit.PARTS_DIR, "power_unit_light.blend"))
+    kit.export_part(light, os.path.join(kit.EXPORT_DIR, "power_unit_light.glb"))
+    tris["power_unit_light"] = kit.triangle_count(light)
 
     kit.reset_scene()
     mats = materials()
@@ -374,6 +388,16 @@ def render_previews(scene: dict, previews: str) -> None:
     kit.set_preview_colors(True)
     kit.render_view(scene["power_unit"], os.path.join(previews, "power_unit_rear_three_quarter.png"),
                     (-0.8, -1.0, 0.5), 0.5, True, 1.4, (0.0, -0.22, 0.05))
+    light = arm_kit.load("power_unit_light.blend", "power_unit_light")
+    light.location = POWER
+    bpy.context.view_layer.update()
+    for name in ("power_unit_light_rear_three_quarter", "power_unit_light_side"):
+        direction = (-0.8, -1.0, 0.5) if name.endswith("quarter") else (-1.0, 0.0, 0.0)
+        scene["power_unit"].hide_render = True
+        kit.render_view(light, os.path.join(previews, name + ".png"), direction, 0.5, name.endswith("quarter"), 1.4,
+                        (0.0, -0.22, 0.05))
+    scene["power_unit"].hide_render = False
+    light.hide_render = True
     kit.render_view(scene["motor"], os.path.join(previews, "motor_in_hatch.png"), (0.5, 1.0, 0.3), 0.5, True, 1.0,
                     (0.0, 0.06, 0.0))
     for pan, tilt in ((0, 0), (30, 60), (200, -90)):
