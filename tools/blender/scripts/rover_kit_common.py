@@ -520,3 +520,17 @@ def box(bm, x: tuple, y: tuple, z: tuple, material: int = 0) -> list:
         f.material_index = material
     bmesh.ops.recalc_face_normals(bm, faces=faces)
     return faces
+
+
+def open_cylinder(bm, place, w0: float, w1: float, radius: float, sides: int = 8) -> list:
+    """Round tube between w0 and w1 without end caps (for ends hidden inside housings),
+    normals pointing away from its axis."""
+    faces = prism(bm, circle_outline(radius, sides, math.pi / sides), place, w0, w1, cap0=False, cap1=False)
+    origin = Vector(place(0.0, 0.0, w0))
+    axis = (Vector(place(0.0, 0.0, w1)) - origin).normalized()
+
+    def out(f):
+        c = f.calc_center_median() - origin
+        return c - axis * c.dot(axis)
+    orient(bm, faces, out)
+    return faces

@@ -11,7 +11,8 @@ rocker, bogie, steer bracket and wheel .blend files for the assembled checks and
 Blender world coordinates, rover at rest:
     mast_base         origin (0.15, 0.35, 0.44) on the deck: keyed plug into the deck, foot, pole,
                       two sensor booms, top collar with the keyed recess at z 0.95
-                      socket_mast_head (0.15, 0.35, 0.95)
+                      socket_mast_head (0.15, 0.35, 0.95). Booms: outboard (+X) at z 0.78,
+                      rear (-Y) at z 0.72.
     mast_head         the yoke, origin at its connector (0.15, 0.35, 0.95); Godot pans it about
                       the vertical axis (any angle). Keyed plug, base, crossbar, two arms.
     mast_head_camera  child of the yoke, origin on the horizontal tilt axis (0.15, 0.35, 1.05)
@@ -80,10 +81,11 @@ def build_mast_base() -> bmesh.types.BMesh:
     tag(kit.cylinder(bm, at_axis(), DECK_Z, FOOT_TOP, kit.COLLAR_RADIUS), METAL)
     tag(kit.cylinder(bm, at_axis(), FOOT_TOP, COLLAR_BOTTOM, POLE_RADIUS), METAL)
     tag(kit.recessed_collar(bm, at_axis(), COLLAR_BOTTOM, HEAD_Z), METAL)
-    # Sensor boom toward the rover's centre (-X) at z 0.78, and one to the rear (-Y) at z 0.72
-    x0 = AXIS_X - POLE_RADIUS + 0.004
-    kit.box(bm, (AXIS_X - 0.105, x0), (AXIS_Y - 0.006, AXIS_Y + 0.006), (0.774, 0.786), METAL)
-    kit.box(bm, (AXIS_X - 0.13, AXIS_X - 0.105), (AXIS_Y - 0.012, AXIS_Y + 0.012), (0.768, 0.792), METAL)
+    # Sensor boom outboard (+X) at z 0.78, away from the arm's reach over the deck, and one to
+    # the rear (-Y) at z 0.72
+    x0 = AXIS_X + POLE_RADIUS - 0.004
+    kit.box(bm, (x0, AXIS_X + 0.105), (AXIS_Y - 0.006, AXIS_Y + 0.006), (0.774, 0.786), METAL)
+    kit.box(bm, (AXIS_X + 0.105, AXIS_X + 0.13), (AXIS_Y - 0.012, AXIS_Y + 0.012), (0.768, 0.792), METAL)
     y0 = AXIS_Y - POLE_RADIUS + 0.004
     kit.box(bm, (AXIS_X - 0.006, AXIS_X + 0.006), (AXIS_Y - 0.105, y0), (0.714, 0.726), METAL)
     kit.box(bm, (AXIS_X - 0.012, AXIS_X + 0.012), (AXIS_Y - 0.13, AXIS_Y - 0.105), (0.708, 0.732), METAL)
@@ -202,10 +204,10 @@ CAMERA_ASPECT = 21.0 / 9.0
 CAMERA_NEAR = 0.001
 
 
-def camera_view_check(yoke, camera) -> tuple:
-    """Head geometry inside the game camera's view from pivot_camera (looking along the camera
-    box's +Y, up = its +Z). Samples vertices, edge midpoints and face centres. Returns (number
-    of samples in view, smallest angular margin to the view's edge in degrees)."""
+def camera_view_check(camera, objects: list) -> tuple:
+    """Geometry of `objects` inside the game camera's view from pivot_camera (looking along the
+    camera box's +Y, up = its +Z). Samples vertices, edge midpoints and face centres. Returns
+    (number of samples in view, smallest angular margin to the view's edge in degrees)."""
     pivot = [c for c in camera.children if c.name.startswith("pivot_camera")][0]
     origin = pivot.matrix_world.translation
     basis = camera.matrix_world.to_3x3().normalized()
@@ -213,7 +215,7 @@ def camera_view_check(yoke, camera) -> tuple:
     tan_v = math.tan(math.radians(CAMERA_VFOV / 2.0))
     tan_h = tan_v * CAMERA_ASPECT
     in_view, margin = 0, 180.0
-    for obj in (yoke, camera):
+    for obj in objects:
         m = obj.matrix_world
         mesh = obj.data
         samples = [m @ v.co for v in mesh.vertices]
@@ -259,7 +261,7 @@ def run_checks() -> list:
         for key, gap in pairs.items():
             if key not in worst or gap < worst[key][0]:
                 worst[key] = (gap, "pan %d, tilt %+.0f" % (pan, tilt))
-        margins.append((camera_view_check(yoke, camera), "pan %d, tilt %+.0f" % (pan, tilt)))
+        margins.append((camera_view_check(camera, (yoke, camera)), "pan %d, tilt %+.0f" % (pan, tilt)))
     pose_head(yoke, camera, 0.0, 0.0)
     worst[("mast_base", "chassis (deck, LGA)")] = (rb.pair_gap(base, chassis, deck_joint), "fixed")
 
@@ -328,4 +330,5 @@ def main() -> None:
     print("\n".join("ROVER_KIT " + line for line in report))
 
 
-main()
+if __name__ == "__main__":
+    main()
