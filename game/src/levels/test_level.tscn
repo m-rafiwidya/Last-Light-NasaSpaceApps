@@ -559,7 +559,7 @@ transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -1.5)
 script = ExtResource("7_robotctl")
 
 [node name="WorkshopRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.1, 0.16, 30.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.5, 0.16, 30.3)
 controller = NodePath("../WorkshopRoverController")
 start_assembled = true
 

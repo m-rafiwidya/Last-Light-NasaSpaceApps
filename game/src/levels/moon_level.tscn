@@ -81,7 +81,7 @@ script = ExtResource("2_terrain")
 script = ExtResource("7_robotctl")
 
 [node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302.2366, -5.22, 260.2098)
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302.583, -5.22, 260.0098)
 controller = NodePath("../ReadyRoverController")
 start_assembled = true
 

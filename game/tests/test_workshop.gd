@@ -71,6 +71,12 @@ func _place_rover(kit_x: float, kit_y: float, heading_degrees: float) -> void:
 	rover.angular_velocity = Vector3.ZERO
 
 
+## The dock point in kit coordinates (x, y)
+func _dock() -> Vector2:
+	var local: Vector3 = workshop.anchors["dock_point"]
+	return Vector2(local.x, -local.z)
+
+
 func _release_all() -> void:
 	for a in ["move_forward", "move_backward", "move_left", "move_right"]:
 		Input.action_release(a)
@@ -203,21 +209,21 @@ func _charging_checks() -> void:
 	var belly: float = rover.global_position.y + ROVER_BELLY
 	_check("docked: the probe up, 20 mm under the belly", absf(belly - probe_top - 0.02) < 0.012, "%.1f mm under it" % ((belly - probe_top) * 1000.0))
 	# The zone's edge at an odd heading
-	_place_rover(-0.1 + 0.27, -0.3 - 0.27, 37.0)
+	_place_rover(_dock().x + 0.27, _dock().y - 0.27, 37.0)
 	await _ticks(4.0)
 	var probe_xz := Vector2(pad.probe.global_position.x, pad.probe.global_position.z)
 	var origin_xz := Vector2(rover.global_position.x, rover.global_position.z)
 	_check("docked at the zone's edge, 37 degrees: connects under the rover's origin", pad.state == workshop.pad.State.CHARGING
 		and probe_xz.distance_to(origin_xz) < 0.01, "%s, probe %.1f cm from the origin, %.2f m off the dock point" % [pad.get_status_text(), probe_xz.distance_to(origin_xz) * 100.0, pad.offset_of(rover).length()])
 	# Outside the zone: the driver gets told where to go
-	_place_rover(-0.1 + 0.6, -0.3, 0.0)
+	_place_rover(_dock().x + 0.6, _dock().y, 0.0)
 	await _ticks(2.5)
 	var hint: String = pad.get_dock_hint(rover)
 	_check("0.6 m off: not docked, the hint points the way", pad.state == workshop.pad.State.ON_PAD and hint.begins_with("Charging pad:")
 		and hint.contains("to the left") and pad.probe_height() < 0.001, "\"%s\"" % hint)
 	# No battery
 	var battery = rover.battery_socket.unmount()
-	_place_rover(-0.1, -0.3, 0.0)
+	_place_rover(_dock().x, _dock().y, 0.0)
 	await _ticks(2.5)
 	_check("no battery: a fault and the hint says so", pad.state == workshop.pad.State.FAULT and pad.get_dock_hint(rover) == "No battery to charge", pad.get_status_text())
 	rover.battery_socket.mount(battery)
@@ -264,8 +270,8 @@ func _drive_to(points: Array, speed: float, timeout: float, stop_at_end: bool) -
 			var v: float = rover.linear_velocity.dot(forward)
 			var to := Vector2(target.x - rover.global_position.x, target.z - rover.global_position.z)
 			# A waypoint counts once the rover is near it or has passed it (it's behind the rover),
-			# so a waypoint inside the turning circle can't make it circle
-			var passed: bool = Vector2(forward.x, forward.z).dot(to) < 0.0
+			# within 1.5 m, so a waypoint inside the turning circle can't make it circle
+			var passed: bool = Vector2(forward.x, forward.z).dot(to) < 0.0 and to.length() < 1.5
 			if (not last and (to.length() < 0.5 or passed)) or (last and to.length() < 0.12 and absf(v) < 0.05):
 				break
 			if t > timeout:
@@ -289,14 +295,62 @@ func _drive_to(points: Array, speed: float, timeout: float, stop_at_end: bool) -
 	return true
 
 
+## Heading in the kit frame, degrees from +Y (out of the bay door), positive towards -X
+func _kit_heading() -> float:
+	var f: Vector3 = _kit_of(rover.global_position - rover.global_basis.z) - _kit_of(rover.global_position)
+	return rad_to_deg(atan2(-f.x, f.y))
+
+
+## Full left lock at a crawl until the rover faces out of the bay door again, then brake to a stop
+func _u_turn(timeout: float) -> bool:
+	var bodies: Dictionary = _workshop_bodies()
+	var t: float = 0.0
+	var turned: float = 0.0
+	var last: float = _kit_heading()
+	while turned < 172.0:
+		await physics_frame
+		t += 1.0 / TICKS
+		if t > timeout:
+			_release_all()
+			return false
+		var h: float = _kit_heading()
+		if trace and int(t * TICKS) % (TICKS / 4) == 0:
+			var k: Vector3 = _kit_of(rover.global_position)
+			print("TRACE uturn t %.2f kit (%.2f, %.2f) heading %.0f v %.2f steer %.2f turned %.0f" % [t, k.x, k.y, h, rover.linear_velocity.length(), rover.controller.steer, turned])
+		turned += absf(wrapf(h - last, -180.0, 180.0))
+		last = h
+		for body in rover.get_colliding_bodies():
+			if bodies.has(body):
+				touched[String(body.get_parent().name) + "/" + String(body.name)] = true
+		var v: float = rover.linear_velocity.dot(-rover.global_basis.z)
+		_release_all()
+		Input.action_press("move_left", 1.0)
+		# Slow down first, then a steady 20% throttle (about 0.4 m/s): the tightest turn. The circle
+		# widens both slower (1.36 m at 0.19 m/s) and faster (1.1 m at 0.8 m/s)
+		if v > 0.55:
+			Input.action_press("move_backward", 0.3)
+		else:
+			Input.action_press("move_forward", 0.2)
+	_release_all()
+	while rover.linear_velocity.length() > 0.03 and t < timeout:
+		await physics_frame
+		t += 1.0 / TICKS
+		_release_all()
+		if rover.linear_velocity.dot(-rover.global_basis.z) > 0.05:
+			Input.action_press("move_backward", 0.3)
+	_release_all()
+	return true
+
+
 func _drive_checks() -> void:
 	touched.clear()
-	_place_rover(-0.1, -0.3, 0.0)
+	_place_rover(_dock().x, _dock().y, 0.0)
 	await _ticks(1.0)
 	GS.drive(rover)
 	await _ticks(0.2)
 	# Out: straight along the pad's centre line
-	var out_ok: bool = await _drive_to([Vector2(-0.1, 2.0), Vector2(-0.1, 6.0), Vector2(-0.6, 12.0)], 1.0, 40.0, false)
+	var d: Vector2 = _dock()
+	var out_ok: bool = await _drive_to([Vector2(d.x, 2.0), Vector2(d.x, 6.0), Vector2(d.x - 0.5, 12.0)], 1.0, 40.0, false)
 	_check("drive out: through the open bay door", out_ok and _kit_of(rover.global_position).y > 11.0, "rover at kit y %.1f" % _kit_of(rover.global_position).y)
 	for k in 30:
 		await _ticks(0.1)
@@ -307,20 +361,34 @@ func _drive_checks() -> void:
 	# Parked out there: the door closes behind it (the rover is driven, but nowhere near)
 	await _ticks(4.0)
 	_check("the bay door closes behind the rover", workshop.door_open == 0.0, "open %.2f" % workshop.door_open)
-	# Back in: the entry lane, then the U-turn round the back of the pad (the tightest turn,
-	# radius 1.07 m about (-1.17, -1.0), WORKSHOP_KIT.md 5.2), then onto the dock
-	var in_ok: bool = await _drive_to([Vector2(-2.24, 9.0), Vector2(-2.24, 3.0), Vector2(-2.24, -0.6)], 0.9, 60.0, false)
-	var arc: Array = []
-	for k in range(1, 9):
-		var a: float = deg_to_rad(180.0 + 22.5 * k)
-		arc.append(Vector2(-1.17 + 1.07 * cos(a), -1.0 + 1.07 * sin(a)))
-	in_ok = in_ok and await _drive_to(arc + [Vector2(-0.1, -0.3)], 0.5, 60.0, true)
+	# Back in like a driver (WORKSHOP_KIT.md 5.2): through the door on x -2.2, drifting west inside
+	# the bay to x -2.8, then a U-turn on full left lock at a steady 20% throttle round a centre on
+	# y -0.8, straightening when it faces the door again, then braking to a stop on the pad
+	var in_ok: bool = await _drive_to([Vector2(-2.2, 9.0), Vector2(-2.2, 3.0)], 0.9, 60.0, false)
+	in_ok = in_ok and await _drive_to([Vector2(-2.8, 0.2), Vector2(-2.8, -0.8)], 0.4, 30.0, false)
+	in_ok = in_ok and await _u_turn(30.0)
+	# Then creep forwards onto the pad, straight ahead, to the dock point's line
+	var after: Vector3 = _kit_of(rover.global_position)
+	if after.y < d.y - 0.05:
+		in_ok = in_ok and await _drive_to([Vector2(after.x, d.y)], 0.3, 20.0, true)
 	await _ticks(3.0)
 	var offset: float = workshop.pad.offset_of(rover).length()
-	_check("drive in: U-turn and onto the pad", in_ok and offset <= workshop.pad.DOCK_ZONE, "%.2f m off the dock point" % offset)
+	var end: Vector3 = _kit_of(rover.global_position)
+	_check("drive in: U-turn and onto the pad", in_ok and offset <= workshop.pad.DOCK_ZONE, "%.2f m off the dock point, rover at kit (%.2f, %.2f) heading %.0f" % [
+		offset, end.x, end.y, _kit_heading()])
 	_check("drive in: docked and connected", workshop.pad.state in [workshop.pad.State.CHARGING, workshop.pad.State.FULL], workshop.pad.get_status_text())
 	_check("the drive never touched the workshop", touched.is_empty(), str(touched.keys()))
 	_check("the rover stayed upright", rover.global_basis.y.y > 0.99)
+	# Docked at the zone's east edge (nearest the door's east jamb), straight out of the door
+	touched.clear()
+	_place_rover(d.x + 0.4, d.y, 0.0)
+	await _ticks(1.0)
+	var edge_ok: bool = await _drive_to([Vector2(d.x + 0.4, 6.0)], 0.8, 30.0, false)
+	var east_gap: float = 1.0 - (_kit_of(rover.global_position).x + 0.628)
+	_check("docked at the zone's east edge: straight out, clear of the jamb", edge_ok and touched.is_empty() and east_gap >= 0.3,
+		"%.2f m to the east jamb, touched %s" % [east_gap, str(touched.keys())])
+	await _ticks(0.5)
+	_place_rover(d.x, d.y, 0.0)
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	for k in 40:
 		if workshop.door_open <= 0.0:
