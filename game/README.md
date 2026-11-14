@@ -686,6 +686,9 @@ Grounded in the current code; useful to know before changing things.
   - **Do not reparent cameras** to switch views: the player's and robot's cameras are driven by their `Pivot` nodes (and the player's by the crouch tweens), so reparenting would break both for no gain over `make_current()` or a transition camera.
 - Not worth doing while the game only switches between the player and the robot; worth doing once a third camera user or view blending appears.
 
+**Rendering**
+- **1-second frames with vsync on while the window isn't focused (fixed):** macOS (Metal) blocks for up to a second per frame waiting for a frame buffer while the window can't be shown: minimised, covered, on another Space, or just restored and not yet focused. Measured with a probe that logs every frame over 50 ms with the pipeline compilations, process / physics time and focus: 1012-1016 ms frames, no shader compiles, normal CPU time, window unfocused; none with vsync off; never with the window focused and visible (12 runs). It was the "1 s stall" seen twice in frame-rate runs whose window opened behind other windows. `main.gd` now renders without vsync, capped at 30 fps, while the window is unfocused, and restores the vsync mode and frame cap on focus; the minimise / restore probe then shows only macOS's own 550 ms minimise and restore frames.
+
 **Repo hygiene**
 - `project.godot` `config/name` is still `"Game"` and the main menu title label reads `"New Game Project"`.
 
