@@ -1,7 +1,8 @@
 extends SceneTree
 ## Headless test: a stopped rover and loose parts hold still on slopes.
 ##   1. The assembled rover parked (no throttle) on planes of 2 to 35 degrees, nose up the slope
-##      and side-on, under the Moon's 1.62 and Earth's 9.8 m/s^2: it must move less than 2 cm in
+##      and side-on, under the Moon's 1.62 (with the Moon level's suspension) and Earth's 9.8 m/s^2
+##      (with the rover scene's): it must move less than 2 cm in
 ##      30 s (after 1 s to settle). With the automatic brake on, up to the steepest slope the
 ##      tyres can hold (35 degrees); with it off, up to the slope its rolling resistance holds
 ##      (the tyre's static friction keeps it from sliding sideways on every slope).
@@ -105,8 +106,11 @@ func _run() -> void:
 	var has_brake: bool = "auto_brake" in rover
 
 	# 1. Parked
+	# Each gravity with its own suspension: the Moon level's (RoverLevel.rover_suspension) on the
+	# Moon, the rover scene's (tuned for Earth) under Earth gravity
 	for g in [MOON, EARTH]:
 		_set_gravity(g)
+		rover.apply_suspension(level.rover_suspension if g == MOON else {})
 		var unbraked_limit: float = rad_to_deg(asin(minf(rover.rolling_resistance_force / (rover.mass * g), 1.0)))
 		for brake in [true, false]:
 			if has_brake:
@@ -131,6 +135,7 @@ func _run() -> void:
 	# the wheel that is lying flat, for the battery on its curved side), side by side across the
 	# slope so nothing that rolls hits the others
 	_set_gravity(MOON)
+	rover.apply_suspension(level.rover_suspension)
 	rover.global_position += Vector3(0.0, 0.0, -300.0)
 	var roll_limit: float = rad_to_deg(atan(0.3))
 	for slope in PART_SLOPES:

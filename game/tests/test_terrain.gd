@@ -30,15 +30,16 @@ const MESH_MARGIN: float = 0.01
 const ROUTE: Array = [Vector2(-246, -357), Vector2(60, 180), Vector2(150, 330), Vector2(192, 384), Vector2(60, 180)]
 const WAYPOINT_RADIUS: float = 12.0
 const STUCK_SECONDS: float = 25.0
-# Throttle: held to DRIVE_SPEED like a driver would (more when slower, uphill; less when faster),
-# between 10% and full. At a steady 40% or 70% the rover reaches 4-6 m/s on the way down, leaves
-# the ground over crater rims and lands at 2-2.9 m/s, past what its 0.30 m of suspension travel
-# takes: wheels briefly in the ground (up to 28 cm) until the bump stops catch (README 13).
-# Flooring it whenever the nose is up launched it over a crest and rolled it. The Apollo rover's
-# top speed was 3.6 m/s.
+# Throttle: held to drive_speed like a driver would (more when slower, uphill; less when faster),
+# between 10% and full. Flooring it whenever the nose is up launched it over a crest and rolled it.
+# The Apollo rover's top speed was 3.6 m/s. `-- drive_speed=5` drives the route at 5 m/s instead:
+# over crater rims the rover then leaves the ground and lands at 2-3 m/s, which the Moon level's
+# suspension (RoverLevel.rover_suspension) takes without bottoming (test_rover_landing.gd); at
+# that speed a wheel's side can still rub into a rock's flank (README 13)
 const DRIVE_SPEED: float = 2.4
 const DRIVE_GAIN: float = 0.5
 
+var drive_speed: float = DRIVE_SPEED
 var GS: Node
 var SL: Node
 var failures: int = 0
@@ -102,9 +103,12 @@ func _run() -> void:
 	level = SL.current_scene
 	terrain = level.get_node("Terrain")
 	rover = level.get_node("ReadyRover")
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("drive_speed="):
+			drive_speed = arg.trim_prefix("drive_speed=").to_float()
 	var settings: GDScript = load("res://src/settings/graphics_settings.gd")
 	var low: bool = settings.get_terrain_detail() == 1
-	print("INFO terrain detail %s; %d rocks, %d with collision" % ["low (1 m)" if low else "high (0.5 m)", terrain.get_node("Rocks").count, terrain.get_node("Rocks").with_collision])
+	print("INFO terrain detail %s; %d rocks, %d with collision; driving at %.1f m/s" % ["low (1 m)" if low else "high (0.5 m)", terrain.get_node("Rocks").count, terrain.get_node("Rocks").with_collision, drive_speed])
 
 	# 1. Data and layout
 	_check("terrain ready before the player spawned", terrain.is_content_ready and GS.player != null)
@@ -262,7 +266,7 @@ func _drive() -> void:
 			var angle: float = heading.angle_to(to.normalized())
 			var steer: float = clampf(angle / 0.5, -1.0, 1.0)
 			var speed: float = rover.linear_velocity.dot(forward)
-			Input.action_press("move_forward", clampf(0.25 + (DRIVE_SPEED - speed) * DRIVE_GAIN, 0.1, 1.0))
+			Input.action_press("move_forward", clampf(0.25 + (drive_speed - speed) * DRIVE_GAIN, 0.1, 1.0))
 			Input.action_release("move_left")
 			Input.action_release("move_right")
 			if steer > 0.05:
@@ -353,7 +357,9 @@ func _check_tick() -> void:
 			not _wheel_shape_hits(space, below, axle, WHEEL_RADIUS, WHEEL_WIDTH).is_empty()
 			or _depth_below_terrain(space, centre, WHEEL_RADIUS) > -TOUCH_MARGIN
 		)
-		if state[3] and _depth_below_terrain(space, centre, WHEEL_RADIUS) > MESH_MARGIN:
+		# (checked after the step, from the contact found before it: a wheel coming down fast has
+		# moved one tick further)
+		if state[3] and _depth_below_terrain(space, centre, WHEEL_RADIUS) > MESH_MARGIN + absf(rover.linear_velocity.y) / TICKS:
 			drive_stats["inside_terrain"] += 1
 			_example("inside", centre)
 		if touching and not state[3]:

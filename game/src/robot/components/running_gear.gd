@@ -61,6 +61,13 @@ const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
 @export var front_ride_height: float = 0.15
 @export var middle_ride_height: float = 0.15
 @export var rear_ride_height: float = 0.15
+# A progressive bump stop over the last bump_stop_length of the travel (below suspension_top):
+# bump_stop_stiffness * d^2 / bump_stop_length at d into it (so bump_stop_stiffness *
+# bump_stop_length at the top), plus bump_stop_damping * d / bump_stop_length times the
+# compression speed. 0 length: none (the rover body's stops at suspension_top are the only end).
+@export var bump_stop_length: float = 0.0
+@export var bump_stop_stiffness: float = 0.0
+@export var bump_stop_damping: float = 0.0
 @export_subgroup("Ground contact")
 # Each wheel's ground check is a cylinder the size of the wheel (wheel radius x wheel_width,
 # axle along the steered axle) cast straight down the rover's -Y, from its centre at
@@ -157,6 +164,36 @@ enum WheelProperty{
 
 var wheel_properties: Dictionary
 
+## The properties a level may set for its rovers (RoverLevel.rover_suspension)
+const SUSPENSION_PROPERTIES: Array[String] = [
+	"front_spring_stiffness", "middle_spring_stiffness", "rear_spring_stiffness",
+	"front_shock_damping", "middle_shock_damping", "rear_shock_damping",
+	"front_ride_height", "middle_ride_height", "rear_ride_height",
+	"bump_stop_length", "bump_stop_stiffness", "bump_stop_damping",
+]
+
+# The scene's own values of SUSPENSION_PROPERTIES, recorded on the first apply_suspension()
+var _default_suspension: Dictionary = {}
+
+
+## Sets the SUSPENSION_PROPERTIES in `overrides` and puts the others back to the scene's values,
+## then updates the wheels' springs, dampers and ride heights (keeping their radius and grip)
+func apply_suspension(overrides: Dictionary) -> void:
+	if _default_suspension.is_empty():
+		for property in SUSPENSION_PROPERTIES:
+			_default_suspension[property] = get(property)
+	for property in overrides:
+		if not property in SUSPENSION_PROPERTIES:
+			push_error("RunningGear: %s is not a suspension property" % property)
+	for property in SUSPENSION_PROPERTIES:
+		set(property, float(overrides.get(property, _default_suspension[property])))
+	var kept: Dictionary = wheel_properties
+	update_wheel_properties()
+	for wheel in kept:
+		wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS] = kept[wheel][WheelProperty.EFFECTIVE_RADIUS]
+		wheel_properties[wheel][WheelProperty.GRIP] = kept[wheel][WheelProperty.GRIP]
+
+
 func update_wheel_properties() -> void:
 	# (side x, axle z, spring, damping, ride height, steer bias) per wheel
 	var half_track: float = track_width / 2.0
@@ -210,16 +247,19 @@ func _set_unloaded_contact(wheel: Wheel, contact_point: Vector3, centre_height: 
 func full_extension_height(wheel: Wheel) -> float:
 	return wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS] - wheel_properties[wheel][WheelProperty.RIDE_HEIGHT]
 
-func calculate_suspension_load(spring_compression_delta, suspension_velocity, spring_stiffness, shock_damping):
-	var spring_force: Vector3 = (
-		spring_stiffness *
-		-spring_compression_delta
-	)
-	var shock_force: Vector3 = (
-		shock_damping *
-		-suspension_velocity
-	)
-	return spring_force + shock_force
+## The suspension's push on the rover along its up axis `y_basis` (N, a vector): spring and
+## damper for `compression` (m past full extension) at `velocity` (the contact's velocity along
+## y_basis, m/s; + = extending), plus the bump stop near the top of the travel `travel`
+func calculate_suspension_load(y_basis: Vector3, compression: float, velocity: float, travel: float,
+		spring_stiffness: float, shock_damping: float) -> Vector3:
+	var force: float = spring_stiffness * compression - shock_damping * velocity
+	var into_stop: float = compression - (travel - bump_stop_length)
+	if bump_stop_length > 0.0 and into_stop > 0.0:
+		var depth: float = into_stop / bump_stop_length
+		force += bump_stop_stiffness * into_stop * depth
+		if velocity < 0.0:
+			force -= bump_stop_damping * depth * velocity
+	return y_basis * force
 
 ## Steering angle (rad, about the chassis' up axis) of a wheel. `steer` is -1 (full left) .. 1 (full right).
 func get_steer_angle(wheel: Wheel, steer: float) -> float:
@@ -373,8 +413,10 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, 
 			state.linear_velocity + state.angular_velocity.cross(rotation_radius) - ground_velocity
 		)
 		var suspension_load: Vector3 = calculate_suspension_load(
-			-y_basis * (centre_height - full_extension),  # Spring compression
-			contact_velocity.project(y_basis),            # Vertical velocity component for damping
+			y_basis,
+			centre_height - full_extension,
+			contact_velocity.dot(y_basis),
+			maxf(suspension_top, full_extension) - full_extension,
 			wheel_properties[wheel][WheelProperty.SPRING_STIFFNESS],
 			wheel_properties[wheel][WheelProperty.SHOCK_DAMPING]
 		)

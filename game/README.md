@@ -413,33 +413,45 @@ Built by `tools/terrain/build_moon_terrain.py` from NASA LOLA data (sources, met
 
 Previews: `tools/previews/terrain/` (`low_*` at the 1 m detail), from `tools/render_terrain_previews.gd` (needs a window). Frame rate (`tools/measure_moon_fps.gd`, MacBook Pro M4, 1920x1080, rover circling at full throttle with headlights on, then on foot): 0.5 m ground 163-189 fps with vsync off, 155-164 with vsync on (the window was on a 165 Hz display), p99 frame 7-12 ms, worst 14 ms; 1 m ground 166-168 / 153-165 fps, worst 15 ms. On this machine the two are the same speed (about 6 ms a frame either way: the cost is not the terrain's triangles); Low is for weaker GPUs.
 
-**Tests:** `tests/test_terrain.gd` (append `-- terrain_detail=low` for the 1 m ground): the layout on flat ground, mesh triangles = collision to 1 mm, the crater floor dark and the base lit, the boundary stopping the player and the rover (with the HUD warning), and a drive from the base past the pad into the shadowed crater and out (about 2.4 m/s, about 500 s) with the wheel checks of `test_wheel_contact.gd` every tick and frame.
+**Tests:** `tests/test_terrain.gd` (append `-- terrain_detail=low` for the 1 m ground): the layout on flat ground, mesh triangles = collision to 1 mm, the crater floor dark and the base lit, the boundary stopping the player and the rover (with the HUD warning), and a drive from the base past the pad into the shadowed crater and out (about 2.4 m/s, about 500 s; `-- drive_speed=5` for 5 m/s) with the wheel checks of `test_wheel_contact.gd` every tick and frame. `tests/test_rover_landing.gd`: landings off a crater rim at 4-6 m/s with the Moon suspension (Level gravity).
 
 ### Level gravity
 
 Each level has its own gravity: `RoverLevel.gravity` (m/s^2, default 9.8, the project's `physics/3d/default_gravity`; the Moon sets 1.62). `SceneLoader._apply_level_gravity` sets it on the world's physics space as every level loads (a level without a `gravity` property, e.g. the menu backdrop's, gets the project default), so no level inherits the previous one's. Every rigid body falls with it; scripts read it back instead of the project setting: `Player` (`gravity` from `state.total_gravity` each physics step, for its ground friction and slope compensation) and `FrictionCircles` (`robot.get_gravity()` for the static wheel load). Levels also set player values: `SceneLoader.PLAYER_LEVEL_SETTINGS` lists the `Player` properties a level root may define (`RoverLevel.jump_height`, default `Player.JUMP_HEIGHT`, and `ground_friction`, default `Player.FRICTION`; the Moon caps the jump at 1.2 m and sets friction 1.6), copied onto the player when it spawns.
 
-What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on a flat floor the test builds under the Moon level, under 9.8 and 1.62; numbers from the current tuning):
+What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on a flat floor the test builds over the Moon level, under 9.8 with the rover scene's suspension and 1.62 with the Moon's; numbers from the current tuning):
 
 | | Earth 9.8 | Moon 1.62 |
 |---|---|---|
 | Player jump height / time in the air | 0.82 m / 0.8 s | 1.16 m / 2.3 s (`jump_height` 1.2; with Earth's take-off speed it would be 4.2 m / 4.5 s) |
 | Player walking speed | 2.0 m/s | 2.0 m/s |
 | Player stop after letting go (from walking) | 0.4 m | 0.74 m (`ground_friction` 1.6; at Earth's 0.5 it would be 2.1 m) |
-| Rover ride height (body origin) | 10.1 cm | 14.2 cm (springs sag a sixth) |
-| Rover full throttle: top speed / heading drift, no steering | 9.7 m/s / 0.00 deg in 12 s | 9.6 m/s / 0.07 deg (without traction control: 2.0 m/s, then spins round) |
-| Rover 30% throttle: top speed / drift | 2.6 m/s / 0.2 deg | 2.6 m/s / 0.4-1.4 deg |
-| From 30%: full-reverse stop distance / deceleration | 1.6 m / 2.4 m/s^2 | 2.8 m / 1.2 m/s^2 |
-| From 30%: coasting distance | 5.7 m | 5.6 m (6.4 / 6.0 m before the automatic brake took the last 0.3 m/s) |
-| 30% full-lock turn: speed / radius / lateral accel per g | 0.72 m/s / 1.15 m / 0.05 | 0.8 m/s / 1.05 m / 0.39 |
+| Rover ride height (body origin) | 10.0 cm | 10.2 cm (the level's suspension; Earth's springs: 14.2 cm) |
+| Rover full throttle: top speed / heading drift, no steering | 9.7 m/s / 0.00 deg in 12 s | 9.5 m/s / 0.01 deg (without traction control: 2.0 m/s, then spins round) |
+| Rover 30% throttle: top speed / drift | 2.5 m/s / 0.0 deg | 2.5 m/s / 0.0 deg (0.4-1.4 with Earth's springs) |
+| From 30%: full-reverse stop distance / deceleration | 1.6 m / 2.4 m/s^2 | 2.5 m / 1.35 m/s^2 |
+| From 30%: coasting distance | 5.7 m | 5.7 m (6.4 / 6.0 m before the automatic brake took the last 0.3 m/s) |
+| 30% full-lock turn: speed / radius / lateral accel per g | 0.72 m/s / 1.15 m / 0.05 | 0.81 m/s / 1.07 m / 0.38 |
 | 26.6 degree ramp, 3 m run-up, full throttle | reaches the top | reaches the top (without traction control: spins out, 0.7 m) |
 | Same ramp from a standstill 1 m up | can't start: with the static rolling resistance it needs 375 N, the motors give 357 N at stall (it stalled at 2.6 m when it could first roll back for a run-up) | reaches the top |
 | Parked on that ramp, no throttle, 1 s | rolls back 0.20 m while the last run's throttle fades out, then the brake holds (0.9 m before the brake) | 0.03 m (0.24 m before) |
 
 Tyre forces scale with the wheel load, so everything grip-limited drops to about a sixth: at full throttle the motors (357 N at stall) far exceed what the tyres carry (about 130 N). Without traction control the wheels spin, a spinning tyre loses its sideways grip, and the rover yaws round; the rover's traction control (15.3) keeps the slip near the tyre's peak instead. Speed and anything motor-limited stay the same (top speed at part throttle, coasting: `rolling_resistance_force` is a fixed 12 N, not load-scaled).
 
-Not retuned yet (candidates, in order of impact):
-- **Rover suspension** sits 4 cm higher with little sag, so less droop travel over dips; springs a sixth as stiff (and dampers about 0.4x) would restore the Earth ride.
+**Rover suspension:** `RoverLevel.rover_suspension` (a Dictionary of `RunningGear.SUSPENSION_PROPERTIES`: springs, dampers, ride heights, bump stop) replaces the rover scene's values for every rover in the level, applied by `Robot._ready` (`Robot.apply_suspension`; properties left out keep the scene's values, so the test level, which sets none, is unchanged). The Moon's:
+- **Springs a sixth as stiff** (440.8 N/m per wheel, 2666.7 x 1.62 / 9.8): the same 49 mm sag and 10.1 cm ride height as on Earth, so the same droop travel over dips (Earth's springs sagged 8 mm on the Moon and rode 4 cm high).
+- **Earth's dampers** (266.7 N s/m): about 2.5 times critical-ratio-matched (108), on purpose: that is what absorbs a landing and keeps the rebound to 0.2 m/s. With dampers scaled to the springs (and no bump stop) the rover bottomed out at every speed; with stronger bump than rebound damping it pogoed off crests and rolled once at 5 m/s on the real terrain.
+- **A progressive bump stop** over the last 15 cm of travel (`bump_stop_length` 0.15, `bump_stop_stiffness` 3000: 450 N per wheel at the top; `bump_stop_damping` 2000 N s/m at the top, on compression only). The scene's default has none.
+
+Landing off a crater rim (`tests/test_rover_landing.gd`: a 12 degree rise to a 0.85 m crest, ground 1.0 m below the approach beyond it; the rover lands 1.9 m lower):
+
+| Off the rim at | Landing speed | Deepest compression (travel 300 mm) | Rebound | Back in the air |
+|---|---|---|---|---|
+| 4 m/s | 2.43 m/s | 253 mm (Earth suspension: 183) | 0.16 m/s (0.59) | 0 s (0.52 s) |
+| 5 m/s | 2.55 m/s | 244 mm (179) | 0.18 m/s (0.61) | 0 s (0.51 s) |
+| 6 m/s | 2.67 m/s | 261 mm (297, bottoms out) | 0.20 m/s (0.88) | 0 s (0.93 s) |
+
+Not retuned yet:
 - **Rolling resistance** is a fixed 12 N; making it proportional to the wheel load would let the Moon rover coast further (minor).
 
 ### Moon sky and lighting (`levels/lunar_sky.gd`, `LunarSky`)
@@ -691,7 +703,7 @@ Grounded in the current code; useful to know before changing things.
 
 - The player is still alive (frozen, input locked) while the robot is driven, and the robot is also in the world while the player walks around (it just coasts to a stop).
 - `InteractTrigger`s can't be used while driving (they rely on the `Player` raycast); Esc is the only way out.
-- **Hard landings bottom out the suspension.** On the Moon's real terrain at 4-6 m/s (40-70% throttle downhill) the rover leaves the ground over crater rims and lands at 2-2.9 m/s, more than its 0.30 m of suspension travel takes: for a few frames a wheel sits up to 28 cm in the ground until the bump stops catch, and a wheel against a slope that looks like a wall to the pitched rover stays there (found by `tests/test_terrain.gd`, which drives at about 2.4 m/s; flooring it whenever the nose was up launched the rover over a crest and rolled it). The Moon suspension isn't retuned yet (Level gravity).
+- **Hard landings on the Moon (fixed by the Moon suspension, Level gravity).** At 4-6 m/s downhill the rover leaves the ground over crater rims and lands at 2-3 m/s. With Earth's suspension at lunar gravity that went past the 0.30 m of travel (a wheel up to 28 cm in the ground for a few frames until the body's bump stops caught) and bounced back into the air for 0.5-0.9 s; the Moon level's suspension stops it with 4-6 cm of travel to spare and no bounce (`tests/test_rover_landing.gd`). Still open at 5 m/s on the real terrain (`tests/test_terrain.gd -- drive_speed=5`, not part of the normal run): a wheel's side can rub 1-1.4 cm into the flank of a rock (the ground check is cast straight down, so nothing stops sideways overlap), and a ridge crossed diagonally at that speed launched the rover with a roll that put it on its side, with a tuning that had less rebound damping (the final one got round the route upright in its run; one run is no proof, and the Apollo rover's top speed was 3.6 m/s).
 - A wheel finds ground up to the top of its ground check (wheel centre 0.30 m above its attachment point, about 0.55 m above flat ground for the wheel's top). A face taller than that touches the wheel's bump stop instead (the wheel is reported in contact but unloaded) and can't be climbed. The rover can't climb an edge much taller than its wheel radius: it straddles the ramp's 25 cm side edge rather than climbing it.
 - `robot.tscn` quirks inherited from `openwheel`: `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.

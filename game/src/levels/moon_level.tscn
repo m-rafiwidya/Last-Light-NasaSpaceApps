@@ -47,6 +47,14 @@ jump_height = 1.2
 ground_friction = 1.6
 earth_direction = Vector3(-0.061048, 0.001404, -0.998134)
 camera_far = 200000.0
+rover_suspension = {
+"front_spring_stiffness": 440.8,
+"middle_spring_stiffness": 440.8,
+"rear_spring_stiffness": 440.8,
+"bump_stop_length": 0.15,
+"bump_stop_stiffness": 3000.0,
+"bump_stop_damping": 2000.0
+}
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.9396926, -0.0534691, 0.3378186, 0, 0.9876883, 0.1564345, -0.3420201, -0.1469051, 0.9281479, 0, 0, 0)

@@ -25,6 +25,12 @@ extends Node3D
 ## Far plane (m) of the player's and the rovers' cameras here: 500 m by default; the Moon's
 ## terrain reaches the horizon, so it sets about 200 km
 @export var camera_far: float = 500.0
+## The rovers' suspension here: RunningGear properties (RunningGear.SUSPENSION_PROPERTIES) that
+## replace the rover scene's own, applied by the Robot as it enters the level. Empty: the scene's
+## values, tuned for Earth gravity. The Moon's keeps Earth's ride height and sag with springs a
+## sixth as stiff (the dampers stay Earth's, so the ride is heavily damped), and adds a progressive
+## bump stop, so landings off crater rims at 4-6 m/s don't bottom out (tests/test_rover_landing.gd)
+@export var rover_suspension: Dictionary = {}
 
 ## Nearest a camera's near plane may be for a far plane: Godot's light culler fails (an error
 ## every frame) when far / near is much over 10^7, measured with a 200 km far plane: 1 mm fails,

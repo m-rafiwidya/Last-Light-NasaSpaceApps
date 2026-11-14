@@ -47,10 +47,11 @@ says otherwise.
   RenderingServer calls, never every thread: Jolt runs its jobs on the same pool; the first
   version deadlocked the loading screen), turned into meshes on the main thread and cached in
   user://. First load 4.5 s, later 1-2.5 s. SceneLoader gives up waiting after 120 s.
-- **Tests:** the test drive holds about 2.4 m/s. At a steady 40-70% throttle the rover reaches 4-6
-  m/s downhill, leaves the ground over crater rims and lands at 2-2.9 m/s, past its 0.30 m of
-  suspension travel: wheels briefly in the ground (up to 28 cm) until the bump stops catch. That is
-  a suspension limit (the Moon suspension isn't retuned, README Level gravity), not the terrain.
+- **Tests:** the test drive holds about 2.4 m/s (`-- drive_speed=5` for 5 m/s). At 4-6 m/s
+  downhill the rover leaves the ground over crater rims and lands at 2-3 m/s. With Earth's
+  suspension that went past its 0.30 m of travel (wheels up to 28 cm in the ground); the Moon
+  level's own suspension (`rover_suspension`, README Level gravity) takes it, checked by
+  `tests/test_rover_landing.gd`.
 
 ---
 

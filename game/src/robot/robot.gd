@@ -200,6 +200,15 @@ func _ready() -> void:
 		camera.far = level.camera_far
 		min_camera_near = RoverLevel.near_for_far(0.0, camera.far)
 		camera.near = maxf(camera.near, min_camera_near)
+		# and its suspension (RoverLevel.rover_suspension)
+		if level.get("rover_suspension") is Dictionary:
+			apply_suspension(level.rover_suspension)
+
+
+## Sets the running gear's suspension to the scene's values with `overrides` (RunningGear
+## property name: value, e.g. a level's rover_suspension) on top
+func apply_suspension(overrides: Dictionary) -> void:
+	running_gear.apply_suspension(overrides)
 
 
 # Moves every HotswapSocket child that names an `anchor` onto that socket_* node, with zero

@@ -3,8 +3,9 @@ extends SceneTree
 ##   1. Each level gets its own gravity: test level 9.8, Moon 1.62, back to 9.8 on the test
 ##      level and the main menu (the world's physics space, the player's and the rover's
 ##      get_gravity()).
-##   2. On a flat floor under the Moon level, the same runs under 9.8 and under 1.62 m/s^2 (the
-##      Earth run sets the space's gravity directly, so only gravity differs):
+##   2. On a flat floor over the Moon level, the same runs under 9.8 and under 1.62 m/s^2 (the
+##      Earth run sets the space's gravity directly and puts the rover scene's own suspension
+##      back, so only gravity and the level's rover suspension differ):
 ##        rover: ride height, straight runs, stops, a turn, and climbing a 26.6 degree wedge
 ##        (like the test level's ramp) with a 3 m run-up and from a standstill on the slope;
 ##        player: jump height and time in the air, walking speed and the distance to stop.
@@ -25,8 +26,10 @@ const EARTH: float = 9.8
 # ground; the Moon runs use the Moon level's own
 const EARTH_PLAYER: Dictionary = {"jump_height": 0.8, "ground_friction": 0.5}
 # The Moon level has real terrain now: the runs use a flat floor (2 x 2 km, top at FLOOR) that the
-# test builds 5 km under it, in the same level, so the level's gravity and player settings apply
-const FLOOR := Vector3(0.0, -5000.0, 0.0)
+# test builds over it (the ground within 1.1 km of the origin is under 240 m), in the same level, so
+# the level's gravity and player settings apply. Not far away: a float position 5 km out moves in
+# 0.5 mm steps, and a rover settling slower than 0.06 m/s stalled there, 3-4 mm off its rest height
+const FLOOR := Vector3(0.0, 300.0, 0.0)
 const ROVER_START := FLOOR + Vector3(-120.0, 0.35, 60.0)
 const PLAYER_START := FLOOR + Vector3(-60.0, 1.0, 40.0)
 const RAMP_ORIGIN := FLOOR + Vector3(-180.0, 0.0, 0.0)
@@ -316,7 +319,10 @@ func _run() -> void:
 		rover.traction_control = false
 	GS.drive(rover)
 	await _ticks(0.5)
+	# Each run with its own suspension: the rover scene's (tuned for Earth) under Earth gravity,
+	# the Moon level's (RoverLevel.rover_suspension) under the Moon's
 	for g in [EARTH, MOON]:
+		rover.apply_suspension({} if g == EARTH else level.rover_suspension)
 		await _measure_rover(rover, g)
 	_set_space_gravity(MOON)
 
@@ -324,6 +330,9 @@ func _run() -> void:
 	# take-off speed, and the slope the motors couldn't hold on Earth being easy on the Moon.
 	# The rest (wheelspin, braking, cornering) is reported above as MEASURE lines.
 	var r := results
+	_check("Moon rover rides at Earth's height (the level's suspension, within 5 mm)",
+		absf(r["rover ride height (body origin)@%s" % MOON] - r["rover ride height (body origin)@%s" % EARTH]) < 0.5,
+		"%.1f cm, Earth %.1f" % [r["rover ride height (body origin)@%s" % MOON], r["rover ride height (body origin)@%s" % EARTH]])
 	_check("30% throttle top speed doesn't depend on gravity (within 10%)",
 		absf(r["30%% throttle: top forward speed@%s" % MOON] / r["30%% throttle: top forward speed@%s" % EARTH] - 1.0) < 0.1)
 	if rover.traction_control:
