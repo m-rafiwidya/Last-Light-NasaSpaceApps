@@ -236,7 +236,7 @@
 		"constant_subtracted_m": -1422.59033203125,
 		"placement": "post (line first_line + i, sample first_sample + j) at X = 2 * (j - 256), Z = 2 * (i - 256), Y = height - constant_subtracted_m; float32",
 		"measured_file": "play_measured.f32",
-		"note": "The starter pack named in ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
+		"note": "The starter pack named in game/docs/ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
 		"confidence_percent": {
 			"3": 7.18,
 			"10": 0.92,

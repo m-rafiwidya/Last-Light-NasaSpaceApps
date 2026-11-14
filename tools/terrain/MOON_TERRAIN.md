@@ -10,7 +10,7 @@ Two sites, newest first:
 
 ## There is no starter pack
 
-`ASSET_BRIEF.md` describes a `Tandborste-NASA-Moon-Terrain-Starter.zip` (a 257 x 257 crop at
+`game/docs/ASSET_BRIEF.md` describes a `Tandborste-NASA-Moon-Terrain-Starter.zip` (a 257 x 257 crop at
 2 m, 36.322 m of relief, float heights and metadata). **It doesn't exist:** the teammate doesn't
 have it, and it isn't on this machine. So the brief's starter-pack details (the crop and its span)
 don't apply. Used instead: the public product that pack would have come from, the LROC NAC DTM

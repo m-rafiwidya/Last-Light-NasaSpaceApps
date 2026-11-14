@@ -1,7 +1,7 @@
 # IRIS Kit Spec
 
-The first mission's other end (`ASSET_BRIEF.md`): **A07** IRIS, the research station (a
-placeholder for now), **A06** the diagnostic cartridge, and how Kite, the player's rover, delivers
+The first mission's other end (`game/docs/ASSET_BRIEF.md`): **A07** IRIS, the research station,
+**A06** the diagnostic cartridge, and how Kite, the player's rover, delivers
 one to the other.
 
 Renamed from `KITE_KIT.md` on 2026-10-14 (`docs/ASSET_PLAN.md` section 4): the player's rover,
@@ -37,7 +37,7 @@ The cargo mount's rover kit changes are in ROVER_KIT.md section 9.
 
 | Topic | Decision |
 |---|---|
-| IRIS | A static scene: for now the placeholder of section 6 (body box, mast, indicator, service port), later the final IRIS model. Never a `Robot`, so it can't be driven, pushed or picked up (the disabled-rover prop this row described is retired). |
+| IRIS | A static scene: the station of section 6 (body on four legs, service panel, diagnostic port, module socket, mast with indicator and antenna). Never a `Robot`, so it can't be driven, pushed or picked up (the disabled-rover prop this row described is retired). |
 | Service port | A bolt-on bracket on IRIS's front, carrying a **top-loading** cartridge port: the cartridge goes **straight down** into it. The arm's straight-ahead reach leaves only 7 cm of parking play for a horizontal insert; straight down leaves 0.12 m. |
 | Cargo mount | A low cradle on the rover's deck, under the stowed arm's turret, at (-0.125, 0.20, 0.44). It's the only patch of deck the arm can reach pointing straight down (section 2). |
 | Stowed pose | Moves from (0, 90, 90, 90, 0) to **(0, 90, 80, 100, 0)**, lifting the turret 57 mm so it clears a loaded cartridge. The old stowed pose becomes the **latch pose**: the turret's end meets the cartridge's top face. |
@@ -96,11 +96,11 @@ parking window backs up and tries again; the hint (8.2) tells them which way.
   `rover_*` materials, `-convcolonly` colliders, `rover_kit_import.gd`, exports in
   `game/res/models/rover_kit/`. The cartridge gets one accent stripe in `rover_gold` (now used by
   the antenna and the cartridge).
-- **IRIS** is built from rover kit meshes (unchanged) in its own frame, the rover frame (origin at
-  where its physics origin would be, facing +Y). It's exported as one GLB, `iris.glb`, in
-  `game/res/models/iris_kit/`.
-- **IRIS's port bracket** is service hardware: workshop materials (`ws_frame`, `ws_panel`,
-  `ws_dark`, `ws_accent`, `ws_status`), `workshop_kit_import.gd`.
+- **IRIS** is built in the rover frame (facing +Y, ground at z -0.10) and exported as one GLB,
+  `iris.glb`, in `game/res/models/iris_kit/`. It's service hardware like the workshop: the
+  workshop's materials (`ws_panel`, `ws_frame`, `ws_dark`, `ws_accent`, `ws_label`, `ws_screen`,
+  `ws_status`) plus one of its own, `ir_dust` (8C8579, roughness 0.95), and
+  `workshop_kit_import.gd`. Words on it are `Label3D`s on `text_*` anchors, as the decor kit does.
 - Generators: `tools/blender/scripts/iris/` (`make_cartridge.py`, `make_cargo_mount.py`,
   `make_iris.py`), sources in `tools/blender/parts/iris/`, previews in
   `tools/blender/previews/iris/`.
@@ -174,23 +174,41 @@ range against the empty mount (section 5.4).
 
 ---
 
-## 6. A07 IRIS (placeholder)
+## 6. A07 IRIS
 
-Until the final IRIS model exists (`docs/ASSET_PLAN.md` A07: about 2 x 1.5 x 1.3 m, a 3 m mast,
-service panel, antenna, indicator), IRIS is a placeholder built by `make_iris.py`. It keeps the
-service port's pose exactly where the delivery, the approach route and `tests/test_iris.gd` were
-tuned (`PORT_POSE`), so the final model has to put its port there too, or the parking window, the
-route and the test get re-tuned.
+`make_iris.py` builds the station (2026-10-14; it replaced the box-and-mast placeholder). Fictional,
+NASA-inspired equipment (a lander-style instrument box on footpads, like an ALSEP central station
+grown up), not a copy of any real station. Its diagnostic port keeps the placeholder's pose exactly
+(`PORT_POSE`), so the parking window, the approach route and `tests/test_iris.gd` are unchanged.
 
-### 6.1 Placeholder (IRIS frame = rover frame)
+### 6.1 The station (IRIS frame = rover frame, heights above the ground)
 
 | Part | IRIS |
 |---|---|
-| `iris_body` | a box 1.0 (x) x 1.2 (y) x 0.5 (z) m above the ground, x -0.5..0.5, y -0.75..0.45 (front face behind the port's struts), with a 0.15 m skirt into the ground for the slope. `ws_panel`. |
-| `iris_mast` | a 35 mm cylinder from the body's top to 3.0 m above the ground, at the body's rear-left corner (-0.38, -0.63). `ws_frame`. |
-| `iris_indicator` | a 0.10 m box on the mast's top, `ws_status`; Godot lights it with the port's status light (6.2). |
-| Tilt | the port's pose (`PORT_POSE`) sets the whole placeholder's tilt and height: about 1 degree pitch and 1.5 degrees roll. |
-| Dust | `Iris` still swaps `rover_*` materials for dusty copies; the placeholder has none. |
+| `iris_body` | 2.0 (x) x 1.5 (y) m, **1.3 m tall**: x -1..1, y -1.05..0.45 (the front face where the placeholder's was), from 0.24 to 1.30 m, its vertical edges chamfered 60 mm, a dark lid, base and top rails. Four legs on footpads (0.11 m radius) at (+-0.86, -0.90 / 0.30), **each cut to the terrain under it**, the pads 30 mm in the ground. Right side (+x): a finned radiator. Left side: a handle rail and a vent. Rear: a cable gland. Top: a solar plate on the rear half, facing up and back. Front: panel seams and a name plate (`text_name`, "IRIS"). |
+| `iris_service_panel` | **M1's photo target**, on the front's left (x -0.90..-0.20, 0.30-1.17 m), straight under the mast and antenna. A framed `service_door` (hinged on its left edge, its origin on the hinge line, so code can swing it about its local Z) with a stencilled title plate (`text_panel_title`, "SERVICE PANEL S-1") and Evan's handwritten service tag (`text_service_label`). Under the door a connector strip: J1 radio power (the empty socket's), J2 data, J3 heater, **each labelled twice**, a plate above and one below (`text_conn_j1_a` / `_b` ...). `scan_point`: 50 mm in front of the panel's middle. |
+| `iris_port` | the diagnostic port bracket (6.2), unchanged |
+| `iris_module_socket` | **M2**: the replacement radio-power module's bay, on IRIS's **left side** (beside the service panel), see 6.2.1. Empty: a dark bay with a bare connector on its floor. |
+| `iris_mast` | 40 mm, from the lid to 2.62 m at (-0.55, -0.20), with a base flange and a cable duct. |
+| `iris_indicator` | the station's lamp, a 0.10 m tall lens on the mast at 2.30-2.40 m between two collars (`ws_status`). |
+| `iris_antenna_pan` | pan head on the mast's top: housing, yoke and a fixed axle. Turns about its local Z (Godot Y). |
+| `iris_antenna` | the tilting part (hub and boom) with `iris_antenna_dish` (0.26 m radius, a feed): tilts about its local X, + = up. Axle at 2.80 m; the whole station is 2.95 m tall parked. |
+| `iris_dust` | four years unattended: drifts banked round the footpads, a ragged dusty band round the body's foot, patches on the lid, a film over the solar plate's lower half (`ir_dust`). In Godot `Iris` also turns every `ws_*` / `rover_*` material (except the lights and the cells) 25% towards dust grey, rougher. |
+| Tilt | the port's pose (`PORT_POSE`) sets the whole station's tilt and height: about 1 degree pitch and 1.5 degrees roll; the legs take up the terrain under them. |
+
+### 6.1.1 States (`Iris.set_online(online, instant = false)`)
+
+| | Offline (start) | Online |
+|---|---|---|
+| `iris_indicator` | dark | green, steady (emissive) |
+| Antenna (pan, tilt) | parked (0, -25): the dish nodding down | tracking (35, 40), reached in 3 s (smoothstep) |
+
+- `Iris.is_online`, signal `online_changed(online)`, export `start_online` (for after M2).
+- The GLB is exported parked; `ANTENNA_PARKED` / `ANTENNA_TRACKED` are the same numbers in
+  `make_iris.py` and `iris.gd`.
+- `make_iris.py` sweeps the dish from parked to tracked: it keeps 41.5 mm from the rest of IRIS
+  (needs 20).
+- The port's status light (6.2) is separate: it tells the cartridge delivery's state.
 
 ### 6.2 Service port bracket (`iris_port`)
 - **Bracket:** a bracket on IRIS's front face, reaching forward to y 0.82.
@@ -202,13 +220,28 @@ route and the test get re-tuned.
   - `anchor_cartridge_seated` (0.08, 0.70, 0.38), the cartridge's origin when it's in, long side
     along IRIS's x.
 - **Status light:** `iris_status_light`, a 0.20 x 0.03 m strip on the bracket's front face plus a
-  small dome on top, `ws_status` (and `iris_indicator` on the mast, the same material). States:
+  small dome on top, `ws_status`. States:
   - red slow blink (1 Hz): fault, waiting;
   - amber pulse for 3 s: the cartridge is reading;
   - green steady: done.
   Its emission makes it visible from the route.
 - Collision: the box (`iris_port-convcolonly`). The seated cartridge is frozen and adds none.
 - Budget 350 triangles.
+
+### 6.2.1 Module socket (`iris_module_socket`, M2)
+- On the **left side**, beside the service panel: a bracket like the port's, 0.35 (along the side,
+  IRIS's y) x 0.25 m, sticking out of the side as far as the port sticks out of the front.
+- Opening 0.32 x 0.22 m, 0.12 m deep (for A10's ~0.3 x 0.2 m module), 10 mm lead-in, **long side
+  along IRIS's y** (a `CargoPort` there needs its X turned 90 degrees to match).
+- Its top sits 0.09 m higher on IRIS than the port's, because the ground on that side is higher:
+  for a rover parked there it's at z 0.46 in the rover's frame, like the port. So the same arm
+  reach and parking window (8.1) apply, the rover facing IRIS's +X.
+- Empties: `socket_module` (opening's top centre), `anchor_module_seated` (6 mm over its floor).
+- Parking markers: `park_cartridge` and `park_module`, where Kite's origin stops (on the ground)
+  for the middle of each window, facing IRIS's -Y and +X.
+- Why not on the front beside the port: any bracket there is hit by the parked rover's front
+  corner when it stands turned in the window (69 mm, needs 150).
+- Collision: the box (`iris_module_socket-convcolonly`).
 
 ### 6.3 Scan target
 - IRIS's node is in the group `scan_target`, with `scan_name` "IRIS" and `scan_report` (the
@@ -224,12 +257,35 @@ route and the test get re-tuned.
 - `Iris.scanned(rover)` is emitted once.
 
 ### 6.4 Collision
-- The body box (convex, `iris_body-convcolonly`) and the port box. The mast has none (it's above
-  the body).
+- Three boxes: the body (`iris_body-convcolonly`, from 0.15 m into the ground to its lid, legs
+  included, so nothing drives under it), the port and the module socket. The mast and antenna
+  have none (above the body).
 - Static, layer 2, mask 0 (17).
 
 ### 6.5 Budget
-204 triangles for the placeholder (budget 3,000). The final model: 3-6k (ASSET_PLAN A07).
+2,138 triangles (budget 6,000; ASSET_PLAN A07 says 3-6k, this needs fewer).
+
+### 6.6 Words (`Iris.TEXTS`, `Label3D` on the `text_*` anchors)
+
+| Anchor | Words | Style |
+|---|---|---|
+| `text_name` | IRIS | stencil (default font, ink) |
+| `text_panel_title` | SERVICE PANEL S-1 | stencil |
+| `text_service_label` | Radio pwr: J1 / Seals checked / - Evan | handwritten: Caveat (OFL), blue-black pen, 2 degrees crooked |
+| `text_conn_j1_a`, `_b` | J1 RADIO PWR (both) | handwritten |
+| `text_conn_j2_a`, `_b` | J2 DATA | handwritten |
+| `text_conn_j3_a`, `_b` | J3 HEATER | handwritten |
+
+The handwriting is Caveat 500 (`game/res/fonts/caveat-latin-500-normal.woff2`, from
+`@fontsource/caveat` 5.3.0; licence in `LICENSE-caveat.txt`). Each label is sized to its plate.
+
+### 6.7 Light on the panel (M1 relies on Kite's headlights)
+
+IRIS's front faces south-west and the sun is in the east, so **the service panel is in IRIS's own
+shadow** (7). IRIS stays where it is. M1's photo of the panel, and Evan's labels on it, need Kite's
+headlights (**L**). So the M1 objective/hint must prompt **"L  Lights"** once Kite is near IRIS
+(within about 15 m, or when the panel is the scan/photo target), and the mission system should
+not count a photo of a dark panel as readable if that is ever checked.
 
 ---
 
@@ -321,7 +377,7 @@ The keyframes are fixed, so `make_iris.py` checks them in Blender before anythin
 
 | Where | Signal |
 |---|---|
-| `IRIS` (group `kite`) | `scanned(rover)`; `cartridge_inserted(cartridge, rover)` (once, after the green light) |
+| `IRIS` (group `iris`) | `scanned(rover)`; `cartridge_inserted(cartridge, rover)` (once, after the green light) |
 | `CargoPort` (group `cargo_port`, on IRIS's port) | `cargo_inserted(part, rover)`; `accepts` "cartridge" (a catalog id), so A10's module can use the same port type at IRIS |
 | `CargoDelivery` (on the rover) | `delivery_started(port)`, `delivery_aborted(port, reason)`, `delivery_finished(port)` |
 
@@ -411,7 +467,7 @@ from the rover." to **"The rover's eyes: drive by it, look around and scan thing
 |---|---|
 | A06 cartridge | 250 |
 | Cargo mount | 120 |
-| A07 IRIS placeholder (body, mast, indicator) | about 200 |
+| A07 IRIS (body, panel, mast, antenna, module socket, dust) | about 1,800 |
 | IRIS's port bracket and light | 350 |
 | Approach gate (2 posts, 1 sign) | about 150 |
 | **Total new on the Moon** | **about 6,900** |
@@ -430,7 +486,10 @@ emissive, and the rover's headlights already exist.
   - the arm over its whole range against the empty mount (`make_arm.py`'s product check);
   - the new stowed pose stays out of the mast camera's view (the existing view check).
 - **`make_iris.py`:**
-  - IRIS's pose on the terrain (every remaining wheel touching, nothing in the ground);
+  - IRIS on the terrain: every footpad in the ground (5 mm or more) with its top above it, the
+    body 0.15 m or more above it;
+  - the antenna's swing, parked to tracked, 20 mm from everything else;
+  - the module socket from its own window: in reach at all 27 corners, the footprint 150 mm away;
   - the port's reach window (2.1) from the actual pose;
   - the delivery path (8.3) at the window's corners, against the rover, the mast head, IRIS and
     the ground;
@@ -521,17 +580,20 @@ Where the build differs from the sections above, this wins.
 | Release | on the seat | **6 mm over the seat** (`SEAT_GAP`), then `CargoPort.accept` puts it on the seat | a release exactly on the floor counted as touching it |
 | IRIS's colliders | layer 1 | **layer 2, mask 0** | on layer 1 the wheels' ground check (layers 1, 3) would drive up IRIS's body and the arm's ground check (layer 1) would see the port as terrain and stop the stroke. Rovers (mask 71) still collide with it; the player's mask leaves layer 2 out, which doesn't matter on the Moon, where the player stays inside. The wheels also don't climb the fallen wheel now; it's off the approach |
 | Lift pose | (0, 90, 60, 120, 0) | **(0, 90, 70, 110, 0)** | J4's range is +-110: the visuals clamped 120 and tilted the cartridge 10 degrees. The latch still points straight down; the cartridge rises 113 mm off the mount |
-| IRIS triangles | about 6,600 (the retired prop) | **204** (placeholder, budget 3,000) | |
+| IRIS triangles | about 6,600 (the retired prop) | **2,138** (budget 6,000) | the placeholder had 204 |
 | Cartridge, cargo mount | 250, 120 triangles | **124, 84** | |
 
-**Checks** (`make_iris.py` on the placeholder, all 27 corners of the parking window, each pose sampled along the
+**Checks** (`make_iris.py` on the station, 2026-10-14; the same numbers as on the placeholder; all 27 corners of the parking window, each pose sampled along the
 whole path: latch, lift, transit, turn, stroke, release): all OK. Arm vs IRIS 31.1 mm (need 20),
 cartridge vs IRIS 60.5 mm, cartridge vs the port before the stroke 25.6 mm, during the stroke
 6.7 mm (need 3), at the release 3.7 mm over the floor; cartridge vs the rescuer 37.8 mm; the arm
 357 mm and the cartridge 472 mm over the ground; the rescuer's wheels and body 157.8 mm from IRIS
-(need 150); the cartridge squared to the port within 0.5 degrees.
+(need 150); the cartridge squared to the port within 0.5 degrees. The station: footpads 30 mm in
+the ground, their tops 20 mm above it, the body 180 mm above it; the dish 41.5 mm from the rest
+over its swing; the module socket in reach at 27 of 27 corners of its window (its top at z 0.460
+in the rover's frame), the footprint 154.8 mm from IRIS there.
 
-**Game** (`tests/test_iris.gd`, all 18 checks pass): loading from the rack, the Moon's pickup rules,
+**Game** (`tests/test_iris.gd`, all 20 checks pass; 2026-10-14 adds IRIS offline then online, and its 9 labels): loading from the rack, the Moon's pickup rules,
 the drive out of the bay and 150 m to IRIS (route right of the base sign), the scan (once), parking
 by the hint (the test's controller stops 8 cm short and then creeps the distance the hint asks for,
 like a driver), an insert interrupted by throttle (cartridge back on the mount, arm stowed), the
@@ -541,5 +603,7 @@ the rover never touched IRIS and tilted at most 5 degrees), and the test level's
 (the player lifts a rover; the mast camera picks a part up). Every other suite passes unchanged.
 
 **Previews** in the game's lighting: `game/tools/render_iris_previews.gd` (window) writes
-`tools/previews/iris/`: IRIS from the gate, the mast view scanning, parked with the hint, from
-above, the carry and the stroke from beside, and IRIS's green light.
+`tools/previews/iris/`: IRIS from the gate (offline), its service panel, the module socket, the
+mast view scanning, parked with the hint, from above, the carry and the stroke from beside, IRIS's
+green light, and IRIS online. Blender previews (`tools/blender/previews/iris/`, git-ignored):
+parked and tracked, front, sides, rear, top, the service panel and the ports close.

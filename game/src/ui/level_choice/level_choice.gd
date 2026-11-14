@@ -10,8 +10,7 @@ signal level_chosen(level_id: String)
 
 const LEVEL_BUTTON: PackedScene = preload("res://src/ui/level_choice/level_button.tscn")
 
-## Scene of each button; it needs a ButtonSoundComponent child (level_button_v2.tscn is the
-## underline button of the new UI theme)
+## Scene of each button; it needs a ButtonSoundComponent child
 @export var button_scene: PackedScene = LEVEL_BUTTON
 ## Button text; %s is the level's display name
 @export var text_format: String = "%s"

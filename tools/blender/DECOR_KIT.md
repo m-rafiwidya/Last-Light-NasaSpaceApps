@@ -1,6 +1,6 @@
 # Decor Kit Spec
 
-Set dressing for the lunar workshop (`WORKSHOP_KIT.md`), following `ASSET_BRIEF.md`'s visual
+Set dressing for the lunar workshop (`WORKSHOP_KIT.md`), following `game/docs/ASSET_BRIEF.md`'s visual
 direction: a small, used research workshop with pale metal panels, dark structural frames, visible
 fasteners, a few amber work lights and clearly labelled equipment. It also covers the brief's
 **A12** (paper and service-note props near their equipment) and its optional **historical image

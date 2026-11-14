@@ -704,7 +704,7 @@ def main():
 				"constant_subtracted_m": frame.h0,
 				"placement": f"post (line first_line + i, sample first_sample + j) at X = {spacing:g} * (j - {k}), Z = {spacing:g} * (i - {k}), Y = height - constant_subtracted_m; float32",
 				"measured_file": f"{t['name']}_measured.f32",
-				"note": "The starter pack named in ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
+				"note": "The starter pack named in game/docs/ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
 			}
 			if "conf" in cfg["sources"]:
 				# The DTM's confidence map over the window (0 no data, 1 shadowed, 2 saturated, 3 suspicious,
