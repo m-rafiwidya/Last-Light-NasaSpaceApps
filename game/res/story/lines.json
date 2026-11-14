@@ -1,7 +1,75 @@
 {
-	"mira_m1_01": {
-		"speaker": "Mira",
-		"text": "Fit the battery, check the wheels, then take control from the console.",
-		"audio": "res://res/audio/voice/mira_m1_01.ogg"
-	}
+  "mira_m1_01": {
+    "speaker": "Mira",
+    "text": "Fit the battery, check the wheels, then take control from the console.",
+    "audio": "res://res/audio/voice/mira_m1_01.ogg"
+  },
+  "mira_m1_02": {
+    "speaker": "Mira",
+    "text": "Kite has power. Open the mission console, select Control Kite, and head for IRIS."
+  },
+  "hana_m1_01": {
+    "speaker": "Hana",
+    "text": "That's Evan's service panel. The image is clear. Bring Kite home so we can check the fault."
+  },
+  "mira_m1_03": {
+    "speaker": "Mira",
+    "text": "Good docking. Leave Kite and send the inspection from the console's Downlink tab."
+  },
+  "mira_m1_04": {
+    "speaker": "Mira",
+    "text": "Diagnosis confirmed: IRIS's radio-power module failed, but its stored records survived. We need a replacement."
+  },
+  "mira_m2_01": {
+    "speaker": "Mira",
+    "text": "First, open Planning on the mission console. Choose a lander and order the radio-power module without exceeding the mass limit."
+  },
+  "mira_m2_02": {
+    "speaker": "Mira",
+    "text": "Manifest approved. The cargo is on its way. Check the delivery crate before loading Kite."
+  },
+  "mira_m2_03": {
+    "speaker": "Mira",
+    "text": "The module adds twelve kilograms. Take it steady on the way to IRIS, and watch your battery reserve."
+  },
+  "mira_m2_04": {
+    "speaker": "Mira",
+    "text": "The replacement module is seated. Run the station activation check."
+  },
+  "hana_m2_01": {
+    "speaker": "Hana",
+    "text": "IRIS is transmitting again. After four years, we finally have a signal. Let's bring those records home."
+  },
+  "hana_m2_02": {
+    "speaker": "Hana",
+    "text": "Reference sample secured. That gives us a useful comparison point for the far-rim record."
+  },
+  "mira_m2_05": {
+    "speaker": "Mira",
+    "text": "Kite is docked. Open Downlink at the mission console to receive IRIS's telemetry."
+  },
+  "hana_m2_03": {
+    "speaker": "Hana",
+    "text": "IRIS's data is here, but one record is still missing: Evan's field logger at the far rim."
+  },
+  "mira_m3_01": {
+    "speaker": "Mira",
+    "text": "The logger is farther out. Compare the routes, protect your return battery reserve, and watch the shaded cold zones."
+  },
+  "hana_m3_01": {
+    "speaker": "Hana",
+    "text": "There it is—Evan's field logger. Both labels are still attached. Bring it back safely."
+  },
+  "mira_m3_02": {
+    "speaker": "Mira",
+    "text": "Kite recovered. Open the Downlink tab and send the logger's archive."
+  },
+  "hana_m3_end": {
+    "speaker": "Hana",
+    "text": "That's Evan's last record, the one he never got to send. He left everything ready for someone to finish. Thank you."
+  },
+  "mira_m3_end": {
+    "speaker": "Mira",
+    "text": "Kite recovered, IRIS online, archive received. I'm closing the field report. Good work out there."
+  }
 }

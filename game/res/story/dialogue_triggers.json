@@ -1,3 +1,74 @@
 [
-	{ "on": "mission_started:m1", "line": "mira_m1_01" }
+  {
+    "on": "mission_started:m1",
+    "line": "mira_m1_01"
+  },
+  {
+    "on": "objective:m1.kite_prepared",
+    "line": "mira_m1_02"
+  },
+  {
+    "on": "objective:m1.iris_scanned",
+    "line": "hana_m1_01"
+  },
+  {
+    "on": "objective:m1.kite_docked",
+    "line": "mira_m1_03"
+  },
+  {
+    "on": "objective:m1.inspection_sent",
+    "line": "mira_m1_04"
+  },
+  {
+    "on": "mission_started:m2",
+    "line": "mira_m2_01"
+  },
+  {
+    "on": "objective:m2.cargo_ordered",
+    "line": "mira_m2_02"
+  },
+  {
+    "on": "objective:m2.module_loaded",
+    "line": "mira_m2_03"
+  },
+  {
+    "on": "objective:m2.module_installed",
+    "line": "mira_m2_04"
+  },
+  {
+    "on": "objective:m2.iris_activated",
+    "line": "hana_m2_01"
+  },
+  {
+    "on": "objective:m2.near_sample_collected",
+    "line": "hana_m2_02"
+  },
+  {
+    "on": "objective:m2.kite_docked",
+    "line": "mira_m2_05"
+  },
+  {
+    "on": "objective:m2.telemetry_received",
+    "line": "hana_m2_03"
+  },
+  {
+    "on": "mission_started:m3",
+    "line": "mira_m3_01"
+  },
+  {
+    "on": "objective:m3.logger_recovered",
+    "line": "hana_m3_01"
+  },
+  {
+    "on": "objective:m3.kite_docked",
+    "line": "mira_m3_02"
+  },
+  {
+    "on": "mission_completed:m3",
+    "line": "hana_m3_end"
+  },
+  {
+    "on": "mission_completed:m3",
+    "line": "mira_m3_end"
+  }
 ]
