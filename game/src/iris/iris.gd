@@ -67,6 +67,8 @@ var service_panel: IrisServicePanel = null
 ## The radio-power module's socket (socket_module) and seat (anchor_module_seated), for M2
 var module_socket: Node3D = null
 var module_seat: Node3D = null
+## The module bay's install point (M2)
+var module_cradle: IrisModuleCradle = null
 var _reading: float = -1.0
 var _reader: Robot = null
 var _time: float = 0.0
@@ -110,6 +112,21 @@ func _ready() -> void:
 	port.seat = model.find_child("anchor_cartridge_seated", true, false) as Node3D
 	port.cargo_inserted.connect(_on_cargo_inserted)
 	_add_service_panel(model)
+	_add_module_cradle(model)
+
+
+## M2's module bay (IrisModuleCradle, child "ModuleCradle") on the module's seat; it restores a
+## seated module itself when the campaign says it's installed
+func _add_module_cradle(model: Node) -> void:
+	if module_seat == null:
+		push_error("Iris: no anchor_module_seated in the model")
+		return
+	module_cradle = IrisModuleCradle.new()
+	module_cradle.name = "ModuleCradle"
+	module_cradle.highlight_node = model.find_child("iris_module_socket", true, false) as Node3D
+	module_cradle.park_marker = model.find_child("park_module", true, false) as Node3D
+	add_child(module_cradle)
+	module_cradle.global_transform = module_seat_transform()
 
 
 ## The service panel's scan target on `scan_point`, already scanned if M1's scan is done (a
