@@ -26,7 +26,8 @@ func _process(_delta: float) -> void:
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
 		%Arm.text = "ARM  --"
-	%Crosshair.visible = not looking_at_prop
+	var aiming: bool = is_instance_valid(Debug.current_robot) and Debug.current_robot.is_aiming()
+	%Crosshair.visible = aiming and not looking_at_prop
 	%InteractCrosshair.visible = looking_at_prop
 
 

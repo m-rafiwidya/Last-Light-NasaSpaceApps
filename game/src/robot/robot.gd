@@ -211,8 +211,14 @@ func _on_game_state_changed(old_state, new_state) -> void:
 
 
 # Controller signals
+## Picking up, holding and throwing aim with the mast camera, so only in the mast view
+func is_aiming() -> bool:
+	var rig := get_node_or_null("CameraRig") as RoverCamera
+	return rig == null or rig.view == RoverCamera.View.MAST
+
+
 func _on_controller_interact(value: bool) -> void:
-	if not value:
+	if not value or not is_aiming():
 		return
 
 	if holder.held_object:
@@ -224,12 +230,12 @@ func _on_controller_interact(value: bool) -> void:
 
 
 func _on_controller_primary(value: bool) -> void:
-	if value:
+	if value and is_aiming():
 		holder.throw()
 
 
 func _physics_process(delta: float) -> void:
-	looking_at_object = holder.held_object if holder.held_object else raycast.get_collider()
+	looking_at_object = (holder.held_object if holder.held_object else raycast.get_collider()) if is_aiming() else null
 
 	holder.update(delta)
 	_update_wheel_parts()

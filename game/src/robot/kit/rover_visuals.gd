@@ -15,7 +15,7 @@ extends Node3D
 ## with the wheel speed. It also builds the fixed mast base and arm segments on their chassis
 ## sockets and drives the arm (stowed by default; R deploys / stows it, 1-5 pick a joint and
 ## Z / X turn it, never into the ground), and pans / tilts the mast head from the mouse
-## look with the rover camera riding on its pivot_camera, and keeps the high-gain antenna's dish
+## look (RoverCamera puts the camera on it in the mast view), and keeps the high-gain antenna's dish
 ## pointed at EARTH_DIRECTION. Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
@@ -40,8 +40,7 @@ const MODELS: Dictionary = {
 # ROVER_KIT.md 5: arm joint ranges (degrees) and the stowed pose
 const ARM_RANGES: Dictionary = {"J1": Vector2(-20.0, 15.0), "J2": Vector2(-30.0, 90.0),
 	"J3": Vector2(-90.0, 90.0), "J4": Vector2(-110.0, 110.0)}
-# ROVER_KIT.md 3.3 / 5: mast head tilt range, and its rig when no head is mounted (the
-# camera falls back to where the head's pivot_camera would be)
+# ROVER_KIT.md 3.3 / 5: mast head tilt range
 const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
 # Past the head's tilt limit the camera keeps pitching on its own, up to +-90 degrees. Looking
 # down past -65 degrees it slides forward, away from the head (up to 6 cm at -90), so the
@@ -50,14 +49,6 @@ const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
 const CAMERA_PITCH_LIMIT: float = deg_to_rad(90.0)
 const CAMERA_SLIDE_MAX: float = 0.06
 const CAMERA_SLIDE_START: float = deg_to_rad(65.0)
-# Mast camera zoom: vertical field of view from MAST_FOV_MAX (no zoom) down to MAST_FOV_MIN
-# (5.7x magnification), changed by MAST_ZOOM_STEP per wheel notch and eased towards
-const MAST_FOV_MAX: float = 90.0
-const MAST_FOV_MIN: float = 20.0
-const MAST_ZOOM_STEP: float = 0.8
-const MAST_ZOOM_RATE: float = 12.0
-const MAST_TILT_AXIS_HEIGHT: float = 0.10
-const PIVOT_CAMERA_FORWARD: float = 0.07
 
 # The fixed world direction the high-gain antenna tracks, as if it were Earth: 35 degrees above
 # the horizon, towards -Z / +X. Tilt range (ROVER_KIT.md 5) and how fast the dish follows.
@@ -122,10 +113,10 @@ var _arm_nodes: Dictionary = {}
 var mast_pan: float = 0.0
 var mast_tilt: float = 0.0
 var camera_extra_pitch: float = 0.0
-## Mast camera field of view (degrees): where it is easing to, and now
-var mast_fov_target: float = MAST_FOV_MAX
-var mast_fov: float = MAST_FOV_MAX
-var _mast_top: Node3D = null
+## The mast camera's transform this frame (pivot_camera plus extra pitch and slide), valid
+## while has_mast_camera; RoverCamera puts the camera there in the mast view
+var mast_camera_transform: Transform3D = Transform3D.IDENTITY
+var has_mast_camera: bool = false
 var _posed_head: HotswapPart = null
 
 var _spin: Dictionary = {}           # Wheel -> spin angle (rad)
@@ -141,8 +132,7 @@ func _ready() -> void:
 	_build_mast_and_arm()
 	apply_arm_pose()
 	robot.controller.arm_toggle.connect(_on_arm_toggle)
-	robot.controller.zoom.connect(_on_zoom)
-	_mast_top = find_child("socket_mast_head", true, false) as Node3D
+
 
 
 func _build_side(side: String) -> void:
@@ -396,15 +386,18 @@ func _pose_side(side: String) -> void:
 	(data["rear_bracket"] as Node3D).rotation = Vector3(0.0, robot.running_gear.get_steer_angle(wheels[2], steer), 0.0)
 
 
-# Pans (yoke about Y) and tilts (camera box about X) the mounted mast head from the mouse
-# look, then puts the rover camera's pivot on its pivot_camera, pitched further by whatever
-# look angle is beyond the head's tilt limit. Without a head the pivot goes where
-# pivot_camera would be on the mast top.
+# Pans (yoke about Y) and tilts (camera box about X) the mounted mast head. The angles follow
+# the mouse look only while the rover's camera is in the mast view (otherwise the head holds
+# still); look angles beyond the head's tilt limit pitch the camera on its own. Leaves the
+# mast camera's transform in mast_camera_transform for RoverCamera (has_mast_camera false
+# without a head).
 func _update_mast_head() -> void:
-	var look: float = clampf(robot.controller.camera_altitude, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT)
-	mast_pan = robot.controller.camera_azimuth
-	mast_tilt = clampf(look, -MAST_TILT_LIMIT, MAST_TILT_LIMIT)
-	camera_extra_pitch = look - mast_tilt
+	var rig := robot.get_node_or_null("CameraRig") as RoverCamera
+	if rig == null or rig.view == RoverCamera.View.MAST:
+		var look: float = clampf(robot.controller.camera_altitude, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT)
+		mast_pan = robot.controller.camera_azimuth
+		mast_tilt = clampf(look, -MAST_TILT_LIMIT, MAST_TILT_LIMIT)
+		camera_extra_pitch = look - mast_tilt
 	var socket := robot.get_node_or_null("MastHeadSocket") as HotswapSocket
 	var head: HotswapPart = socket.part if socket else null
 	if head != _posed_head:
@@ -412,30 +405,11 @@ func _update_mast_head() -> void:
 		if is_instance_valid(_posed_head):
 			_pose_head(_posed_head, 0.0, 0.0)
 		_posed_head = head
-	var on_head: Transform3D
+	has_mast_camera = head != null
 	if head:
 		_pose_head(head, mast_pan, mast_tilt)
-		on_head = (head.find_child("pivot_camera", true, false) as Node3D).global_transform
-	elif _mast_top:
-		on_head = _mast_top.global_transform * Transform3D(
-			Basis(Vector3.UP, mast_pan) * Basis(Vector3.RIGHT, mast_tilt),
-			Vector3(0.0, MAST_TILT_AXIS_HEIGHT, 0.0)) * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -PIVOT_CAMERA_FORWARD))
-	else:
-		return
-	robot.pivot.global_transform = mast_view_transform(on_head, camera_extra_pitch)
-	mast_fov = lerpf(mast_fov, mast_fov_target, 1.0 - exp(-MAST_ZOOM_RATE * get_physics_process_delta_time()))
-	robot.camera.fov = mast_fov
-	# Same screen distance turns the view by the same fraction of the field of view
-	robot.controller.look_scale = mast_fov / MAST_FOV_MAX
-
-
-func _on_zoom(steps: int) -> void:
-	mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, MAST_FOV_MAX)
-
-
-## Mast camera magnification relative to the unzoomed field of view (1.0 = no zoom)
-func mast_zoom() -> float:
-	return tan(deg_to_rad(MAST_FOV_MAX) / 2.0) / tan(deg_to_rad(mast_fov) / 2.0)
+		var on_head: Transform3D = (head.find_child("pivot_camera", true, false) as Node3D).global_transform
+		mast_camera_transform = mast_view_transform(on_head, camera_extra_pitch)
 
 
 ## The mast camera's transform: `on_head` (pivot_camera) pitched by `extra_pitch` about its own

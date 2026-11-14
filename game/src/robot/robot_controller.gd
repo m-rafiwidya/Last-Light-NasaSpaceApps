@@ -20,6 +20,8 @@ signal arm_toggle
 signal reset_requested
 ## Mouse wheel: +1 per notch zooming in, -1 zooming out
 signal zoom(steps: int)
+## C: next camera view (press only)
+signal camera_next
 
 ## The Robot this controller drives (set by the Robot)
 var robot: Node = null
@@ -100,6 +102,8 @@ func _physics_process(delta: float) -> void:
 			arm_toggle.emit()
 		if Input.is_action_just_pressed("robot_reset"):
 			reset_requested.emit()
+		if Input.is_action_just_pressed("camera_next"):
+			camera_next.emit()
 		for joint in range(1, 6):
 			if Input.is_action_just_pressed("arm_joint_%d" % joint):
 				arm_joint = joint

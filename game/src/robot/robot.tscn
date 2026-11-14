@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://6lqw13v7axa8" path="res://src/robot/socket/hotswap_socket.tscn" id="20_socket"]
 [ext_resource type="PackedScene" uid="uid://dy5tit5s5tomt" path="res://res/models/rover_kit/chassis.glb" id="21_chassis"]
 [ext_resource type="Script" path="res://src/robot/kit/rover_visuals.gd" id="22_visuals"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_camera.gd" id="23_camera_rig"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 bounce = 0.5
@@ -178,3 +179,6 @@ capture_offset = Vector3(0, 0.15, 0)
 trigger_size = Vector3(0.24, 0.24, 0.24)
 trigger_offset = Vector3(0, 0.14, 0)
 anchor = &"socket_antenna"
+
+[node name="CameraRig" type="Node" parent="." unique_id=1203948630]
+script = ExtResource("23_camera_rig")
