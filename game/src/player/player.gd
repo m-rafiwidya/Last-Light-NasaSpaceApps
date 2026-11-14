@@ -60,9 +60,10 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var gravity_vector: Vector3 = (
 	ProjectSettings.get_setting("physics/3d/default_gravity_vector")
 )
-## Jump take-off speed: JUMP_HEIGHT under the project's (Earth) gravity. The legs push the same
-## everywhere, so lower gravity gives a higher, longer jump (about 4.8 m on the Moon).
-@onready var jump_impulse: float = sqrt(2.0 * JUMP_HEIGHT * float(ProjectSettings.get_setting("physics/3d/default_gravity")))
+## How high a jump goes (m) under the current gravity; the level sets it (SceneLoader). The
+## take-off speed follows from it, so the time in the air grows as gravity drops (0.8 m:
+## 0.8 s on Earth; the Moon's 1.2 m: 2.4 s).
+var jump_height: float = JUMP_HEIGHT
 
 
 var want_to_crouch: bool = false
@@ -282,7 +283,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var jump_vector: Vector3 = -gravity_vector
 		if state.linear_velocity.dot(rotated_move_direction) <= speed * 1.2:
 			jump_vector += 0.0 * rotated_move_direction
-		state.apply_central_impulse(jump_vector * mass * jump_impulse)
+		state.apply_central_impulse(jump_vector * mass * sqrt(2.0 * jump_height * gravity))
 		state.transform.origin.y += epsilon
 		controller.request_jump = false
 

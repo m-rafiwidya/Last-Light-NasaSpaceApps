@@ -13,6 +13,8 @@ const LEVEL_PATHS: Dictionary = {
 	"moon_level": "res://src/levels/moon_level.tscn",
 	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
 }
+## Player properties a level can set by having a property of the same name on its root
+const PLAYER_LEVEL_SETTINGS: Array[String] = ["jump_height"]
 ## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
 const PLAYABLE_LEVELS: Dictionary = {
 	"test_level": "Test level",
@@ -166,6 +168,11 @@ func _setup_player(spawn_transform: Transform3D) -> void:
 	GameState.player = player
 	player.transform = spawn_transform
 	player.controller = player_controller
+	# The level's player settings (RoverLevel exports them); the player's defaults otherwise
+	for property in PLAYER_LEVEL_SETTINGS:
+		var value = current_scene.get(property)
+		if value != null:
+			player.set(property, value)
 	current_scene.add_child(player)
 	# The robot's cameras are not current by default; make sure the player's is
 	player.camera.make_current()

@@ -21,6 +21,9 @@ extends SceneTree
 const TICKS: int = 240
 const MOON: float = 1.62
 const EARTH: float = 9.8
+# The test level's player settings (RoverLevel's defaults), used for the Earth runs on the Moon
+# ground; the Moon runs use the Moon level's own
+const EARTH_PLAYER: Dictionary = {"jump_height": 0.8}
 # Open flat ground on the Moon level, away from the rover, pile and spawn
 const ROVER_START := Vector3(-120.0, 0.35, 60.0)
 const PLAYER_START := Vector3(-60.0, 1.0, 40.0)
@@ -213,8 +216,10 @@ func _measure_rover(rover: RigidBody3D, g: float) -> void:
 
 # --- Player ---------------------------------------------------------------------------------
 
-func _measure_player(player: RigidBody3D, g: float) -> void:
+func _measure_player(player: RigidBody3D, g: float, settings: Dictionary) -> void:
 	_set_space_gravity(g)
+	for property in settings:
+		player.set(property, settings[property])
 	_release_all()
 	player.global_position = PLAYER_START
 	player.linear_velocity = Vector3.ZERO
@@ -284,8 +289,12 @@ func _run() -> void:
 
 	var level: Node = SL.current_scene
 	_add_ramp(level)
-	for g in [EARTH, MOON]:
-		await _measure_player(GS.player, g)
+	var moon_player: Dictionary = {}
+	for property in EARTH_PLAYER:
+		moon_player[property] = level.get(property)
+	_check("Moon level's player settings reach the player", moon_player.keys().all(func(p): return GS.player.get(p) == moon_player[p]), str(moon_player))
+	await _measure_player(GS.player, EARTH, EARTH_PLAYER)
+	await _measure_player(GS.player, MOON, moon_player)
 	var rover: RigidBody3D = level.get_node("ReadyRover")
 	# `-- no_traction_control` measures the rover without it, for comparison
 	if "no_traction_control" in OS.get_cmdline_user_args():
@@ -314,8 +323,10 @@ func _run() -> void:
 		r["ramp from standstill 1 m up: highest (top 3.0)@%s" % MOON] > 3.0)
 	_check("Earth jump is JUMP_HEIGHT (0.8 m)", absf(r["player jump height@%s" % EARTH] - 0.8) < 0.1,
 		"%.2f m" % r["player jump height@%s" % EARTH])
-	_check("Moon jump keeps the take-off speed (3.5 .. 5 m; 4.8 m without air drag)",
-		r["player jump height@%s" % MOON] > 3.5 and r["player jump height@%s" % MOON] < 5.0, "%.2f m" % r["player jump height@%s" % MOON])
+	_check("Moon jump capped at the level's 1.2 m (+-0.15)",
+		absf(r["player jump height@%s" % MOON] - 1.2) < 0.15, "%.2f m" % r["player jump height@%s" % MOON])
+	_check("Moon jump still floaty: over 2 s in the air (Earth 0.8 s)",
+		r["player time in the air@%s" % MOON] > 2.0, "%.2f s" % r["player time in the air@%s" % MOON])
 	_check("walking speed doesn't depend on gravity (within 5%)",
 		absf(r["player walking speed@%s" % MOON] / r["player walking speed@%s" % EARTH] - 1.0) < 0.05)
 
