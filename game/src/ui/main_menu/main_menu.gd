@@ -3,7 +3,8 @@ extends UIScreen
 ## Main menu (docs/ui/UI_SPEC.md "Main menu", design x 1.2): starfield, the 3D Moon on the right
 ## (MenuMoon), and at x 180 the floating astronaut, LAST LIGHT and PLAY / SETTINGS / QUIT GAME.
 ## The first time it opens per launch it plays the opening sequence (OpeningSequence).
-## PLAY opens the PlayPopup (no save file / the save list) over the blurred menu.
+## PLAY opens the PlayPopup (no save file / the save list) over the blurred menu; SETTINGS opens
+## the settings screen (SettingsSubMenu) the same way, the Moon still turning behind the blur.
 
 enum SubScreen{
 	MAIN_MENU,
@@ -33,6 +34,7 @@ var _float_tween: Tween
 @onready var _settings: Button = %Settings
 @onready var _quit: Button = %Quit
 @onready var _popup: PlayPopup = %PlayPopup
+@onready var _settings_screen: SettingsSubMenu = $SettingsSubMenu
 
 
 func _ready() -> void:
@@ -40,7 +42,7 @@ func _ready() -> void:
 	_popup.closed.connect(_on_popup_closed)
 	_settings.pressed.connect(_on_settings_pressed)
 	_quit.pressed.connect(_on_quit_pressed)
-	$SettingsSubMenu/VBoxContainer/Back.pressed.connect(_on_back_pressed)
+	_settings_screen.back_requested.connect(_on_back_pressed)
 	_moon.moon_clicked.connect(_on_moon_clicked)
 	_intro.finished.connect(_on_intro_finished)
 	# The mouse and keyboard/gamepad share one highlight: hovering an item focuses it
@@ -50,7 +52,6 @@ func _ready() -> void:
 	# opening sequence without moving anything else
 	%TitleHolder.custom_minimum_size = %Title.get_combined_minimum_size()
 	_sub.position = Vector2(-SLIDE_DISTANCE, 0.0)
-	$SettingsSubMenu.position = Vector2(SLIDE_DISTANCE, 0.0)
 	_set_live(false)
 	# At launch the screen stays black (no loading screen) until the opening sequence starts
 	if SceneLoader.is_first_main_menu_load:
@@ -62,19 +63,22 @@ func _menu_buttons() -> Array[Button]:
 
 
 func _on_play_pressed() -> void:
-	if not _shown or _popup.is_open:
+	if not _shown or _popup.is_open or _settings_screen.is_open:
 		return
 	# The menu and the Moon stay on screen (blurred) but take no mouse or focus
-	_sub.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
-	_sub.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
+	_set_menu_interactive(false)
 	_popup.open()
 
 
 func _on_popup_closed() -> void:
-	_sub.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_INHERITED
-	_sub.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_INHERITED
+	_set_menu_interactive(true)
 	if _shown:
 		_play.grab_focus()
+
+
+func _set_menu_interactive(on: bool) -> void:
+	_sub.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_INHERITED if on else Control.MOUSE_BEHAVIOR_DISABLED
+	_sub.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_INHERITED if on else Control.FOCUS_BEHAVIOR_DISABLED
 
 
 func is_popup_open() -> bool:
@@ -87,35 +91,31 @@ func _on_moon_clicked() -> void:
 
 
 func _on_settings_pressed() -> void:
+	if not _shown or _popup.is_open or _settings_screen.is_open:
+		return
 	sub_screen = SubScreen.SETTINGS
-	update_subscreen()
+	_set_menu_interactive(false)
+	_settings_screen.open()
 
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
 
 
+## BACK or Esc in the settings
 func _on_back_pressed() -> void:
 	sub_screen = SubScreen.MAIN_MENU
-	update_subscreen()
+	_settings_screen.close()
+	_set_menu_interactive(true)
 	_settings.grab_focus()
-
-
-func update_subscreen() -> void:
-	# The Moon is off-screen behind the settings: stop rendering it
-	_moon.set_active(sub_screen == SubScreen.MAIN_MENU)
-	if sub_screen == SubScreen.MAIN_MENU:
-		slide_to($SettingsSubMenu, SLIDE_DISTANCE)
-		slide_to(_sub, 0.0)
-	elif sub_screen == SubScreen.SETTINGS:
-		slide_to(_sub, -SLIDE_DISTANCE)
-		slide_to($SettingsSubMenu, 0.0)
 
 
 func fade_in() -> void:
 	_shown = true
 	sub_screen = SubScreen.MAIN_MENU
 	_popup.close(false)
+	_settings_screen.close(false)
+	_set_menu_interactive(true)
 	_set_live(true)
 	if _background_tween:
 		_background_tween.kill()
@@ -124,11 +124,10 @@ func fade_in() -> void:
 	if SceneLoader.is_first_main_menu_load:
 		SceneLoader.is_first_main_menu_load = false
 		_sub.position = Vector2.ZERO
-		$SettingsSubMenu.position = Vector2(SLIDE_DISTANCE, 0.0)
 		# After this frame's layout, so the menu items' resting positions are known
 		_start_intro.call_deferred()
 	else:
-		update_subscreen()
+		slide_to(_sub, 0.0)
 		_play.grab_focus()
 
 
@@ -138,8 +137,8 @@ func fade_out() -> void:
 	_shown = false
 	_intro.skip()
 	_popup.close()
+	_settings_screen.close(false)
 	slide_to(_sub, -SLIDE_DISTANCE)
-	slide_to($SettingsSubMenu, SLIDE_DISTANCE)
 	_background_tween = create_ui_tween()
 	_background_tween.tween_property(_background, "modulate:a", 0.0, FADE_DURATION)
 	_background_tween.tween_callback(_background.hide)

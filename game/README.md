@@ -111,7 +111,7 @@ game/
         ├── ui_screen.gd              # base class (CanvasLayer) with fade_in/fade_out
         ├── ui_manager/               # orchestrates all screens
         ├── main_menu/                # MainMenu, MenuMoon, OpeningSequence, PlayPopup + SaveCard (the PLAY popup)
-        ├── pause_menu/
+        ├── pause_menu/               # PauseMenu (blurred game, centred items, hosts the settings)
         ├── level_choice/             # one menu button per playable level (pause menu)
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
@@ -122,7 +122,7 @@ game/
         ├── loading_screen/
         ├── console/
         ├── dialog_box/               # one subtitle line widget
-        ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
+        ├── sub_screens/settings_sub_menu.tscn/.gd   # SettingsSubMenu: shared by main + pause menu (tabbed, some widgets still dummies)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 tests/                                # headless test scripts (see each file's header)
 tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, render_workshop_previews.gd, render_decor_previews.gd, render_kite_previews.gd, render_dust_previews.gd, render_tracks_previews.gd, measure_moon_fps.gd
@@ -310,7 +310,7 @@ Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/
     - Focus goes to the newest card (or START when there are none) on open and back to PLAY on close. Esc (handled in the popup's `_input`) or the back button closes it.
     - START NEW CAMPAIGN -> `SaveIndex.start_new_campaign()` (`SceneLoader.load_scene("moon_level")`, the normal loading path); a card -> `SaveIndex.load_slot(slot_id)`, a stub that prints a TODO and loads the Moon level until the campaign state exists.
     - The test level is not on the main menu: use the pause menu's "Switch to Test level" or the console's `testlevel`.
-  - **SETTINGS** slides `SettingsSubMenu` (`sub_screens/settings_sub_menu.tscn`, still on the old theme) in; **Back** slides it out. **QUIT GAME** -> `get_tree().quit()`.
+  - **SETTINGS** opens `SettingsSubMenu` (section 6.5) over the blurred menu the same way (the Moon keeps turning behind the blur; the menu takes no mouse or focus meanwhile); BACK or Esc closes it and puts the focus back on SETTINGS. **QUIT GAME** -> `get_tree().quit()`.
 - `MenuMoon` (`menu_moon.gd`): a sphere with the LROC colour map (`res/textures/moon/lroc_color_4k.jpg`) in a `SubViewport` with its own world and a transparent background, orthographic camera, unshaded shader with a fixed view-space light from the upper left and a softened terminator (`menu_moon.gdshader`; texture coordinates come from the object-space direction, so the near side faces +Z). It turns slowly by itself, can be dragged (inertia; spin resumes 1.2 s later), brightens and grows 2 % on hover, and emits `moon_clicked` on a click without drag (the planet explorer will hang off it). Only the disc takes the mouse (`_has_point`). `set_active(false)` stops the `SubViewport` rendering (`UPDATE_DISABLED`) and its `_process`: the menu does this whenever it is hidden or the settings cover it.
 - `Intro` (`opening_sequence.gd`): at launch it is shown as a black cover (`cover()`) while the menu loads; then the opening sequence, played the first time the menu opens per launch (`SceneLoader.is_first_main_menu_load`): black, TANDBORSTE PRESENTS, the Moon rises in, the astronaut drifts in, LAST LIGHT resolves from blur (a `CanvasGroup` with a mip-blur shader, `title_blur.gdshader`, switched off with its mipmaps once the title is sharp), the items slide in; about 10 s, timings from the board's `.ll-intro` CSS. Every element is a function of the sequence time, so SKIP / any key / click / gamepad button just applies the end state. Its clock is real time advanced at most 1/20 s per frame, so a first-frame hitch doesn't swallow the start, and for its first 0.5 s (under the opaque overlay) the Moon and the blurred title are drawn as if visible, so their first-use cost is paid while the screen is black. TANDBORSTE PRESENTS and LAST LIGHT are `SpacedLabel`s (`components/spaced_label.gd`): text shaped once and each letter drawn at a float offset, so their animated letter-spacing is smooth (a `FontVariation`'s `spacing_glyph` is whole pixels: every step moved the last letter by as many pixels as there are letters). F11 / Alt+Enter don't skip it. The debug console's `intro` command plays it again.
 - `fade_in()` slides the sub-screen in (or starts the opening sequence), shows the background and starts the Moon; `fade_out()` slides both sub-screens out, fades the background and stops the Moon.
@@ -318,11 +318,20 @@ Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/
 
 ### 6.4 Pause menu (`ui/pause_menu/`)
 
-Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState.return_to_game()`), **Switch to <level>** (a `LevelChoice` with `hide_current_level`: one button per playable level except the loaded one, refreshed in `fade_in()`; `SceneLoader.load_scene(level_id)`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
+Restyled to `docs/ui/UI_SPEC.md` "Pause" (board `Pause.dc.html`, design x 1.2, `res/ui_theme_v2.tres`). `PauseMenu` (`pause_menu.tscn/.gd`, extends `UIScreen`) is a hidden `Root` control holding a full-screen `Blur` (`components/backdrop_blur.gdshader`, 6 px, game view darkened to 50 %), the `Content` (centred **PAUSED** in `LabelScreenTitle`, a 48 px rule, then the items as centre-grow `UnderlineButton`s of the `UnderlineButtonPause` variation) and the `SettingsSubMenu` instance. Items: **RESUME** (`GameState.return_to_game()`), **SWITCH TO <level>** (a `LevelChoice` of `level_button_pause.tscn`, `uppercase`, `hide_current_level`: one button per playable level except the loaded one, refreshed in `fade_in()`; `SceneLoader.load_scene(level_id)`), **SETTINGS**, **QUIT TO MENU** (`SceneLoader.load_scene("main_menu")`), **QUIT TO DESKTOP**.
 
-### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
+- `fade_in()` shows `Root`, blurs the game (0.45 s), focuses RESUME and fades the title, rule and items in one after another (.05 s, .1 s, then .14 s + .04 s each; 12 px rise). The rise needs the items' laid-out positions, so it starts one frame after the menu is shown, with the items invisible until then. `fade_out()` unblurs and hides `Root` after 0.3 s. Hovering an item focuses it (one highlight for mouse and keyboard / gamepad).
+- **SETTINGS** opens the shared screen: the pause blur and the items fade out while the settings' own blur (10 px, 30 %) fades in, so the two never stack. BACK or Esc in the settings returns to the pause menu (`_on_settings_back`, SETTINGS focused). `is_settings_open()` tells `UIManager` not to treat that Esc as Resume: `UIManager` remembers whether it was open at the end of the previous frame, because the settings close themselves on Esc before `UIManager._process` runs.
 
-Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting, except Video > Display Mode (`DisplaySettings`: Windowed, Fullscreen = exclusive, Borderless = borderless fullscreen window; applied at once, saved in `user://settings.cfg` section `display`, restored at launch, follows F11 / Alt+Enter; only the window mode changes, the 1920 x 1080 base and stretch settings stay), Video > Terrain Detail and Video > Dust and Tracks (`GraphicsSettings`, used at the next level load) and the audio volumes.
+### 6.5 Settings screen (`ui/sub_screens/settings_sub_menu.tscn`)
+
+`class_name SettingsSubMenu`, shared by the main and pause menus (docs/ui/UI_SPEC.md "Settings", board `Settings.dc.html`, design x 1.2). A full-screen control like the PLAY popup: a `Blur` (`backdrop_blur.gdshader`, 10 px, 30 %, tweened by `open()` / `close()`) over whatever is drawn before it, and a `FramedPanel` (unselected card style) holding **SETTINGS**, the `SlantedTab` row (GENERAL / AUDIO / VIDEO / CONTROLS), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox) and **BACK** (compact `SolidButton`). The owner (main menu / pause menu) turns its own input off while it is open, calls `open()` / `close()` and closes it on the `back_requested` signal, which BACK and Esc both emit (Esc is taken in `_input` when `is_open`, unless a key slab is listening or a select list is open; either of those takes the Esc first).
+
+- Rows are built in code: `PanelContainer` (`SettingsRow`, the 1 px divider) > `HBoxContainer` [`LabelMono` label 264 px, the control, then a slider's value or the "(next level load)" note]. Controls are the components in `ui/components/`: `SlantedSelect` (an `OptionButton`: light slab with a chevron, long labels trimmed), `SlantedToggle` (62 x 26 slanted switch), `SettingsSlider` (thin track, round knob, ring on focus) with its value label, and `KeyBindSlab` (shows the key; a click shows PRESS A KEY and the next key press changes the shown name, Esc or losing focus cancels). Reset buttons: RESET TO DEFAULTS (General) and RESET BINDINGS (Controls), `reset_tab()`, restore the tab's dummy rows to the board's defaults.
+- Exactly one tab is shown (General by default); pressing the active tab does nothing. Keyboard / gamepad: focus starts on the active tab, up / down walk the page's controls from the tab to BACK (`_wire_focus`, `_wire_tab_links`), left / right change a slider.
+- **Wired settings:** Audio > Master / Music / Effects / Interface Volume (`AudioSettings` through `AudioManager`, kept in step with the other menu's slider), Video > Display Mode (`DisplaySettings`: Windowed, Fullscreen = exclusive, Borderless = borderless fullscreen window; applied at once, saved in `user://settings.cfg` section `display`, restored at launch, follows F11 / Alt+Enter; only the window mode changes, the 1920 x 1080 base and stretch settings stay), Video > Terrain Detail and Dust and Tracks (`GraphicsSettings`, used at the next level load; Dust and Tracks shows the board's High / Low / Off).
+- **Dummies** (keep their value only while the menu exists, change nothing): General > Language, Subtitles, Subtitle Size, Camera Shake, Show Tooltips, Show FPS Counter; Audio > Voice Volume, Mute When Unfocused, Speaker Setup; Video > Resolution, Quality Preset, VSync, Frame Rate Limit, Field Of View, Brightness, Motion Blur; Controls > Mouse Sensitivity, Invert Y Axis, Toggle Crouch and the seven key-bind slabs. The comment at the top of `settings_sub_menu.gd` is the list to keep up to date as they get wired.
+- `tests/test_pause_settings.gd` checks the rows of every tab against the board, the key slab, the resets, focus, Esc / BACK from the main menu and from pause (windowed with `-- --shot=<dir>` it saves screenshots).
 
 ### 6.6 HUD (`ui/hud/`) and Robot HUD (`ui/robot_hud/`)
 
@@ -1065,12 +1074,12 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 | Sound | Where it plays |
 |---|---|
-| `hover`, `click` | Every menu button, level button, settings tab, settings dropdown and button, mission console button (`ButtonSoundComponent`); choosing a mission in the console list |
+| `hover`, `click` | Every menu button, level button, settings tab, settings select, key slab and button, mission console button (`ButtonSoundComponent`); choosing a mission in the console list |
 | `game_start` | Main menu **Play <level>** (`LevelChoice.press_sound`) |
 | `confirm` | Pause menu **Switch to <level>** |
 | `menu_open` / `menu_close` | Pause menu and mission console opening / closing (from `GameState.state_changed`); `menu_open` also on **Settings** |
 | `back` | Settings **Back**, **Quit To Menu** |
-| `toggle_on` / `toggle_off` | Settings check buttons |
+| `toggle_on` / `toggle_off` | Settings toggles |
 | `slider_tick` | Settings sliders |
 | `notification` | The boundary hint appearing on the HUD that is showing (`BoundaryHint`) |
 | `error` | The robot HUD's "No zoom on the ..." refusal |

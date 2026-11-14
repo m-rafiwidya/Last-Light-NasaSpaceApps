@@ -31,7 +31,11 @@ func _run() -> void:
 	for v in ["UnderlineButton", "UnderlineButtonMenu", "UnderlineButtonPrimary", "SolidButton",
 			"SolidButtonSmall", "SlantedTab", "BackButton"]:
 		_check(theme.get_type_variation_base(v) == &"Button", "variation " + v)
-	for v in ["KeyChipPanel", "FramedPanel", "CardPanel"]:
+	for v in ["SettingsKeySlab", "SettingsKeySlabListening", "UnderlineButtonPause"]:
+		_check(theme.get_type_variation_base(v) in [&"Button", &"SettingsKeySlab"], "variation " + v)
+	_check(theme.get_type_variation_base("SettingsSelect") == &"OptionButton", "variation SettingsSelect")
+	_check(theme.get_type_variation_base("SettingsSlider") == &"HSlider", "variation SettingsSlider")
+	for v in ["KeyChipPanel", "FramedPanel", "CardPanel", "SettingsRow"]:
 		_check(theme.get_type_variation_base(v) == &"PanelContainer", "variation " + v)
 
 	for centre in [false, true]:

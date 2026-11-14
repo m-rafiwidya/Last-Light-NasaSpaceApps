@@ -3,8 +3,9 @@ extends Node
 ## The launch's load of the main menu shows no loading screen: the screen stays black (the
 ## main menu's opening sequence covers it) until the sequence starts. Later loads show it.
 var _launching: bool = true
-## Whether the main menu's PLAY popup was open at the end of the last frame. The popup closes
-## itself on Esc (in _input, before this script's _process), so that Esc must not act here too.
+## Whether the main menu's PLAY popup or the pause menu's settings were open at the end of the last
+## frame. They close themselves on Esc (in _input, before this script's _process), so that Esc
+## must not act here too.
 var _popup_was_open: bool = false
 
 
@@ -37,7 +38,7 @@ func _process(_delta: float) -> void:
 			$Console.popup()
 	_sync_console_state()
 	var popup_was_open: bool = _popup_was_open
-	_popup_was_open = $MainMenu.is_popup_open()
+	_popup_was_open = $MainMenu.is_popup_open() or $PauseMenu.is_settings_open()
 	if console_was_open or Debug.console_open or popup_was_open or _popup_was_open:
 		return
 	if Input.is_action_just_pressed("ui_cancel"):

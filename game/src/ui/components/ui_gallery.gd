@@ -12,6 +12,10 @@ const TAB := preload("res://src/ui/components/slanted_tab.tscn")
 const BACK := preload("res://src/ui/components/back_button.tscn")
 const KEY_CHIP := preload("res://src/ui/components/key_chip.tscn")
 const FRAMED := preload("res://src/ui/components/framed_panel.tscn")
+const SELECT := preload("res://src/ui/components/slanted_select.tscn")
+const TOGGLE := preload("res://src/ui/components/slanted_toggle.tscn")
+const SLIDER := preload("res://src/ui/components/settings_slider.tscn")
+const KEY_SLAB := preload("res://src/ui/components/key_bind_slab.tscn")
 
 var _tabs: Array[SlantedTab] = []
 
@@ -41,6 +45,7 @@ func _ready() -> void:
 	_solid_section(root)
 	_tab_section(root)
 	_back_and_keys_section(root)
+	_settings_controls_section(root)
 	_panel_section(root)
 
 	# Keyboard / gamepad users start with something focused
@@ -128,6 +133,25 @@ func _tab_section(root: Control) -> void:
 func _on_tab_pressed(pressed: SlantedTab) -> void:
 	for tab in _tabs:
 		tab.active = tab == pressed
+
+
+func _settings_controls_section(root: Control) -> void:
+	_heading(root, "SETTINGS CONTROLS  (select | toggle off, on | slider | key slab: click it, then press a key)")
+	var row := _row(root, 40)
+	var select := SELECT.instantiate() as SlantedSelect
+	for item in ["English", "Bahasa Indonesia"]:
+		select.add_item(item)
+	row.add_child(select)
+	for on in [false, true]:
+		var toggle := TOGGLE.instantiate() as SlantedToggle
+		toggle.button_pressed = on
+		row.add_child(toggle)
+	var slider := SLIDER.instantiate() as SettingsSlider
+	slider.value = 40.0
+	row.add_child(slider)
+	var slab := KEY_SLAB.instantiate() as KeyBindSlab
+	slab.key_text = "W"
+	row.add_child(slab)
 
 
 func _back_and_keys_section(root: Control) -> void:

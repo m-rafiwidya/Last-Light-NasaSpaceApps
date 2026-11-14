@@ -33,6 +33,8 @@ const COLORS: Dictionary = {
 	"line_3": Color("2A2A2E"),
 	"warn": Color("E5484D"),
 	"white": Color("FFFFFF"),
+	# Settings key-bind slab while it waits for a key (Settings.dc.html .ll-key.is-listen)
+	"key_listen": Color("3A3A40"),
 	"moon": Color("C9C4BB"),
 	"mars": Color("C8643A"),
 	"earth": Color("4C8FD6"),
@@ -97,8 +99,15 @@ func _labels(c: Dictionary) -> void:
 	_label("LabelDidYouKnow", EXO_600, 22, 0, c.text)
 	_label("LabelMono", PLEX_MONO, 12, 1, c.text_2)
 	_label("LabelMonoMedium", PLEX_MONO_500, 12, 1, c.text_2)
+	# Settings: title, a slider's value, the "(next level load)" note
+	_label("LabelSettingsTitle", MICHROMA, 18, 10, c.text)
+	_label("LabelMonoValue", PLEX_MONO, 12, 1, c.text)
+	_label("LabelMonoNote", PLEX_MONO, 11, 1, c.dim)
 	# Opening sequence's "TANDBORSTE PRESENTS" (its spacing is animated from 4 to 14)
 	_label("LabelPresents", PLEX_MONO, 13, 6, c.text_3)
+	# Loading screen: stage text and percentage
+	_label("LabelLoadingStage", PLEX_MONO, 12, 5, c.text_3)
+	_label("LabelLoadingPercent", PLEX_MONO, 12, 3, c.muted)
 
 
 func _flat(color: Color, slant: float = 0.0, height: float = 0.0) -> StyleBoxFlat:
@@ -156,6 +165,15 @@ func _buttons(c: Dictionary) -> void:
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			theme.set_stylebox(state, u[0], StyleBoxEmpty.new())
 
+	# Pause menu items (Pause.dc.html .ll-pc): centred, so the label gets the board's 6 px of left
+	# padding, which balances the trailing letter-spacing and centres the letters
+	_button_base("UnderlineButtonPause", MICHROMA, 15, 6)
+	_button_colors("UnderlineButtonPause", c.muted, c.text, c.disabled)
+	var pause_item := StyleBoxEmpty.new()
+	pause_item.content_margin_left = 6.0 * SCALE
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		theme.set_stylebox(state, "UnderlineButtonPause", pause_item)
+
 	# SKIP (opening sequence, credits): small mono text, dim, lights up on hover/focus
 	_button_base("SkipButton", PLEX_MONO, 12, 4)
 	_button_colors("SkipButton", c.dim, c.text, c.disabled)
@@ -208,6 +226,8 @@ func _buttons(c: Dictionary) -> void:
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		theme.set_stylebox(state, "SlantedTabActive", tab_on)
 
+	_settings_controls(c)
+
 	# Back button: 48 x 48, 1 px #2A2A2E border; hover/focus border muted. The component draws
 	# the chevron.
 	_button_base("BackButton", MICHROMA, 12, 0)
@@ -218,6 +238,123 @@ func _buttons(c: Dictionary) -> void:
 	theme.set_stylebox("pressed", "BackButton", back_h)
 	theme.set_stylebox("focus", "BackButton", back_h)
 	theme.set_stylebox("disabled", "BackButton", back_n)
+
+
+## Settings controls: the light select slab, the key-bind slab, the slider, the select's popup
+func _settings_controls(c: Dictionary) -> void:
+	# Select (.ll-sel): 30 px high slab, Plex Mono 12, 18 px left and 36 px right padding (the
+	# chevron sits there). Hover and focus go pure white like the other light slabs.
+	var sel := "SettingsSelect"
+	_button_base(sel, PLEX_MONO, 12, 0)
+	theme.set_type_variation(sel, "OptionButton")
+	_button_colors(sel, c.ink, c.ink, c.dim)
+	theme.set_constant("h_separation", sel, 0)
+	theme.set_constant("arrow_margin", sel, 0)
+	var sel_n := _flat(c.text, 10.0, 30.0)
+	var sel_h := _flat(c.white, 10.0, 30.0)
+	var sel_d := _flat(c.panel, 10.0, 30.0)
+	for sb in [sel_n, sel_h, sel_d]:
+		sb.content_margin_left = 18.0 * SCALE
+		sb.content_margin_right = 36.0 * SCALE
+		sb.content_margin_top = 0.0
+		sb.content_margin_bottom = 0.0
+	theme.set_stylebox("normal", sel, sel_n)
+	theme.set_stylebox("hover", sel, sel_h)
+	theme.set_stylebox("pressed", sel, sel_h)
+	theme.set_stylebox("focus", sel, sel_h)
+	theme.set_stylebox("disabled", sel, sel_d)
+
+	# Key-bind slab (.ll-key): Michroma 11, spacing 3; while listening the slab goes #3A3A40 and
+	# the label turns into Plex Mono 11, spacing 4
+	var key := "SettingsKeySlab"
+	_button_base(key, MICHROMA, 11, 3)
+	_button_colors(key, c.ink, c.ink, c.dim)
+	var key_n := _flat(c.text, 10.0, 30.0)
+	var key_h := _flat(c.white, 10.0, 30.0)
+	for sb in [key_n, key_h]:
+		_margins(sb, 12)
+	theme.set_stylebox("normal", key, key_n)
+	theme.set_stylebox("hover", key, key_h)
+	theme.set_stylebox("pressed", key, key_h)
+	theme.set_stylebox("focus", key, key_h)
+	theme.set_stylebox("disabled", key, key_n)
+	var listen := "SettingsKeySlabListening"
+	_button_base(listen, PLEX_MONO, 11, 4)
+	theme.set_type_variation(listen, key)
+	_button_colors(listen, c.text, c.text, c.text)
+	var key_l := _flat(c.key_listen, 10.0, 30.0)
+	_margins(key_l, 12)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		theme.set_stylebox(state, listen, key_l)
+
+	# Slider: a thin track, filled up to a round knob; the knob goes white on hover and focus
+	var slider := "SettingsSlider"
+	theme.set_type_variation(slider, "HSlider")
+	var track := StyleBoxFlat.new()
+	track.bg_color = c.dim
+	track.set_corner_radius_all(_px(3))
+	track.content_margin_top = 2.5 * SCALE
+	track.content_margin_bottom = 2.5 * SCALE
+	var fill := track.duplicate() as StyleBoxFlat
+	fill.bg_color = c.text_2
+	var fill_lit := track.duplicate() as StyleBoxFlat
+	fill_lit.bg_color = c.text
+	theme.set_stylebox("slider", slider, track)
+	theme.set_stylebox("grabber_area", slider, fill)
+	theme.set_stylebox("grabber_area_highlight", slider, fill_lit)
+	theme.set_icon("grabber", slider, _knob(c.text))
+	theme.set_icon("grabber_highlight", slider, _knob(c.white, c.muted))
+	theme.set_icon("grabber_disabled", slider, _knob(c.dim))
+
+	# One settings row: a 1 px divider under it
+	theme.set_type_variation("SettingsRow", "PanelContainer")
+	var row := StyleBoxFlat.new()
+	row.draw_center = false
+	row.border_color = c.line_2
+	row.border_width_bottom = 1
+	theme.set_stylebox("panel", "SettingsRow", row)
+
+	# The select's drop-down list
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = c.panel
+	panel.border_color = c.line_3
+	panel.set_border_width_all(1)
+	panel.set_content_margin_all(6.0 * SCALE)
+	var hover := StyleBoxFlat.new()
+	hover.bg_color = c.text
+	theme.set_stylebox("panel", "PopupMenu", panel)
+	theme.set_stylebox("hover", "PopupMenu", hover)
+	theme.set_font("font", "PopupMenu", _font(PLEX_MONO, 0))
+	theme.set_font_size("font_size", "PopupMenu", _px(12))
+	theme.set_color("font_color", "PopupMenu", c.text_2)
+	theme.set_color("font_hover_color", "PopupMenu", c.ink)
+	theme.set_color("font_disabled_color", "PopupMenu", c.dim)
+	theme.set_constant("v_separation", "PopupMenu", _px(8))
+	theme.set_constant("item_start_padding", "PopupMenu", _px(12))
+	theme.set_constant("item_end_padding", "PopupMenu", _px(12))
+
+
+## The slider's knob: a filled circle (16 design px) with a one-pixel soft edge, in a 22 px square.
+## With `ring` set (keyboard / gamepad focus) a thin ring is drawn round it.
+func _knob(color: Color, ring: Color = Color(0, 0, 0, 0)) -> GradientTexture2D:
+	var clear := Color(color.r, color.g, color.b, 0.0)
+	var offsets := PackedFloat32Array([0.0, 0.70, 0.74, 1.0])
+	var colors := PackedColorArray([color, color, clear, clear])
+	if ring.a > 0.0:
+		var ring_clear := Color(ring.r, ring.g, ring.b, 0.0)
+		offsets = PackedFloat32Array([0.0, 0.70, 0.74, 0.84, 0.88, 0.96, 1.0])
+		colors = PackedColorArray([color, color, clear, ring_clear, ring, ring, ring_clear])
+	var gradient := Gradient.new()
+	gradient.offsets = offsets
+	gradient.colors = colors
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = _px(22)
+	tex.height = _px(22)
+	return tex
 
 
 func _outline(color: Color) -> StyleBoxFlat:

@@ -161,7 +161,7 @@ func _run() -> void:
 
 	# 5. Volume settings through the menu sliders
 	var main_slider: HSlider = _volume_slider("UIManager/MainMenu/SettingsSubMenu", "Music Volume")
-	var pause_slider: HSlider = _volume_slider("UIManager/PauseMenu/SettingsSubMenu", "Music Volume")
+	var pause_slider: HSlider = _volume_slider("UIManager/PauseMenu/Root/SettingsSubMenu", "Music Volume")
 	_check("both menus have a Music Volume slider", main_slider != null and pause_slider != null)
 	if main_slider and pause_slider:
 		main_slider.value = 35.0

@@ -51,7 +51,7 @@ func _press_esc() -> void:
 
 func _pause_button(label: String) -> Button:
 	for button in _ui("PauseMenu").find_children("*", "Button", true, false):
-		if button.text == label and button.is_visible_in_tree():
+		if button.text.to_lower() == label.to_lower() and button.is_visible_in_tree():
 			return button
 	return null
 

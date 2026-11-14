@@ -1,135 +1,170 @@
 [gd_scene format=3 uid="uid://c1jnwms2d5kjv"]
 
-[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="1_s82tg"]
-[ext_resource type="Script" uid="uid://ds0ii545dct55" path="res://src/ui/button_style_components/button_resize_component.gd" id="2_onv8t"]
-[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="3_w37uh"]
-[ext_resource type="Script" uid="uid://o51yj74p202d" path="res://src/ui/sub_screens/settings_sub_menu.gd" id="4_settings"]
+[ext_resource type="Script" uid="uid://o51yj74p202d" path="res://src/ui/sub_screens/settings_sub_menu.gd" id="1_settings"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_theme"]
+[ext_resource type="Shader" path="res://src/ui/components/backdrop_blur.gdshader" id="3_blur"]
+[ext_resource type="PackedScene" path="res://src/ui/components/framed_panel.tscn" id="4_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/components/slanted_tab.tscn" id="5_tab"]
+[ext_resource type="PackedScene" path="res://src/ui/components/solid_button.tscn" id="6_solid"]
+[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="7_sound"]
 
-[node name="SettingsSubMenu" type="MarginContainer" unique_id=1852946231]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
+shader = ExtResource("3_blur")
+shader_parameter/radius_px = 12.0
+shader_parameter/amount = 0.0
+shader_parameter/brightness = 0.3
+shader_parameter/bg_color = Color(0.019607844, 0.019607844, 0.02745098, 1)
+
+[node name="SettingsSubMenu" type="Control"]
+visible = false
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("1_s82tg")
-script = ExtResource("4_settings")
+mouse_filter = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_settings")
 
-[node name="Panel" type="Panel" parent="." unique_id=1856802549]
+[node name="Blur" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_blur")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" parent="." instance=ExtResource("4_panel")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.8
+offset_top = 28.8
+offset_right = -28.8
+offset_bottom = -28.8
+grow_horizontal = 2
+grow_vertical = 2
+selected = false
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 77
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 77
+theme_override_constants/margin_bottom = 43
 
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1751436996]
+[node name="Column" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 26
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=99861809]
+[node name="Title" type="Label" parent="Panel/Margin/Column"]
 layout_mode = 2
+theme_type_variation = &"LabelSettingsTitle"
+text = "SETTINGS"
 
-[node name="General" type="Button" parent="VBoxContainer/HBoxContainer" unique_id=524469276]
+[node name="Tabs" type="HBoxContainer" parent="Panel/Margin/Column"]
+unique_name_in_owner = true
 layout_mode = 2
-focus_mode = 0
-text = "General"
+mouse_filter = 2
+theme_override_constants/separation = 7
 
-[node name="ButtonResizeComponent" type="Node" parent="VBoxContainer/HBoxContainer/General" unique_id=648817049]
-script = ExtResource("2_onv8t")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
-
-[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/HBoxContainer/General" unique_id=947887791]
-script = ExtResource("3_w37uh")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
-
-[node name="Audio" type="Button" parent="VBoxContainer/HBoxContainer" unique_id=2134225870]
+[node name="General" parent="Panel/Margin/Column/Tabs" instance=ExtResource("5_tab")]
 layout_mode = 2
-focus_mode = 0
-text = "Audio"
+text = "GENERAL"
 
-[node name="ButtonResizeComponent" type="Node" parent="VBoxContainer/HBoxContainer/Audio" unique_id=1641771179]
-script = ExtResource("2_onv8t")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
+[node name="ButtonSoundComponent" type="Node" parent="Panel/Margin/Column/Tabs/General"]
+script = ExtResource("7_sound")
 
-[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/HBoxContainer/Audio" unique_id=1746149554]
-script = ExtResource("3_w37uh")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
-
-[node name="Video" type="Button" parent="VBoxContainer/HBoxContainer" unique_id=1191129624]
+[node name="Audio" parent="Panel/Margin/Column/Tabs" instance=ExtResource("5_tab")]
 layout_mode = 2
-focus_mode = 0
-text = "Video"
+text = "AUDIO"
 
-[node name="ButtonResizeComponent" type="Node" parent="VBoxContainer/HBoxContainer/Video" unique_id=1802278064]
-script = ExtResource("2_onv8t")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
+[node name="ButtonSoundComponent" type="Node" parent="Panel/Margin/Column/Tabs/Audio"]
+script = ExtResource("7_sound")
 
-[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/HBoxContainer/Video" unique_id=862147684]
-script = ExtResource("3_w37uh")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
-
-[node name="Controls" type="Button" parent="VBoxContainer/HBoxContainer" unique_id=724221367]
+[node name="Video" parent="Panel/Margin/Column/Tabs" instance=ExtResource("5_tab")]
 layout_mode = 2
-focus_mode = 0
-text = "Controls"
+text = "VIDEO"
 
-[node name="ButtonResizeComponent" type="Node" parent="VBoxContainer/HBoxContainer/Controls" unique_id=1078053344]
-script = ExtResource("2_onv8t")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
+[node name="ButtonSoundComponent" type="Node" parent="Panel/Margin/Column/Tabs/Video"]
+script = ExtResource("7_sound")
 
-[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/HBoxContainer/Controls" unique_id=715117003]
-script = ExtResource("3_w37uh")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+[node name="Controls" parent="Panel/Margin/Column/Tabs" instance=ExtResource("5_tab")]
+layout_mode = 2
+text = "CONTROLS"
 
-[node name="Pages" type="VBoxContainer" parent="VBoxContainer" unique_id=654743079]
+[node name="ButtonSoundComponent" type="Node" parent="Panel/Margin/Column/Tabs/Controls"]
+script = ExtResource("7_sound")
+
+[node name="Pages" type="VBoxContainer" parent="Panel/Margin/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 2
 
-[node name="General" type="ScrollContainer" parent="VBoxContainer/Pages" unique_id=801795666]
+[node name="General" type="ScrollContainer" parent="Panel/Margin/Column/Pages"]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
-[node name="Rows" type="VBoxContainer" parent="VBoxContainer/Pages/General" unique_id=458122754]
+[node name="Rows" type="VBoxContainer" parent="Panel/Margin/Column/Pages/General"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 0
 
-[node name="Audio" type="ScrollContainer" parent="VBoxContainer/Pages" unique_id=1194105191]
+[node name="Audio" type="ScrollContainer" parent="Panel/Margin/Column/Pages"]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
-[node name="Rows" type="VBoxContainer" parent="VBoxContainer/Pages/Audio" unique_id=1459941769]
+[node name="Rows" type="VBoxContainer" parent="Panel/Margin/Column/Pages/Audio"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 0
 
-[node name="Video" type="ScrollContainer" parent="VBoxContainer/Pages" unique_id=211461980]
+[node name="Video" type="ScrollContainer" parent="Panel/Margin/Column/Pages"]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
-[node name="Rows" type="VBoxContainer" parent="VBoxContainer/Pages/Video" unique_id=1465853483]
+[node name="Rows" type="VBoxContainer" parent="Panel/Margin/Column/Pages/Video"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 0
 
-[node name="Controls" type="ScrollContainer" parent="VBoxContainer/Pages" unique_id=1826257194]
+[node name="Controls" type="ScrollContainer" parent="Panel/Margin/Column/Pages"]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
-[node name="Rows" type="VBoxContainer" parent="VBoxContainer/Pages/Controls" unique_id=351088271]
+[node name="Rows" type="VBoxContainer" parent="Panel/Margin/Column/Pages/Controls"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 0
 
-[node name="Back" type="Button" parent="VBoxContainer" unique_id=1855584155]
+[node name="Footer" type="HBoxContainer" parent="Panel/Margin/Column"]
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 8
-focus_mode = 0
-text = "Back"
+mouse_filter = 2
 
-[node name="ButtonResizeComponent" type="Node" parent="VBoxContainer/Back" unique_id=942992340]
-script = ExtResource("2_onv8t")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
+[node name="Back" parent="Panel/Margin/Column/Footer" instance=ExtResource("6_solid")]
+unique_name_in_owner = true
+layout_mode = 2
+compact = true
+text = "BACK"
 
-[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/Back" unique_id=2140452148]
-script = ExtResource("3_w37uh")
+[node name="ButtonSoundComponent" type="Node" parent="Panel/Margin/Column/Footer/Back"]
+script = ExtResource("7_sound")
 press_sound = &"back"
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
