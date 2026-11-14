@@ -5,7 +5,8 @@ extends UIScreen
 ## The first time it opens per launch it plays the opening sequence (OpeningSequence).
 ## PLAY opens the PlayPopup (no save file / the save list) over the blurred menu; SETTINGS opens
 ## the settings screen (SettingsSubMenu) the same way, the Moon still turning behind the blur.
-## Clicking the Moon opens the planet explorer (PlanetExplorer) on the starfield: the menu's items
+## The globe shows the planet last viewed in the explorer (UiSettings.last_planet, the Moon if it is
+## locked). Clicking it opens the planet explorer (PlanetExplorer) on the starfield: the menu's items
 ## and Moon fade out (the Moon stops rendering) until the explorer's back button or Esc.
 
 enum SubScreen{
@@ -99,7 +100,7 @@ func _on_moon_clicked() -> void:
 	sub_screen = SubScreen.EXPLORER
 	_set_menu_interactive(false)
 	_fade_sub(0.0)
-	_explorer.open(&"moon")
+	_explorer.open(_moon.planet_id)
 
 
 ## The explorer's back button or Esc
@@ -107,7 +108,9 @@ func _close_explorer() -> void:
 	if not _explorer.is_open:
 		return
 	sub_screen = SubScreen.MAIN_MENU
+	UiSettings.set_last_planet(_explorer.current_planet().id)
 	_explorer.close()
+	_moon.set_planet(PlanetData.menu_planet())
 	_moon.set_active(true)
 	_fade_sub(1.0)
 	_set_menu_interactive(true)
@@ -154,6 +157,7 @@ func fade_in() -> void:
 	_popup.close(false)
 	_settings_screen.close(false)
 	_explorer.close(false)
+	_moon.set_planet(PlanetData.menu_planet())
 	if _sub_tween:
 		_sub_tween.kill()
 	_sub.modulate.a = 1.0

@@ -99,3 +99,10 @@ static func tooltip_rows(planet: Dictionary, site: Dictionary) -> Array:
 		rows.append(["COORDS", "%.2f°%s  %.2f°%s" % [absf(site.lat), "N" if site.lat >= 0.0 else "S",
 			absf(site.lon), "E" if site.lon >= 0.0 else "W"]])
 	return rows
+
+
+## The planet the main menu's globe shows: the one last viewed in the explorer (UiSettings), or the
+## Moon if that one is locked
+static func menu_planet() -> StringName:
+	var id := StringName(UiSettings.last_planet())
+	return id if index_of(id) >= 0 and is_unlocked(id) else &"moon"

@@ -253,13 +253,33 @@ func _run() -> void:
 	_check("Esc closes the explorer", not explorer.is_open and not explorer.visible and not globe.is_active())
 	_check("the menu is back: PLAY focused, the Moon renders", play.has_focus() and moon.is_active()
 		and is_equal_approx(sub.modulate.a, 1.0) and not menu.is_popup_open())
-	# Opening again starts on the Moon; the back button closes it too
+	# The menu globe now shows the planet last viewed (Earth), saved for the next launch
+	_check("the menu globe shows Earth", moon.planet_id == &"earth" and UiSettings.last_planet() == "earth")
+	_check("the menu globe's texture is Earth's", (moon._material.get_shader_parameter(&"albedo_map") as Texture2D).resource_path
+		== PlanetData.PLANETS[2].map)
+	# Clicking it opens the explorer on that planet; the back button closes it too
 	moon.moon_clicked.emit()
 	await process_frame
-	_check("opens on the Moon again", explorer.is_open and explorer.current_planet().id == &"moon")
+	_check("opens on Earth", explorer.is_open and explorer.current_planet().id == &"earth")
+	tabs[0].pressed.emit()
+	await process_frame
 	explorer.find_child("Back", true, false).pressed.emit()
 	await _seconds(0.6)
-	_check("the back button returns to the menu", not explorer.is_open and play.has_focus())
+	_check("the back button returns to the menu, showing the Moon again", not explorer.is_open and play.has_focus()
+		and moon.planet_id == &"moon" and UiSettings.last_planet() == "moon")
+	# Mars viewed, then the planets lock again: the menu falls back to the Moon
+	moon.moon_clicked.emit()
+	await process_frame
+	tabs[1].pressed.emit()
+	await process_frame
+	explorer.find_child("Back", true, false).pressed.emit()
+	await _seconds(0.6)
+	_check("Mars viewed: the menu globe is Mars", moon.planet_id == &"mars" and UiSettings.last_planet() == "mars")
+	PlanetData.unlock_all = false
+	_check("Mars locked again: the menu falls back to the Moon", PlanetData.menu_planet() == &"moon")
+	menu.fade_in()
+	_check("fade_in applies the fallback", moon.planet_id == &"moon")
+	UiSettings.set_last_planet(&"moon")
 
 	PlanetData.unlock_all = false
 	print("DONE %d failures" % failures)

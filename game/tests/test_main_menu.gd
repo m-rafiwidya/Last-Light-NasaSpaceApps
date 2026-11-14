@@ -196,6 +196,19 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
+	# The globe shows the saved planet; a locked one falls back to the Moon
+	PlanetData.unlock_all = false
+	UiSettings.set_last_planet(&"mars")
+	menu.fade_in()
+	_check("a locked saved planet falls back to the Moon", moon.planet_id == &"moon")
+	PlanetData.unlock_all = true
+	menu.fade_in()
+	_check("an unlocked saved planet is shown", moon.planet_id == &"mars")
+	PlanetData.unlock_all = false
+	UiSettings.set_last_planet(&"moon")
+	menu.fade_in()
+	_check("back to the Moon", moon.planet_id == &"moon")
+
 	if not shot_dir.is_empty():
 		var hover := InputEventMouseMotion.new()
 		hover.position = centre

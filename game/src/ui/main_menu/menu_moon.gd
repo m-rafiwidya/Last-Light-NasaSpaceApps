@@ -56,6 +56,8 @@ var intro_brightness: float = 1.0:
 		intro_brightness = value
 		_apply_brightness()
 
+## The planet shown (PlanetData id): the Moon, or the last one viewed in the planet explorer
+var planet_id: StringName = &"moon"
 var lat: float = START_LAT
 var lon: float = START_LON
 
@@ -196,6 +198,15 @@ func _process(delta: float) -> void:
 	if _idle > IDLE_DELAY:
 		lon += (SPIN_HOVER if _hovered else SPIN) * delta
 	_apply_rotation()
+
+
+## Shows another planet's colour map on the same globe (size, light, spin and hover unchanged)
+func set_planet(id: StringName) -> void:
+	var index: int = PlanetData.index_of(id)
+	if index < 0 or id == planet_id:
+		return
+	planet_id = id
+	_material.set_shader_parameter(&"albedo_map", load(PlanetData.PLANETS[index].map))
 
 
 ## The facing point (lat, lon) turned towards the camera (+Z)
