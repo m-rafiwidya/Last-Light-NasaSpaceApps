@@ -22,10 +22,12 @@ Rover frame (ROVER_KIT.md 2; ground at z -0.10, front +Y). No mission logic: mes
         text_top      the top label plate's centre (Evan's first label; Godot: Label3D facing up)
         text_under    the underside label plate's centre (the second one, facing down)
     thermal_cover     an MLI blanket 0.175 x 0.40 m, 22 mm thick, quilted, origin the middle of its
-                      bottom on the deck at COVER_AT (0.1225, -0.02, 0.44): over the electronics bay
+                      bottom on the deck at COVER_AT (0.1225, -0.02, 0.44), mounted at COVER_SOCKET
+                      (0.1225, -0.045, 0.44): over the electronics bay
                       between the mast, the low-gain antenna and the antenna, clear of the arm and mount
     thermal_heater    a 0.11 x 0.05 x 0.035 m finned heater, origin the middle of its bottom at
-                      HEATER_AT (0.12, 0.225, 0.44); its lead runs back under the cover's front edge
+                      HEATER_AT (0.12, 0.225, 0.44), mounted at HEATER_SOCKET (0.10, -0.375, 0.44) turned
+                      180 degrees about Z; its lead runs towards the cover (originally under its front edge)
     arm_tool_thermal  arm_tool (make_arm.py) with an IR radiometer in the plain sensor's place (198
                       degrees), inside the standard turret's envelope. J5 -72 points it down.
         pivot_reading      the aperture's centre: the reading is taken along the radiometer's axis
@@ -90,6 +92,10 @@ COVER_AT = Vector(((COVER_X[0] + COVER_X[1]) / 2.0, (COVER_Y[0] + COVER_Y[1]) / 
 QUILT = (3, 5)
 HEATER_X, HEATER_Y, HEATER_H = (0.065, 0.175), (0.20, 0.25), 0.035
 HEATER_AT = Vector(((HEATER_X[0] + HEATER_X[1]) / 2.0, (HEATER_Y[0] + HEATER_Y[1]) / 2.0, DECK_Z))
+# Where robot.tscn's ThermalCoverSocket and HeaterSocket put the parts (the meshes are authored at COVER_AT / HEATER_AT
+# around their origins): the sockets sit where a held part reaches them, the heater turned 180 degrees about Z
+COVER_SOCKET = Vector((0.1225, -0.045, DECK_Z))
+HEATER_SOCKET, HEATER_TURN = Vector((0.10, -0.375, DECK_Z)), math.pi
 
 # Radiometer (in arm_kit.radial()'s frame: w out from the hub axis)
 RADIO_BODY, RADIO_HOOD, RADIO_LENS = (0.016, 0.025, 0.066), (0.020, 0.066, 0.080), 0.011
@@ -482,13 +488,14 @@ def thermal_on_kite(scene: dict, mount, cradle, cover, heater, extras: dict, r: 
         r.gap("thermal kit vs mount + cradle + %s" % name, arm_kit.gap(arm_kit.world_bvh([mount, cradle, cargo]), arm_kit.world_bvh(kit_parts)))
     # The low-gain antenna's disc and the deck's flat top
     lx, ly, lr = LGA
-    dx = max(COVER_X[0] - lx, 0.0, lx - COVER_X[1])
-    dy = max(COVER_Y[0] - ly, 0.0, ly - COVER_Y[1])
+    c_lo, c_hi = ws.bounds([cover])
+    dx = max(c_lo.x - lx, 0.0, lx - c_hi.x)
+    dy = max(c_lo.y - ly, 0.0, ly - c_hi.y)
     r.gap("cover vs the low-gain antenna's disc", math.hypot(dx, dy) - lr)
     lo, hi = ws.bounds([cover, heater])
     inside = min(DECK_HALF[0] - max(abs(lo.x), abs(hi.x)), DECK_HALF[1] - max(abs(lo.y), abs(hi.y)))
     r.check(inside >= 0.005 and abs(lo.z - DECK_Z) < 1e-6, "thermal kit on the deck's flat top: %.0f mm inside its edge, bottom on the deck" % (inside * 1000.0))
-    r.gap("heater vs cover (its lead plugs into the cover's front edge)", arm_kit.gap(arm_kit.world_bvh([heater]), arm_kit.world_bvh([cover])), 0.0)
+    r.gap("heater vs cover (its lead points at the cover's rear edge)", arm_kit.gap(arm_kit.world_bvh([heater]), arm_kit.world_bvh([cover])), 0.0)
 
 
 def reading_pose(scene: dict, thermal, r: Report, site_ahead: float) -> dict:
@@ -683,7 +690,8 @@ def main() -> None:
     cover = arm_kit.load("thermal_cover.blend", "thermal_cover")
     heater = arm_kit.load("thermal_heater.blend", "thermal_heater")
     thermal = arm_kit.load("arm_tool_thermal.blend", "arm_tool_thermal")
-    logger.location, module.location, cover.location, heater.location = ITEM, ITEM, COVER_AT, HEATER_AT
+    logger.location, module.location, cover.location, heater.location = ITEM, ITEM, COVER_SOCKET, HEATER_SOCKET
+    heater.rotation_euler = (0.0, 0.0, HEATER_TURN)
     thermal.location = arm_kit.TOOL + Vector((0.0, 0.0, -5.0))           # out of the way; its mesh is borrowed
     bpy.context.view_layer.update()
     logger_on_kite(scene, mount, cradle, logger, r)

@@ -127,6 +127,7 @@ func _run() -> void:
 		await _ticks(3.0)
 		_layout_checks()
 		_reach_checks()
+		await _thermal_capture_checks()
 		await _charging_checks()
 		await _console_checks()
 		await _astronaut_checks()
@@ -288,6 +289,43 @@ func _m3_part_checks(stock: Node3D) -> void:
 	for part in kit_parts.values():
 		part.queue_free()
 	_check("thermal sockets: the cover's and the heater's each take only their own part, the cargo mount neither; mounted, on the deck", ok, detail)
+
+
+# A part held at a thermal socket's position mounts in its own socket only (the heater's spot lies inside the cover's capture box)
+func _thermal_capture_checks() -> void:
+	var cover_socket = rover.find_child("ThermalCoverSocket", true, false)
+	var heater_socket = rover.find_child("HeaterSocket", true, false)
+	var parts: Dictionary = {}
+	for id in ["thermal_cover", "thermal_heater"]:
+		var part: RigidBody3D = load("res://src/robot/socket/%s_part.tscn" % id).instantiate()
+		part.freeze = true
+		rover.get_parent().add_child(part)
+		part.global_position = rover.global_position + Vector3(0.0, 20.0, 0.0)
+		parts[id] = part
+	var ids_ok: bool = parts["thermal_cover"].get_catalog_id() == "thermal_cover" and parts["thermal_heater"].get_catalog_id() == "thermal_heater"
+	_check("the real thermal parts return the catalog ids thermal_cover and thermal_heater", ids_ok,
+		"%s, %s" % [parts["thermal_cover"].get_catalog_id(), parts["thermal_heater"].get_catalog_id()])
+	var capture: CollisionShape3D = cover_socket.get_node("PartCapture/CollisionShape3D")
+	var capture_box: AABB = capture.global_transform * AABB(-capture.shape.size / 2.0, capture.shape.size)
+	var pairs: Dictionary = {"thermal_heater": [heater_socket, cover_socket], "thermal_cover": [cover_socket, heater_socket]}
+	for id in pairs:
+		var part: RigidBody3D = parts[id]
+		var own = pairs[id][0]
+		var other = pairs[id][1]
+		part.global_transform = own.global_transform
+		var inside_cover_box := false
+		for mesh in part.find_children("*", "MeshInstance3D", true, false):
+			inside_cover_box = inside_cover_box or capture_box.intersects((mesh as Node3D).global_transform * (mesh as MeshInstance3D).get_aabb())
+		await _ticks(0.3)
+		var ok: bool = own.part == part and other.part == null and part.is_mounted() and (inside_cover_box or id == "thermal_cover")
+		_check("a %s held at its socket mounts in %s and not %s%s" % [id, own.name, other.name, " (it is inside the cover's capture box)" if id == "thermal_heater" else ""],
+			ok, "mounted in %s, %s holds %s, overlaps the cover's capture box: %s" % [own.name, other.name, other.part, inside_cover_box])
+		if own.part == part:
+			own.unmount()
+		part.freeze = true
+		part.global_position = rover.global_position + Vector3(0.0, 20.0, 0.0)
+	for part in parts.values():
+		part.queue_free()
 
 
 # 2 ---------------------------------------------------------------------------------------------
