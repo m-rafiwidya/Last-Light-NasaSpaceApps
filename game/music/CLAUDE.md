@@ -271,6 +271,7 @@ Run from `game/music/`:
 ./track --list                               # available tracks
 .venv/bin/python render.py some.mid          # render an existing MIDI into output/some/
 afplay output/<name>/<name>_loop_test.ogg    # listen to the seam
+.venv/bin/python export_fl_studio.py [name] # per-part MIDI + WAV stems for a DAW -> output/fl_studio/
 ```
 
 `test_setup.py` is the original toolchain smoke test.
