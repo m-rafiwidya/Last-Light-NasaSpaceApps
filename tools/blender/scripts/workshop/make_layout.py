@@ -5,7 +5,7 @@ instance goes, lights, triggers, spawn, anchors), runs the assembled checks and 
     blender -b --factory-startup -P tools/blender/scripts/workshop/make_layout.py [-- --previews DIR | --no-previews]
 
 Needs the other workshop .blend files (make_shell, make_pad, make_rack, make_console,
-make_markers). Writes tools/blender/parts/workshop/layout.blend, game/res/models/workshop_kit/
+make_markers, make_suit_props). Writes tools/blender/parts/workshop/layout.blend, game/res/models/workshop_kit/
 ws_layout.glb and previews in tools/blender/previews/workshop/layout/.
 
 Checks, all in plan (x, y) against the parts' collision boxes:
@@ -65,7 +65,8 @@ def instances() -> list:
             ("ws_door_panel", (-3.6, ws.INNER_Y, 1.2), 180)]
     out += [("ws_pad", tuple(D), 0), ("ws_charger", tuple(ws.CHARGER_ORIGIN), 0),
             ("ws_cable_cover", (ws.CHARGER_ORIGIN.x - 0.40, ws.CHARGER_ORIGIN.y, 0.0), 0),
-            ("ws_rack", tuple(ws.RACK_ORIGIN), 0), ("ws_console", tuple(ws.CONSOLE_ORIGIN), 0)]
+            ("ws_rack", tuple(ws.RACK_ORIGIN), 0), ("ws_console", tuple(ws.CONSOLE_ORIGIN), 0),
+            ("ws_suit_stand", tuple(ws.SUIT_STAND), 0)]
     # Markings: chevrons along the entry lane (into the bay) and the way out; stripes along the
     # keep-clear zone; the sign over the bay door
     for x, y in ((ENTRY_X, 3.4), (-2.5, 1.6), (ws.U_TURN_LANE, 0.0)):
@@ -91,11 +92,14 @@ LAYOUT_EMPTIES = {
     "trigger_personnel": (ws.PARTITION_X, -2.0, 1.0),
     "trigger_bay_door": (-3.6, ws.INNER_Y - 0.1, 1.2),
     "anchor_bench": (4.2, 2.6, 0.9),
+    # The seated operator and the stool, shown while the console drives the rover (ASTRONAUT_KIT.md 7.1)
+    "anchor_seat": tuple(ws.SEAT),
 }
 BLENDS = {"shell": ["ws_wall_panel", "ws_wall_window", "ws_wall_bay_door", "ws_corner", "ws_floor_tile", "ws_plinth",
                     "ws_roof_tile", "ws_partition_solid", "ws_partition_door", "ws_partition_window", "ws_work_lamp",
                     "ws_door_panel"],
           "pad": ["ws_pad", "ws_charger", "ws_cable_cover"], "rack": ["ws_rack"], "console": ["ws_console"],
+          "suit_props": ["ws_suit_stand"],
           "markers": ["ws_floor_chevron", "ws_floor_stripe", "ws_door_sign"]}
 
 
@@ -281,6 +285,7 @@ def run_checks(copies: list, rows: list) -> int:
         "at the restock button": Vector((1.21, -2.75)),
         "spawn": Vector((ws.SPAWN.x, ws.SPAWN.y)),
         "at the bay door panel": Vector((-3.6, 3.0)),
+        "walking past the suit stand": Vector((3.4, -2.6)),
     }
     for name, p in points.items():
         fixture = min((point_box(p, b), b[4]) for b in player_boxes)

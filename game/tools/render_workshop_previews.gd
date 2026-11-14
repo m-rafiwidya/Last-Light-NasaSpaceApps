@@ -6,7 +6,9 @@ extends SceneTree
 ##
 ## Shots (the player's helmet light off unless the name says so): the console, from where the
 ## operator stands; the bay from beside the door; the rack from the walkway; the docked rover
-## charging, from beside the pad; the rover's chase camera coming home to the open door; the
+## charging, from beside the pad; the empty suit on its stand and the seated operator from the
+## operator area, and the operator from the rover's mast camera in the bay while the console drives
+## it (tools/blender/ASTRONAUT_KIT.md); the rover's chase camera coming home to the open door; the
 ## building from outside. Prints a MEASURE line per shot: the mean brightness (0-1) of the middle
 ## of the screen and the share of nearly black pixels in it.
 
@@ -93,6 +95,30 @@ func _run() -> void:
 	_look_from(player, workshop, Vector3(1.5, 1.4, 0.0), Vector3(-0.1, -0.3, 0.3))
 	await _frames(240)
 	await _shot("pad_charging")
+
+	_look_from(player, workshop, Vector3(3.0, -1.2, 0.0), Vector3(4.0, -3.4, 1.0))
+	await _shot("suit_on_stand")
+	workshop.operator.visible = true
+	_look_from(player, workshop, Vector3(4.4, 1.2, 0.0), Vector3(3.0, -0.3, 0.9))
+	await _shot("operator_from_operator_area")
+	workshop.operator.visible = false
+	# The rover in the bay, off the console's line (its screen housing hides the operator from
+	# straight behind), facing the partition window; driven from the console, mast camera
+	var at: Vector3 = workshop.to_global(Vector3(0.4, 0.12, -1.3))
+	var aim: Vector3 = workshop.to_global(Vector3(3.2, 0.12, 0.3)) - at
+	rover.global_transform = Transform3D(Basis.looking_at(Vector3(aim.x, 0.0, aim.z)), at)
+	rover.linear_velocity = Vector3.ZERO
+	workshop._on_console_interacted(player)
+	for ui in ["HUD", "RobotHUD"]:
+		var hud: Node = root.get_node("Main").find_child(ui, true, false)
+		if hud:
+			hud.visible = false
+	rover.get_node("CameraRig")._switch(1)
+	await _frames(120)
+	await _shot("operator_from_mast_camera")
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	rover.global_transform = workshop.get_dock_transform()
+	rover.linear_velocity = Vector3.ZERO
 
 	# Coming home: the rover 12 m out facing the door, driven, chase camera
 	rover.global_transform = Transform3D(workshop.global_basis * Basis(Vector3.UP, PI), workshop.to_global(Vector3(-1.0, 0.4, -12.0)))

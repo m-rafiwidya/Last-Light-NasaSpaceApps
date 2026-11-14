@@ -1,0 +1,85 @@
+{
+	"_readme": [
+		"Every word on the workshop's decor (tools/blender/DECOR_KIT.md). Edit the text freely; keep the keys.",
+		"Godot draws it as text (Label3D) when the level loads. Nothing is baked into a texture.",
+		"notes: the service-note clipboards (the brief's A12): a title and up to five short lines, wrapped to the paper.",
+		"signs: under each hazard sign's triangle, wrapped to the plate. labels: one line on a plate; tags may wrap.",
+		"cards: the history cards: title, caption and credit. The credits must stay exact (game/res/textures/decor/PROVENANCE.md).",
+		"tests/test_workshop.gd checks that every text fits its paper or plate: shorten it if a check fails."
+	],
+	"notes": {
+		"bay_door": {
+			"title": "BAY DOOR",
+			"lines": [
+				"Opens only for a driven rover.",
+				"Never cycle it with the ramp occupied.",
+				"Seal check every 10 cycles. Last: cycle 7."
+			]
+		},
+		"charger": {
+			"title": "CHARGER C-2",
+			"lines": [
+				"Keep feet off the contact plate.",
+				"Amber: not in the zone, creep forwards.",
+				"Red: no battery, or the rover moved."
+			]
+		},
+		"rack": {
+			"title": "RACK - AFTER EVERY SORTIE",
+			"lines": [
+				"Count wheels: 6 standard, 4 high-grip.",
+				"Battery back on its slot.",
+				"Log cartridge serials."
+			]
+		},
+		"suit": {
+			"title": "SUIT 2",
+			"lines": [
+				"Left glove seal replaced.",
+				"Check O2 before donning.",
+				"Visor scratched: use the spare."
+			]
+		},
+		"plant": {
+			"title": "GROWTH TEST 4 - MIZUNA",
+			"lines": [
+				"Day 23: 4 cm, three true leaves.",
+				"20 ml water a day.",
+				"Lamp 16 h on, 8 h off."
+			]
+		}
+	},
+	"signs": {
+		"oxygen": "OXYGEN - NO OIL, NO FLAME",
+		"vehicle_ramp": "VEHICLE RAMP - KEEP CLEAR WHILE AMBER",
+		"charger": "CHARGER 400 V DC - PROBE MOVES WITHOUT WARNING",
+		"ramp_outside": "VEHICLE RAMP - STAND CLEAR"
+	},
+	"labels": {
+		"tool_chest": "TOOLS - BAY",
+		"crate_seals": "SEALS & GASKETS",
+		"crate_filters": "FILTERS",
+		"crate_fasteners": "FASTENERS M5 / M6",
+		"crate_rations": "RATIONS - 14 DAYS",
+		"crate_return": "EMPTY - RETURN TO LANDER",
+		"crate_bags": "SAMPLE BAGS",
+		"panels_tag": "DENTED - SCRAP",
+		"wheel_tag": "WORN - NOT FOR FITTING",
+		"plant": "VEG-4 MIZUNA",
+		"junction": "POWER OUT",
+		"fire_bay": "FIRE EXTINGUISHER",
+		"fire_operator": "FIRE EXTINGUISHER"
+	},
+	"cards": {
+		"apollo12": {
+			"title": "APOLLO 12 - 20 NOV 1969",
+			"caption": "Alan Bean holds a sealed soil sample near Sharp crater. Pete Conrad, who took the photo, is reflected in his visor.",
+			"credit": "Photo: NASA / Charles Conrad Jr. - AS12-49-7278"
+		},
+		"surveyor3": {
+			"title": "SURVEYOR 3 - LANDED 20 APR 1967 (UTC)",
+			"caption": "Pete Conrad at Surveyor 3, 31 months after it landed. The lunar module Intrepid stands behind. About 570 m east-north-east of this bay.",
+			"credit": "Photo: NASA / Alan L. Bean - AS12-48-7136"
+		}
+	}
+}

@@ -10,7 +10,9 @@ extends SceneTree
 ##      docked at the zone's edge at an odd heading it still connects, under the rover's origin;
 ##      0.6 m off it doesn't, and the dock hint says where to go; with no battery it says so.
 ##   4. Console: E drives the rover and stands the player at the console; Esc brings the view back
-##      there.
+##      there. The seated operator (tools/blender/ASTRONAUT_KIT.md) shows only while the console
+##      drives the rover, through a pause too; the empty suit stands on its stand, which the player
+##      walks past and can't walk through.
 ##   5. The drive: out of the bay door (it opens; the rover touches nothing of the workshop), 12 m
 ##      out (the door closes behind it), back in along the entry lane, a U-turn and onto the pad
 ##      by steering for waypoints, stopped by braking like a driver; it must end in the dock zone,
@@ -18,6 +20,14 @@ extends SceneTree
 ##   6. Doors on foot: the personnel door lets the player through (and is locked while the bay
 ##      door is open on the Moon); the pressure curtain keeps the player in on the Moon, not in the
 ##      test level.
+##   7. Decor (tools/blender/DECOR_KIT.md), checked before the drive and the doors so those run
+##      with it in place (the reach checks above already cast through its colliders): built; every
+##      text from decor_texts.json drawn and fitting its paper or plate; the history cards' NASA
+##      photos and credits; scenery only (static bodies on layer 1, mask 0; nothing that can be
+##      picked up, used or scanned); looking at it leaves the crosshair plain and the part tooltip
+##      hidden (the desk items show the console's own prompt); the player can't walk through the
+##      tool chest; the exterior rests on the ground and is outside the bay door's rover
+##      detection; the tracks only on the Moon terrain's layer; the triangle and draw budget.
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_workshop.gd
@@ -114,6 +124,8 @@ func _run() -> void:
 		_reach_checks()
 		await _charging_checks()
 		await _console_checks()
+		await _astronaut_checks()
+		await _decor_checks()
 		await _drive_checks()
 		await _door_checks()
 	print("RESULT %s" % ("ALL PASS" if failures == 0 else "%d CHECKS FAILED" % failures))
@@ -123,7 +135,7 @@ func _run() -> void:
 # 1 ---------------------------------------------------------------------------------------------
 func _layout_checks() -> void:
 	var parts: int = workshop.get_node("Parts").get_child_count()
-	_check("built from the kit layout", parts == 102, "%d part instances" % parts)
+	_check("built from the kit layout", parts == 103, "%d part instances" % parts)
 	var offset: Vector2 = workshop.pad.offset_of(rover)
 	_check("the rover starts in the dock zone", offset.length() <= workshop.pad.DOCK_ZONE, "%.2f m from the dock point" % offset.length())
 	var stock: Node3D = workshop.rack_stock
@@ -243,10 +255,37 @@ func _console_checks() -> void:
 	_check("console: E drives the rover", GS.state == GS.State.IN_GAME_ROBOT and GS.robot == rover and root.get_camera_3d() == rover.camera)
 	_check("console: the player stands at the console", Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length() < 0.15,
 		"%.2f m away" % Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length())
+	var seat: Vector3 = workshop.to_global(workshop.anchors["anchor_seat"])
+	_check("console: the seated operator shows while the console drives", workshop.operator.is_visible_in_tree()
+		and workshop.operator.global_position.distance_to(seat) < 0.001)
+	GS.change_state_to(GS.State.PAUSED)
+	await process_frame
+	var paused_visible: bool = workshop.operator.visible
+	GS.change_state_to(GS.State.IN_GAME_ROBOT)
+	await process_frame
+	_check("console: the operator stays seated through a pause", paused_visible and workshop.operator.visible)
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.5)
 	_check("leaving the rover: the view is back at the console", root.get_camera_3d() == player.camera
 		and Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length() < 0.15)
+	_check("leaving the rover: the operator is gone", not workshop.operator.visible)
+
+
+func _astronaut_checks() -> void:
+	var suit: Node3D = workshop.suit_on_stand
+	var at: Vector3 = workshop.to_global(workshop.anchors["anchor_suit"])
+	_check("astronaut: the empty suit stands on its stand, the helmet on the shelf", suit.is_visible_in_tree()
+		and suit.global_position.distance_to(at) < 0.001 and suit.find_child("astronaut_helmet", true, false) != null,
+		"suit at kit %s" % _kit_of(suit.global_position).snapped(Vector3.ONE * 0.01))
+	_check("astronaut: no operator at the console while nobody drives", not workshop.operator.is_visible_in_tree())
+	# Walking along the operator area's south side, past the stand, to the east wall
+	var p: Vector3 = await _walk(Vector3(2.6, -2.6, 0.0), Vector2(1.0, 0.0), 2.0)
+	_check("astronaut: the player walks past the suit stand", p.x > 4.2 and absf(p.y + 2.6) < 0.1, "player at kit (%.2f, %.2f)" % [p.x, p.y])
+	# Straight at it: the stand stops the player in front of the suit
+	p = await _walk(Vector3(4.0, -2.2, 0.0), Vector2(0.0, -1.0), 2.0)
+	_check("astronaut: the player can't walk into the suit on its stand", p.y > -3.05 + 0.25 - 0.02, "player at kit y %.2f" % p.y)
+	GS.player.global_position = workshop.to_global(workshop.anchors["spawn_player"]) + Vector3(0.0, 0.05, 0.0)
+	await _ticks(0.5)
 
 
 # 5 ---------------------------------------------------------------------------------------------
@@ -437,3 +476,156 @@ func _door_checks() -> void:
 	await _ticks(0.5)
 	workshop._on_door_panel_interacted(GS.player)
 	await _ticks(3.0)
+
+
+# 7 ---------------------------------------------------------------------------------------------
+## True when the node's script, or one it extends, is one of the game's `classes`
+func _has_class(node: Node, classes: Array) -> bool:
+	var script: Script = node.get_script()
+	while script:
+		if script.get_global_name() in classes:
+			return true
+		script = script.get_base_script()
+	return false
+
+
+## Stands the player at kit (x, y) looking at the kit point `at` (x, y, height)
+func _look_at_kit(stand: Vector2, at: Vector3) -> void:
+	var player = GS.player
+	player.global_position = _kit(stand.x, stand.y, 0.05)
+	player.linear_velocity = Vector3.ZERO
+	var eye: Vector3 = _kit(stand.x, stand.y, 1.55)
+	var d: Vector3 = _kit(at.x, at.y, at.z) - eye
+	player.controller.camera_azimuth = atan2(-d.x, -d.z)
+	player.controller.camera_altitude = atan2(d.y, Vector2(d.x, d.z).length())
+
+
+func _decor_checks() -> void:
+	var decor = workshop.decor
+	_check("decor: built (interior, exterior, cable, tracks)", decor != null and decor.interior != null
+		and decor.exterior_pieces.size() == 5 and decor.cable != null and decor.tracks.size() == 15,
+		"%d exterior pieces, %d track decals" % [decor.exterior_pieces.size(), decor.tracks.size()] if decor else "no decor")
+	if decor == null:
+		return
+
+	# Words: every entry of the texts file drawn, nothing drawn that isn't in it, all fitting
+	var wanted: Array[String] = []
+	for section in ["notes", "signs", "labels", "cards"]:
+		for key in decor.texts.get(section, {}):
+			wanted.append(key)
+	var drawn: Array[String] = []
+	for full in decor.text_keys:
+		drawn.append(full.substr(full.get_slice("_", 0).length() + 1))
+	wanted.sort()
+	drawn.sort()
+	var empty_labels: int = 0
+	var smallest: float = 1.0
+	for item in decor.labels:
+		if (item[0] as Label3D).text.strip_edges().is_empty():
+			empty_labels += 1
+		smallest = minf(smallest, decor.cap_height(item[0]))
+	_check("decor: every text in decor_texts.json drawn, and only those", wanted == drawn and empty_labels == 0,
+		"%d texts, %d labels, %d empty; missing %s, unknown %s" % [wanted.size(), decor.labels.size(), empty_labels,
+		wanted.filter(func(k): return not k in drawn), drawn.filter(func(k): return not k in wanted)])
+	var misfits: Array[String] = decor.misfits()
+	_check("decor: every text fits its paper or plate", misfits.is_empty(), "smallest caps %.1f mm; %s" % [smallest * 1000.0, misfits])
+
+	# The history cards: the NASA photo on each, the credit naming its NASA ID
+	var cards_ok := true
+	var detail := ""
+	for key in decor.PHOTOS:
+		var photo := decor.interior.find_child("card_photo_" + key, true, false) as MeshInstance3D
+		var material := photo.material_override as StandardMaterial3D if photo else null
+		var texture_path: String = material.albedo_texture.resource_path if material and material.albedo_texture else ""
+		var nasa_id: String = texture_path.get_file().get_basename().to_upper()
+		var credit: String = decor.texts["cards"][key]["credit"]
+		cards_ok = cards_ok and texture_path == decor.PHOTOS[key] and credit.contains(nasa_id) and credit.begins_with("Photo: NASA")
+		detail += "%s: %s, \"%s\"; " % [key, texture_path.get_file(), credit]
+	_check("decor: the history cards carry their NASA photos and credits", cards_ok, detail)
+
+	# Scenery only
+	var bad: Array[String] = []
+	var bodies: int = 0
+	for node in decor.find_children("*", "Node", true, false):
+		# (game classes by name: this script compiles before the game's autoloads exist)
+		if node is RigidBody3D or node is Area3D or _has_class(node, ["InteractTrigger", "HotswapPart", "CargoPort", "Robot", "Kite"]):
+			bad.append(String(node.name))
+		for group in ["scan_target", "charging_pad", "kite", "cargo_port", "workshop"]:
+			if node.is_in_group(group):
+				bad.append("%s in %s" % [node.name, group])
+		if node is CollisionObject3D:
+			bodies += 1
+			if not node is StaticBody3D or node.collision_layer != 1 or node.collision_mask != 0:
+				bad.append("%s layer %d mask %d" % [node.name, node.collision_layer, node.collision_mask])
+	_check("decor: scenery only (static bodies on layer 1, mask 0; nothing to pick up, use or scan)", bad.is_empty() and bodies > 0,
+		"%d static bodies; %s" % [bodies, bad])
+
+	# Looking at it, as the player does: the crosshair stays plain and the part tooltip hidden
+	var hud: Node = root.get_node("Main").find_child("HUD", true, false)
+	var tooltip: Control = hud.find_child("PartTooltip", true, false)
+	var hud_script: Script = hud.get_script()
+	var looks: Array = [["tool chest", Vector2(-3.3, -1.95), Vector3(-4.5, -1.95, 0.7)],
+		["crates", Vector2(-3.2, -2.6), Vector3(-4.4, -3.55, 0.5)],
+		["oxygen rack", Vector2(-3.5, 2.35), Vector3(-4.6, 2.35, 1.0)],
+		["spare wheel", Vector2(-3.5, 0.75), Vector3(-4.65, 0.75, 1.55)],
+		["rack's service note", Vector2(1.4, -3.0), Vector3(2.01, -3.30, 1.45)],
+		["history card", Vector2(3.9, -0.95), Vector3(4.76, -0.95, 1.5)],
+		["plant lab", Vector2(3.9, 1.0), Vector3(4.6, 1.0, 1.0)]]
+	for look in looks:
+		_look_at_kit(look[1], look[2])
+		await _ticks(0.3)
+		await process_frame
+		var target: Object = GS.player.looking_at_object
+		var interactive: bool = hud_script.is_interactive(target)
+		_check("decor: looking at the %s, no use crosshair or tooltip" % look[0], not interactive and not tooltip.visible,
+			"looking at %s" % (target.name if target else "nothing"))
+	# The mug on the console desk sits inside the console's trigger: the console's own prompt
+	_look_at_kit(Vector2(3.2, 0.2), Vector3(2.22, 0.2, 0.95))
+	await _ticks(0.3)
+	await process_frame
+	var on_desk: Object = GS.player.looking_at_object
+	_check("decor: looking at the mug on the desk shows only the console's prompt", on_desk == workshop.console_trigger and tooltip.visible,
+		"looking at %s" % (on_desk.name if on_desk else "nothing"))
+	# The tool chest has collision: walking into it stops the player
+	var p: Vector3 = await _walk(Vector3(-3.4, -1.95, 0.0), Vector2(-1.0, 0.0), 2.0)
+	_check("decor: the player can't walk through the tool chest", p.x > -4.30 + 0.25 - 0.03, "player at kit x %.2f" % p.x)
+
+	# Exterior: rested on the ground (its own ray, past every body of the workshop) and never seen
+	# by the bay door's rover detection
+	var exclude: Array[RID] = []
+	for body in workshop.find_children("*", "CollisionObject3D", true, false):
+		exclude.append(body.get_rid())
+	var worst: float = 0.0
+	var resting: int = 0
+	for piece in decor.exterior_pieces:
+		if absf(piece.position.y) > 0.3:
+			continue
+		var top: Vector3 = piece.global_position + workshop.global_basis.y * 1.0
+		var q := PhysicsRayQueryParameters3D.create(top, top - workshop.global_basis.y * 3.0, 1)
+		q.exclude = exclude
+		var hit: Dictionary = root.world_3d.direct_space_state.intersect_ray(q)
+		var gap: float = 1.0 if hit.is_empty() else (piece.global_position - hit["position"]).dot(workshop.global_basis.y) + decor.GROUND_SINK
+		worst = maxf(worst, absf(gap))
+		resting += 1
+	_check("decor: the exterior pieces rest on the ground (within 2 cm)", resting == 3 and worst <= 0.02, "%d pieces, worst %.3f m" % [resting, worst])
+	_check("decor: outside the bay door's rover detection", workshop._door_area.collision_mask & 1 == 0)
+	var mask_ok := true
+	var terrain_layer: int = load("res://src/levels/terrain/moon_terrain.gd").RENDER_LAYER
+	for decal in decor.tracks:
+		mask_ok = mask_ok and decal.cull_mask == 1 << (terrain_layer - 1)
+	_check("decor: the tyre tracks only paint the Moon terrain", mask_ok)
+
+	# Budget (DECOR_KIT.md 7): triangles and the interior's draw calls
+	var triangles: int = 0
+	var surfaces: int = 0
+	for mesh in decor.find_children("*", "MeshInstance3D", true, false):
+		var m: Mesh = (mesh as MeshInstance3D).mesh
+		if m == null:
+			continue
+		triangles += m.get_faces().size() / 3
+		if decor.interior.is_ancestor_of(mesh):
+			surfaces += m.get_surface_count()
+	_check("decor: within its budget (3,500 triangles, the interior about 10 draw calls)", triangles <= 3500 and surfaces <= 12,
+		"%d triangles, %d interior surfaces, %d labels" % [triangles, surfaces, decor.labels.size()])
+	GS.player.global_position = workshop.to_global(workshop.anchors["spawn_player"]) + Vector3(0.0, 0.05, 0.0)
+	await _ticks(0.5)

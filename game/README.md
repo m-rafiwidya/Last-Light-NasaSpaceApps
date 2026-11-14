@@ -63,6 +63,9 @@ game/
 ├── res/                     # raw assets
 │   ├── theme.tres           # global UI theme
 │   ├── textures/{dev,ui,sky}/ # dev grid textures, crosshair.svg, interaction.svg; the Moon's star map and Earth (credits: ../CREDITS.md)
+│   ├── models/astronaut_kit/ # the astronaut (tools/blender/ASTRONAUT_KIT.md): rigged T-pose, seated and on-stand statics
+│   ├── models/decor_kit/    # the workshop's set dressing (tools/blender/DECOR_KIT.md); its photos and tread texture in textures/decor/
+│   ├── decor/decor_texts.json # every word on the decor (service notes, signs, labels, history cards): edit freely
 │   └── terrain/moon_apollo12/ # the Moon's terrain: the DTM's 2 m posts (float32), 16-bit ring tiers, horizon maps, rocks, site brightness, terrain.json (made by ../tools/terrain/)
 └── src/
     ├── main.tscn / main.gd           # entry point (root "Main" node)
@@ -83,7 +86,7 @@ game/
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
     │   └── dialog_sequence.gd        # Resource: ordered array of Dialog
-    ├── workshop/                     # the lunar workshop: workshop.tscn/.gd (Workshop), charging_pad.gd (ChargingPad), workshop_kit_import.gd
+    ├── workshop/                     # the lunar workshop: workshop.tscn/.gd (Workshop), charging_pad.gd (ChargingPad), workshop_decor.gd (WorkshopDecor), workshop_kit_import.gd
     ├── kite/                         # Kite, the disabled rover: kite.tscn/.gd (Kite), cargo_port.gd (CargoPort)
     ├── interact_trigger/
     │   └── interact_trigger.gd       # Area3D the player can "use" with E
@@ -115,7 +118,7 @@ game/
         ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 tests/                                # headless test scripts (see each file's header)
-tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, render_workshop_previews.gd, render_kite_previews.gd, measure_moon_fps.gd
+tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, render_workshop_previews.gd, render_decor_previews.gd, render_kite_previews.gd, measure_moon_fps.gd
 ```
 
 ---
@@ -421,9 +424,19 @@ The lunar workshop of the asset brief (A01-A04, A07; spec, measurements and layo
 - **Rack**: the 15 rover parts (six wheels, four high-grip wheels, motor, battery, mast camera, tool turret, antenna) on numbered slots, wheels standing in cradles; `Label3D`s on the label rails (65 mm capitals, shrunk to fit their plate but never under 50 mm); `RestockTrigger` ("Restock rack") lays them out again (`PartsStock`, `levels/parts_stock.gd`, shared with `RoverLevel`'s parts pile). The rack is stepped (0.48 m deep at the floor to 0.18 m at the top), so every part stands in front of the shelf above it and is in view and in reach from the walkway at any distance.
 - **Lights**: one shadowed spot over the pad, three amber / warm lamps without shadows, an exterior flood over the apron, and an interior `ReflectionProbe` (ambient colour, updated once) for fill, since the Moon's sky fill is tuned for open ground.
 - **Lost and found:** `MoonTerrain`'s `LostZone` returns the player to the level's `SpawnPoint` and a workshop's rover to its dock.
+- **Astronaut** (`tools/blender/ASTRONAUT_KIT.md`, models in `res/models/astronaut_kit/` from `tools/blender/scripts/astronaut/make_astronaut.py`): static meshes, no animation.
+  - `SuitOnStand` (`astronaut_rack.glb`): an empty suit on its stand (`ws_suit_stand`, with collision) in the operator area's south-east corner, its helmet on the stand's shelf.
+  - `Operator` (`astronaut_seated.glb` and `ws_stool`, at `anchor_seat`, no collision or shadows): the seated operator. It shows only while the console drives the rover (and through a pause), so the rover's camera sees someone at the console through the partition window; leaving the rover hides it again.
+  - `astronaut.glb` is the same suit rigged (45 bones, Godot humanoid names, T-pose) and isn't used yet. It is there for Mixamo animations later, with `tools/blender/parts/astronaut/astronaut_mixamo.fbx`.
+- **Decor** (`tools/blender/DECOR_KIT.md`, models in `res/models/decor_kit/` from `tools/blender/scripts/decor/`; `decor_enabled`, on in both levels): `WorkshopDecor` (`workshop_decor.gd`), the child `Decor`, built from `dc_layout.glb`.
+  - Inside: one merged mesh (`dc_interior.glb`, 2,669 triangles, 10 surfaces plus the two photo quads): a tool chest, labelled crates, a cable reel, spare panels, an old spare wheel ("NOT FOR FITTING"), a ladder, an oxygen rack, two fire extinguishers, hazard stripes inside the bay door, hazard signs, a mug and a tablet on the console desk, a plant-growth lab under the east window, five service notes by the equipment they describe (A12) and two history cards with NASA photos (AS12-49-7278, AS12-48-7136; credits on the cards and in `CREDITS.md`).
+  - Outside: two crates, a cable reel, a power outlet and its cable, a ramp sign; the floor pieces and the cable are rested on whatever ground is under them as the level starts (the Moon's apron isn't flat). Tyre tracks on the apron are `Decal`s that only paint the Moon terrain's render layer (none in the test level, never on a rover).
+  - Words: Godot draws every word (`Label3D`s, fitted to their paper or plate; the notes wrap) from `res/decor/decor_texts.json`, so they can be rewritten without touching a model. Nothing is baked into a texture.
+  - Scenery only: static meshes and 12 `StaticBody3D` boxes (layer 1, mask 0) on the floor pieces; no `RigidBody3D`, trigger or part, so the crosshair stays plain and the part tooltip hidden. The desk items sit inside the console's trigger, so looking at them shows the console's prompt. No new lights.
+  - `set_decor_visible()` hides it (its colliders stay) for frame-rate comparisons: `tools/measure_moon_fps.gd -- unthrottled decor_ab` (off / on pairs in the bay and from the rover on the apron). Measured: the render's CPU time +0.05 ms in the bay, +0.08 ms on the apron; about +180 / +250 draw calls over all passes; frame time within this machine's noise (DECOR_KIT.md, as built). Previews: `tools/render_decor_previews.gd` (window) into `tools/previews/decor/`.
 - **Frame rate** (`tools/measure_moon_fps.gd`, last phase; MacBook Pro M4, 1920x1080, vsync off): standing in the bay facing the docked rover 148.6 fps (6.73 ms), 0.65 ms more than facing the rover outside in the same run. The bay light's shadow left the ground out of its casters for this: the rock field is one multimesh across the play area, and drew 1.6 M triangles into it (the terrain's chunks and rocks are on render layer 10, `MoonTerrain.RENDER_LAYER`). Lighting previews: `tools/render_workshop_previews.gd` (window) into `tools/previews/workshop/`.
 
-`tests/test_workshop.gd` (Moon level, then test level): the layout, the rover starting docked, the rack parts on their slots and the labels fitting; reach from where the player stands (console, rack, charger, the rover's battery socket); charging at the dock point and at the zone's edge at an odd heading, not 0.6 m off (and the hint), the no-battery fault; console drive and return; a scripted drive out through the door (which closes behind it), back in along the entry lane, round the U-turn and onto the pad, never touching the workshop; the personnel door, its lock, and the curtain (holding on the Moon, open in the test level).
+`tests/test_workshop.gd` (Moon level, then test level): the layout, the rover starting docked, the rack parts on their slots and the labels fitting; reach from where the player stands (console, rack, charger, the rover's battery socket); the seated operator only while the console drives (also through a pause), the empty suit on its stand, which the player walks past but not through; charging at the dock point and at the zone's edge at an odd heading, not 0.6 m off (and the hint), the no-battery fault; console drive and return; the decor (every text from the texts file drawn and fitting, the cards' photos and credits, static bodies on layer 1 only, the crosshair and tooltip ignoring it with the player really looking at seven pieces, the tool chest stopping the player, the exterior rested on the ground, the tracks on the terrain's layer only, the budget); a scripted drive out through the door (which closes behind it), back in along the entry lane, round the U-turn and onto the pad, never touching the workshop; the personnel door, its lock, and the curtain (holding on the Moon, open in the test level).
 
 ### Kite and the cargo delivery (`src/kite/`, `robot/kit/cargo_delivery.gd`, `robot/kit/rover_scanner.gd`)
 

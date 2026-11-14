@@ -3,3 +3,6 @@ tools/blender/previews/
 __pycache__/
 tools/terrain/raw/
 .DS_Store
+
+# Private style references (other people's art): never commit
+tools/blender/reference/private/
