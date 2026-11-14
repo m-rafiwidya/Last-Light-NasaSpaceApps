@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: switches levels the way the player does and checks nothing of the old level
 ## is left behind.
-##   1. Main menu "Play Test level". Drive the ready rover and pick up a pile part with it, Esc
+##   1. Main menu: the test level is no longer on it, so the `testlevel` console command. Drive the ready rover and pick up a pile part with it, Esc
 ##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), "Switch to Moon".
 ##   2. On the Moon: the level's contents (the workshop; no outdoor drive trigger or pile), then
 ##      drive its rover from the workshop console with the rack's cartridge on its cargo mount, Esc out,
@@ -51,7 +51,7 @@ func _press_esc() -> void:
 
 func _pause_button(label: String) -> Button:
 	for button in _ui("PauseMenu").find_children("*", "Button", true, false):
-		if button.text == label and button.is_visible_in_tree():
+		if button.text.to_lower() == label.to_lower() and button.is_visible_in_tree():
 			return button
 	return null
 
@@ -118,14 +118,10 @@ func _run_step():
 		0:   # main menu
 			if GS.state != GS.State.MAIN_MENU:
 				return null
-			var play: Button = null
-			for button in _ui("MainMenu").find_children("*", "Button", true, false):
-				if button.text == "Play Test level":
-					play = button
-			var labels: Array = _ui("MainMenu").find_child("LevelChoice", true, false).get_children().map(func(b): return b.text)
-			_check("main menu offers both levels", labels == ["Play Test level", "Play Moon"], str(labels))
+			_check("main menu lists no levels (PLAY opens the save popup)",
+				_ui("MainMenu").find_child("LevelChoice", true, false) == null)
 			_remember_old()   # the menu backdrop
-			play.pressed.emit()
+			root.get_node("Debug").parse_command("testlevel")
 		1:
 			if GS.state != GS.State.IN_GAME_PLAYER:
 				return null

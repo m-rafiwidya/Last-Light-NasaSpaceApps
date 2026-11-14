@@ -56,6 +56,7 @@ var build_seconds: float = 0.0
 var data_ms: int = 0
 var chunk_count: int = 0
 
+var _meshes_added: int = 0
 var _pending_meshes: Array = []   # [tier index, chunk i, chunk j, chunk arrays (build_chunk_arrays)]
 var _mutex := Mutex.new()
 var _build_started: int = 0
@@ -96,6 +97,13 @@ func _visual() -> bool:
 
 func is_ready_to_play() -> bool:
 	return is_content_ready
+
+
+## How much of the meshes are built (0 to 1), for the loading screen (SceneLoader)
+func content_progress() -> float:
+	if is_content_ready:
+		return 1.0
+	return float(_meshes_added) / chunk_count if chunk_count > 0 else 0.0
 
 
 ## Tyre tracks (TyreTracks): the play tier's square, drawn by its material (not the rocks')
@@ -381,9 +389,8 @@ func _start_meshes() -> void:
 
 
 func _wait_for_meshes(task: int) -> void:
-	var added: int = 0
-	while added < chunk_count:
-		added += _flush_meshes(MESHES_PER_FRAME)
+	while _meshes_added < chunk_count:
+		_meshes_added += _flush_meshes(MESHES_PER_FRAME)
 		await get_tree().process_frame
 	WorkerThreadPool.wait_for_group_task_completion(task)
 	build_seconds = (Time.get_ticks_msec() - _build_started) / 1000.0

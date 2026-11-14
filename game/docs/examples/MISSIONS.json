@@ -1,0 +1,131 @@
+{
+  "schema_note": "Example authored content. Adapt to the repository's verified mission/resource APIs; not executable game code.",
+  "content_version": "2026-10-11-final-moon",
+  "data_origin": "authored_game_definition",
+  "setting": {
+    "year": 2058,
+    "programme": "Surface Research Programme",
+    "home": "lunar_outpost",
+    "playable_rover": "kite",
+    "research_station": "iris",
+    "terrain_source_product": "NAC_DTM_APOLLO12",
+    "npc_implementation": "triggered_radio_and_archive_content"
+  },
+  "campaign": {
+    "mission_order": ["wake_kite", "first_signal", "beyond_the_rim"],
+    "headline_loadout_choices": ["wheel_set", "battery_and_load_allocation"],
+    "completion_requires_all": [
+      "iris_online",
+      "final_logger_record_received",
+      "sample_comparison_report_received",
+      "paired_surface_temperature_record_received",
+      "kite_docked"
+    ],
+    "future_teaser": "Mars field rotation — briefing pending"
+  },
+  "cargo_delivery": {
+    "required_for_competition_build": true,
+    "service_options": ["standard_delivery", "extended_delivery"],
+    "profile_values": "Set fictional, documented capacities/costs/stage parameters after balancing; no real launch-vehicle claim.",
+    "validation": [
+      "manifest_and_packaging_within_capacity",
+      "cost_within_credits",
+      "required_equipment_remains_obtainable",
+      "declared_ideal_descent_margin_nonnegative",
+      "prevalidated_transfer_and_arrival_window"
+    ],
+    "presentation_phases": ["launch", "transfer", "lunar_arrival", "cargo_delivery"],
+    "story_time_convention": "Days compressed and labelled; crew arrival was earlier.",
+    "inventory_effect": "Add selected physical stock exactly once after delivery completes.",
+    "animation_skip_policy": "Skip presentation only; preserve validation and a single inventory update."
+  },
+  "science_targets": {
+    "iris_service_panel": {"kind": "inspection", "required_record": "iris_panel_image"},
+    "near_reference": {
+      "kind": "regolith_sample",
+      "sample_id": "near_sample",
+      "clean_fallback_available": true,
+      "report_model": "authored_simplified_imaging_and_context"
+    },
+    "far_reference": {
+      "kind": "regolith_sample",
+      "sample_id": "far_sample",
+      "clean_fallback_available": true,
+      "report_model": "authored_simplified_imaging_and_context"
+    },
+    "sunlit_surface": {"kind": "surface_temperature", "record_context": "sunlit"},
+    "shaded_surface": {"kind": "surface_temperature", "record_context": "ordinary_temporary_shade"},
+    "far_logger": {"kind": "physical_cargo_and_archived_data", "pickup_once": true}
+  },
+  "derived_records": {
+    "sample_comparison_report": {
+      "requires_all": ["near_sample_stored_with_context", "far_sample_stored_with_context", "local_imaging_review_complete"],
+      "origin": "authored_simplified_imaging_and_context_report",
+      "physical_samples_destination": "outpost_storage",
+      "transmitted_output": "one_two_site_comparison_report"
+    },
+    "paired_surface_temperature_record": {
+      "requires_all": ["sunlit_surface_recorded_with_context", "shaded_surface_recorded_with_context"],
+      "origin": "declared_field_temperature_game_model"
+    }
+  },
+  "missions": [
+    {
+      "id": "wake_kite",
+      "title": "Wake Kite",
+      "required_equipment": ["compatible_wheel_set", "charged_battery", "baseline_camera"],
+      "route_options": ["marked_gentle_approach"],
+      "objectives": ["prepare_kite", "record_iris_panel", "return_and_dock", "downlink_inspection"],
+      "success_requires_all": ["iris_panel_image_received", "kite_docked"],
+      "persistent_results": ["radio_power_fault_diagnosed", "replacement_work_order_available"],
+      "missing_record_policy": "Explain the missing panel image and allow another sortie.",
+      "chapter_end": false
+    },
+    {
+      "id": "first_signal",
+      "title": "First Signal",
+      "required_equipment": ["compatible_wheel_set", "charged_battery", "baseline_camera", "replacement_radio_power_module"],
+      "route_options": ["short_loaded_climb", "longer_gentle_approach"],
+      "objectives": ["carry_module", "install_module_once", "activate_iris", "receive_initial_archive", "return_and_dock"],
+      "optional_objectives": ["collect_near_sample_if_sampler_fitted"],
+      "success_requires_all": ["iris_online", "initial_archive_received", "kite_docked"],
+      "persistent_results": ["iris_online", "far_logger_location_known"],
+      "chapter_end": false
+    },
+    {
+      "id": "beyond_the_rim",
+      "title": "Beyond the Rim",
+      "required_equipment": ["compatible_wheel_set", "charged_battery", "baseline_camera", "sampling_kit", "surface_temperature_sensor", "logger_cargo_mount"],
+      "conditional_readiness": {
+        "near_sample_already_stored": "One free sample container for the far site is sufficient.",
+        "near_sample_not_stored": "Bring two free containers and include the near site in the route."
+      },
+      "optional_equipment": ["thermal_cover", "heater", "extended_battery"],
+      "route_options": ["shorter_rough_shadow_approach", "longer_gentler_lower_shadow_exposure"],
+      "objectives": [
+        "collect_near_sample_if_missing",
+        "collect_far_sample",
+        "record_sunlit_and_shaded_surface_contexts",
+        "secure_far_logger",
+        "return_and_dock",
+        "analyse_samples_locally",
+        "downlink_reports_and_logger"
+      ],
+      "success_requires_all": [
+        "iris_online",
+        "final_logger_record_received",
+        "sample_comparison_report_received",
+        "paired_surface_temperature_record_received",
+        "kite_docked"
+      ],
+      "persistent_results": ["archive_complete", "comparison_survey_complete"],
+      "chapter_end": true
+    }
+  ],
+  "recovery": {
+    "retry_policy": "Restore the entire pre-sortie checkpoint, including inventory, station, observations, dialogue and pending actions.",
+    "assistance_policy": "Label assistance in the report; do not describe it as a physically simulated rescue.",
+    "partial_return_policy": "Show missing requirements and preserve a feasible continuation.",
+    "new_campaign_policy": "Reset mutable per-run state without mutating shared content definitions."
+  }
+}

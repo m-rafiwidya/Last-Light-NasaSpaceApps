@@ -33,6 +33,8 @@ var camera_altitude: float = 0.0
 var queued_rotation: Quaternion = Quaternion.IDENTITY
 
 var was_input_enabled: bool = false
+# Toggle Crouch: crouched by the last press
+var _crouch_toggled: bool = false
 
 
 ## Mouse pixels to radians (Source-style: SENS centimetres per 360 degrees at DPI).
@@ -60,8 +62,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			##new_basis = new_basis.rotated(camera.transform.basis.y, px_to_rad(event.relative.x))
 			##held_object_original_orientation = new_basis.get_rotation_quaternion() * held_object_original_orientation
 		#else:
-			var vertical_input = -px_to_rad(event.relative.y)
-			var horizontal_input = -px_to_rad(event.relative.x)
+			# Sensitivity and Invert Y Axis (Settings > Controls)
+			var look: Vector2 = ControlSettings.look_pixels(event.relative)
+			var vertical_input = -px_to_rad(look.y)
+			var horizontal_input = -px_to_rad(look.x)
 			
 			camera_altitude = clamp(camera_altitude + vertical_input, -PI / 2, PI / 2)
 			camera_azimuth = fmod(camera_azimuth + horizontal_input, 2.0*PI)
@@ -100,10 +104,17 @@ func _physics_process(_delta: float) -> void:
 	elif Input.is_action_just_released("move_jump"):
 		request_jump = false
 	
-	if Input.is_action_just_pressed("move_crouch"):
-		crouch.emit(true)
-	if Input.is_action_just_released("move_crouch"):
-		crouch.emit(false)
+	# Toggle Crouch (Settings > Controls): a press crouches or stands up, the release does nothing
+	if ControlSettings.toggle_crouch():
+		if Input.is_action_just_pressed("move_crouch"):
+			_crouch_toggled = not _crouch_toggled
+			crouch.emit(_crouch_toggled)
+	else:
+		_crouch_toggled = false
+		if Input.is_action_just_pressed("move_crouch"):
+			crouch.emit(true)
+		if Input.is_action_just_released("move_crouch"):
+			crouch.emit(false)
 	
 	if Input.is_action_just_pressed("interact_use"):
 		interact.emit(true)
@@ -132,7 +143,7 @@ func _process_locked_input() -> void:
 	is_sprinting = false
 	request_jump = false
 
-	if Input.is_action_just_released("move_crouch"):
+	if Input.is_action_just_released("move_crouch") and not _crouch_toggled:
 		crouch.emit(false)
 	if Input.is_action_just_released("interact_use"):
 		interact.emit(false)

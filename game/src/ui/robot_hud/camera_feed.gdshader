@@ -18,6 +18,14 @@ uniform float edge_blur = 0.0;
 // Animated noise amplitude
 uniform float grain = 0.0;
 
+// Screen pixels per design pixel (the stretch scale): edge blur and grain keep their size on
+// screen whatever the window's resolution
+varying float ui_scale;
+
+void vertex() {
+	ui_scale = length(CANVAS_MATRIX[0].xy);
+}
+
 float hash(vec2 p) {
 	p = fract(p * vec2(443.897, 441.423));
 	p += dot(p, p.yx + 19.19);
@@ -34,14 +42,15 @@ void fragment() {
 	vec2 uv = 0.5 + centred * (1.0 + fisheye * r2) / (1.0 + fisheye * corner_r2);
 
 	float edge = r2 / corner_r2;
-	vec3 colour = textureLod(screen_texture, uv, edge_blur * smoothstep(0.15, 1.0, edge)).rgb;
+	float blur = edge_blur * smoothstep(0.15, 1.0, edge);
+	vec3 colour = textureLod(screen_texture, uv, blur + log2(max(ui_scale, 1.0)) * clamp(blur, 0.0, 1.0)).rgb;
 
 	float luma = dot(colour, vec3(0.299, 0.587, 0.114));
 	colour = mix(colour, vec3(luma), desaturate);
 	colour = (colour - 0.5) * contrast + 0.5;
 	colour *= tint;
 	colour *= 1.0 - vignette * smoothstep(0.2, 1.0, edge);
-	colour += (hash(floor(FRAGCOORD.xy / 2.0) + fract(TIME * 7.13) * 97.0) - 0.5) * grain;
+	colour += (hash(floor(FRAGCOORD.xy / (2.0 * ui_scale)) + fract(TIME * 7.13) * 97.0) - 0.5) * grain;
 
 	COLOR = vec4(clamp(colour, 0.0, 1.0), 1.0);
 }

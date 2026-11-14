@@ -484,7 +484,8 @@ func _build_astronauts() -> void:
 
 func _on_game_state_changed(_old_state, new_state) -> void:
 	# The operator stays seated through a pause; leaving the rover (or the level) stands them up
-	if new_state != GameState.State.IN_GAME_ROBOT and new_state != GameState.State.PAUSED:
+	if new_state != GameState.State.IN_GAME_ROBOT and new_state != GameState.State.PAUSED \
+			and new_state != GameState.State.CREDITS:
 		operator.visible = false
 
 

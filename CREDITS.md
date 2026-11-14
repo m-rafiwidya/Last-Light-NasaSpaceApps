@@ -3,6 +3,12 @@
 Third-party assets in this repository and where they come from. NASA imagery is used under
 NASA's media usage guidelines; no endorsement by NASA or ESA is implied.
 
+## Credits screen
+
+The in-game credits roll (team, real data sources, type, special thanks) is written in
+`game/res/credits.md`, which the game reads (an exported build includes it); edit it there. The
+asset sections below stay the full provenance record.
+
 ## Workshop kit
 
 `game/res/models/workshop_kit/`: original, made by this project's scripts; nothing
@@ -63,6 +69,18 @@ file in every capture from 2020 to 2026.
   (`world.topo.bathy.200412.3x5400x2700.jpg`), <https://visibleearth.nasa.gov/images/73909>
 
 Downscaled from 5400 x 2700 to 1024 x 512.
+
+## Main menu Moon
+
+`game/res/textures/moon/lroc_color_4k.jpg`: the colour map on the main menu's 3D Moon.
+
+- **CGI Moon Kit**, `lroc_color_16bit_srgb_4k.tif` (2025 colour map, 4096 x 2048), NASA's
+  Scientific Visualization Studio, from Lunar Reconnaissance Orbiter Camera
+  (LROC) WAC data, NASA/GSFC/Arizona State University, <https://svs.gsfc.nasa.gov/4720>.
+  Public domain.
+
+Converted from 16-bit to 8-bit and saved as a quality-90 JPEG (macOS `sips`), otherwise
+unchanged. The source TIFF is not committed (`.gitignore`).
 
 ## Moon terrain
 

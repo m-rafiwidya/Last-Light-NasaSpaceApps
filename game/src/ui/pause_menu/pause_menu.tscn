@@ -1,121 +1,150 @@
 [gd_scene format=3 uid="uid://dxwrqhxka77lb"]
 
 [ext_resource type="Script" uid="uid://c6fblnyp41idq" path="res://src/ui/pause_menu/pause_menu.gd" id="1_tnmsp"]
-[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_t0xlp"]
-[ext_resource type="Script" uid="uid://ds0ii545dct55" path="res://src/ui/button_style_components/button_resize_component.gd" id="3_vvyjd"]
-[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="4_j7lcx"]
-[ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="6_qrgyy"]
-[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="90_levels"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_theme"]
+[ext_resource type="Shader" path="res://src/ui/components/backdrop_blur.gdshader" id="3_blur"]
+[ext_resource type="PackedScene" path="res://src/ui/components/underline_button_centre.tscn" id="4_button"]
+[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="5_sound"]
+[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="6_levels"]
+[ext_resource type="PackedScene" path="res://src/ui/level_choice/level_button_pause.tscn" id="7_level_button"]
+[ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="8_settings"]
 
-[node name="PauseMenu" type="CanvasLayer" unique_id=511829539]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
+shader = ExtResource("3_blur")
+shader_parameter/radius_px = 7.2
+shader_parameter/amount = 0.0
+shader_parameter/brightness = 0.5
+shader_parameter/bg_color = Color(0.019607844, 0.019607844, 0.02745098, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_title"]
+content_margin_left = 19.0
+
+[node name="PauseMenu" type="CanvasLayer"]
 script = ExtResource("1_tnmsp")
 
-[node name="BGTint" type="ColorRect" parent="." unique_id=1005068186]
+[node name="Root" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.5019608)
+theme = ExtResource("2_theme")
 
-[node name="PauseMenuSubScreen" type="MarginContainer" parent="." unique_id=1999246962]
+[node name="Blur" type="ColorRect" parent="Root"]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_blur")
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_t0xlp")
 
-[node name="Polygon2D2" type="Polygon2D" parent="PauseMenuSubScreen" unique_id=1269527564]
-color = Color(0.9411765, 0.47058824, 0, 1)
-polygon = PackedVector2Array(-111, 330, -567, 328, -567, 1201, 419, 1200)
+[node name="Content" type="Control" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="Polygon2D" type="Polygon2D" parent="PauseMenuSubScreen" unique_id=74626357]
-color = Color(1, 0.5647059, 0, 1)
-polygon = PackedVector2Array(292, -152, -631, -147, -629, 1225, 43, 1222)
+[node name="Column" type="VBoxContainer" parent="Root/Content"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 48
+alignment = 1
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PauseMenuSubScreen" unique_id=551563292]
+[node name="Title" type="Label" parent="Root/Content/Column"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 4
+size_flags_horizontal = 4
+theme_type_variation = &"LabelScreenTitle"
+theme_override_styles/normal = SubResource("StyleBoxEmpty_title")
+text = "PAUSED"
+horizontal_alignment = 1
 
-[node name="Label" type="Label" parent="PauseMenuSubScreen/VBoxContainer" unique_id=471368882]
+[node name="Rule" type="ColorRect" parent="Root/Content/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 1)
 layout_mode = 2
-text = "Paused"
+size_flags_horizontal = 4
+mouse_filter = 2
+color = Color(0.2901961, 0.28235295, 0.26666668, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PauseMenuSubScreen/VBoxContainer" unique_id=1236913054]
+[node name="Nav" type="VBoxContainer" parent="Root/Content/Column"]
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 4
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_override_constants/separation = 7
 
-[node name="Resume" type="Button" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=712925967]
+[node name="Resume" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-focus_mode = 0
-text = "Resume"
+size_flags_horizontal = 4
+theme_type_variation = &"UnderlineButtonPause"
+text = "RESUME"
 
-[node name="ButtonResizeComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume" unique_id=891852183]
-script = ExtResource("3_vvyjd")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
-
-[node name="ButtonSoundComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume" unique_id=800785514]
-script = ExtResource("4_j7lcx")
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/Resume"]
+script = ExtResource("5_sound")
 press_sound = &""
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
-[node name="LevelChoice" type="VBoxContainer" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer"]
+[node name="LevelChoice" type="VBoxContainer" parent="Root/Content/Column/Nav"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-script = ExtResource("90_levels")
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("6_levels")
+button_scene = ExtResource("7_level_button")
 text_format = "Switch to %s"
+uppercase = true
 press_sound = &"confirm"
 hide_current_level = true
 
-[node name="Settings" type="Button" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=920191874]
+[node name="Settings" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-focus_mode = 0
-text = "Settings"
+size_flags_horizontal = 4
+theme_type_variation = &"UnderlineButtonPause"
+text = "SETTINGS"
 
-[node name="ButtonResizeComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/Settings" unique_id=877359025]
-script = ExtResource("3_vvyjd")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
-
-[node name="ButtonSoundComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/Settings" unique_id=305857574]
-script = ExtResource("4_j7lcx")
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/Settings"]
+script = ExtResource("5_sound")
 press_sound = &"menu_open"
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
-[node name="QuitToMenu" type="Button" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=1032288548]
+[node name="QuitToMenu" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-focus_mode = 0
-text = "Quit To Menu"
+size_flags_horizontal = 4
+theme_type_variation = &"UnderlineButtonPause"
+text = "QUIT TO MENU"
 
-[node name="ButtonResizeComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToMenu" unique_id=1016989422]
-script = ExtResource("3_vvyjd")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
-
-[node name="ButtonSoundComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToMenu" unique_id=1778787141]
-script = ExtResource("4_j7lcx")
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/QuitToMenu"]
+script = ExtResource("5_sound")
 press_sound = &"back"
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
-[node name="QuitToDesktop" type="Button" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=547173362]
+[node name="QuitToDesktop" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-focus_mode = 0
-text = "Quit To Desktop"
+size_flags_horizontal = 4
+theme_type_variation = &"UnderlineButtonPause"
+text = "QUIT TO DESKTOP"
 
-[node name="ButtonResizeComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToDesktop" unique_id=1407769229]
-script = ExtResource("3_vvyjd")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/QuitToDesktop"]
+script = ExtResource("5_sound")
 
-[node name="ButtonSoundComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToDesktop" unique_id=313400818]
-script = ExtResource("4_j7lcx")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
-
-[node name="SettingsSubMenu" parent="." unique_id=1604004231 instance=ExtResource("6_qrgyy")]
-
-[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1674994064]
+[node name="SettingsSubMenu" parent="Root" instance=ExtResource("8_settings")]
+unique_name_in_owner = true
+layout_mode = 1

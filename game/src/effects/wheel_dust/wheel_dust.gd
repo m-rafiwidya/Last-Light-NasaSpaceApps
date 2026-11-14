@@ -140,7 +140,7 @@ func _update_gravity() -> void:
 
 func _process(_delta: float) -> void:
 	_update_gravity()
-	_grain_material.set_shader_parameter("viewport_height", float(get_viewport().get_visible_rect().size.y))
+	_grain_material.set_shader_parameter("viewport_height", VideoSettings.render_height_3d(get_viewport()))
 	var gear: RunningGear = robot.running_gear
 	var up: Vector3 = robot.global_basis.y.normalized()
 	var static_load: float = robot.mass * gravity.length() / float(RunningGear.Wheel.size())

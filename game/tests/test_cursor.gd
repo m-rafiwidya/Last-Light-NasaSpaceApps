@@ -2,7 +2,8 @@ extends SceneTree
 ## Windowed test (not --headless: headless Godot always reports a visible mouse): the cursor and
 ## the menus through a whole session, with real mouse and key events (Input.parse_input_event,
 ## as the OS would send them) and real focus changes (the window minimised and restored):
-##   1. The main menu shows the cursor and its buttons take clicks (Settings, Back, Moon).
+##   1. The main menu shows the cursor, a click skips its opening sequence, and its buttons take
+##      clicks (Settings, Back, Play, START NEW CAMPAIGN).
 ##   2. In game the cursor is captured, on foot and driving, and mouse look turns the view.
 ##   3. Esc shows the cursor with the pause menu; Resume captures it again.
 ##   4. Losing and regaining the window's focus never leaves the cursor hidden in a menu or
@@ -140,19 +141,29 @@ func _run() -> void:
 
 	# 1. Main menu
 	_check_mode("main menu: cursor visible", Input.MOUSE_MODE_VISIBLE)
-	await _click(_button("MainMenu/MainMenuSubScreen/VBoxContainer/VBoxContainer/Settings"))
+	var menu: Node = root.get_node("Main/UIManager/MainMenu")
+	_check("main menu: opening sequence playing", menu.is_intro_playing())
+	await _click(_button("MainMenu/Intro/Skip"))
+	_check("main menu: a click skips the opening sequence", not menu.is_intro_playing())
+	await _click(_button("MainMenu/MainMenuSubScreen/Column/Nav/Settings"))
 	await _frames(40)
-	var back := _button("MainMenu/SettingsSubMenu/VBoxContainer/Back")
+	var back := _button("MainMenu/SettingsSubMenu/Panel/Margin/Column/Footer/Back")
 	_check("main menu: Settings takes a click", back != null and back.is_visible_in_tree())
 	_check_mode("settings: cursor visible", Input.MOUSE_MODE_VISIBLE)
 	await _click(back)
 	await _frames(40)
-	var moon := root.find_child("moon_level", true, false) as Button
-	_check("main menu: Back takes a click", moon != null and moon.is_visible_in_tree())
+	var play := _button("MainMenu/MainMenuSubScreen/Column/Nav/Play")
+	_check("main menu: Back takes a click", play != null and play.is_visible_in_tree())
 	await _away_and_back()
 	_check_mode("main menu after losing and regaining focus: cursor visible", Input.MOUSE_MODE_VISIBLE)
-	await _click(moon)
-	_check("main menu: Moon takes a click and loads the Moon", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
+	await _click(play)
+	await _frames(40)
+	var popup: Node = root.find_child("PlayPopup", true, false)
+	var start: Button = popup.get_start_button() if popup and popup.is_open else null
+	_check("main menu: Play takes a click and opens the popup", start != null and start.is_visible_in_tree())
+	_check_mode("PLAY popup: cursor visible", Input.MOUSE_MODE_VISIBLE)
+	await _click(start)
+	_check("START NEW CAMPAIGN takes a click and loads the Moon", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
 
 	# The unfocused-window handling (main.gd): off when embedded in the editor, and when it is on,
 	# focus coming back restores the frame pacing and the mouse mode
@@ -197,7 +208,7 @@ func _run() -> void:
 	_check_mode("pause menu: cursor visible", Input.MOUSE_MODE_VISIBLE)
 	await _away_and_back()
 	_check_mode("pause menu after losing and regaining focus: cursor visible", Input.MOUSE_MODE_VISIBLE)
-	await _click(_button("PauseMenu/PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume"))
+	await _click(_button("PauseMenu/Root/Content/Column/Nav/Resume"))
 	await _frames(40)
 	_check("pause menu: Resume takes a click", GS.state == GS.State.IN_GAME_PLAYER)
 	_check_mode("resumed: cursor captured", Input.MOUSE_MODE_CAPTURED)
@@ -211,10 +222,10 @@ func _run() -> void:
 	_check_mode("test level: cursor captured", Input.MOUSE_MODE_CAPTURED)
 	await _key(KEY_ESCAPE)
 	await _frames(40)
-	await _click(_button("PauseMenu/PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToMenu"))
+	await _click(_button("PauseMenu/Root/Content/Column/Nav/QuitToMenu"))
 	_check("pause menu: Quit To Menu takes a click", await _wait_state(GS.State.MAIN_MENU))
 	_check_mode("back at the main menu: cursor visible", Input.MOUSE_MODE_VISIBLE)
-	await _click(_button("MainMenu/MainMenuSubScreen/VBoxContainer/VBoxContainer/Settings"))
+	await _click(_button("MainMenu/MainMenuSubScreen/Column/Nav/Settings"))
 	await _frames(40)
 	_check("main menu again: Settings takes a click", back.is_visible_in_tree())
 

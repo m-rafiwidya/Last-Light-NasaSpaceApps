@@ -1,0 +1,113 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/credits/credits_screen.gd" id="1_credits"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_theme"]
+[ext_resource type="Script" path="res://src/ui/components/starfield.gd" id="3_stars"]
+[ext_resource type="Texture2D" path="res://res/ui/astronaut_logo.svg" id="4_logo"]
+[ext_resource type="PackedScene" path="res://src/ui/components/underline_button.tscn" id="5_ubutton"]
+
+[node name="Credits" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1_credits")
+
+[node name="Root" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+
+[node name="Starfield" type="Control" parent="Root"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_stars")
+
+[node name="Drift" type="Control" parent="Root"]
+unique_name_in_owner = true
+anchors_preset = 0
+mouse_filter = 2
+
+[node name="Astronaut" type="TextureRect" parent="Root/Drift"]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0.85)
+layout_mode = 0
+offset_right = 144.0
+offset_bottom = 163.2
+pivot_offset = Vector2(79.2, 73.44)
+mouse_filter = 2
+texture = ExtResource("4_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Roll" type="Control" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 480.0
+offset_right = -480.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="End" type="VBoxContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 67
+alignment = 1
+
+[node name="EndText" type="VBoxContainer" parent="Root/End"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 26
+
+[node name="EndButtons" type="HBoxContainer" parent="Root/End"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 67
+alignment = 1
+
+[node name="WatchAgain" parent="Root/End/EndButtons" instance=ExtResource("5_ubutton")]
+unique_name_in_owner = true
+layout_mode = 2
+text = "WATCH AGAIN"
+
+[node name="MainMenu" parent="Root/End/EndButtons" instance=ExtResource("5_ubutton")]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MAIN MENU"
+
+[node name="Skip" type="Button" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = -101.0
+offset_right = -58.0
+offset_bottom = -48.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 2
+theme_type_variation = &"SkipButton"
+text = "SKIP"
+alignment = 2

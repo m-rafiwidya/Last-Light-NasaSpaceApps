@@ -6,20 +6,24 @@ extends Node
 ## the views, skipping any whose part isn't mounted; each view keeps its own mouse look.
 ## Runs after RoverVisuals, which poses the mast head and arm first.
 ##   CHASE      behind and above the rover, following its heading; mouse look orbits it
+##              (its field of view scales with Settings > Video > Field Of View)
 ##   MAST       on the mast head (needs a mast camera): mouse look pans / tilts the head and
 ##              pitches the camera to +-90 degrees; the only view that zooms (wheel, trackpad
-##              scroll / pinch, = / -)
+##              scroll / pinch, = / -). Unzoomed it has the Field Of View setting (VideoSettings).
 ##   HAZ_FRONT  between the front hazard camera pair under the chassis, looking out and down
 ##   HAZ_REAR   the same at the rear
 ##   TOOL       on the tool turret's camera (needs a tool turret), looking out of its lens
+## The hazard and tool cameras are fixed lenses: Field Of View doesn't change them. Brightness
+## (VideoSettings.exposure_multiplier) is also put on the tool view's own camera attributes.
 
 enum View { CHASE, MAST, HAZ_FRONT, HAZ_REAR, TOOL }
 
 const VIEW_NAMES: Array[String] = ["Chase camera", "Mast camera", "Front hazard camera",
 	"Rear hazard camera", "Arm tool camera"]
 
-# Mast camera zoom: vertical field of view from MAST_FOV_MAX (no zoom) down to MAST_FOV_MIN
-# (5.7x magnification), scaled by MAST_ZOOM_STEP per wheel notch and eased towards
+# Mast camera zoom: vertical field of view from MAST_FOV_MAX (no zoom; the Field Of View setting
+# replaces it, mast_fov_widest) down to MAST_FOV_MIN (5.7x magnification at 90), scaled by
+# MAST_ZOOM_STEP per wheel notch and eased towards
 const MAST_FOV_MAX: float = 90.0
 const MAST_FOV_MIN: float = 20.0
 const MAST_ZOOM_STEP: float = 0.8
@@ -61,6 +65,8 @@ var view: View = View.MAST
 ## Mast camera field of view (degrees): where it is easing to, and now
 var mast_fov_target: float = MAST_FOV_MAX
 var mast_fov: float = MAST_FOV_MAX
+## The mast camera's field of view unzoomed: Settings > Video > Field Of View
+var mast_fov_widest: float = MAST_FOV_MAX
 ## Seconds (game time) since the last zoom input in a view without zoom, for the HUD's hint
 var zoom_refused_age: float = INF
 
@@ -81,6 +87,7 @@ func _ready() -> void:
 	_tool_attributes.dof_blur_amount = TOOL_DOF_AMOUNT
 	robot.controller.camera_next.connect(next_view)
 	robot.controller.zoom.connect(_on_zoom)
+	_follow_fov_setting()
 
 
 func is_available(candidate: View) -> bool:
@@ -109,7 +116,7 @@ func view_name() -> String:
 
 ## Mast camera magnification relative to the unzoomed field of view (1.0 = no zoom)
 func mast_zoom() -> float:
-	return tan(deg_to_rad(MAST_FOV_MAX) / 2.0) / tan(deg_to_rad(mast_fov) / 2.0)
+	return tan(deg_to_rad(mast_fov_widest) / 2.0) / tan(deg_to_rad(mast_fov) / 2.0)
 
 
 func _switch(new_view: View) -> void:
@@ -130,13 +137,14 @@ func _switch(new_view: View) -> void:
 
 func _on_zoom(steps: float) -> void:
 	if view == View.MAST:
-		mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, MAST_FOV_MAX)
+		mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, mast_fov_widest)
 	else:
 		zoom_refused_age = 0.0
 
 
 func _physics_process(delta: float) -> void:
 	zoom_refused_age += delta
+	_follow_fov_setting()
 	if not is_available(view):
 		# The mast camera or tool turret was taken out (or never mounted): the chase view
 		# always works and shows the whole rover
@@ -149,10 +157,10 @@ func _physics_process(delta: float) -> void:
 			mast_fov = lerpf(mast_fov, mast_fov_target, 1.0 - exp(-MAST_ZOOM_RATE * delta))
 			fov = mast_fov
 			# Same screen distance turns the view by the same fraction of the field of view
-			look_scale = mast_fov / MAST_FOV_MAX
+			look_scale = mast_fov / mast_fov_widest
 		View.CHASE:
 			robot.pivot.global_transform = _chase_transform(delta)
-			fov = CHASE_FOV
+			fov = CHASE_FOV * VideoSettings.fov() / VideoSettings.FOV_DEFAULT
 		View.HAZ_FRONT:
 			robot.pivot.global_transform = robot.global_transform * Transform3D(Basis(Vector3.RIGHT, -HAZ_DOWN), HAZ_POSITION)
 		View.HAZ_REAR:
@@ -162,11 +170,23 @@ func _physics_process(delta: float) -> void:
 			robot.pivot.global_transform = _tool_transform()
 			fov = TOOL_FOV
 	robot.camera.fov = fov
+	_tool_attributes.exposure_multiplier = VideoSettings.exposure_multiplier()
 	var attributes: CameraAttributes = _tool_attributes if view == View.TOOL else null
 	if robot.camera.attributes != attributes:
 		robot.camera.attributes = attributes
 	robot.camera.near = maxf(NEAR, robot.min_camera_near)
 	robot.controller.look_scale = look_scale
+
+
+# A new Field Of View setting scales the mast camera's zoom with it (the same magnification)
+func _follow_fov_setting() -> void:
+	var widest: float = VideoSettings.fov()
+	if widest == mast_fov_widest:
+		return
+	var ratio: float = widest / mast_fov_widest
+	mast_fov_widest = widest
+	mast_fov_target = clampf(mast_fov_target * ratio, MAST_FOV_MIN, widest)
+	mast_fov = clampf(mast_fov * ratio, MAST_FOV_MIN, widest)
 
 
 # Behind and above the look target, following the rover's heading (smoothed, upright even if

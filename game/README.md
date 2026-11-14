@@ -2,6 +2,8 @@
 
 This document explains how the current game works: boot sequence, global state, UI, level loading, the player, and the small dialog/interaction systems. It is written for both humans and AI agents. Everything here was verified against the code in `src/` (see [Known issues](#13-known-issues--gotchas--todos) for places where code and intent disagree).
 
+**Planning and design docs** (the target, not a description of the current code): [START_HERE](../START_HERE.md) (final story handoff, 11 October 2026), [game and story plan](../Tandborste-Game-and-Story-Plan.md), [gameplay contract and acceptance checks](README_GAMEPLAY.md), [story script](docs/STORY_SCRIPT.md), [asset brief](docs/ASSET_BRIEF.md), [science and data](docs/SCIENCE_AND_DATA.md), [voice and audio](docs/VOICE_AND_AUDIO.md), [example mission definitions](docs/examples/MISSIONS.json), [instructions for AI assistants](../README_AI.md), [team message](../TEAM_MESSAGE.md), [UI design](../docs/ui/README.md).
+
 ## 0. Reading order (start here)
 
 Follow the code in this order and the whole game will make sense:
@@ -35,6 +37,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
 15. [Robot](#15-robot)
 16. [Audio](#16-audio)
+17. [Save slot metadata](#17-save-slot-metadata)
 
 ---
 
@@ -45,10 +48,10 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Engine | Godot 4.7 (`config/features`), Forward Plus renderer |
 | Physics | Jolt Physics (`3d/physics_engine`) |
 | Main scene | `res://src/main.tscn` |
-| Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
+| Viewport | 1920x1080 base, stretch mode `canvas_items`, aspect `expand`, HiDPI allowed: the UI is laid out on the base and drawn at the window's real resolution (see "Resolution and rendering quality" in section 6) |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); chosen on the main menu or switched from the pause menu |
+| Content | Two levels: `src/levels/test_level.tscn` and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); the Moon is started from the main menu (PLAY > START NEW CAMPAIGN), either is switched to from the pause menu, and the console's `testlevel` loads the test level |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -96,7 +99,16 @@ game/
     │   ├── moon_level.tscn           # Moon level (script: rover_level.gd)
     │   ├── terrain/                  # MoonTerrain (moon_terrain.gd), RockField (rock_field.gd), regolith.gdshader
     │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
-    ├── settings/graphics_settings.gd # the settings that are really applied (terrain detail, dust and tracks), user://settings.cfg
+    ├── save/                         # SaveIndex (save slot list for the PLAY popup) and SaveSlotInfo: metadata only, see section 17
+    ├── settings/                     # every setting, one class per area, all in user://settings.cfg (section 6.5):
+    │   ├── settings_section.gd       #   SettingsSection: a saved section (typed, clamped values, `changed`)
+    │   ├── general_settings.gd       #   subtitles, subtitle size, tooltips, FPS counter
+    │   ├── audio_settings.gd         #   bus volumes, mute when unfocused
+    │   ├── display_settings.gd       #   window mode (windowed / fullscreen / borderless)
+    │   ├── video_settings.gd         #   resolution, vsync, frame cap, field of view, brightness, quality preset
+    │   ├── graphics_settings.gd      #   terrain detail, dust and tracks (next level load)
+    │   ├── control_settings.gd       #   mouse sensitivity, invert Y, toggle crouch
+    │   └── input_bindings.gd         #   rebindable keys (InputMap), conflicts, reset
     ├── effects/wheel_dust/           # WheelDust: the wheels' lunar dust (one GPUParticles3D per wheel), its particle and grain shaders
     ├── effects/tyre_tracks/          # TyreTracks: tyre tracks that last the session (TrackLog, TrackMap, TrackRaster, the shader include, TrackFloor)
     ├── player/
@@ -105,9 +117,9 @@ game/
     └── ui/
         ├── ui_screen.gd              # base class (CanvasLayer) with fade_in/fade_out
         ├── ui_manager/               # orchestrates all screens
-        ├── main_menu/
-        ├── pause_menu/
-        ├── level_choice/             # one menu button per playable level (main menu, pause menu)
+        ├── main_menu/                # MainMenu, MenuMoon, OpeningSequence, PlayPopup + SaveCard (the PLAY popup)
+        ├── pause_menu/               # PauseMenu (blurred game, centred items, hosts the settings)
+        ├── level_choice/             # one menu button per playable level (pause menu)
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
         ├── boundary_hint/            # "Survey area boundary in 12 m" on both HUDs (BoundaryHint)
@@ -117,7 +129,7 @@ game/
         ├── loading_screen/
         ├── console/
         ├── dialog_box/               # one subtitle line widget
-        ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
+        ├── sub_screens/settings_sub_menu.tscn/.gd   # SettingsSubMenu: shared by main + pause menu (tabbed, some widgets still dummies)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 tests/                                # headless test scripts (see each file's header)
 tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, render_workshop_previews.gd, render_decor_previews.gd, render_kite_previews.gd, render_dust_previews.gd, render_tracks_previews.gd, measure_moon_fps.gd
@@ -131,7 +143,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 
 | Autoload | File | Responsibility |
 |---|---|---|
-| `SceneLoader` | `autoloads/scene_loader.gd` | Loads levels on a thread, instantiates them under `Main`, spawns the player / menu camera. Emits `request_transition`, `level_loaded`, `level_unloaded`. |
+| `SceneLoader` | `autoloads/scene_loader.gd` | Loads levels on a thread, instantiates them under `Main`, spawns the player / menu camera. Emits `request_transition`, `level_loaded`, `level_unloaded`; reports its `stage` and `overall_progress()` and holds gameplay levels for CONTINUE (see Loading stages and CONTINUE). |
 | `GameState` | `autoloads/game_state.gd` | Holds the current `State`, emits `state_changed`, controls pause + mouse mode. Holds the reference to the current `player`. |
 | `Debug` | `autoloads/debug.gd` | Stores console log lines and parses console commands. |
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
@@ -177,16 +189,16 @@ sequenceDiagram
     M->>SL: main_node = self
     M->>SL: load_scene("main_menu", no_fade_in = true)
     SL->>GS: change_state_to(LOADING)
-    GS-->>UI: state_changed -> LoadingScreen visible, other screens fade out
+    GS-->>UI: state_changed -> other screens fade out (launch: LoadingScreen stays hidden)
     SL-->>UI: request_transition(true)
-    UI->>LS: reset() (fully black immediately)
+    UI->>LS: reset() (not visible at launch)
     SL->>SL: _on_finished_fade_in() directly (no fade to wait for)
     SL->>SL: ResourceLoader.load_threaded_request(level)
     loop every frame
         SL->>SL: _process polls load_threaded_get_status
     end
     SL->>SL: _setup_scene() -> instantiate, add under Main
-    SL->>SL: _setup_main_menu() -> spawn Camera3D at CameraMarker
+    SL->>SL: _setup_main_menu() (empty backdrop: no camera)
     SL->>GS: change_state_to(MAIN_MENU)
     GS-->>UI: state_changed -> MainMenu.fade_in() (slides in)
     SL-->>UI: level_loaded
@@ -196,19 +208,21 @@ sequenceDiagram
 Key points:
 
 - `main.tscn` is just `Main (Node)` + an instance of `UIManager`. `main.gd` gives `SceneLoader` a reference to itself (`main_node`) so loaded levels get added as children of `Main`, then requests the `"main_menu"` level.
-- The first load passes `no_fade_in = true` because there is nothing to fade from; the screen is simply black until the menu is ready.
-- The **main menu backdrop is a real 3D level** (`test_level.tscn`, see `LEVEL_PATHS`) viewed through a camera placed at the level's `CameraMarker`. No player is spawned for it.
+- Launch goes black -> opening sequence with no loading screen: Godot's boot splash is plain `#050507` without an image (`application/boot_splash/*`), the main menu covers the screen with its sequence's black overlay from its `_ready()` (`OpeningSequence.cover()`), and `UIManager` keeps the `LoadingScreen` hidden for the launch's main-menu load (`_launching`, cleared when `MAIN_MENU` is first reached). Every later load (levels, Quit To Menu) shows the loading screen as before.
+- `main.gd` applies the saved window mode (`DisplaySettings.apply_saved()`) before the first load, except under tests (a script runs the `SceneTree`), which keep the window the command line asks for. It also puts the saved key bindings in the InputMap (`InputBindings.load_saved()`), applies the video settings (`VideoSettings.apply_saved()`) and keeps Brightness on every `WorldEnvironment` (`VideoSettings.track_environments`). Under tests the settings classes built on `SettingsSection` (and the bindings) start from their defaults, not the player's file (`SettingsSection.read_saved`), so a frame cap or a rebound key can't change a test.
+- The main menu's "level" is **`menu_backdrop.tscn`, an empty `Node3D`** (see `LEVEL_PATHS`): the menu draws its own starfield and its 3D Moon (in its own `SubViewport`), so no camera is made and the main viewport renders no 3D while the menu is up. No player is spawned for it. (A backdrop level with a `CameraMarker` would still be viewed through a camera there.)
 
 ---
 
 ## 5. Game state machine
 
-Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
+Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE, CREDITS}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
 
 - `IN_GAME_PLAYER` is the default in-game state (first-person player active). A gameplay level always loads into it.
 - `IN_GAME_ROBOT` means the robot is being driven. It is entered from `IN_GAME_PLAYER` by the `RobotTrigger` in the test level and left with Esc (`ui_cancel`), which goes back to `IN_GAME_PLAYER` (not to pause).
-- `GameState.last_in_game_state` remembers which of the two was active. `PAUSED` and `MISSION_CONSOLE` leave through `GameState.return_to_game()` (Esc, Resume, the console's X button), which returns to it. `GameState.is_in_game()` is true for both.
+- `GameState.last_in_game_state` remembers which of the two was active. `PAUSED`, `MISSION_CONSOLE` and `CREDITS` leave through `GameState.return_to_game()` (Esc, Resume, the console's X button), which returns to it. `GameState.is_in_game()` is true for both.
 - `MISSION_CONSOLE` is entered from `IN_GAME_PLAYER` by the `MissionConsoleTrigger` in the test level.
+- `CREDITS` plays the credits over the game (`GameState.open_credits()`, in-game only): from the test level's CREDITS TEST box (`CreditsTrigger`, Interact) or the `credits` console command. The game is paused behind it like `PAUSED`; closing the roll (SKIP then MAIN MENU, Esc, or MAIN MENU) returns to `last_in_game_state`, i.e. the level and the spot the player was in. (On the main menu the credits open without a state: `Credits.open()`.)
 
 ```mermaid
 stateDiagram-v2
@@ -221,6 +235,8 @@ stateDiagram-v2
     IN_GAME_ROBOT --> IN_GAME_PLAYER: Esc
     IN_GAME_PLAYER --> MISSION_CONSOLE: MissionConsoleTrigger interacted
     MISSION_CONSOLE --> IN_GAME_PLAYER: Esc or X
+    IN_GAME_PLAYER --> CREDITS: CreditsTrigger / credits command
+    CREDITS --> IN_GAME_PLAYER: roll closed
     PAUSED --> IN_GAME_PLAYER: Esc or Resume
     PAUSED --> LOADING: Switch to <level> / Quit To Menu
 ```
@@ -236,6 +252,7 @@ stateDiagram-v2
 | `IN_GAME_PLAYER` | Mouse `CAPTURED`; remembered as `last_in_game_state` | - | `HUD` |
 | `IN_GAME_ROBOT` | Mouse `CAPTURED`; remembered as `last_in_game_state`; robot camera becomes current | - | `RobotHUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
+| `CREDITS` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `Credits` (the HUD fades out) |
 | `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (computer-theme window with hardcoded dummy mission list, X button closes, opacity fade) |
 
 ### Input lock
@@ -279,10 +296,11 @@ UIManager
    - `new == IN_GAME_PLAYER` -> `HUD.fade_in()` else `fade_out()`
    - `new == IN_GAME_ROBOT` -> `RobotHUD.fade_in()` else `fade_out()`
    - `new == MISSION_CONSOLE` -> `MissionConsole.fade_in()` else `fade_out()`
-   - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out).
+   - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out), except during the launch's main-menu load.
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
-3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc).
+3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc); and in `_input` (before the GUI, so Alt+Enter doesn't also press the focused button): `toggle_fullscreen` (F11, Alt+Enter) -> `DisplaySettings.toggle_fullscreen()`, windowed <-> the last fullscreen kind, saved.
    - Backtick: shows/hides the `Console` popup. It does **not** change game state (the game keeps running while it is open). See [section 11](#11-debug-console).
+   - Esc is ignored while the main menu's PLAY popup is (or was, at the end of the last frame) open: the popup closes itself on Esc in `_input`, and that Esc does nothing else.
    - Esc: `IN_GAME_PLAYER -> PAUSED`, `IN_GAME_ROBOT -> IN_GAME_PLAYER`, `PAUSED`/`MISSION_CONSOLE -> last in-game state`.
 
 ### 6.2 UIScreen base class (`ui/ui_screen.gd`)
@@ -293,22 +311,65 @@ It also provides the shared animation helpers: `create_ui_tween()` (ease in/out 
 
 ### 6.3 Main menu (`ui/main_menu/`)
 
-- Two sub-screens inside one `CanvasLayer`: `MainMenuSubScreen` (Play Test level / Play Moon / Settings / Quit) and `SettingsSubMenu` (instance of `sub_screens/settings_sub_menu.tscn`).
-- Sub-screens "slide" horizontally by tweening `position`. Off-screen positions: main = `(-1920, 0)`, settings = `(1920, 0)`. On `_ready` both are placed off-screen; `fade_in()` slides the main sub-screen to `(0,0)`.
-- Buttons:
-  - **Play <level>** (a `LevelChoice`, one button per `SceneLoader.PLAYABLE_LEVELS` entry) -> `SceneLoader.load_scene(level_id)`
-  - **Settings** -> slides settings in; **Back** slides it out
-  - **Quit** -> `get_tree().quit()`
-- `fade_in()` resets to the main sub-screen and slides it in; `fade_out()` slides both sub-screens out.
-- Tweens come from `UIScreen.create_ui_tween()` / `slide_to()`.
+Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/`; design in `docs/ui/UI_SPEC.md`, all design sizes x 1.2).
+
+- `Background`: the static starfield (`components/starfield.gd`). It does not slide; it fades out and hides when the menu leaves.
+- `MainMenuSubScreen`: the Moon (`menu_moon.tscn`, below) and the left column at x 180: the astronaut logo (`res/ui/astronaut_logo.svg`, 7 s float loop), LAST LIGHT, then **PLAY / SETTINGS / QUIT GAME** (`UnderlineButton`s; hovering an item focuses it, so mouse and keyboard/gamepad share one highlight; up/down move between them).
+  - **PLAY** opens the `PlayPopup` (`play_popup.tscn/.gd`, board `.ll-save`/`.ll-btn`/`.ll-tag`, design x 1.2). It sits above the menu in the same `CanvasLayer`; its full-screen `Blur` (`components/backdrop_blur.gdshader`: a 16-tap mip blur of the screen, 12 px, mixed to 45 % towards `bg`, tweened in 0.5 s) blurs and dims the starfield, the Moon and the column, and takes the mouse. While it is open the menu's `MainMenuSubScreen` has `mouse_behavior_recursive` and `focus_behavior_recursive` disabled, so neither the buttons nor the Moon take input. Back button top-left (`BackButton`), footer `KeyChip`s.
+    - It reads `SaveIndex.list_saves()` (section 17) every time it opens. **No saves:** a `FramedPanel` with "There's no save file." (Exo 2) and START NEW CAMPAIGN (`SolidButton`); footer Esc Cancel. **Saves:** "Select save data to load.", one `SaveCard` per save, newest first, START NEW CAMPAIGN under the list; footer Enter Load, Esc Cancel. More than five cards scroll (`ScrollContainer`, `follow_focus` keeps the selected card in view, no visible scroll bar).
+    - `SaveCard` (`save_card.gd`, extends `FramedPanel`): the mission image (`res/ui/missions/<mission_id>.png`, 16:9; placeholders from `tools/ui/make_mission_placeholders.py`, replace them with real images of the same names), DD/MM/YYYY HH:MM in local time, the mission title (from `docs/examples/MISSIONS.json`), a 16-segment story progress bar with %, "X min played" / "1 h 12 min played" top-right and the slanted Autosave tag. Hovering focuses a card and focus selects it (frame, glow, corner brackets), so mouse and keyboard share one highlight; up/down move between the cards and START (focus never leaves the popup), Enter or click loads.
+    - Focus goes to the newest card (or START when there are none) on open and back to PLAY on close. Esc (handled in the popup's `_input`) or the back button closes it.
+    - START NEW CAMPAIGN -> `SaveIndex.start_new_campaign()` (`SceneLoader.load_scene("moon_level")`, the normal loading path); a card -> `SaveIndex.load_slot(slot_id)`, a stub that prints a TODO and loads the Moon level until the campaign state exists.
+    - The test level is not on the main menu: use the pause menu's "Switch to Test level" or the console's `testlevel`.
+  - **SETTINGS** opens `SettingsSubMenu` (section 6.5) over the blurred menu the same way (the Moon keeps turning behind the blur; the menu takes no mouse or focus meanwhile); BACK or Esc closes it and puts the focus back on SETTINGS. **QUIT GAME** -> `get_tree().quit()`.
+- `MenuMoon` (`menu_moon.gd`): a sphere with the LROC colour map (`res/textures/moon/lroc_color_4k.jpg`) in a `SubViewport` with its own world and a transparent background, orthographic camera, unshaded shader with a fixed view-space light from the upper left and a softened terminator (`menu_moon.gdshader`; texture coordinates come from the object-space direction, so the near side faces +Z). It turns slowly by itself, can be dragged (inertia; spin resumes 1.2 s later), brightens and grows 2 % on hover, and emits `moon_clicked` on a click without drag (the planet explorer will hang off it). Only the disc takes the mouse (`_has_point`). `set_active(false)` stops the `SubViewport` rendering (`UPDATE_DISABLED`) and its `_process`: the menu does this whenever it is hidden or the settings cover it.
+- `Intro` (`opening_sequence.gd`): at launch it is shown as a black cover (`cover()`) while the menu loads; then the opening sequence, played the first time the menu opens per launch (`SceneLoader.is_first_main_menu_load`): black, TANDBORSTE PRESENTS, the Moon rises in, the astronaut drifts in, LAST LIGHT resolves from blur (a `CanvasGroup` with a mip-blur shader, `title_blur.gdshader`, switched off with its mipmaps once the title is sharp), the items slide in; about 10 s, timings from the board's `.ll-intro` CSS. Every element is a function of the sequence time, so SKIP / any key / click / gamepad button just applies the end state. Its clock is real time advanced at most 1/20 s per frame, so a first-frame hitch doesn't swallow the start, and for its first 0.5 s (under the opaque overlay) the Moon and the blurred title are drawn as if visible, so their first-use cost is paid while the screen is black. TANDBORSTE PRESENTS and LAST LIGHT are `SpacedLabel`s (`components/spaced_label.gd`): text shaped once and each letter drawn at a float offset, so their animated letter-spacing is smooth (a `FontVariation`'s `spacing_glyph` is whole pixels: every step moved the last letter by as many pixels as there are letters). F11 / Alt+Enter don't skip it. The debug console's `intro` command plays it again.
+- `fade_in()` slides the sub-screen in (or starts the opening sequence), shows the background and starts the Moon; `fade_out()` slides both sub-screens out, fades the background and stops the Moon.
+- Tests: `tests/test_main_menu.gd` (headless; windowed with `-- --shot=<dir>` it saves screenshots of the sequence, the menu and both fullscreen kinds; with `-- --measure` it prints frame times through the sequence). Measured on the M4, 1920 x 1080 window: mean 6.1 ms, p95 about 8 ms in every phase; the only frames over 20 ms (27-54 ms) are the first one or two, under the black overlay.
 
 ### 6.4 Pause menu (`ui/pause_menu/`)
 
-Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState.return_to_game()`), **Switch to <level>** (a `LevelChoice` with `hide_current_level`: one button per playable level except the loaded one, refreshed in `fade_in()`; `SceneLoader.load_scene(level_id)`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
+Restyled to `docs/ui/UI_SPEC.md` "Pause" (board `Pause.dc.html`, design x 1.2, `res/ui_theme_v2.tres`). `PauseMenu` (`pause_menu.tscn/.gd`, extends `UIScreen`) is a hidden `Root` control holding a full-screen `Blur` (`components/backdrop_blur.gdshader`, 6 px, game view darkened to 50 %), the `Content` (centred **PAUSED** in `LabelScreenTitle`, a 48 px rule, then the items as centre-grow `UnderlineButton`s of the `UnderlineButtonPause` variation) and the `SettingsSubMenu` instance. Items: **RESUME** (`GameState.return_to_game()`), **SWITCH TO <level>** (a `LevelChoice` of `level_button_pause.tscn`, `uppercase`, `hide_current_level`: one button per playable level except the loaded one, refreshed in `fade_in()`; `SceneLoader.load_scene(level_id)`), **SETTINGS**, **QUIT TO MENU** (`SceneLoader.load_scene("main_menu")`), **QUIT TO DESKTOP**.
 
-### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
+- `fade_in()` shows `Root`, blurs the game (0.45 s), focuses RESUME and fades the title, rule and items in one after another (.05 s, .1 s, then .14 s + .04 s each; 12 px rise). The rise needs the items' laid-out positions, so it starts one frame after the menu is shown, with the items invisible until then. `fade_out()` unblurs and hides `Root` after 0.3 s. Hovering an item focuses it (one highlight for mouse and keyboard / gamepad).
+- **SETTINGS** opens the shared screen: the pause blur and the items fade out while the settings' own blur (10 px, 30 %) fades in, so the two never stack. BACK or Esc in the settings returns to the pause menu (`_on_settings_back`, SETTINGS focused). `is_settings_open()` tells `UIManager` not to treat that Esc as Resume: `UIManager` remembers whether it was open at the end of the previous frame, because the settings close themselves on Esc before `UIManager._process` runs.
 
-Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting, except Video > Terrain Detail and Video > Dust and Tracks (`GraphicsSettings`, used at the next level load) and the audio volumes.
+### Resolution and rendering quality
+
+The project's stretch mode is `canvas_items` on the 1920 x 1080 base (aspect `expand`, `display/window/dpi/allow_hidpi` on): every screen is laid out in base units as before, but drawn at the window's real pixels (a 3187 x 1793 Retina window draws the UI 1.66x, not a 1920 x 1080 picture scaled up), and the 3D view renders at the window's size times the 3D render scale (Settings > Video > Quality Preset: Ultra native, High native up to 1440 px of height (FSR 1 at the matching scale above it, recomputed when the window resizes), Medium FSR 1 at 0.75, Low FSR 1 at 0.5; `VideoSettings`). What depends on it:
+
+- **Text:** dynamic fonts are rasterised per size and oversampled to the screen (`gui/fonts/dynamic_fonts/use_oversampling`, Godot's default), so text is drawn at its real pixel size; the font imports (`res/fonts/*.import`) use light hinting, subpixel positioning (auto) and mipmaps (for titles that scale in tweens); no MSDF (softer than this at the small IBM Plex Mono sizes).
+- **Textures:** the default canvas filter is Linear Mipmap (`rendering/textures/canvas_textures/default_texture_filter` = 2; careful: in that setting 3 is *Nearest* Mipmap); textures without mipmaps draw linear. The SVGs are imported larger than drawn, with mipmaps: the crosshairs at 4x (their `TextureRect`s keep 8 / 16 px with `expand_mode` 1), the astronaut logo at 1.3 (its rects set its size).
+- **Screen-reading shaders** work in base pixels: `backdrop_blur.gdshader` (`radius_px`), `title_blur.gdshader` (`blur_lod`) and `camera_feed.gdshader` (edge blur, grain) take the stretch scale from `CANVAS_MATRIX` (`ui_scale`), so blurs keep their width on screen at any window size.
+- **The menu Moon** (`MenuMoon._fit_viewport`): its `SubViewport` renders at the Moon's on-screen pixel size, the container made that big and scaled back down. The control is anchored to the bottom-right corner and sized from the screen's height (`BASE_SIZE` x `height_unit()`; no absolute position is kept, `_apply_layout` runs on every window resize), so on any aspect ratio (ultrawide, 16:10, tall) the Moon reaches the right edge and keeps its place relative to that corner; `tests/test_main_menu.gd` resizes the window to 1920x1080, 1920x1200, 2560x1080 and 1080x1920 to check it. The workshop console's `SubViewport` is a texture in the 3D world and keeps its size.
+- **Wheel dust** sizes its grains from the 3D picture's real height (`VideoSettings.render_height_3d`).
+- `tests/test_native_resolution.gd` (headless, and windowed at a large size) checks the settings, the fonts, the Moon's viewport size and the crosshairs. Screenshots of every screen at a window size: the UI tests with `-- --shot=<dir>`, `tools/ui_screenshots.gd` (HUDs, consoles) and the gallery's `-- --shot=<file>`.
+
+**Frame time** (`tools/measure_moon_fps.gd -- unthrottled`, Moon level, MacBook Pro M4, 3187 x 1793 window, vsync off, every phase focused; mean ms):
+
+| | chase camera | mast camera | on foot |
+|---|---|---|---|
+| before (stretch `viewport`: 3D at 1920 x 1080, upscaled) | 8.4 | 6.2 | 6.8 |
+| High / Ultra, native (3D 3188 x 1794) | 18.0 | 11.9 | 13.6 |
+| Medium, FSR 1 at 0.75 (2391 x 1346) | 14.3 | 11.3 | 11.5 |
+| Low, FSR 1 at 0.5 (1594 x 897) | 8.9 | 8.6 | 7.8 |
+
+At native size the 3D view draws 2.75x the pixels it did before: about twice the frame time on a large Retina window. `scale_3d=<x>` on the tool measures any scale.
+
+### 6.5 Settings screen (`ui/sub_screens/settings_sub_menu.tscn`)
+
+`class_name SettingsSubMenu`, shared by the main and pause menus (docs/ui/UI_SPEC.md "Settings", board `Settings.dc.html`, design x 1.2). A full-screen control like the PLAY popup: a `Blur` (`backdrop_blur.gdshader`, 10 px, 30 %, tweened by `open()` / `close()`) over whatever is drawn before it, and a `FramedPanel` (unselected card style) holding **SETTINGS**, the `SlantedTab` row (GENERAL / AUDIO / VIDEO / CONTROLS), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox) and **BACK** (compact `SolidButton`). The owner (main menu / pause menu) turns its own input off while it is open, calls `open()` / `close()` and closes it on the `back_requested` signal, which BACK and Esc both emit (Esc is taken in `_input` when `is_open`, unless a key slab is listening or a select list is open; either of those takes the Esc first).
+
+- Rows are built in code: `PanelContainer` (`SettingsRow`, the 1 px divider) > `HBoxContainer` [`LabelMono` label 264 px, the control, then a slider's value or a note such as "(next level load)"]. Controls are the components in `ui/components/`: `SlantedSelect` (an `OptionButton`: light slab with a chevron, long labels trimmed), `SlantedToggle` (62 x 26 slanted switch), `SettingsSlider` (thin track, round knob, ring on focus) with its value label, and `KeyBindSlab` (shows the key; a click shows PRESS A KEY and the next key press is sent with `key_bound`, Esc or losing focus cancels). Each row reads its setting through a Callable and writes it through another; `open()` and every change re-read all rows (`_refresh`), so the main and pause menus' copies, the quality preset and swapped keys always show the real values. Reset buttons: RESET TO DEFAULTS (General) resets the General settings, RESET BINDINGS (Controls) the key bindings to `project.godot`'s.
+- Exactly one tab is shown (General by default); pressing the active tab does nothing. Keyboard / gamepad: focus starts on the active tab, up / down walk the page's controls from the tab to BACK (`_wire_focus`, `_wire_tab_links`), left / right change a slider.
+- **Every row is real** (applied at once unless the row says "next level load", saved in `user://settings.cfg`, restored at launch):
+  - General (`GeneralSettings`, section `general`): **Subtitles** shows / hides the HUD's `DialogServer` lines (also the scan reports and refused-mount messages, which are subtitles too); **Subtitle Size** 50-200 % of the 24 px text (`DialogBox`); **Show Tooltips** the part tooltip (`PartTooltip`, player and robot HUD); **Show FPS Counter** `FpsCounter` (`ui/fps_counter/`, top right, IBM Plex Mono, 4 updates a second, above every screen, added by `UIManager`).
+  - Audio (`AudioSettings`, section `audio`): Master / Music / Effects / **Voice** / Interface Volume (buses `Master`, `Music`, `SFX`, `Voice`, `UI`; `DialogServer` plays voice lines on `Voice`); **Mute When Unfocused** (`AudioSettings.options`): `AudioManager` mutes Master while the window has no focus (not when embedded in the editor, where it never has it).
+  - Video: **Display Mode** (`DisplaySettings`: Windowed, Fullscreen = exclusive, Borderless = borderless fullscreen window; section `display`; follows F11 / Alt+Enter; only the window mode changes, the 1920 x 1080 base and stretch settings stay). `VideoSettings` (section `video`): **Resolution** the windowed size (centred, no bigger than the screen; fullscreen ignores it and going back to windowed applies it; until one is picked the window stays as the project opens it); **VSync**; **Frame Rate Limit** `Engine.max_fps` (30 / 60 / 120 / 144 / Unlimited, default Unlimited); **Field Of View** 60-120, the player's camera and the rover's mast camera unzoomed (its zoom scales along), the chase view scaled from its 70 at 90; the hazard and tool cameras are fixed lenses; **Brightness** the 3D exposure (`CameraAttributes.exposure_multiplier` on every `WorldEnvironment` and the rover's tool camera; 50 as designed, 0 half, 100 twice; the UI is drawn after the 3D picture and never changes); **Quality Preset** Low / Medium / High / Ultra: the 3D render scale (Low FSR 1 at 0.5, Medium FSR 1 at 0.75, High native with the 3D height capped at 1440 px via FSR 1, Ultra native; the UI is always full resolution), MSAA, soft shadow filter and directional shadow atlas at once (`VideoSettings.QUALITY_PRESETS`; High is the game as built, Ultra adds 4x MSAA, soft-high shadows and an 8192 atlas) and sets Terrain Detail and Dust and Tracks; it shows Custom when those two were changed after it. **Terrain Detail** and **Dust and Tracks** (`GraphicsSettings`, next level load; Dust and Tracks shows the board's High / Low / Off).
+  - Controls: `ControlSettings` (section `controls`): **Mouse Sensitivity** 1-100 (40 is the speed the look was tuned at, `PlayerController.px_to_rad`), **Invert Y Axis**, both for the player's and the rover's look; **Toggle Crouch** (a press of the crouch key crouches, the next stands up). Then a key slab per `InputBindings.ACTIONS` entry (movement, sprint, jump, crouch, interact, lights, rover camera, zoom, arm, reset upright, fullscreen) and the fixed rows `InputBindings.LOCKED` (Throw = LMB, Pause / Back = Esc). Rebinding replaces the action's first key in the InputMap (its mouse wheel / Alt+Enter stay); keys that differ from `project.godot` are saved (section `bindings`, physical keycodes). A key another listed action has is **swapped** (that action gets the old key; the note under the slabs says so); Esc and the debug console's backtick are refused (the note says why); the menus' `ui_*` actions don't count. `KeyChip`, the player and robot HUD hints and the part tooltip's / cargo hint's "E" follow the new keys (`InputBindings.events.changed`). `UIManager` ignores the console key in the frame a slab took it (`KeyBindSlab.took_key_this_frame`), since Input polling still sees a handled key.
+- **Hidden rows** (`HIDDEN_ROWS`, kept as hidden label-only rows with the reason as meta): Language (no translations), Camera Shake (the game has none), Speaker Setup (Godot mixes to the device's own layout), Motion Blur (Godot 4 has none).
+- `tests/test_pause_settings.gd` checks the rows of every tab against the board, the key slab, the resets, focus, Esc / BACK from the main menu and from pause (windowed with `-- --shot=<dir>` it saves screenshots). `tests/test_settings.gd` checks what every setting does: applied, saved, restored after a simulated launch, rebinding with swaps / refusals / reset, key chips, hidden rows, and field of view, brightness, look and crouch in the test level and on the rover.
+- GDScript gotcha met here: a static function must not be called `reload()`: `ClassName.reload()` calls `Script.reload()` instead, which recompiles the script and resets its static variables (and their signal connections).
 
 ### 6.6 HUD (`ui/hud/`) and Robot HUD (`ui/robot_hud/`)
 
@@ -323,11 +384,23 @@ The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`, with its 
 
 ### 6.7 Loading screen (`ui/loading_screen/`)
 
-- Black full-screen `ColorRect` + `ProgressBar` (bottom-left) on `layer = 256`.
+Restyled to `docs/ui/UI_SPEC.md` "Loading" (design x 1.2, `res/ui_theme_v2.tres`, `ui/components/`): `Starfield` background; "Did you know?" (Exo 2), one fact (Michroma, `LabelLoadingFact`) with its source caption and 8 dots; the floating astronaut on the right; at the bottom the stage text (IBM Plex Mono, pulsing), the percentage and the 2 px bar. Stage and percentage labels have theme variations `LabelLoadingStage` / `LabelLoadingPercent`.
+
+- **Facts**: `FACTS` (the board's `facts()`), the first one random on every load (`_begin_load`, run by `reset()` / `fade_in()`), then the next every `FACT_PERIOD` (7 s) with a 0.8 s fade and 9.6 px rise. `fact_index` is the one showing.
+- **Astronaut**: `res/ui/astronaut_logo.svg`, the main menu's float loop (`MainMenu.FLOAT_KEYS` / `FLOAT_PERIOD`, read from its script, not copied). The float and the stage pulse run only while the screen is visible.
+- **Bar and stage text** follow `SceneLoader` (`stage`, `overall_progress()`, `progress[0]`), polled every frame; the bar moves toward the target at most 1.5 /s so a jump is a quick fill. Stage text: `LOADING_ASSETS` (threaded load of the scene) is PREPARING THE WORKSHOP below 50 % of `progress[0]`, WAKING UP KITE above it; `BUILDING_CONTENT` (MoonTerrain building its meshes after the scene loaded) is LOADING TERRAIN; `STARTING` / `AWAITING_CONTINUE` is ALMOST THERE. At `IDLE` (the fade-out) it keeps what it shows.
+- **CONTINUE** (`UnderlineButtonPrimary`, underline at 25 %, grows on hover): once `SceneLoader.stage == AWAITING_CONTINUE` and the bar is full, the stage text gives way to it, it takes focus, and Enter / Space (`ui_accept`) or a click calls `SceneLoader.continue_loading()`. A captured mouse is freed meanwhile.
 - `AnimationPlayer` with `RESET` (alpha 1, i.e. opaque), `fade_in` (0 -> 1 in 0.5s), `fade_out` (1 -> 0 in 0.5s).
   Note the naming: "fade_in" means *the black screen fades in* (hiding the game).
 - Emits `finished_fade_in` (wired to `SceneLoader._on_finished_fade_in` by `UIManager`) and `finished_fade_out` (then hides itself).
-- Progress bar is driven every frame from `SceneLoader.progress[0] * 100`.
+
+### 6.7a Credits screen (`ui/credits/`)
+
+`docs/ui/UI_SPEC.md` "Credits" (design x 1.2, `res/ui_theme_v2.tres`, `Starfield`, `UnderlineButton`, the theme's `SkipButton`). `CreditsScreen` (`UIScreen`, canvas layer 100, instanced under `UIManager`, hidden) rolls for `ROLL_TIME` (48 s, linear): the logo and "LAST LIGHT", then the sections, while the astronaut drifts across (from -312,144 / -20 deg to 192,-96 / 12 deg) and floats with the main menu's `FLOAT_KEYS`. It ends on THANK YOU FOR PLAYING, the Earth line and WATCH AGAIN / MAIN MENU (text 1.6 s, buttons 1.2 s after 1.4 s). SKIP (bottom-right) or Esc jumps to the ending; Esc there, or MAIN MENU, closes it (`closed` signal). While it is open SKIP holds the keyboard focus, so Enter can't press a button of the screen underneath; the focus goes back on close.
+
+- **Text**: `CreditsData` reads `res://res/credits.md` (the root `CREDITS.md` points to it; an exported build needs `*.md` in the export preset's resource filters, there is no preset yet). Each `###` heading is a section; blank-line separated blocks are entries; a block of `NAME | small line` lines becomes name rows (team, studio), any other block is centred text with its line breaks; `CLOSING NOTE` has no title. `[YOUR SPECIAL THANKS]` is the placeholder to replace before release.
+- **Opening**: the `credits` console command (main menu: `open()`; in a level: `GameState.open_credits()`, state `CREDITS`) and the test level's CREDITS TEST box. `UIManager` shows it on `CREDITS` and, when it is `closed` in that state, calls `return_to_game()`; `UIManager._process` counts it as an open popup so the Esc that closes it doesn't also pause. `play()` restarts the roll, `skip()` ends it.
+- `tests/test_credits.gd`, `tests/test_credits_in_game.gd`.
 
 ### 6.8 Button components (`ui/button_style_components/`)
 
@@ -348,13 +421,13 @@ All buttons in the menus use `focus_mode = 0` (no keyboard focus).
 const LEVEL_PATHS: Dictionary = {
     "test_level": "res://src/levels/test_level.tscn",
     "moon_level": "res://src/levels/moon_level.tscn",
-    MAIN_MENU_ID: "res://src/levels/test_level.tscn",   # "main_menu"
+    MAIN_MENU_ID: "res://src/levels/menu_backdrop.tscn",   # "main_menu" (empty)
 }
-## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
+## The levels the pause menu offers ("Switch to ..."), in menu order: id -> display name
 const PLAYABLE_LEVELS: Dictionary = {"test_level": "Test level", "moon_level": "Moon"}
 ```
 
-`current_level_id` is the id of the loaded level ("" while none is). `ui/level_choice/` builds the menus' level buttons from `PLAYABLE_LEVELS` (`LevelChoice`, a `VBoxContainer` of `level_button.tscn`s, emits `level_chosen(level_id)`), so a new playable level only needs an entry there.
+`current_level_id` is the id of the loaded level ("" while none is). `ui/level_choice/` builds the pause menu's level buttons from `PLAYABLE_LEVELS` (`LevelChoice`, a `VBoxContainer` of `level_button.tscn`s, emits `level_chosen(level_id)`), so a new playable level only needs an entry there.
 
 ### Flow of `load_scene(level_name, no_fade_in = false)`
 
@@ -373,7 +446,11 @@ flowchart TD
     I --> J[ResourceLoader.load_threaded_request]
     J --> K[_process polls status every frame]
     K -- LOADED --> L[_setup_scene: instantiate and add under Main]
-    L --> M{loading_scene_id == main_menu?}
+    L --> L2[wait for loading_content nodes<br/>stage BUILDING_CONTENT]
+    L2 --> L3{gameplay level and<br/>wait_for_continue?}
+    L3 -- yes --> L4[stage AWAITING_CONTINUE<br/>loading screen shows CONTINUE<br/>wait for continue_loading]
+    L3 -- no --> M
+    L4 --> M{loading_scene_id == main_menu?}
     M -- yes --> N[_setup_main_menu]
     M -- no --> O[_setup_level]
     N --> P[loading_scene_id = empty<br/>emit level_loaded]
@@ -393,16 +470,18 @@ The controller must be assigned **before** `add_child(player)` because `Player._
 
 ### `_setup_main_menu()`
 
-Expects a **`CameraMarker`** (`Marker3D`; if missing, an error is logged and the origin is used). Creates a `Camera3D` (FOV 90) at that marker's transform, makes it current (the level contains a robot with its own camera), then sets state to `MAIN_MENU`. No player is spawned.
+If the backdrop level has a **`CameraMarker`** (`Marker3D`), creates a `Camera3D` (FOV 90) at that marker's transform and makes it current. The default backdrop (`menu_backdrop.tscn`) is empty and has none, so no camera is made. Then sets state to `MAIN_MENU`. No player is spawned.
 
 ### Level requirements checklist
 
 | Node name | Type | Needed for |
 |---|---|---|
 | `SpawnPoint` | `Marker3D` | any gameplay level |
-| `CameraMarker` | `Marker3D` | any level used as the main-menu backdrop |
+| `CameraMarker` | `Marker3D` | optional, a level used as a 3D main-menu backdrop |
 
-Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()` and a `content_ready` signal: `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
+Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()`, a `content_ready` signal and, optionally, `content_progress()` (0 to 1): `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
+
+**Loading stages and CONTINUE.** `SceneLoader.stage` (`Stage`: `IDLE`, `LOADING_ASSETS`, `BUILDING_CONTENT`, `STARTING`, `AWAITING_CONTINUE`) and `overall_progress()` (0 to 1: the threaded load is the first `ASSET_SHARE`, 35 %, the content built after it the rest; levels without such content jump to the end) are what the loading screen shows. Once a *gameplay* level is in the tree and its content is ready, the loader stays in `AWAITING_CONTINUE` (`GameState` still `LOADING`, the player not spawned, the loading screen still up, `loading_scene_id` still set so no other load can start) until `continue_loading()` emits `continue_requested`; then it spawns the player, enters `IN_GAME_PLAYER` and emits `level_loaded` as before, which fades the screen out. The main menu (Quit To Menu, the launch, the fallback after a failed load) never waits. `SceneLoader.wait_for_continue` switches the wait; it defaults to off when Godot runs a script (`-s`, which is how every test and tool in `tests/` and `tools/` runs, so none of them needs to press CONTINUE) and on otherwise. `tests/test_loading_screen.gd` sets it to check the flow.
 
 Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoader._ready()`, so a typo is reported at startup. If a threaded load fails, `SceneLoader` clears its loading state and falls back to the main menu (unless the main menu itself failed). On unload it also clears `GameState.player`, `GameState.robot` and `Debug.current_robot` (the robot HUD's rover), so nothing points into the old level; its player, rovers, cameras and held props are freed with it, `DialogServer` stops any dialog (`level_unloaded`), leaving `PAUSED` unpauses the tree, and the new level's player camera is made current. `tests/test_level_switch.gd` checks all of this switching Test level -> Moon -> Test level -> main menu through the real menus (with a prop held on foot and by the driven rover).
 
@@ -429,7 +508,7 @@ The lunar workshop of the asset brief (A01-A04, A07; spec, measurements and layo
 - **Astronaut** (`tools/blender/ASTRONAUT_KIT.md`, models in `res/models/astronaut_kit/` from `tools/blender/scripts/astronaut/make_astronaut.py`): static meshes, no animation.
   - `SuitOnStand` (`astronaut_rack.glb`): an empty suit on its stand (`ws_suit_stand`, with collision) in the operator area's south-east corner, its helmet on the stand's shelf.
   - `Operator` (`astronaut_seated.glb` and `ws_stool`, at `anchor_seat`, no collision or shadows): the seated operator. It shows only while the console drives the rover (and through a pause), so the rover's camera sees someone at the console through the partition window; leaving the rover hides it again.
-  - `astronaut.glb` is the same suit rigged (45 bones, Godot humanoid names, T-pose) and isn't used yet. It is there for Mixamo animations later, with `tools/blender/parts/astronaut/astronaut_mixamo.fbx`.
+  - `astronaut.glb` is the same suit rigged (45 bones, Godot humanoid names, T-pose) and isn't used yet. It is there for Mixamo animations later, with `tools/blender/parts/astronaut/astronaut_mixamo.fbx`. `astronaut_fp.glb` (the same rig, the helmet split off, hand-keyed clips) is the player's own body (8.8).
 - **Decor** (`tools/blender/DECOR_KIT.md`, models in `res/models/decor_kit/` from `tools/blender/scripts/decor/`; `decor_enabled`, on in both levels): `WorkshopDecor` (`workshop_decor.gd`), the child `Decor`, built from `dc_layout.glb`.
   - Inside: one merged mesh (`dc_interior.glb`, 2,669 triangles, 10 surfaces plus the two photo quads): a tool chest, labelled crates, a cable reel, spare panels, an old spare wheel ("NOT FOR FITTING"), a ladder, an oxygen rack, two fire extinguishers, hazard stripes inside the bay door, hazard signs, a mug and a tablet on the console desk, a plant-growth lab under the east window, five service notes by the equipment they describe (A12) and two history cards with NASA photos (AS12-49-7278, AS12-48-7136; credits on the cards and in `CREDITS.md`).
   - Outside: two crates, a cable reel, a power outlet and its cable, a ramp sign; the floor pieces and the cable are rested on whatever ground is under them as the level starts (the Moon's apron isn't flat). Tyre tracks on the apron are `Decal`s that only paint the Moon terrain's render layer (none in the test level, never on a rover); the rovers' own tracks are TyreTracks (below).
@@ -586,7 +665,8 @@ PlayerCharacter (RigidBody3D, script player.gd)
 │       ├── RayCast3D     3 m forward, collides with areas, mask 53
 │       └── HelmetLight   SpotLight3D 12 cm above the eyes, aimed with the view: 34 degree cone, 25 m range, energy 1.5, soft edge (angle attenuation 0.3), shadows; hidden = off
 ├── AudioStreamPlayer3D   (unused)
-└── CrouchCheck (RayCast3D)  upward 1.95 m, detects low ceilings
+├── CrouchCheck (RayCast3D)  upward 1.95 m, detects low ceilings
+└── Body (player_body.tscn)  the player's own spacesuit, purely visual (8.8)
 ```
 
 **Helmet light:** `L` (the `lights` action, the rover's headlights while driving: L means lights in both modes) toggles `Player.helmet_light_on` on foot (`PlayerController.lights_toggle`). It starts off in each level, and the player keeps it as it is while driving a rover (the player stays standing in the world), so it is the same after getting in and out; the rover's headlights keep their own state the same way. Tuned on the floor of the Moon's permanently shadowed crater (`tools/render_helmet_light.gd`, previews in `tools/previews/helmet_light/`): a wheel, a motor and a battery on the ground 2.5-8 m ahead, invisible without it (screen brightness 0.000-0.014, the ground 0.02), stand out dark (0.17-0.34) against ground lit to 0.42-0.65 (at the 2.1 degree sun's exposure of 4.78; at 9 degrees and exposure 2.0, 0.27-0.47; energy 4 clipped the near ground to white). Local lights lit from where you look from use the regolith's smooth normal (`regolith.gdshader`, shadow hiding), since its detail normals speckled the far edge of the pool black.
@@ -642,6 +722,24 @@ This is a **custom force-based character controller** on top of a rigidbody:
 
 `release_camera(new_transform, fov)` / `bind_camera()` detach the camera (`top_level = true`), lock look/move/crosshair, and tween it to a target transform and back. Nothing in the current game calls them (they were meant for things like a map view).
 
+### 8.8 First-person body (`player/body/`, `PlayerBody`; experiment on `exp/fp-body`)
+
+The astronaut kit's suit as the player's own body (`res/models/astronaut_kit/astronaut_fp.glb`, from `tools/blender/scripts/astronaut/make_astronaut_anims.py`; spec, clips and rough spots in `tools/blender/ASTRONAUT_KIT.md` 13). Looking down, the player sees the suit, legs and boots; the helmet is never drawn for the player's camera but casts its shadow.
+
+**It is visual only.** `player.gd` and `player_controller.gd` are unchanged. The body reads the player (velocity, `is_on_floor`, the camera's height and angles, `jump_height`, `gravity`, the holder's signals, `GameState`) and writes to it in one place: `player.holder.hold_point` (below). No collision, forces or input; `tests/test_player_body.gd` runs the same walk, sprint, strafe, jump, crouch and turns with and without the body and gets the same path and camera to 0.0000 mm.
+
+- **Scene:** `Body` (Node3D, `player_body.gd`) with `Suit` (the GLB, scaled 0.95 = 1.71 m so its eyes are at the 1.5 m camera, turned to face -Z). Built in code at `_ready`: the `AnimationTree` and the skeleton modifiers. `Body` waits for the `Player`'s own `_ready` (a child is ready first), since the holder is made there.
+- **Camera:** never moved by the body: no bob, no landing dip. The body moves under it. Horizontally the suit's eyes (12 cm ahead of its neck, as in a helmet) stay under the camera (the clips' average eye positions, `CLIP_EYE`, blended like the clips: a deep crouch puts the head 0.4 m ahead of the boots); looking down, the suit slides up to 0.16 m back so the chest doesn't fill the view.
+- **Helmet and shadows:** `astronaut_helmet` (helmet, visor, lamp pods, neck ring and the shoulder yoke round it) is `SHADOWS_ONLY`; the body casts shadows. Both are on render layer 11 (`BODY_LAYER`), which `Body` takes out of the helmet light's `shadow_caster_mask` (the light sits inside the helmet).
+- **Where the boots stand:** a ray down from the capsule (world and props). Crouching shrinks the capsule round its centre, so the player sinks 0.5 m (on the Moon it is in the air for most of a second); the boots stay on the ground unless the player really jumped or the ground is more than 0.6 m below.
+- **Animation** (`AnimationTree`, advanced manually every frame): `idle` / `walk` / `sprint` (a BlendSpace1D over 2-3 m/s) / `walk_back` (its own clip for walking backwards) played at speed / stride cycles a second (each gait's cycle is stretched to one second, so walk and sprint stay in step), `turn_step` when the legs step round on the spot, `crouch_idle` / `crouch_walk` by how high the eye is over the boots (1.5 m standing, 0.75 m crouched), `land` scaled by the impact speed (4 m/s = full), and `air_rise` / `air_apex` / `air_fall` by vertical speed over take-off speed (`sqrt(2 jump_height gravity)`), so the same poses fit a 0.8 s Earth jump and a 2.3 s Moon jump.
+- **Legs and upper body** (`SuitPoseModifier`, the first skeleton modifier): the upper body faces the view; the legs face the way the player moves (more than 100 degrees off the view: backwards, facing the view and playing `walk_back`) and the waist bearing (`Spine`) turns between them, up to 90 degrees when strafing. Standing still, the legs stay put while the view turns and step round once it is 50 degrees off.
+- **Hands** (`TwoBoneIK3D` per arm, then `SuitHandsModifier` turning the hands and curling the fingers): ObjectHolder's signals drive them. Parts up to 0.27 m go in the right hand, up to 0.8 m in both (gripping the sides of the part's collision box along the axis closest to the view's right); the hands close once the wrists are on their marks. A rover (bigger) keeps the old floating hold (`hold_point = null`) with the arms reaching towards it. Throwing pushes the arms out along the view, dropping opens the hands; both fade back to the animation.
+- **Hold point:** `ObjectHolder.hold_point` (optional; null for the robot, which keeps its 2 m hold) is set to `Body`'s `HoldPoint`, about 0.45 m out from the eye and 0.1-0.8 m below it depending on the camera pitch (`HOLD_TABLE`), a little to the right for one hand, the part's middle (not its connector origin) on it. **Placing parts is closer than before:** every socket of the docked rover still takes its part dropped from the hands, the low ones (motor) crouched; some only standing (arm tool, mast head, cargo) or only crouched, where the old 2 m hold reached both (the test prints which).
+- **Driving** (and pausing while driving) hides the body: the console's seated operator is the player then.
+- **Cost** (`tools/measure_player_body.gd`, body on / off in alternating windows in the Moon bay; MacBook Pro M4): the suit is 4,202 skinned triangles drawn plus 684 shadow-only, one Skeleton3D, one AnimationTree, two TwoBoneIK3D and two small modifiers. Headless (CPU only, everything but drawing): +0.07 ms a frame standing, none measurable walking (6 pairs of 8 s). Timed directly while walking: the body's script and animation tree 0.09-0.11 ms a frame. With a window the frame stays at the display's 144 Hz cap either way (6.90 -> 6.96 ms), so the drawing cost is under that headroom but not resolved; draw calls didn't change in that view. (The `TIME_PROCESS` monitor gave impossible values there, more than the whole frame, and isn't used.)
+- **Video:** `tools/record_player_body.gd` (Movie Maker, a window): the player's view, then a chase camera with the helmet shown. `tools/record_feet_closeup.gd`: the boots in slow motion at ankle height (the ankle bellows, planted boots).
+
 ---
 
 ## 9. Interaction & object pickup
@@ -667,7 +765,7 @@ Where the level's `player_lifts_rovers` is false (the Moon), a `Robot` is never 
 
 - **Pick up**: stores the object's original layer/mask and orientation (relative to the camera). The object is moved to **collision layer 4 (the "held" layer)** and its mask drops the player layer, so it can't push the player around or shove them upward.
 - **Shared code**: all of this lives in `ObjectHolder` (`src/object_holder/object_holder.gd`, a `RefCounted` created with `ObjectHolder.new(body, pivot, camera)`), used by both `Player` (`player.holder`) and `Robot` (`robot.holder`). API: `pickup(body)`, `release()`, `throw()`, `update(delta)`, `held_object`.
-- **While held** (`ObjectHolder.update`, every physics step): a PID-style controller applies force and torque to pull the object to a point `PICKUP_DISTANCE` = 2 m in front of the camera. Pitch is clamped so the holder can't pull itself up by looking down. Gains scale with mass (`log(mass/10 + 1)` for position, linear in mass for rotation). Integral terms (`KI`) are 0. `apply_reaction_force` (pushes the holder back) is `false`. A collision exception with the holder is added while held (needed for the robot, which is on the props layer).
+- **While held** (`ObjectHolder.update`, every physics step): a PID-style controller applies force and torque to pull the object to a point `PICKUP_DISTANCE` = 2 m in front of the camera, or to `hold_point` when it is set (the player's body puts it in the suit's hands, 8.8). Pitch is clamped so the holder can't pull itself up by looking down. Gains scale with mass (`log(mass/10 + 1)` for position, linear in mass for rotation). Integral terms (`KI`) are 0. `apply_reaction_force` (pushes the holder back) is `false`. A collision exception with the holder is added while held (needed for the robot, which is on the props layer).
 - **Release**: press E again; restores original layer/mask.
 - **Throw**: left click (`interact_primary`) while holding -> releases and applies an impulse along the camera forward vector, scaled with mass.
 - `secondary` (right click) only sets `is_rotating_held_object`; re-rotation isn't implemented.
@@ -685,7 +783,7 @@ Data (`Resource`s, editable in the inspector):
 
 - `play_dialog(dialog) -> bool`: awaitable. Emits `dialog_played`, waits `get_dialog_duration()` (1000 chars/min reading speed, at least the audio length and `min_duration`) on a pausable `SceneTreeTimer`, then emits `dialog_ended`. Returns `true` if it finished, `false` if cancelled or if that same `Dialog` is already playing.
 - `play_dialog_sequence(seq) -> bool`: awaitable. Plays each dialog in order with a 0.35s gap (`SEQUENCE_GAP`). The gap is shorter than the DialogBox hold + fade-out, so consecutive lines can be on screen together; the HUD stacks them smoothly. Ignored while another sequence is playing, so re-triggering a trigger can't start overlapping copies. Emits `sequence_finished(seq, completed)`.
-- Audio: if a `Dialog` has an `audio_stream`, `DialogServer` plays it on an `AudioStreamPlayer` child (bus `AUDIO_BUS`, currently `Master`) for the life of the line; it is stopped and freed when the line ends or is cancelled.
+- Audio: if a `Dialog` has an `audio_stream`, `DialogServer` plays it on an `AudioStreamPlayer` child (bus `AUDIO_BUS`, `Voice`: Settings > Audio > Voice Volume) for the life of the line; it is stopped and freed when the line ends or is cancelled.
 - `stop_all()`: cancels everything. It bumps an internal generation counter, so any waiting coroutine exits when it wakes, and emits `dialog_ended` for active dialogs so the HUD clears. It is called automatically on `SceneLoader.level_unloaded`, so a sequence can no longer continue into the next level or menu.
 
 **What happens when dialogs overlap** (there is no queue or priority system yet):
@@ -719,6 +817,11 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `quit` | quit the game |
 | `say <text...>` | creates a temporary `Dialog` with that subtitle and plays it via `DialogServer` |
 | `fullbright` | toggles `Viewport.DEBUG_DRAW_UNSHADED` |
+| `intro` | plays the main menu's opening sequence again (main menu only) |
+| `credits` | plays the credits roll over the main menu or the level (state `CREDITS`; back to where you were) |
+| `testlevel` | loads the test level (it is no longer on the main menu) |
+| `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
+| `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |
 
 | anything else | logs `Unknown command "..."` |
 
@@ -770,15 +873,14 @@ Grounded in the current code; useful to know before changing things.
 - `GameState.State.IN_GAME_MENU`, `Player.inventory`/`active_item_index`, `viewmodel_controller`, `AudioStreamPlayer3D`, `is_rotating_held_object` are placeholders with no behaviour.
 
 **Scene loading**
-- `LEVEL_PATHS["main_menu"]` points at `test_level.tscn` (same file as the playable level) - fine for now, but a dedicated menu level is the intended direction (`is_first_main_menu_load` is reserved for an intro).
-- A failed main-menu load has nothing to fall back to and stays on the loading screen (a failed gameplay level falls back to the main menu).
+- A failed main-menu load has nothing to fall back to and stays on the loading screen, or on black at launch (a failed gameplay level falls back to the main menu).
 
 **UI**
-- The settings menu widgets (sliders, toggles, dropdowns, key-binding buttons) are dummies: they hold local state only and are not saved or applied. The selected settings tab persists while the menu stays alive (it is not reset to General on re-open), and the active tab button has no highlight yet. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.
+- The selected settings tab persists while the menu stays alive (it is not reset to General on re-open).
 - Sub-screen positions assume a 1920 px wide viewport (hard-coded `+-1920`).
 - **Planned / consider for the final build (settings menu):**
   - Replace the manual `Tab` enum + show/hide loop with a `ButtonGroup` (`toggle_mode = true` on the four tab buttons) so the engine guarantees exactly one tab is selected and highlights the active one. Optionally swap the `Pages` container for a `TabContainer` (`tabs_visible = false`, set `current_tab` from the buttons). Check that `ButtonResizeComponent` and the pressed style in `res://res/theme.tres` look right on toggled buttons.
-  - Replace the code-built dummy rows with a reusable row scene (label + widget bound to a setting key) once real settings exist, and persist them (e.g. `ConfigFile`).
+  - Maybe replace the code-built rows with a reusable row scene (label + widget bound to a setting key).
 - `DialogServer` has no queue: a second sequence started while one is playing is ignored, and individual lines can overlap (`play_dialog` only rejects the same `Dialog` instance twice). See the overlap table in section 10.
 - `play_dialog` returns `false` for both "cancelled" and "ignored because already playing", and `play_dialog_sequence` treats any `false` as a cancel. If a line of a sequence is already playing standalone (e.g. via `say`), the sequence aborts early with `completed = false`.
 
@@ -828,7 +930,7 @@ Grounded in the current code; useful to know before changing things.
 2. Add a `Marker3D` named **`SpawnPoint`** (player spawns with its transform).
 3. (Optional, if used as menu backdrop) add a `Marker3D` named **`CameraMarker`**.
 4. Register it in `SceneLoader.LEVEL_PATHS`: `"my_level": "res://src/levels/my_level.tscn"`.
-5. To offer it in the main and pause menus, add it to `SceneLoader.PLAYABLE_LEVELS` with its display name; otherwise load it with `SceneLoader.load_scene("my_level")`.
+5. To offer it in the pause menu, add it to `SceneLoader.PLAYABLE_LEVELS` with its display name; otherwise load it with `SceneLoader.load_scene("my_level")`.
 6. For drivable rovers and a parts pile, use `rover_level.gd` as the root script (or extend `RoverLevel`) and follow its naming (`<Rover>` + `<Rover>Trigger`, `PartsPile`, `RespawnPartsTrigger`).
 
 ### Add a pickup prop
@@ -1019,17 +1121,17 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 | Sound | Where it plays |
 |---|---|
-| `hover`, `click` | Every menu button, level button, settings tab, settings dropdown and button, mission console button (`ButtonSoundComponent`); choosing a mission in the console list |
+| `hover`, `click` | Every menu button, level button, settings tab, settings select, key slab and button, mission console button (`ButtonSoundComponent`); choosing a mission in the console list |
 | `game_start` | Main menu **Play <level>** (`LevelChoice.press_sound`) |
 | `confirm` | Pause menu **Switch to <level>** |
 | `menu_open` / `menu_close` | Pause menu and mission console opening / closing (from `GameState.state_changed`); `menu_open` also on **Settings** |
 | `back` | Settings **Back**, **Quit To Menu** |
-| `toggle_on` / `toggle_off` | Settings check buttons |
+| `toggle_on` / `toggle_off` | Settings toggles |
 | `slider_tick` | Settings sliders |
 | `notification` | The boundary hint appearing on the HUD that is showing (`BoundaryHint`) |
 | `error` | The robot HUD's "No zoom on the ..." refusal |
 
-**Volumes:** Settings > Audio > Master, Music, Effects and Interface Volume are real (0-100 %, linear gain; 0 mutes): `AudioManager.set_volume(key, percent)` applies them to the `Master`, `Music`, `SFX` and `UI` buses and saves them in `user://settings.cfg` (section `audio`, next to `GraphicsSettings`) through `AudioSettings` (`src/settings/audio_settings.gd`); the main and pause menus' sliders follow each other via `AudioManager.volume_changed`. Voice Volume stays a dummy until a voice bus exists.
+**Volumes:** Settings > Audio > Master, Music, Effects and Interface Volume are real (0-100 %, linear gain; 0 mutes): `AudioManager.set_volume(key, percent)` applies them to the `Master`, `Music`, `SFX` and `UI` buses and saves them in `user://settings.cfg` (section `audio`, next to `GraphicsSettings`) through `AudioSettings` (`src/settings/audio_settings.gd`); the main and pause menus' sliders follow each other via `AudioManager.volume_changed`. Voice Volume sets the `Voice` bus (`DialogServer`'s lines). Mute When Unfocused mutes `Master` while the window has no focus (`AudioManager._notification`, `AudioSettings.set_focus_muted`).
 
 **Gameplay sounds:** the `Sfx` autoload (`src/autoloads/sfx.gd`) plays `res/audio/sfx/` (made by `game/music/sfx_sounds.py`, Deep Space style: soft, muffled, nothing rings). It pauses with the game, plays nothing on the main menu or loading screen, nor for 1.5 s after a level starts (parts mounting, props settling).
 
@@ -1058,3 +1160,46 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 **Tests:** `tests/test_audio.gd` (music, UI, volumes) and `tests/test_sfx.gd` (gameplay sounds on the Moon level). Headless Godot uses the Dummy audio driver, which plays in real time while `--fixed-fps` runs game time as fast as it can, so the test waits in real time for audio and in game time for tweens.
 
+---
+
+## 17. Save slot metadata
+
+There is **no save system or campaign state yet**. The campaign state (README_AI.md: "one authoritative campaign state") will own the real save data. The PLAY popup only needs a few display fields per slot, so it reads them from small metadata files that the campaign state writes **next to its own save data**. The UI never reads or writes gameplay data.
+
+- `src/save/save_slot_info.gd` (`SaveSlotInfo`): `slot_id`, `mission_id`, `saved_at`, `play_time_sec`, `story_progress`, `is_autosave`, `current_objective`; `from_dict()` validates a parsed file, `to_dict()` writes one.
+- `src/save/save_index.gd` (`SaveIndex`, static functions, no autoload):
+  - `list_saves() -> Array[SaveSlotInfo]`: every readable `user://saves/*.meta.json`, newest first (`saved_at` descending, then `slot_id`). `[]` when the folder or the files don't exist. Files that aren't JSON objects, or lack a valid `mission_id` / `saved_at`, are skipped with a warning.
+  - `load_slot(slot_id)`: **the hook for the campaign state.** Today a stub that prints `TODO(campaign state): ...` and starts the Moon level.
+  - `start_new_campaign()`: `SceneLoader.load_scene(CAMPAIGN_LEVEL)` (`"moon_level"`).
+  - `write_meta(info)`: writes a metadata file (the fake saves use it; the campaign state may too).
+  - `mission_title(id)` (from `docs/examples/MISSIONS.json`; unknown ids fall back to the id, capitalised), `mission_image(id)`, `format_date()`, `format_play_time()`, `write_fake_saves()` / `clear_fake_saves()` (console `fakesaves` / `clearsaves`).
+
+**File:** `user://saves/<slot_id>.meta.json`, one per slot. The slot id is the file name without `.meta.json` (letters, digits, `_` and `-`; `fake_` is reserved for the fake saves). Write it whenever the slot's save data is written, and delete it with the slot.
+
+```json
+{
+	"format": 1,
+	"slot_id": "slot_03",
+	"mission_id": "first_signal",
+	"saved_at": 1760301660,
+	"play_time_sec": 960,
+	"story_progress": 0.375,
+	"is_autosave": false,
+	"current_objective": "Activate IRIS"
+}
+```
+
+| Key | Type | Required | Meaning |
+|---|---|---|---|
+| `format` | int | no | Metadata format version, `1` |
+| `slot_id` | string | no | Informational; the file name is what counts |
+| `mission_id` | string | **yes** | A mission id from `docs/examples/MISSIONS.json` (`wake_kite`, `first_signal`, `beyond_the_rim`): picks the card's title and image |
+| `saved_at` | number | **yes** | Unix time in seconds (UTC) of the save; the card shows it in local time as DD/MM/YYYY HH:MM |
+| `play_time_sec` | number | no (0) | Total play time; shown as "16 min played" / "1 h 12 min played" |
+| `story_progress` | number | no (0) | Campaign progress 0..1 (clamped); the card fills `round(progress x 16)` of 16 segments and shows `round(progress x 100)` % |
+| `is_autosave` | bool | no (false) | Shows the Autosave tag |
+| `current_objective` | string | no ("") | The objective the save resumes at, for the "Resuming · <objective>" title card (not shown on the card) |
+
+Known limit: local time uses the system's current UTC offset, so a save made before a daylight-saving change shows one hour off.
+
+**Tests:** `tests/test_play_popup.gd` (the index's parsing and formats, both popup states, keyboard and mouse selection, scrolling, Esc closing only the popup, loading and START NEW CAMPAIGN, `testlevel`; it moves `user://saves` aside while it runs).

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light in-game HUD</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=Exo+2:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+.ll-hud{font-family:'Exo 2',sans-serif;color:#ECE9E3;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.ll-cap{font-size:12px;font-weight:500;color:#8A8783}
+.ll-key{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;box-sizing:border-box;background:#ECE9E3;color:#141417;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:600;text-shadow:none;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.ll-key.big{height:30px;min-width:34px;font-size:15px;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+.ll-seg{width:14px;height:8px;background:#2A2A2E;clip-path:polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)}
+.ll-seg.on{background:#ECE9E3}
+.ll-seg.low{background:#E5484D}
+.ll-radio-k{font-family:Michroma,sans-serif;font-size:11px;letter-spacing:4px;color:#8A8783}
+.ll-step{display:flex;align-items:center;gap:12px;font-size:14px}
+@keyframes llToast{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}
+.ll-toast{animation:llToast 5s ease both}
+@keyframes llBlink{0%,100%{opacity:1}50%{opacity:.35}}
+.ll-blink{animation:llBlink 1.6s ease-in-out infinite}
+</style>
+</helmet>
+<div class="ll-hud" style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507">
+
+<div aria-hidden="true" style="position: absolute; inset: 0">
+<canvas ref="{{setBg}}" width="1600" height="900" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+<svg width="1600" height="900" viewBox="0 0 1600 900" style="position: absolute; left: 0; top: 0">
+<path d="M 0 520 Q 300 488 640 506 T 1220 494 T 1600 512 L 1600 900 L 0 900 Z" fill="#3B3A36"></path>
+<path d="M 0 610 Q 420 572 860 598 T 1600 588 L 1600 900 L 0 900 Z" fill="#4A4944"></path>
+<path d="M 0 740 Q 500 700 1000 728 T 1600 716 L 1600 900 L 0 900 Z" fill="#57554F"></path>
+<ellipse cx="1240" cy="650" rx="160" ry="20" fill="#3E3D39"></ellipse>
+<ellipse cx="320" cy="800" rx="120" ry="16" fill="#4A4944"></ellipse>
+<g transform="translate(980 470) scale(0.42)" fill="#ECE9E3" opacity="0.9"><rect x="0" y="10" width="200" height="54" rx="3"></rect><rect x="150" y="-40" width="10" height="50" transform="rotate(14 155 10)"></rect><rect x="-46" y="0" width="46" height="34" rx="3"></rect><circle cx="30" cy="98" r="28" fill="#2A2A2E"></circle><circle cx="170" cy="98" r="28" fill="#2A2A2E"></circle></g>
+<circle cx="1052" cy="476" r="3" fill="#E5484D" class="ll-blink"></circle>
+</svg>
+<sc-if value="{{onFoot}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; border: 70px solid #121215; border-top-width: 90px; border-bottom-width: 180px; box-sizing: border-box"></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 180px; background: #17171A"></div>
+</sc-if>
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 200px; background: linear-gradient(180deg, rgba(5,5,7,.55), rgba(5,5,7,0))"></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 240px; background: linear-gradient(0deg, rgba(5,5,7,.6), rgba(5,5,7,0))"></div>
+</div>
+
+<div style="position: absolute; left: 44px; top: 36px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 17px; font-weight: 600">Apollo 12 site</span>
+<span class="ll-cap">Oceanus Procellarum</span>
+<span class="ll-cap" style="margin-top: 6px">Mission time <span style="color: #ECE9E3; font-variant-numeric: tabular-nums">{{clock}}</span></span>
+</div>
+
+<div style="position: absolute; left: 520px; top: 30px; width: 560px; height: 54px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent)">
+<div ref="{{setStrip}}" style="position: absolute; left: 0; top: 0; height: 54px; width: 4320px">
+<sc-for list="{{ticks}}" as="t" hint-placeholder-count="20">
+<span style="position: absolute; top: 0; left: {{t.left}}; width: 1px; height: {{t.h}}; background: {{t.color}}"></span>
+</sc-for>
+<sc-for list="{{labels}}" as="l" hint-placeholder-count="8">
+<span style="position: absolute; top: 18px; left: {{l.left}}; width: 40px; margin-left: -20px; text-align: center; font-size: 13px; font-weight: 600; color: {{l.color}}">{{l.text}}</span>
+</sc-for>
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="2">
+<span style="position: absolute; top: 36px; left: {{m.left}}; width: 120px; margin-left: -60px; display: flex; flex-direction: column; align-items: center; gap: 2px">
+<svg width="10" height="8" viewBox="0 0 10 8" aria-hidden="true"><path d="M 5 0 L 10 8 L 0 8 Z" fill="#ECE9E3"></path></svg>
+</span>
+</sc-for>
+</div>
+</div>
+<div aria-hidden="true" style="position: absolute; left: 799px; top: 26px; width: 2px; height: 14px; background: #ECE9E3"></div>
+<span ref="{{setHeading}}" style="position: absolute; left: 760px; top: 88px; width: 80px; text-align: center; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums">032°</span>
+
+<sc-if value="{{infoAlert}}" hint-placeholder-val="{{false}}">
+<div class="ll-toast" role="status" style="position: absolute; left: 0; right: 0; top: 124px; display: flex; justify-content: center">
+<div style="display: flex; align-items: center; gap: 12px; padding: 9px 22px; background: rgba(14, 14, 17, .82); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); font-size: 14px">
+<span style="width: 7px; height: 7px; border-radius: 50%; background: #ECE9E3"></span>
+<span>Kite scanned. Damage report added to the console.</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{warnAlert}}" hint-placeholder-val="{{false}}">
+<div role="alert" style="position: absolute; left: 0; right: 0; top: 124px; display: flex; justify-content: center">
+<div style="display: flex; align-items: center; gap: 12px; padding: 9px 22px; background: rgba(14, 14, 17, .86); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); font-size: 14px; font-weight: 600">
+<span class="ll-blink" style="width: 7px; height: 7px; border-radius: 50%; background: #E5484D"></span>
+<span>{{warnText}}</span>
+</div>
+</div>
+</sc-if>
+
+<aside aria-label="Objectives" style="position: absolute; right: 44px; top: 36px; width: 330px; display: flex; flex-direction: column; gap: 12px">
+<span class="ll-cap">Mission 1 · First sortie</span>
+<span style="font-size: 18px; font-weight: 600; line-height: 1.3">Deliver the diagnostic cartridge to Kite</span>
+<div style="display: flex; flex-direction: column; gap: 9px; margin-top: 2px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<div class="ll-step" style="color: {{s.color}}">
+<sc-if value="{{s.done}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8783" stroke-width="2.4" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></sc-if>
+<sc-if value="{{s.current}}" hint-placeholder-val="{{false}}"><span style="width: 14px; display: flex; justify-content: center"><span style="width: 8px; height: 8px; background: #ECE9E3; clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%)"></span></span></sc-if>
+<sc-if value="{{s.todo}}" hint-placeholder-val="{{true}}"><span style="width: 14px; display: flex; justify-content: center"><span style="width: 7px; height: 7px; border: 1.5px solid #4A4844"></span></span></sc-if>
+<span style="text-decoration: {{s.deco}}">{{s.text}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; padding-top: 12px; border-top: 1px solid rgba(236, 233, 227, .14)">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ECE9E3" stroke-width="2" aria-hidden="true"><path d="M12 3l7 18-7-4-7 4z"></path></svg>
+<span style="font-size: 14px; font-weight: 600">{{target}}</span>
+<span class="ll-cap">{{targetDist}}</span>
+</div>
+</aside>
+
+<sc-if value="{{driving}}" hint-placeholder-val="{{true}}">
+<div aria-hidden="true" style="position: absolute; left: 776px; top: 426px; width: 48px; height: 48px">
+<span style="position: absolute; left: 0; top: 0; width: 10px; height: 10px; border-left: 1.5px solid rgba(236,233,227,.7); border-top: 1.5px solid rgba(236,233,227,.7)"></span>
+<span style="position: absolute; right: 0; top: 0; width: 10px; height: 10px; border-right: 1.5px solid rgba(236,233,227,.7); border-top: 1.5px solid rgba(236,233,227,.7)"></span>
+<span style="position: absolute; left: 0; bottom: 0; width: 10px; height: 10px; border-left: 1.5px solid rgba(236,233,227,.7); border-bottom: 1.5px solid rgba(236,233,227,.7)"></span>
+<span style="position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; border-right: 1.5px solid rgba(236,233,227,.7); border-bottom: 1.5px solid rgba(236,233,227,.7)"></span>
+<span style="position: absolute; left: 22px; top: 22px; width: 4px; height: 4px; border-radius: 50%; background: #ECE9E3"></span>
+</div>
+
+<section aria-label="ROOK status" style="position: absolute; left: 44px; bottom: 40px; width: 300px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-family: Michroma, sans-serif; font-size: 13px; letter-spacing: 6px">ROOK</span>
+<span class="ll-cap">Mast camera</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; gap: 3px">
+<sc-for list="{{battery}}" as="b" hint-placeholder-count="10"><span class="{{b.cls}}"></span></sc-for>
+</div>
+<span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: {{batColor}}">{{batPct}}</span>
+<span class="ll-cap" style="font-size: 13px; font-variant-numeric: tabular-nums">{{batRange}}</span>
+</div>
+<div style="display: grid; grid-template-columns: 90px minmax(0, 1fr); row-gap: 5px; font-size: 14px">
+<span class="ll-cap" style="font-size: 13px">Speed</span><span style="font-variant-numeric: tabular-nums">{{speed}} m/s</span>
+<span class="ll-cap" style="font-size: 13px">Cargo</span><span>Diagnostic cartridge</span>
+<span class="ll-cap" style="font-size: 13px">Charging pad</span><span style="font-variant-numeric: tabular-nums">148 m</span>
+</div>
+</section>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 600"><span class="ll-key big">E</span>Insert cartridge</div>
+<span class="ll-cap">In position at Kite’s port</span>
+</div>
+
+<div style="position: absolute; right: 44px; bottom: 40px; display: flex; flex-direction: column; align-items: flex-end; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 18px; background: rgba(14, 14, 17, .7); border-left: 2px solid #ECE9E3">
+<span class="ll-cap" style="font-size: 11px">New control</span>
+<span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600"><span class="ll-key">R</span>Deploy the arm</span>
+<span class="ll-cap">Reach Kite’s port without leaving ROOK</span>
+</div>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #B5B2AC"><span class="ll-key">F</span>Leave ROOK</span>
+</div>
+</sc-if>
+
+<sc-if value="{{onFoot}}" hint-placeholder-val="{{false}}">
+<span aria-hidden="true" style="position: absolute; left: 797px; top: 447px; width: 6px; height: 6px; border-radius: 50%; background: #ECE9E3; box-shadow: 0 0 0 1.5px rgba(0,0,0,.5)"></span>
+
+<section aria-label="Operator" style="position: absolute; left: 44px; bottom: 40px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: Michroma, sans-serif; font-size: 13px; letter-spacing: 6px">WORKSHOP</span>
+<span class="ll-cap">Holding <span style="color: #ECE9E3">{{holding}}</span></span>
+<span class="ll-cap">ROOK docked <span style="color: #ECE9E3">charging 72%</span></span>
+</section>
+
+<sc-if value="{{pickPrompt}}" hint-placeholder-val="{{true}}">
+<div style="position: absolute; left: 0; right: 0; top: 486px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><span class="ll-key">E</span>Pick up</div>
+<span style="font-size: 14px">Diagnostic cartridge</span>
+<span class="ll-cap">Carry it to ROOK’s cargo mount</span>
+</div>
+</sc-if>
+<sc-if value="{{drivePrompt}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; left: 0; right: 0; top: 486px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><span class="ll-key">E</span>Drive ROOK</div>
+<span class="ll-cap">Battery 72% · cartridge loaded</span>
+</div>
+</sc-if>
+
+<div style="position: absolute; right: 44px; bottom: 40px; display: flex; flex-direction: column; gap: 6px; padding: 12px 18px; background: rgba(14, 14, 17, .7); border-left: 2px solid #ECE9E3">
+<span class="ll-cap" style="font-size: 11px">Tip</span>
+<span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600"><span class="ll-key">L</span>Helmet light</span>
+<span class="ll-cap">The workshop is dark until the sun clears the ridge</span>
+</div>
+</sc-if>
+<sc-if value="{{radio}}" hint-placeholder-val="{{true}}">
+<div role="log" style="position: absolute; left: 400px; right: 400px; bottom: 44px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+<span class="ll-radio-k">CONTROL</span>
+<span style="font-size: 16px; line-height: 1.45; color: #ECE9E3">{{radioText}}</span>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Driving ROOK&quot;,&quot;On foot&quot;],&quot;default&quot;:&quot;Driving ROOK&quot;},&quot;objectiveStep&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 Load cartridge&quot;,&quot;2 Drive to Kite&quot;,&quot;3 Scan Kite&quot;,&quot;4 Insert cartridge&quot;,&quot;Complete&quot;],&quot;default&quot;:&quot;1 Load cartridge&quot;},&quot;alert&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Kite scanned&quot;,&quot;Boundary warning&quot;,&quot;Low battery&quot;,&quot;None&quot;],&quot;default&quot;:&quot;Kite scanned&quot;},&quot;onFootPrompt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Pick up cartridge&quot;,&quot;Drive ROOK&quot;],&quot;default&quot;:&quot;Drive ROOK&quot;},&quot;radio&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true},&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 31;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 420; i++) {
+      var x = rnd() * cv.width, y = rnd() * 520, m = rnd();
+      var r = m > 0.985 ? 1.5 : m > 0.9 ? 1 : 0.6, a = 0.15 + rnd() * 0.5;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.t0 = performance.now();
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    this.setStrip = function (el) { self.strip = el; };
+    this.setHeading = function (el) { self.headingEl = el; };
+    this.loop = function (t) {
+      var el = (t - self.t0) / 1000;
+      var h = 32 + 14 * Math.sin(el / 3.2) + 6 * Math.sin(el / 1.3);
+      h = ((h % 360) + 360) % 360;
+      if (self.strip) self.strip.style.transform = 'translateX(' + (280 - (h + 360) * 4).toFixed(1) + 'px)';
+      if (self.headingEl) self.headingEl.textContent = String(Math.round(h)).padStart(3, '0') + '°';
+      var secs = Math.floor(872 + el);
+      var clock = '00:' + String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+      var sp = (2.2 + 0.4 * Math.sin(el / 2)).toFixed(1);
+      var st = self.state || {};
+      if (clock !== st.clock || sp !== st.speed) self.setState({ clock: clock, speed: sp });
+      self.raf = requestAnimationFrame(self.loop);
+    };
+  }
+
+  componentDidMount() {
+    this.ensure();
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  componentWillUnmount() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
+
+  renderVals() {
+    this.ensure();
+    var st = this.state || {}, p = this.props;
+    var driving = (p.mode || 'Driving ROOK') === 'Driving ROOK';
+    var alert = p.alert || 'Kite scanned', low = alert === 'Low battery' && driving, foot = p.onFootPrompt || 'Pick up cartridge';
+    var opts = ['1 Load cartridge', '2 Drive to Kite', '3 Scan Kite', '4 Insert cartridge', 'Complete'];
+    var step = opts.indexOf(p.objectiveStep || '3 Scan Kite'); if (step < 0) step = 2;
+    var texts = ['Load the cartridge onto ROOK', 'Drive out to Kite', 'Scan Kite with the mast camera', 'Insert the cartridge'];
+    var steps = texts.map(function (t, i) {
+      return {
+        text: t, done: i < step, current: i === step, todo: i > step,
+        color: i < step ? '#6B6863' : i === step ? '#ECE9E3' : '#8A8783',
+        deco: i < step ? 'line-through' : 'none'
+      };
+    });
+    var names = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+    var ticks = [], labels = [], marks = [];
+    for (var d = -360; d <= 720; d += 15) {
+      var nd = ((d % 360) + 360) % 360, left = (d + 360) * 4;
+      if (names[nd] !== undefined) labels.push({ text: names[nd], left: left + 'px', color: nd === 0 ? '#ECE9E3' : '#B5B2AC' });
+      else ticks.push({ left: left + 'px', h: nd % 45 === 0 ? '12px' : '7px', color: 'rgba(236,233,227,.5)' });
+    }
+    [32, 212].forEach(function (b) {
+      [-360, 0, 360].forEach(function (o) { marks.push({ left: ((b + o) + 360) * 4 + 'px' }); });
+    });
+    return {
+      driving: driving,
+      onFoot: !driving,
+      clock: st.clock || '00:14:32',
+      speed: st.speed || '2.4',
+      steps: steps,
+      target: step >= 4 ? 'Return to the workshop' : step === 0 ? 'ROOK' : 'Kite',
+      targetDist: step >= 4 ? '148 m' : step === 0 ? 'in the bay' : driving ? '6 m' : '151 m',
+      infoAlert: alert === 'Kite scanned',
+      warnAlert: alert === 'Boundary warning' || low,
+      warnText: alert === 'Boundary warning' ? 'Survey area boundary in 12 m. Turn back.' : 'Battery low. About 120 m of range left, the charging pad is 148 m away.',
+      batPct: low ? '18%' : '72%',
+      batRange: low ? '~120 m left' : '~220 m left',
+      batColor: low ? '#E5484D' : '#ECE9E3',
+      battery: Array.from({ length: 10 }, function (_, i) { return { cls: 'll-seg' + (low ? (i < 2 ? ' low' : '') : (i < 7 ? ' on' : '')) }; }),
+      pickPrompt: foot !== 'Drive ROOK',
+      drivePrompt: foot === 'Drive ROOK',
+      holding: 'nothing',
+      radio: p.radio !== false,
+      radioText: driving ? 'Kite’s port is on its left flank, ROOK. Bring the arm round slowly.' : 'Morning, operator. The cartridge is on the bench. Get it onto ROOK and we’ll head out.',
+      ticks: ticks, labels: labels, marks: marks,
+      setBg: this.setBg, setStrip: this.setStrip, setHeading: this.setHeading
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cosflewrtevhb"]
 
 [ext_resource type="Script" uid="uid://c50mn3miusn15" path="res://src/player/player.gd" id="1_4flbx"]
+[ext_resource type="PackedScene" path="res://src/player/body/player_body.tscn" id="2_body"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_rxibo"]
 friction = 0.0
@@ -73,3 +74,5 @@ volume_db = -10.0
 [node name="CrouchCheck" type="RayCast3D" parent="." unique_id=441087155]
 target_position = Vector3(0, 1.95, 0)
 collision_mask = 5
+
+[node name="Body" parent="." instance=ExtResource("2_body")]

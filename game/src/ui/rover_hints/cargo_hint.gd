@@ -25,6 +25,6 @@ func _process(_delta: float) -> void:
 	var hint: String = delivery.get_hint() if delivery else ""
 	var was_visible: bool = visible
 	visible = hint != ""
-	text = hint
+	text = InputBindings.with_current_keys(hint)
 	if visible and not was_visible and is_visible_in_tree():
 		AudioManager.play_ui(&"notification")

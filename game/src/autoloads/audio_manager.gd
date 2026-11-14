@@ -11,6 +11,10 @@ extends Node
 ## pick one at random (never the same twice in a row), always at their tuned pitch.
 ## Buttons get hover/press sounds from ButtonSoundComponent; menus open/close from state changes.
 ## The files come from game/music (ui_sounds.py, export_to_game.py).
+##
+## Mute When Unfocused (AudioSettings.options): Master is muted while the window doesn't have the
+## focus and unmuted when it comes back. Not when the game runs embedded in the editor (its Game
+## tab), where the window never has the operating system's focus (see Main).
 
 signal volume_changed(key: String, percent: float)
 
@@ -35,12 +39,15 @@ const HOVER_MOUSE_WINDOW: float = 0.15
 const QUIET_AFTER_STATE_CHANGE: float = 0.3
 
 var music_player: AudioStreamPlayer
+## False when embedded in the editor (see above); tests may change it
+var mute_when_unfocused_allowed: bool = not Engine.is_embedded_in_editor()
 
 var _streams: Dictionary = {}          # name -> Array[AudioStream]
 var _last_variation: Dictionary = {}   # name -> index played last
 var _last_mouse_motion: float = -INF
 var _quiet_until: float = -INF
 var _last_slider_tick: float = -INF
+var _window_focused: bool = true
 
 
 func _ready() -> void:
@@ -48,8 +55,20 @@ func _ready() -> void:
 	for sound in SOUNDS:
 		_streams[sound] = _load_variants(sound)
 	AudioSettings.apply()
+	AudioSettings.options.changed.connect(func(_key: String) -> void: _apply_focus_mute())
 	GameState.state_changed.connect(_on_state_changed)
 	_start_music()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_window_focused = what == NOTIFICATION_APPLICATION_FOCUS_IN
+		_apply_focus_mute()
+
+
+func _apply_focus_mute() -> void:
+	AudioSettings.set_focus_muted(not _window_focused and mute_when_unfocused_allowed
+		and AudioSettings.mute_when_unfocused())
 
 
 func _input(event: InputEvent) -> void:
@@ -94,7 +113,7 @@ func play_slider_tick() -> void:
 	play_ui(&"slider_tick")
 
 
-## Volume of one AudioSettings key ("master", "music", "effects", "interface"), applied and saved
+## Volume of one AudioSettings key ("master", "music", "effects", "voice", "interface"), applied and saved
 func set_volume(key: String, percent: float) -> void:
 	AudioSettings.set_volume(key, percent)
 	volume_changed.emit(key, AudioSettings.get_volume(key))

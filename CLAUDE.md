@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 - Game architecture and gotchas: `game/README.md`.
+- Planned gameplay and story (the target, not the current code): `README_AI.md`, `game/README_GAMEPLAY.md`
+  and `game/docs/`. UI design: `docs/ui/README.md` (spec, boards, prompts).
 - Rover 3D kit (Blender parts for the drivable rover): follow `tools/blender/ROVER_KIT.md` for every
   part: layout, naming, origins, connectors, clearances, triangle budget, materials and export.
 - Part generators live in `tools/blender/scripts/` (shared helpers in `rover_kit_common.py`). Run
@@ -13,3 +15,9 @@
 - Game tests are headless SceneTree scripts in `game/tests/`, e.g.
   `/Users/fahd/Downloads/Godot-2.app/Contents/MacOS/Godot --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd`
   (Godot 4.7; each prints `RESULT ... PASS / FAIL`).
+
+## Working rules (token budget)
+- Run only the tests related to the change. Run the full suite only when I ask (before merging).
+- No screenshots, frame-time measurements or windowed runs unless I ask.
+- Don't read docs/ui/boards/*.dc.html in full; grep for the values you need.
+- Keep the final report under 10 lines: what changed, test result, anything I must decide.

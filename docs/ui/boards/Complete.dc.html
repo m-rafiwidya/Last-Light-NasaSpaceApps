@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light mission complete</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=Exo+2:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+@keyframes llFloat{0%{transform:translate(0,0) rotate(-2deg)}25%{transform:translate(7px,-14px) rotate(1.5deg)}50%{transform:translate(2px,-22px) rotate(4deg)}75%{transform:translate(-6px,-10px) rotate(.5deg)}100%{transform:translate(0,0) rotate(-2deg)}}
+.ll-float{transform-origin:55% 45%;animation:llFloat 7s ease-in-out infinite}
+@keyframes llIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ll-item{animation:llIn .7s ease both}
+@keyframes llRule{from{width:0}to{width:48px}}
+.ll-rule{height:1px;background:#ECE9E3;animation:llRule .8s ease .3s both}
+.ll-pc{position:relative;background:none;border:0;min-height:44px;padding:8px 0 8px 6px;font-family:Michroma,sans-serif;font-size:15px;letter-spacing:6px;color:#8A8783;cursor:pointer;transition:color .25s}
+.ll-pc::after{content:"";position:absolute;left:50%;bottom:6px;height:1px;width:0;background:#ECE9E3;transform:translateX(-50%);transition:width .35s}
+.ll-pc:hover,.ll-pc:focus-visible{color:#ECE9E3;outline:none}
+.ll-pc:hover::after,.ll-pc:focus-visible::after{width:calc(100% - 6px)}
+.ll-stat{display:flex;flex-direction:column;align-items:center;gap:8px;width:190px}
+.ll-stat b{font-family:'Exo 2',sans-serif;font-size:30px;font-weight:600;color:#ECE9E3;font-variant-numeric:tabular-nums}
+.ll-stat span{font-family:'Exo 2',sans-serif;font-size:13px;font-weight:500;color:#8A8783}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507; color: #ECE9E3">
+<canvas ref="{{setBg}}" width="1600" height="900" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+<img class="ll-float" src="/_blob/bb123daca0826d320dc695b61684775a" alt="" aria-hidden="true" style="position: absolute; right: 150px; top: 120px; width: 120px; height: 136px; opacity: .85">
+
+<sc-if value="{{runA}}" hint-placeholder-val="{{true}}">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px">
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 500; color: #8A8783; animation-delay: .05s">Mission 1 · First sortie</span>
+<span class="ll-item" style="font-family: Michroma, sans-serif; font-size: 26px; line-height: 1; letter-spacing: 16px; padding-left: 16px; animation-delay: .15s">MISSION COMPLETE</span>
+<div class="ll-rule"></div>
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">Kite is back online.</span>
+
+<div class="ll-item" style="display: flex; margin-top: 30px; animation-delay: .8s">
+<div class="ll-stat"><b>{{time}}</b><span>Mission time</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{dist}}</b><span>Distance driven</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{battery}}</b><span>Battery used</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>ROOK returned to the pad</span></div>
+</div>
+
+<div class="ll-item" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 30px; animation-delay: 1.2s">
+<span style="font-family: Michroma, sans-serif; font-size: 11px; letter-spacing: 4px; color: #8A8783">CONTROL</span>
+<span style="font-family: 'Exo 2', sans-serif; font-size: 17px; color: #ECE9E3">{{radio}}</span>
+</div>
+
+<div class="ll-item" style="display: flex; gap: 56px; margin-top: 34px; animation-delay: 1.6s">
+<button class="ll-pc" type="button">CONTINUE</button>
+<button class="ll-pc" type="button" onClick="{{replay}}">REPLAY MISSION</button>
+<button class="ll-pc" type="button">MAIN MENU</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{runB}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px">
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 500; color: #8A8783; animation-delay: .05s">Mission 1 · First sortie</span>
+<span class="ll-item" style="font-family: Michroma, sans-serif; font-size: 26px; line-height: 1; letter-spacing: 16px; padding-left: 16px; animation-delay: .15s">MISSION COMPLETE</span>
+<div class="ll-rule"></div>
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">Kite is back online.</span>
+
+<div class="ll-item" style="display: flex; margin-top: 30px; animation-delay: .8s">
+<div class="ll-stat"><b>{{time}}</b><span>Mission time</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{dist}}</b><span>Distance driven</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{battery}}</b><span>Battery used</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>ROOK returned to the pad</span></div>
+</div>
+
+<div class="ll-item" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 30px; animation-delay: 1.2s">
+<span style="font-family: Michroma, sans-serif; font-size: 11px; letter-spacing: 4px; color: #8A8783">CONTROL</span>
+<span style="font-family: 'Exo 2', sans-serif; font-size: 17px; color: #ECE9E3">{{radio}}</span>
+</div>
+
+<div class="ll-item" style="display: flex; gap: 56px; margin-top: 34px; animation-delay: 1.6s">
+<button class="ll-pc" type="button">CONTINUE</button>
+<button class="ll-pc" type="button" onClick="{{replay}}">REPLAY MISSION</button>
+<button class="ll-pc" type="button">MAIN MENU</button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"returned":{"editor":"boolean","default":true},"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 95;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 500; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.6 : m > 0.9 ? 1.1 : 0.7, a = 0.2 + rnd() * 0.6;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    this.replay = function () { self.setState({ run: ((self.state || {}).run || 0) + 1 }); };
+  }
+
+  renderVals() {
+    this.ensure();
+    var st = this.state || {}, back = this.props.returned !== false;
+    var odd = (st.run || 0) % 2 === 1;
+    return {
+      runA: !odd, runB: odd,
+      time: '18:42',
+      dist: back ? '312 m' : '163 m',
+      battery: back ? '41%' : '72%',
+      back: back ? 'Yes' : 'No',
+      radio: back ? 'Clean work, operator. Kite’s talking to us again, and ROOK’s home with charge to spare.' : 'Kite’s back, but ROOK ran dry out there. We’ll tow it in. Mind the battery next time.',
+      setBg: this.setBg, replay: this.replay
+    };
+  }
+}
+</script>
+</body>
+</html>

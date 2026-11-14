@@ -4,6 +4,12 @@ extends Control
 ## slot's height (so sibling boxes move smoothly) and squashes the content to match.
 ## The background panel is provided by the HUD, which wraps all dialog boxes at once.
 ## The content is not a direct child of a Container, so nothing resets its scale.
+## The text size follows Settings > General > Subtitle Size (GeneralSettings), at once.
+
+## Text size at Subtitle Size 100 %
+const FONT_SIZE: int = 24
+const FONT_SIZE_NAMES: Array[StringName] = [&"normal_font_size", &"bold_font_size",
+	&"bold_italics_font_size", &"italics_font_size", &"mono_font_size"]
 
 @onready var _content: Control = $Content
 
@@ -17,7 +23,21 @@ var reveal: float = 1.0:
 func _ready() -> void:
 	# The label's wrapped height can change after layout, so keep the slot in sync.
 	_content.minimum_size_changed.connect(_apply_reveal)
+	_apply_font_size()
+	GeneralSettings.section.changed.connect(_on_general_setting_changed)
 	_apply_reveal()
+
+
+func _on_general_setting_changed(key: String) -> void:
+	if key == "subtitle_size":
+		_apply_font_size()
+
+
+func _apply_font_size() -> void:
+	var label: RichTextLabel = $Content/RichTextLabel
+	var font_size: int = roundi(FONT_SIZE * GeneralSettings.subtitle_scale())
+	for font_size_name in FONT_SIZE_NAMES:
+		label.add_theme_font_size_override(font_size_name, font_size)
 
 
 func set_text(text: String):

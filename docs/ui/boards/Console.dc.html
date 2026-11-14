@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light mission console</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=Exo+2:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+.ll-con{font-family:'Exo 2',sans-serif;color:#ECE9E3}
+.ll-cap{font-size:13px;font-weight:500;color:#8A8783}
+.ll-tab{position:relative;background:none;border:0;min-height:44px;padding:8px 0;font-family:Michroma,sans-serif;font-size:14px;letter-spacing:6px;color:#8A8783;cursor:pointer;text-align:left;transition:color .25s}
+.ll-tab::after{content:"";position:absolute;left:0;bottom:6px;height:1px;width:0;background:#ECE9E3;transition:width .35s}
+.ll-tab:hover,.ll-tab:focus-visible{color:#ECE9E3;outline:none}
+.ll-tab:hover::after,.ll-tab:focus-visible::after{width:calc(100% - 6px)}
+.ll-tab.is-on{color:#ECE9E3}
+.ll-tab.is-on::after{width:calc(100% - 6px)}
+.ll-key{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;box-sizing:border-box;background:#ECE9E3;color:#141417;font-size:12px;font-weight:600;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.ll-row{display:grid;grid-template-columns:200px minmax(0,1fr);align-items:baseline;padding:14px 0;border-bottom:1px solid rgba(236,233,227,.1);font-size:16px}
+@keyframes llIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ll-page{animation:llIn .45s ease both}
+@keyframes llBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.ll-blink{animation:llBlink 1.6s ease-in-out infinite}
+</style>
+</helmet>
+<div class="ll-con" style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507">
+<canvas ref="{{setBg}}" width="1600" height="900" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+
+<header style="position: absolute; left: 120px; right: 120px; top: 64px; display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid rgba(236,233,227,.14)">
+<span style="font-family: Michroma, sans-serif; font-size: 18px; letter-spacing: 10px">MISSION CONSOLE</span>
+<span class="ll-cap">Workshop · Apollo 12 site · Mission time <span style="color: #ECE9E3; font-variant-numeric: tabular-nums">00:14:32</span></span>
+</header>
+
+<nav aria-label="Console sections" style="position: absolute; left: 120px; top: 190px; display: flex; flex-direction: column; gap: 14px">
+<button class="{{tabBriefing}}" type="button" onClick="{{goBriefing}}">BRIEFING</button>
+<button class="{{tabStatus}}" type="button" onClick="{{goStatus}}">STATUS</button>
+<button class="{{tabMap}}" type="button" onClick="{{goMap}}">SITE MAP</button>
+</nav>
+
+<sc-if value="{{showBriefing}}" hint-placeholder-val="{{true}}">
+<section class="ll-page" aria-label="Briefing" style="position: absolute; left: 520px; right: 120px; top: 190px; display: flex; flex-direction: column; gap: 22px">
+<span class="ll-cap">Mission 1 · First sortie</span>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600; line-height: 1.2">Deliver the diagnostic cartridge to Kite</h1>
+<p style="margin: 0; max-width: 760px; font-size: 17px; line-height: 1.65; color: #B5B2AC">Kite, ROOK’s twin, stopped answering during last night’s survey run. Its last position puts it about 150 m north-east of the workshop, on open ground. It still has power, but we can’t tell what failed from here.</p>
+<p style="margin: 0; max-width: 760px; font-size: 17px; line-height: 1.65; color: #B5B2AC">Load the diagnostic cartridge onto ROOK, drive out to Kite and scan it with the mast camera. Once we know which side the port is on, plug the cartridge in with the arm. Watch your battery. ROOK has to make it back to the charging pad.</p>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 16px; font-size: 16px; color: {{s.color}}">
+<span style="width: 22px; font-family: Michroma, sans-serif; font-size: 12px; color: #6B6863">{{s.n}}</span>
+<span style="text-decoration: {{s.deco}}">{{s.text}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showStatus}}" hint-placeholder-val="{{false}}">
+<section class="ll-page" aria-label="Status" style="position: absolute; left: 520px; right: 120px; top: 190px; display: flex; flex-direction: column">
+<span class="ll-cap" style="margin-bottom: 10px">Live telemetry</span>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Kite</span><span style="display: flex; align-items: center; gap: 10px; font-weight: 600"><span class="{{kiteDotCls}}" style="width: 8px; height: 8px; border-radius: 50%; background: {{kiteDot}}"></span>{{kiteState}}</span></div>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Kite position</span><span>151 m · bearing 032°</span></div>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">ROOK</span><span>Docked · charging 72% · range ~220 m</span></div>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Cargo</span><span>{{cargo}}</span></div>
+<sc-if value="{{hasReport}}" hint-placeholder-val="{{false}}">
+<span class="ll-cap" style="margin: 34px 0 10px">Damage report · from ROOK’s scan</span>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Drive motors</span><span>Nominal</span></div>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Comms board</span><span>{{commsState}}</span></div>
+<div class="ll-row"><span class="ll-cap" style="font-size: 15px">Service port</span><span>Left flank, cover open</span></div>
+</sc-if>
+<sc-if value="{{noReport}}" hint-placeholder-val="{{true}}">
+<p style="margin: 34px 0 0; font-size: 15px; color: #6B6863">No damage report yet. Scan Kite with ROOK’s mast camera to get one.</p>
+</sc-if>
+</section>
+</sc-if>
+
+<sc-if value="{{showMap}}" hint-placeholder-val="{{false}}">
+<section class="ll-page" aria-label="Site map" style="position: absolute; left: 520px; right: 120px; top: 190px; display: flex; gap: 48px">
+<svg width="560" height="560" viewBox="0 0 560 560" role="img" aria-label="Top-down map of the survey area" style="flex: none">
+<rect x="0" y="0" width="560" height="560" fill="#0B0B0E"></rect>
+<g stroke="rgba(236,233,227,.05)" stroke-width="1">
+<path d="M 70 0 V 560 M 140 0 V 560 M 210 0 V 560 M 280 0 V 560 M 350 0 V 560 M 420 0 V 560 M 490 0 V 560"></path>
+<path d="M 0 70 H 560 M 0 140 H 560 M 0 210 H 560 M 0 280 H 560 M 0 350 H 560 M 0 420 H 560 M 0 490 H 560"></path>
+</g>
+<circle cx="230" cy="330" r="34" fill="none" stroke="rgba(236,233,227,.12)" stroke-width="1"></circle>
+<circle cx="400" cy="420" r="22" fill="none" stroke="rgba(236,233,227,.12)" stroke-width="1"></circle>
+<circle cx="150" cy="170" r="16" fill="none" stroke="rgba(236,233,227,.1)" stroke-width="1"></circle>
+<circle cx="280" cy="280" r="250" fill="none" stroke="#8A8783" stroke-width="1.2" stroke-dasharray="6 6"></circle>
+<path d="M 236 352 Q 300 300 330 230 T 372 164" fill="none" stroke="#ECE9E3" stroke-width="1.4" stroke-dasharray="3 5" opacity=".6"></path>
+<rect x="216" y="352" width="36" height="28" fill="#ECE9E3"></rect>
+<text x="234" y="404" text-anchor="middle" fill="#B5B2AC" font-family="Exo 2, sans-serif" font-size="13">Workshop</text>
+<g transform="translate(372 160)"><rect x="-9" y="-9" width="18" height="18" fill="none" stroke="#ECE9E3" stroke-width="1.6" transform="rotate(45)"></rect><circle r="3" fill="#E5484D" class="ll-blink"></circle></g>
+<text x="372" y="140" text-anchor="middle" fill="#ECE9E3" font-family="Exo 2, sans-serif" font-size="13" font-weight="600">Kite</text>
+<g transform="translate(262 344) rotate(32)"><path d="M 0 -11 L 8 9 L 0 5 L -8 9 Z" fill="#ECE9E3"></path></g>
+<text x="290" y="340" fill="#B5B2AC" font-family="Exo 2, sans-serif" font-size="13">ROOK</text>
+<g transform="translate(510 52)"><path d="M 0 -18 L 6 0 L 0 -4 L -6 0 Z" fill="#ECE9E3"></path><text y="18" text-anchor="middle" fill="#ECE9E3" font-family="Michroma, sans-serif" font-size="11">N</text></g>
+<g transform="translate(40 524)"><path d="M 0 0 H 70 M 0 -5 V 5 M 70 -5 V 5" stroke="#B5B2AC" stroke-width="1.2"></path><text x="78" y="4" fill="#B5B2AC" font-family="Exo 2, sans-serif" font-size="12">50 m</text></g>
+</svg>
+<div style="display: flex; flex-direction: column; gap: 18px; padding-top: 6px">
+<span class="ll-cap">Survey area</span>
+<span style="display: flex; align-items: center; gap: 12px; font-size: 15px"><span style="width: 14px; height: 11px; background: #ECE9E3"></span>Workshop and charging pad</span>
+<span style="display: flex; align-items: center; gap: 12px; font-size: 15px"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 20-8-5-8 5z" fill="#ECE9E3"></path></svg>ROOK</span>
+<span style="display: flex; align-items: center; gap: 12px; font-size: 15px"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="3" width="8" height="8" fill="none" stroke="#ECE9E3" stroke-width="1.5" transform="rotate(45 7 7)"></rect></svg>Kite</span>
+<span style="display: flex; align-items: center; gap: 12px; font-size: 15px"><svg width="14" height="4" aria-hidden="true"><path d="M 0 2 H 14" stroke="#8A8783" stroke-width="1.5" stroke-dasharray="3 3"></path></svg>Area boundary</span>
+<p style="margin: 12px 0 0; max-width: 300px; font-size: 14px; line-height: 1.6; color: #6B6863">Terrain from LROC imagery of the Apollo 12 landing site. One grid square is 25 m.</p>
+</div>
+</section>
+</sc-if>
+
+<footer style="position: absolute; left: 120px; right: 120px; bottom: 56px; display: flex; justify-content: flex-end; gap: 28px; font-size: 13px; color: #B5B2AC">
+<span style="display: flex; align-items: center; gap: 8px"><span class="ll-key">Tab</span>Next section</span>
+<span style="display: flex; align-items: center; gap: 8px"><span class="ll-key">Esc</span>Close console</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"section":{"editor":"enum","options":["Briefing","Status","Site map"],"default":"Briefing"},"kite":{"editor":"enum","options":["Not scanned","Scanned","Cartridge delivered"],"default":"Not scanned"},"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 211;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 260; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.4 : m > 0.9 ? 1 : 0.6, a = 0.08 + rnd() * 0.25;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    var go = function (t) { return function () { self._tab = t; self.setState({ tab: t }); }; };
+    this.goBriefing = go('Briefing');
+    this.goStatus = go('Status');
+    this.goMap = go('Site map');
+  }
+
+  renderVals() {
+    this.ensure();
+    var p = this.props;
+    var propTab = p.section || 'Briefing';
+    if (propTab !== this._lastProp) { this._lastProp = propTab; this._tab = propTab; }
+    var tab = this._tab || 'Briefing';
+    var kite = p.kite || 'Not scanned';
+    var stage = kite === 'Not scanned' ? 1 : kite === 'Scanned' ? 3 : 4;
+    var texts = ['Load the cartridge onto ROOK', 'Drive out to Kite', 'Scan Kite with the mast camera', 'Insert the cartridge'];
+    var steps = texts.map(function (t, i) {
+      return { n: '0' + (i + 1), text: t, color: i < stage ? '#6B6863' : i === stage ? '#ECE9E3' : '#8A8783', deco: i < stage ? 'line-through' : 'none' };
+    });
+    var cls = function (t) { return 'll-tab' + (tab === t ? ' is-on' : ''); };
+    return {
+      tabBriefing: cls('Briefing'), tabStatus: cls('Status'), tabMap: cls('Site map'),
+      showBriefing: tab === 'Briefing', showStatus: tab === 'Status', showMap: tab === 'Site map',
+      steps: steps,
+      kiteState: kite === 'Cartridge delivered' ? 'Cartridge delivered · back online' : kite,
+      kiteDot: kite === 'Cartridge delivered' ? '#ECE9E3' : kite === 'Scanned' ? '#B5B2AC' : '#E5484D',
+      kiteDotCls: kite === 'Not scanned' ? 'll-blink' : '',
+      cargo: kite === 'Cartridge delivered' ? 'Empty' : 'Diagnostic cartridge',
+      hasReport: kite !== 'Not scanned',
+      noReport: kite === 'Not scanned',
+      commsState: kite === 'Cartridge delivered' ? 'Restored by the cartridge' : 'Not responding',
+      setBg: this.setBg, goBriefing: this.goBriefing, goStatus: this.goStatus, goMap: this.goMap
+    };
+  }
+}
+</script>
+</body>
+</html>

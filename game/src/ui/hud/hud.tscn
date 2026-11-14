@@ -25,10 +25,16 @@ layout_mode = 2
 [node name="TextureRect" type="TextureRect" parent="MarginContainer/CenterContainer" unique_id=1063683468]
 layout_mode = 2
 texture = ExtResource("2_cvkdw")
+expand_mode = 1
+stretch_mode = 5
+custom_minimum_size = Vector2(8, 8)
 
 [node name="TextureRect2" type="TextureRect" parent="MarginContainer/CenterContainer" unique_id=1067220017]
 layout_mode = 2
 texture = ExtResource("4_076te")
+expand_mode = 1
+stretch_mode = 5
+custom_minimum_size = Vector2(16, 16)
 
 [node name="Tooltip" type="Label" parent="MarginContainer" unique_id=820965034]
 visible = false

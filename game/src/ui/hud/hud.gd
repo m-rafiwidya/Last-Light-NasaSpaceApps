@@ -9,7 +9,28 @@ func _ready() -> void:
 	DialogServer.dialog_played.connect(_on_dialog_played)
 	DialogServer.dialog_ended.connect(_on_dialog_ended)
 	add_child(BoundaryHint.new(false))
+	# Settings > General > Subtitles: the subtitle boxes are still made (and end) while off, just
+	# not shown, so turning it on shows a line that is playing
+	GeneralSettings.section.changed.connect(func(_key: String) -> void: _apply_subtitles())
+	_apply_subtitles()
+	InputBindings.events.changed.connect(_update_hint)
+	_update_hint()
 	hide()
+
+
+func _apply_subtitles() -> void:
+	$DialogBoxContainer.visible = GeneralSettings.subtitles()
+
+
+## The controls line, with the keys as bound now (InputBindings)
+func _update_hint() -> void:
+	var key := InputBindings.action_text
+	$MarginContainer/Hint.text = (
+		"%s: move   %s: sprint   %s: jump   %s: crouch   Mouse: look\n" % [
+			InputBindings.keys_text([&"move_forward", &"move_left", &"move_backward", &"move_right"]),
+			key.call(&"move_sprint"), key.call(&"move_jump"), key.call(&"move_crouch")]
+		+ "%s: use / pick up / drop   %s: throw   %s: helmet light   %s: pause" % [
+			key.call(&"interact_use"), key.call(&"interact_primary"), key.call(&"lights"), key.call(&"ui_cancel")])
 
 
 func _process(_delta: float) -> void:

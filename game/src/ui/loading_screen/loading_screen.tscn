@@ -1,7 +1,16 @@
-[gd_scene load_steps=7 format=3 uid="uid://37rlqmnr4uqf"]
+[gd_scene format=3 uid="uid://37rlqmnr4uqf"]
 
 [ext_resource type="Script" uid="uid://hg02x3dfc2vl" path="res://src/ui/loading_screen/loading_screen.gd" id="1_mggpi"]
-[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_hdbts"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_hdbts"]
+[ext_resource type="Script" path="res://src/ui/components/starfield.gd" id="3_stars"]
+[ext_resource type="Texture2D" path="res://res/ui/astronaut_logo.svg" id="4_logo"]
+[ext_resource type="PackedScene" path="res://src/ui/components/underline_button.tscn" id="5_ubutton"]
+[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="6_sound"]
+[ext_resource type="FontFile" path="res://res/fonts/michroma-latin-400-normal.woff2" id="7_michroma"]
+
+[sub_resource type="FontVariation" id="FontVariation_continue"]
+base_font = ExtResource("7_michroma")
+spacing_glyph = 10
 
 [sub_resource type="Animation" id="Animation_htrc2"]
 length = 0.001
@@ -70,29 +79,155 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_hdbts")
 
-[node name="ColorRect" type="ColorRect" parent="Control"]
-layout_mode = 1
+[node name="Starfield" type="Control" parent="Control"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 1)
+mouse_filter = 2
+script = ExtResource("3_stars")
 
-[node name="MarginContainer" type="MarginContainer" parent="Control"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="FactColumn" type="VBoxContainer" parent="Control"]
+layout_mode = 0
+offset_left = 180.0
+offset_top = 180.0
+offset_right = 1164.0
+offset_bottom = 180.0
+mouse_filter = 2
+theme_override_constants/separation = 48
 
-[node name="ProgressBar" type="ProgressBar" parent="Control/MarginContainer"]
-custom_minimum_size = Vector2(256, 32)
+[node name="DidYouKnow" type="Label" parent="Control/FactColumn"]
 layout_mode = 2
-size_flags_horizontal = 0
+theme_type_variation = &"LabelDidYouKnow"
+theme_override_colors/font_color = Color(0.7882353, 0.76862746, 0.73333335, 1)
+text = "Did you know?"
+
+[node name="FactBox" type="VBoxContainer" parent="Control/FactColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 26
+
+[node name="Fact" type="Label" parent="Control/FactColumn/FactBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LabelLoadingFact"
+theme_override_constants/line_spacing = 4
+autowrap_mode = 3
+
+[node name="Source" type="Label" parent="Control/FactColumn/FactBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LabelCaption"
+theme_override_font_sizes/font_size = 19
+
+[node name="Dots" type="HBoxContainer" parent="Control/FactColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="LogoHolder" type="Control" parent="Control"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -480.0
+offset_top = 300.0
+offset_right = -228.0
+offset_bottom = 585.6
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="Logo" type="TextureRect" parent="Control/LogoHolder"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 252.0
+offset_bottom = 285.6
+pivot_offset = Vector2(138.6, 128.52)
+mouse_filter = 2
+texture = ExtResource("4_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Bottom" type="Control" parent="Control"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 180.0
+offset_top = -200.0
+offset_right = -180.0
+offset_bottom = -115.2
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Column" type="VBoxContainer" parent="Control/Bottom"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 22
+alignment = 2
+
+[node name="Row" type="HBoxContainer" parent="Control/Bottom/Column"]
+custom_minimum_size = Vector2(0, 53)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Continue" parent="Control/Bottom/Column/Row" instance=ExtResource("5_ubutton")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"UnderlineButtonPrimary"
+theme_override_fonts/font = SubResource("FontVariation_continue")
+theme_override_font_sizes/font_size = 18
+text = "CONTINUE"
+rest_fraction = 0.25
+
+[node name="ButtonSoundComponent" type="Node" parent="Control/Bottom/Column/Row/Continue"]
+script = ExtResource("6_sound")
+metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+
+[node name="Stage" type="Label" parent="Control/Bottom/Column/Row"]
+unique_name_in_owner = true
+layout_mode = 2
 size_flags_vertical = 8
-value = 100.0
+theme_type_variation = &"LabelLoadingStage"
+
+[node name="Spacer" type="Control" parent="Control/Bottom/Column/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Percent" type="Label" parent="Control/Bottom/Column/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 8
+theme_type_variation = &"LabelLoadingPercent"
+text = "0%"
+
+[node name="Track" type="ColorRect" parent="Control/Bottom/Column"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.11764706, 0.11764706, 0.13333334, 1)
+
+[node name="Fill" type="ColorRect" parent="Control/Bottom/Column/Track"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 0.0
+anchor_bottom = 1.0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.9254902, 0.9137255, 0.8901961, 1)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {

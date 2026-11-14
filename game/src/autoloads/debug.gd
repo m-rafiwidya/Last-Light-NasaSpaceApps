@@ -46,6 +46,32 @@ func parse_command(input: String):
 					DialogServer.play_dialog(test_dialog)
 				else:
 					add_log("Not enough parameters!")
+			"intro":
+				# Replays the main menu's opening sequence
+				var menu: Node = get_tree().root.get_node_or_null("Main/UIManager/MainMenu")
+				if menu and GameState.state == GameState.State.MAIN_MENU:
+					menu.replay_intro()
+				else:
+					add_log("The opening sequence plays on the main menu only")
+			"credits":
+				# Plays the credits roll over the main menu, or over the game (it returns to it)
+				var credits: Node = get_tree().root.get_node_or_null("Main/UIManager/Credits")
+				if credits and (GameState.state == GameState.State.MAIN_MENU or GameState.is_in_game()):
+					get_tree().root.get_node("Main/UIManager/Console").hide()
+					if GameState.state == GameState.State.MAIN_MENU:
+						credits.open()
+					else:
+						GameState.open_credits()
+				else:
+					add_log("The credits play on the main menu or in a level only")
+			"testlevel":
+				# The test sandbox, no longer on the main menu (the pause menu still offers it)
+				SceneLoader.load_scene("test_level")
+			"fakesaves":
+				# Sample save metadata so the PLAY popup's list can be previewed
+				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.SAVE_DIR])
+			"clearsaves":
+				add_log("Removed %d fake saves" % SaveIndex.clear_fake_saves())
 			"fullbright":
 				var viewport = get_viewport()
 				if viewport.debug_draw != Viewport.DEBUG_DRAW_UNSHADED:
