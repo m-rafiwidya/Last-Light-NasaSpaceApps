@@ -1,0 +1,42 @@
+{
+	"_readme": [
+		"The three in-world log entries (asset A18), all written by Evan. Wording follows game/docs/STORY_SCRIPT.md.",
+		"Each entry: a title, body lines, a signature, where it is read and when it becomes available.",
+		"Not in decor_texts.json: tests/test_workshop.gd requires every key there to be drawn on a placed prop.",
+		"Nothing loads this file yet. The mission, console (Downlink tab) and dialogue code read it later."
+	],
+	"entries": {
+		"kite_storage": {
+			"title": "KITE - STORAGE CHECK",
+			"lines": [
+				"Battery isolated. Frame and gripper inspected.",
+				"Test the next wheel set under load before taking the crater-side approach."
+			],
+			"signature": "- Evan",
+			"where": "workshop clipboard near Kite (optional prop) and the console's Kite tab",
+			"available": "from the start of M1"
+		},
+		"iris_field_note": {
+			"title": "IRIS - FINAL FIELD CHECK",
+			"lines": [
+				"Radio supply is out. Stored observations verified.",
+				"The comparison logger is secured beside the far-rim marker, near the shade boundary. Its location is attached to this record.",
+				"Replacement stock missed this rotation; leave the mounts intact for the next crew."
+			],
+			"signature": "- Evan",
+			"where": "console, Downlink tab, archive",
+			"available": "after the initial archive arrives (M2 dock)"
+		},
+		"logger_note": {
+			"title": "FAR-RIM LOGGER - ARCHIVED AUDIO",
+			"lines": [
+				"If you're collecting this, check the shade marker before the return climb.",
+				"I put a second label underneath. The first one always gets dusty."
+			],
+			"signature": "- Evan",
+			"where": "at the logger (skippable audio with subtitles) and the mission checklist",
+			"available": "when the logger is collected (M3)",
+			"checklist_text": "Check the shade marker before the return climb."
+		}
+	}
+}
