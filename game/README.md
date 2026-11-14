@@ -390,6 +390,14 @@ Restyled to `docs/ui/UI_SPEC.md` "Loading" (design x 1.2, `res/ui_theme_v2.tres`
   Note the naming: "fade_in" means *the black screen fades in* (hiding the game).
 - Emits `finished_fade_in` (wired to `SceneLoader._on_finished_fade_in` by `UIManager`) and `finished_fade_out` (then hides itself).
 
+### 6.7a Credits screen (`ui/credits/`)
+
+`docs/ui/UI_SPEC.md` "Credits" (design x 1.2, `res/ui_theme_v2.tres`, `Starfield`, `UnderlineButton`, the theme's `SkipButton`). `CreditsScreen` (`UIScreen`, canvas layer 100, instanced under `UIManager`, hidden) rolls for `ROLL_TIME` (48 s, linear): the logo and "LAST LIGHT", then the sections, while the astronaut drifts across (from -312,144 / -20 deg to 192,-96 / 12 deg) and floats with the main menu's `FLOAT_KEYS`. It ends on THANK YOU FOR PLAYING, the Earth line and WATCH AGAIN / MAIN MENU (text 1.6 s, buttons 1.2 s after 1.4 s). SKIP (bottom-right) or Esc jumps to the ending; Esc there, or MAIN MENU, closes it (`closed` signal). While it is open SKIP holds the keyboard focus, so Enter can't press a button of the screen underneath; the focus goes back on close.
+
+- **Text**: `CreditsData` reads the `## Credits screen` section of `CREDITS.md` in the repository root (outside the Godot project: `res://../CREDITS.md`, so an exported build won't find it yet and shows the logo only). Each `###` heading is a section; blank-line separated blocks are entries; a block of `NAME | small line` lines becomes name rows (team, studio), any other block is centred text with its line breaks; `CLOSING NOTE` has no title. `[YOUR SPECIAL THANKS]` is the placeholder to replace before release.
+- **Opening**: the `credits` console command, main menu only for now (it closes the console and calls `open()`); `play()` restarts the roll, `skip()` ends it.
+- `tests/test_credits.gd`.
+
 ### 6.8 Button components (`ui/button_style_components/`)
 
 Drop-in child `Node`s that style their parent `Button`:
@@ -806,6 +814,7 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `say <text...>` | creates a temporary `Dialog` with that subtitle and plays it via `DialogServer` |
 | `fullbright` | toggles `Viewport.DEBUG_DRAW_UNSHADED` |
 | `intro` | plays the main menu's opening sequence again (main menu only) |
+| `credits` | plays the credits roll over the main menu (main menu only) |
 | `testlevel` | loads the test level (it is no longer on the main menu) |
 | `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
 | `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |

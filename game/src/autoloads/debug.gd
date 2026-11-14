@@ -53,6 +53,14 @@ func parse_command(input: String):
 					menu.replay_intro()
 				else:
 					add_log("The opening sequence plays on the main menu only")
+			"credits":
+				# Plays the credits roll over the main menu
+				var credits: Node = get_tree().root.get_node_or_null("Main/UIManager/Credits")
+				if credits and GameState.state == GameState.State.MAIN_MENU:
+					get_tree().root.get_node("Main/UIManager/Console").hide()
+					credits.open()
+				else:
+					add_log("The credits play on the main menu only")
 			"testlevel":
 				# The test sandbox, no longer on the main menu (the pause menu still offers it)
 				SceneLoader.load_scene("test_level")
