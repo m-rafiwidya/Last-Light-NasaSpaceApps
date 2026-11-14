@@ -92,7 +92,7 @@ game/
         ├── main_menu/
         ├── pause_menu/
         ├── hud/                      # player HUD (crosshair, subtitles)
-        ├── robot_hud/                # robot HUD (speed, battery, friction circles)
+        ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
         ├── mission_console/          # computer-theme mission list (dummy content)
         ├── loading_screen/
         ├── console/
@@ -762,6 +762,12 @@ If the current view's part is taken out (or the rover starts without it), the vi
 - `=` / `-` (keys on the same two actions), held: 4 steps per second, polled in `_physics_process`.
 
 Godot 4.7 dispatches each gesture event twice (two event objects, same frame, also for `Input.parse_input_event`), so the controller drops a gesture equal to the previous one in the same frame. Zoom input in any other view changes nothing and records `RoverCamera.zoom_refused_age`; `RobotHUD` then shows "No zoom on the ...: only the mast camera zooms (C to switch)" (or "zooming needs a mast camera" without one) below the crosshair for 1.8 s.
+
+**Camera-feed look:** `RoverFeedOverlay` (`ui/robot_hud/camera_feed.gd`, `RobotHUD`'s first child, so the rest of the HUD draws over it and it fades with the HUD) makes each view except Chase look like a camera feed. Its `Filter` rect runs `camera_feed.gdshader` over the screen texture (the 3D view): desaturation, contrast, tint, barrel distortion (corners stay in the corners), vignette, edge blur (mip levels) and grain, set per view in `LOOKS`. Its `Marks` control draws above the filter:
+- **Mast:** viewfinder corner brackets (20 px in from the screen edges, inside the HUD's 48 px margin), a REC dot blinking 0.6 s of every second, "MASTCAM", and a W-T zoom bar at the top centre (log scale from 1x to 5.7x, with the factor). Mild vignette and grain.
+- **Front / rear hazard:** black and white, slight fisheye, vignette, grain; "FRONT HAZCAM" / "REAR HAZCAM".
+- **Arm tool:** warm tint, edges blurred, vignette, "ARM TOOL CAM  MACRO"; `RoverCamera` also gives the camera depth of field in this view only (`CameraAttributesPractical`, far blur from 0.8 m).
+Checked in screenshots at 1920x1080: the brackets and labels stay clear of the stats, the hint lines and the friction circles.
 
 With the full +-90 degrees the pickup ray reaches the ground right in front of the rover again (a prop 0.6 m in front of the camera, just past the front wheels, can be picked up).
 

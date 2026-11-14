@@ -50,6 +50,10 @@ const TOOL_HUB_CENTRE: Vector3 = Vector3(0.0, 0.0, -0.025)
 const TOOL_CAMERA_ANGLE: float = deg_to_rad(126.0)
 const TOOL_CAMERA_OUT: float = 0.072
 const TOOL_FOV: float = 60.0
+# Its macro look: sharp up close, blurred from TOOL_DOF_FAR on (RoverFeedOverlay adds the rest)
+const TOOL_DOF_FAR: float = 0.8
+const TOOL_DOF_TRANSITION: float = 1.5
+const TOOL_DOF_AMOUNT: float = 0.08
 
 const NEAR: float = 0.005
 
@@ -60,6 +64,7 @@ var mast_fov: float = MAST_FOV_MAX
 ## Seconds (game time) since the last zoom input in a view without zoom, for the HUD's hint
 var zoom_refused_age: float = INF
 
+var _tool_attributes := CameraAttributesPractical.new()
 var _look: Dictionary = {}           # View -> Vector2(azimuth, altitude) while not current
 var _chase_heading: float = 0.0
 var _chase_started: bool = false
@@ -70,6 +75,10 @@ var _chase_started: bool = false
 
 func _ready() -> void:
 	process_physics_priority = 20
+	_tool_attributes.dof_blur_far_enabled = true
+	_tool_attributes.dof_blur_far_distance = TOOL_DOF_FAR
+	_tool_attributes.dof_blur_far_transition = TOOL_DOF_TRANSITION
+	_tool_attributes.dof_blur_amount = TOOL_DOF_AMOUNT
 	robot.controller.camera_next.connect(next_view)
 	robot.controller.zoom.connect(_on_zoom)
 
@@ -153,6 +162,9 @@ func _physics_process(delta: float) -> void:
 			robot.pivot.global_transform = _tool_transform()
 			fov = TOOL_FOV
 	robot.camera.fov = fov
+	var attributes: CameraAttributes = _tool_attributes if view == View.TOOL else null
+	if robot.camera.attributes != attributes:
+		robot.camera.attributes = attributes
 	robot.camera.near = NEAR
 	robot.controller.look_scale = look_scale
 
