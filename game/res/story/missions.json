@@ -211,6 +211,7 @@
 			"legacy_id": "first_signal",
 			"title": "First Signal",
 			"objectives": [
+				"m2.cargo_ordered",
 				"m2.module_loaded",
 				"m2.module_installed",
 				"m2.iris_activated",
@@ -221,6 +222,7 @@
 				"m2.near_sample_collected"
 			],
 			"objective_titles": {
+				"m2.cargo_ordered": "Order the cargo delivery from the console's Planning tab",
 				"m2.module_loaded": "Load the radio-power module onto Kite",
 				"m2.module_installed": "Install the module in IRIS",
 				"m2.iris_activated": "Bring IRIS online",
@@ -242,6 +244,38 @@
 				"ready": "IRIS is online and in range of the workshop antenna. Its telemetry is ready to receive."
 			},
 			"guidance": {
+				"m2.cargo_ordered": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Look at the console and press E.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Open the Planning tab",
+						"label": "",
+						"target": "",
+						"stuck": "Planning is the fourth section in the console's list on the left.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							],
+							"console_section": "planning"
+						}
+					},
+					{
+						"text": "Choose a lander and the manifest, then press Confirm order",
+						"label": "",
+						"target": "",
+						"stuck": "The radio-power module must go. Keep the total under the lander's limit; a late arrival puts M3 near nightfall."
+					}
+				],
 				"m2.module_loaded": [
 					{
 						"text": "Load the radio-power module onto Kite",

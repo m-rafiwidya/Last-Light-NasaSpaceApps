@@ -18,6 +18,8 @@ const PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]
 # One entry per part: scene, transform and properties
 var _layout: Array = []
 var _extras: Array = []
+## Recorded entry names (slots) left out of the pool, e.g. parts not delivered yet
+var hidden: Array = []
 
 
 func record(container: Node) -> void:
@@ -55,7 +57,7 @@ func set_extras(parts: Array) -> void:
 ## What the container shows with `mounted` on the rover: the recorded entries, minus those
 ## taken, plus extras in the vacated slots
 func plan(mounted: Array) -> Array:
-	var left: Array = _layout.duplicate()
+	var left: Array = _layout.filter(func(entry: Dictionary) -> bool: return not hidden.has(str(entry["name"])))
 	var extras: Array = _extras.duplicate()
 	var vacated: Array = []
 	for part: HotswapPart in mounted:

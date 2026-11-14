@@ -107,7 +107,7 @@ func _run() -> void:
 	await _open_console()
 	_check("[m2] Receive telemetry is shown but disabled at the start", _action().visible and _action().disabled
 		and _action().text == "Receive telemetry", _action().text)
-	for id in ["m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
+	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
 		_cmd("objective " + id)
 	var iris: Node = level.get_node("Iris")
 	var flag_changes: Array = []

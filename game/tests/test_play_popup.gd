@@ -163,8 +163,8 @@ func _run() -> void:
 	_check("[saves] three cards, one per slot", cards.size() == 3, str(cards.size()))
 	if cards.size() == 3:
 		var expected: Array = [
-			["12/10/2026 22:41", "First Signal", "16 min played", "42%", false],
-			["12/10/2026 22:27", "Wake Kite", "7 min played", "25%", false],
+			["12/10/2026 22:41", "First Signal", "16 min played", "46%", false],
+			["12/10/2026 22:27", "Wake Kite", "7 min played", "23%", false],
 			["11/10/2026 21:05", "Wake Kite", "3 min played", "8%", false],
 		]
 		for i in 3:

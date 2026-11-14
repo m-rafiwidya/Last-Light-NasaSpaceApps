@@ -162,6 +162,7 @@ func _ready() -> void:
 	if stock_rack:
 		_build_rack_stock()
 		_build_bench_stock()
+	CampaignState.flag_changed.connect(_on_cargo_flag)
 
 
 # --- Building ------------------------------------------------------------------------------
@@ -639,15 +640,27 @@ func set_rover_pool(starting: Array) -> void:
 	_pool_ready = true
 
 
-## Lays the rack and the bench out again when parts mounted on the rover change what they show
+## Lays the rack and the bench out again when parts mounted on the rover, or the cargo delivered
+## (CargoPlan: slots stay empty until their order arrives), change what they show
 func account_rack() -> void:
 	if not _pool_ready:
 		return
 	var mounted: Array = _mounted_parts()
-	if rack_stock and _stock.differs(mounted):
-		_stock.restock(rack_stock, get_parent(), mounted)
-	if bench_stock and _bench_parts.differs(mounted):
-		_bench_parts.restock(bench_stock, get_parent(), mounted)
+	var has_crate: bool = is_inside_tree() and not get_tree().get_nodes_in_group(CargoPlan.CRATE_GROUP).is_empty()
+	for pair in [[rack_stock, _stock, "rack"], [bench_stock, _bench_parts, "bench"]]:
+		if pair[0] == null:
+			continue
+		var stock: PartsStock = pair[1]
+		var hidden: Array = CargoPlan.hidden_slots(pair[2], has_crate)
+		var changed: bool = hidden != stock.hidden
+		stock.hidden = hidden
+		if changed or stock.differs(mounted):
+			stock.restock(pair[0], get_parent(), mounted)
+
+
+func _on_cargo_flag(flag: String, _value: bool) -> void:
+	if flag == CargoPlan.DELIVERED_FLAG:
+		account_rack()
 
 
 func _mounted_parts() -> Array:
