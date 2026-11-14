@@ -172,10 +172,11 @@ func _run() -> void:
 		_check("volume is saved with the settings", is_equal_approx(config.get_value("audio", "music", -1.0), 35.0))
 		_check("the other menu's slider follows", is_equal_approx(pause_slider.value, 35.0))
 
-	# 6. Level buttons' press sounds
-	var main_level: Node = root.get_node("Main/UIManager/MainMenu").find_child("LevelChoice", true, false)
+	# 6. Press sounds of the buttons that start a level
+	var popup: Node = root.get_node("Main/UIManager/MainMenu").find_child("PlayPopup", true, false)
 	var pause_level: Node = root.get_node("Main/UIManager/PauseMenu").find_child("LevelChoice", true, false)
-	_check("main menu level buttons play game_start", _press_sound(main_level) == &"game_start")
+	_check("START NEW CAMPAIGN plays game_start", ["StartEmpty", "StartList"].all(func(n: String) -> bool:
+		return popup.find_child(n, true, false).get_node("ButtonSoundComponent").press_sound == &"game_start"))
 	_check("pause menu level buttons play confirm", _press_sound(pause_level) == &"confirm")
 
 	# 2b. Music across a level change: same player, not restarted

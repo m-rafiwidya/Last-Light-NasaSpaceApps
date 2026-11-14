@@ -53,6 +53,14 @@ func parse_command(input: String):
 					menu.replay_intro()
 				else:
 					add_log("The opening sequence plays on the main menu only")
+			"testlevel":
+				# The test sandbox, no longer on the main menu (the pause menu still offers it)
+				SceneLoader.load_scene("test_level")
+			"fakesaves":
+				# Sample save metadata so the PLAY popup's list can be previewed
+				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.SAVE_DIR])
+			"clearsaves":
+				add_log("Removed %d fake saves" % SaveIndex.clear_fake_saves())
 			"fullbright":
 				var viewport = get_viewport()
 				if viewport.debug_draw != Viewport.DEBUG_DRAW_UNSHADED:

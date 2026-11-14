@@ -3,7 +3,7 @@ extends SceneTree
 ## the menus through a whole session, with real mouse and key events (Input.parse_input_event,
 ## as the OS would send them) and real focus changes (the window minimised and restored):
 ##   1. The main menu shows the cursor, a click skips its opening sequence, and its buttons take
-##      clicks (Settings, Back, Play, Moon).
+##      clicks (Settings, Back, Play, START NEW CAMPAIGN).
 ##   2. In game the cursor is captured, on foot and driving, and mouse look turns the view.
 ##   3. Esc shows the cursor with the pause menu; Resume captures it again.
 ##   4. Losing and regaining the window's focus never leaves the cursor hidden in a menu or
@@ -157,11 +157,13 @@ func _run() -> void:
 	await _away_and_back()
 	_check_mode("main menu after losing and regaining focus: cursor visible", Input.MOUSE_MODE_VISIBLE)
 	await _click(play)
-	await _frames(10)
-	var moon := root.find_child("moon_level", true, false) as Button
-	_check("main menu: Play takes a click and lists the levels", moon != null and moon.is_visible_in_tree())
-	await _click(moon)
-	_check("main menu: Moon takes a click and loads the Moon", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
+	await _frames(40)
+	var popup: Node = root.find_child("PlayPopup", true, false)
+	var start: Button = popup.get_start_button() if popup and popup.is_open else null
+	_check("main menu: Play takes a click and opens the popup", start != null and start.is_visible_in_tree())
+	_check_mode("PLAY popup: cursor visible", Input.MOUSE_MODE_VISIBLE)
+	await _click(start)
+	_check("START NEW CAMPAIGN takes a click and loads the Moon", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
 
 	# The unfocused-window handling (main.gd): off when embedded in the editor, and when it is on,
 	# focus coming back restores the frame pacing and the mouse mode

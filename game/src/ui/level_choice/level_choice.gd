@@ -3,8 +3,8 @@ class_name LevelChoice
 extends VBoxContainer
 
 ## One menu button per playable level (SceneLoader.PLAYABLE_LEVELS), styled like the other menu
-## buttons. Used by the main menu ("Play ...") and the pause menu ("Switch to ...", without
-## the level already loaded).
+## buttons. Used by the pause menu ("Switch to ...", without the level already loaded); the main
+## menu's PLAY opens the save popup instead.
 
 signal level_chosen(level_id: String)
 

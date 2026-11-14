@@ -2,7 +2,8 @@ extends SceneTree
 ## Main menu: boots the game and checks the launch (no loading screen, black until the opening
 ## sequence), the opening sequence (plays on the first menu only, any key skips it, F11 doesn't,
 ## PLAY is focused after it), keyboard navigation, PLAY's level list, the Moon (click emits
-## moon_clicked, drag turns it, it only renders while the menu is up), that the menu backdrop is
+## moon_clicked, drag turns it, it only renders while the menu is up), PLAY opening its popup
+## (tests/test_play_popup.gd covers the popup itself), that the menu backdrop is
 ## the empty level, not test_level, and the display mode setting (saved; the settings file is
 ## restored afterwards).
 ##
@@ -186,12 +187,12 @@ func _run() -> void:
 
 	_check_display_settings()
 
-	# PLAY lists the levels under it
+	# PLAY opens the save popup (no level list on the menu any more); Esc closes it
 	play.pressed.emit()
 	await process_frame
-	var labels: Array = menu.find_child("LevelChoice", true, false).get_children().map(func(b): return b.text)
-	_check("PLAY lists the levels", labels == ["TEST LEVEL", "MOON"], str(labels))
-	_check("the first level gets focus", menu.find_child("test_level", true, false).has_focus())
+	_check("PLAY opens the popup", menu.is_popup_open() and menu.find_child("LevelChoice", true, false) == null)
+	await _key(KEY_ESCAPE)
+	_check("Esc closes it, PLAY has focus again", not menu.is_popup_open() and play.has_focus())
 
 	# Into a level: the menu stops rendering; back to the menu: no second opening sequence
 	SL.load_scene("test_level")

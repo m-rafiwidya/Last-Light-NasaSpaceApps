@@ -3,7 +3,7 @@ extends UIScreen
 ## Main menu (docs/ui/UI_SPEC.md "Main menu", design x 1.2): starfield, the 3D Moon on the right
 ## (MenuMoon), and at x 180 the floating astronaut, LAST LIGHT and PLAY / SETTINGS / QUIT GAME.
 ## The first time it opens per launch it plays the opening sequence (OpeningSequence).
-## PLAY shows the playable levels under it for now (the save popup replaces this later).
+## PLAY opens the PlayPopup (no save file / the save list) over the blurred menu.
 
 enum SubScreen{
 	MAIN_MENU,
@@ -32,13 +32,12 @@ var _float_tween: Tween
 @onready var _play: Button = %Play
 @onready var _settings: Button = %Settings
 @onready var _quit: Button = %Quit
-@onready var _play_choices: Control = %PlayChoices
-@onready var _level_choice: LevelChoice = %LevelChoice
+@onready var _popup: PlayPopup = %PlayPopup
 
 
 func _ready() -> void:
 	_play.pressed.connect(_on_play_pressed)
-	_level_choice.level_chosen.connect(_on_level_chosen)
+	_popup.closed.connect(_on_popup_closed)
 	_settings.pressed.connect(_on_settings_pressed)
 	_quit.pressed.connect(_on_quit_pressed)
 	$SettingsSubMenu/VBoxContainer/Back.pressed.connect(_on_back_pressed)
@@ -59,24 +58,27 @@ func _ready() -> void:
 
 
 func _menu_buttons() -> Array[Button]:
-	var buttons: Array[Button] = [_play, _settings, _quit]
-	for button in _level_choice.get_children():
-		if button is Button:
-			buttons.append(button)
-	return buttons
+	return [_play, _settings, _quit]
 
 
 func _on_play_pressed() -> void:
-	# TODO(UI prompt 4): open the save popup instead of listing the levels
-	_play_choices.visible = not _play_choices.visible
-	if _play_choices.visible:
-		var first: Control = _level_choice.get_child(0) as Control
-		if first:
-			first.grab_focus()
+	if not _shown or _popup.is_open:
+		return
+	# The menu and the Moon stay on screen (blurred) but take no mouse or focus
+	_sub.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+	_sub.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
+	_popup.open()
 
 
-func _on_level_chosen(level_id: String) -> void:
-	SceneLoader.load_scene(level_id)
+func _on_popup_closed() -> void:
+	_sub.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_INHERITED
+	_sub.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_INHERITED
+	if _shown:
+		_play.grab_focus()
+
+
+func is_popup_open() -> bool:
+	return _popup.is_open
 
 
 func _on_moon_clicked() -> void:
@@ -113,7 +115,7 @@ func update_subscreen() -> void:
 func fade_in() -> void:
 	_shown = true
 	sub_screen = SubScreen.MAIN_MENU
-	_play_choices.hide()
+	_popup.close(false)
 	_set_live(true)
 	if _background_tween:
 		_background_tween.kill()
@@ -135,6 +137,7 @@ func fade_out() -> void:
 		return
 	_shown = false
 	_intro.skip()
+	_popup.close()
 	slide_to(_sub, -SLIDE_DISTANCE)
 	slide_to($SettingsSubMenu, SLIDE_DISTANCE)
 	_background_tween = create_ui_tween()

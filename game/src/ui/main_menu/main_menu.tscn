@@ -8,8 +8,7 @@
 [ext_resource type="Shader" path="res://src/ui/main_menu/title_blur.gdshader" id="6_blur"]
 [ext_resource type="PackedScene" path="res://src/ui/components/underline_button.tscn" id="7_ubutton"]
 [ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="8_sound"]
-[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="9_levels"]
-[ext_resource type="PackedScene" path="res://src/ui/level_choice/level_button_v2.tscn" id="10_lbutton"]
+[ext_resource type="PackedScene" path="res://src/ui/main_menu/play_popup.tscn" id="9_popup"]
 [ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="11_settings"]
 [ext_resource type="Script" path="res://src/ui/main_menu/opening_sequence.gd" id="12_intro"]
 [ext_resource type="Script" path="res://src/ui/components/spaced_label.gd" id="13_spaced"]
@@ -127,23 +126,8 @@ text = "PLAY"
 
 [node name="ButtonSoundComponent" type="Node" parent="MainMenuSubScreen/Column/Nav/Play"]
 script = ExtResource("8_sound")
+press_sound = &"menu_open"
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
-
-[node name="PlayChoices" type="MarginContainer" parent="MainMenuSubScreen/Column/Nav"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_horizontal = 0
-theme_override_constants/margin_left = 29
-
-[node name="LevelChoice" type="VBoxContainer" parent="MainMenuSubScreen/Column/Nav/PlayChoices"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 0
-script = ExtResource("9_levels")
-button_scene = ExtResource("10_lbutton")
-uppercase = true
-press_sound = &"game_start"
 
 [node name="Settings" parent="MainMenuSubScreen/Column/Nav" instance=ExtResource("7_ubutton")]
 unique_name_in_owner = true
@@ -171,6 +155,9 @@ script = ExtResource("8_sound")
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
 [node name="SettingsSubMenu" parent="." unique_id=590360634 instance=ExtResource("11_settings")]
+
+[node name="PlayPopup" parent="." instance=ExtResource("9_popup")]
+unique_name_in_owner = true
 
 [node name="Intro" type="Control" parent="."]
 visible = false

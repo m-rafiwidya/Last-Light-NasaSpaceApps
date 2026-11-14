@@ -16,7 +16,8 @@ const LEVEL_PATHS: Dictionary = {
 }
 ## Player properties a level can set by having a property of the same name on its root
 const PLAYER_LEVEL_SETTINGS: Array[String] = ["jump_height", "ground_friction", "player_lifts_rovers"]
-## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
+## The levels the pause menu offers ("Switch to ..."), in menu order: id -> display name. The main
+## menu's PLAY starts the campaign (SaveIndex.CAMPAIGN_LEVEL) instead.
 const PLAYABLE_LEVELS: Dictionary = {
 	"test_level": "Test level",
 	"moon_level": "Moon",

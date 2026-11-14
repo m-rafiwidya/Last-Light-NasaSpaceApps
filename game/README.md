@@ -37,6 +37,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
 15. [Robot](#15-robot)
 16. [Audio](#16-audio)
+17. [Save slot metadata](#17-save-slot-metadata)
 
 ---
 
@@ -50,7 +51,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | Two levels: `src/levels/test_level.tscn` and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); chosen on the main menu or switched from the pause menu |
+| Content | Two levels: `src/levels/test_level.tscn` and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); the Moon is started from the main menu (PLAY > START NEW CAMPAIGN), either is switched to from the pause menu, and the console's `testlevel` loads the test level |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -98,6 +99,7 @@ game/
     │   ├── moon_level.tscn           # Moon level (script: rover_level.gd)
     │   ├── terrain/                  # MoonTerrain (moon_terrain.gd), RockField (rock_field.gd), regolith.gdshader
     │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
+    ├── save/                         # SaveIndex (save slot list for the PLAY popup) and SaveSlotInfo: metadata only, see section 17
     ├── settings/graphics_settings.gd # the settings that are really applied (terrain detail, dust and tracks), user://settings.cfg
     ├── settings/display_settings.gd  # window mode (windowed / fullscreen / borderless), same file
     ├── effects/wheel_dust/           # WheelDust: the wheels' lunar dust (one GPUParticles3D per wheel), its particle and grain shaders
@@ -108,9 +110,9 @@ game/
     └── ui/
         ├── ui_screen.gd              # base class (CanvasLayer) with fade_in/fade_out
         ├── ui_manager/               # orchestrates all screens
-        ├── main_menu/
+        ├── main_menu/                # MainMenu, MenuMoon, OpeningSequence, PlayPopup + SaveCard (the PLAY popup)
         ├── pause_menu/
-        ├── level_choice/             # one menu button per playable level (main menu, pause menu)
+        ├── level_choice/             # one menu button per playable level (pause menu)
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
         ├── boundary_hint/            # "Survey area boundary in 12 m" on both HUDs (BoundaryHint)
@@ -287,6 +289,7 @@ UIManager
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
 3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc); and in `_input` (before the GUI, so Alt+Enter doesn't also press the focused button): `toggle_fullscreen` (F11, Alt+Enter) -> `DisplaySettings.toggle_fullscreen()`, windowed <-> the last fullscreen kind, saved.
    - Backtick: shows/hides the `Console` popup. It does **not** change game state (the game keeps running while it is open). See [section 11](#11-debug-console).
+   - Esc is ignored while the main menu's PLAY popup is (or was, at the end of the last frame) open: the popup closes itself on Esc in `_input`, and that Esc does nothing else.
    - Esc: `IN_GAME_PLAYER -> PAUSED`, `IN_GAME_ROBOT -> IN_GAME_PLAYER`, `PAUSED`/`MISSION_CONSOLE -> last in-game state`.
 
 ### 6.2 UIScreen base class (`ui/ui_screen.gd`)
@@ -301,7 +304,12 @@ Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/
 
 - `Background`: the static starfield (`components/starfield.gd`). It does not slide; it fades out and hides when the menu leaves.
 - `MainMenuSubScreen`: the Moon (`menu_moon.tscn`, below) and the left column at x 180: the astronaut logo (`res/ui/astronaut_logo.svg`, 7 s float loop), LAST LIGHT, then **PLAY / SETTINGS / QUIT GAME** (`UnderlineButton`s; hovering an item focuses it, so mouse and keyboard/gamepad share one highlight; up/down move between them).
-  - **PLAY** shows the playable levels under it (a `LevelChoice` with `button_scene = level_choice/level_button_v2.tscn`, one button per `SceneLoader.PLAYABLE_LEVELS` entry) -> `SceneLoader.load_scene(level_id)`. Temporary: the save popup replaces it.
+  - **PLAY** opens the `PlayPopup` (`play_popup.tscn/.gd`, board `.ll-save`/`.ll-btn`/`.ll-tag`, design x 1.2). It sits above the menu in the same `CanvasLayer`; its full-screen `Blur` (`components/backdrop_blur.gdshader`: a 16-tap mip blur of the screen, 12 px, mixed to 45 % towards `bg`, tweened in 0.5 s) blurs and dims the starfield, the Moon and the column, and takes the mouse. While it is open the menu's `MainMenuSubScreen` has `mouse_behavior_recursive` and `focus_behavior_recursive` disabled, so neither the buttons nor the Moon take input. Back button top-left (`BackButton`), footer `KeyChip`s.
+    - It reads `SaveIndex.list_saves()` (section 17) every time it opens. **No saves:** a `FramedPanel` with "There's no save file." (Exo 2) and START NEW CAMPAIGN (`SolidButton`); footer Esc Cancel. **Saves:** "Select save data to load.", one `SaveCard` per save, newest first, START NEW CAMPAIGN under the list; footer Enter Load, Esc Cancel. More than five cards scroll (`ScrollContainer`, `follow_focus` keeps the selected card in view, no visible scroll bar).
+    - `SaveCard` (`save_card.gd`, extends `FramedPanel`): the mission image (`res/ui/missions/<mission_id>.png`, 16:9; placeholders from `tools/ui/make_mission_placeholders.py`, replace them with real images of the same names), DD/MM/YYYY HH:MM in local time, the mission title (from `docs/examples/MISSIONS.json`), a 16-segment story progress bar with %, "X min played" / "1 h 12 min played" top-right and the slanted Autosave tag. Hovering focuses a card and focus selects it (frame, glow, corner brackets), so mouse and keyboard share one highlight; up/down move between the cards and START (focus never leaves the popup), Enter or click loads.
+    - Focus goes to the newest card (or START when there are none) on open and back to PLAY on close. Esc (handled in the popup's `_input`) or the back button closes it.
+    - START NEW CAMPAIGN -> `SaveIndex.start_new_campaign()` (`SceneLoader.load_scene("moon_level")`, the normal loading path); a card -> `SaveIndex.load_slot(slot_id)`, a stub that prints a TODO and loads the Moon level until the campaign state exists.
+    - The test level is not on the main menu: use the pause menu's "Switch to Test level" or the console's `testlevel`.
   - **SETTINGS** slides `SettingsSubMenu` (`sub_screens/settings_sub_menu.tscn`, still on the old theme) in; **Back** slides it out. **QUIT GAME** -> `get_tree().quit()`.
 - `MenuMoon` (`menu_moon.gd`): a sphere with the LROC colour map (`res/textures/moon/lroc_color_4k.jpg`) in a `SubViewport` with its own world and a transparent background, orthographic camera, unshaded shader with a fixed view-space light from the upper left and a softened terminator (`menu_moon.gdshader`; texture coordinates come from the object-space direction, so the near side faces +Z). It turns slowly by itself, can be dragged (inertia; spin resumes 1.2 s later), brightens and grows 2 % on hover, and emits `moon_clicked` on a click without drag (the planet explorer will hang off it). Only the disc takes the mouse (`_has_point`). `set_active(false)` stops the `SubViewport` rendering (`UPDATE_DISABLED`) and its `_process`: the menu does this whenever it is hidden or the settings cover it.
 - `Intro` (`opening_sequence.gd`): at launch it is shown as a black cover (`cover()`) while the menu loads; then the opening sequence, played the first time the menu opens per launch (`SceneLoader.is_first_main_menu_load`): black, TANDBORSTE PRESENTS, the Moon rises in, the astronaut drifts in, LAST LIGHT resolves from blur (a `CanvasGroup` with a mip-blur shader, `title_blur.gdshader`, switched off with its mipmaps once the title is sharp), the items slide in; about 10 s, timings from the board's `.ll-intro` CSS. Every element is a function of the sequence time, so SKIP / any key / click / gamepad button just applies the end state. Its clock is real time advanced at most 1/20 s per frame, so a first-frame hitch doesn't swallow the start, and for its first 0.5 s (under the opaque overlay) the Moon and the blurred title are drawn as if visible, so their first-use cost is paid while the screen is black. TANDBORSTE PRESENTS and LAST LIGHT are `SpacedLabel`s (`components/spaced_label.gd`): text shaped once and each letter drawn at a float offset, so their animated letter-spacing is smooth (a `FontVariation`'s `spacing_glyph` is whole pixels: every step moved the last letter by as many pixels as there are letters). F11 / Alt+Enter don't skip it. The debug console's `intro` command plays it again.
@@ -356,11 +364,11 @@ const LEVEL_PATHS: Dictionary = {
     "moon_level": "res://src/levels/moon_level.tscn",
     MAIN_MENU_ID: "res://src/levels/menu_backdrop.tscn",   # "main_menu" (empty)
 }
-## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
+## The levels the pause menu offers ("Switch to ..."), in menu order: id -> display name
 const PLAYABLE_LEVELS: Dictionary = {"test_level": "Test level", "moon_level": "Moon"}
 ```
 
-`current_level_id` is the id of the loaded level ("" while none is). `ui/level_choice/` builds the menus' level buttons from `PLAYABLE_LEVELS` (`LevelChoice`, a `VBoxContainer` of `level_button.tscn`s, emits `level_chosen(level_id)`), so a new playable level only needs an entry there.
+`current_level_id` is the id of the loaded level ("" while none is). `ui/level_choice/` builds the pause menu's level buttons from `PLAYABLE_LEVELS` (`LevelChoice`, a `VBoxContainer` of `level_button.tscn`s, emits `level_chosen(level_id)`), so a new playable level only needs an entry there.
 
 ### Flow of `load_scene(level_name, no_fade_in = false)`
 
@@ -744,6 +752,10 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `quit` | quit the game |
 | `say <text...>` | creates a temporary `Dialog` with that subtitle and plays it via `DialogServer` |
 | `fullbright` | toggles `Viewport.DEBUG_DRAW_UNSHADED` |
+| `intro` | plays the main menu's opening sequence again (main menu only) |
+| `testlevel` | loads the test level (it is no longer on the main menu) |
+| `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
+| `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |
 
 | anything else | logs `Unknown command "..."` |
 
@@ -852,7 +864,7 @@ Grounded in the current code; useful to know before changing things.
 2. Add a `Marker3D` named **`SpawnPoint`** (player spawns with its transform).
 3. (Optional, if used as menu backdrop) add a `Marker3D` named **`CameraMarker`**.
 4. Register it in `SceneLoader.LEVEL_PATHS`: `"my_level": "res://src/levels/my_level.tscn"`.
-5. To offer it in the main and pause menus, add it to `SceneLoader.PLAYABLE_LEVELS` with its display name; otherwise load it with `SceneLoader.load_scene("my_level")`.
+5. To offer it in the pause menu, add it to `SceneLoader.PLAYABLE_LEVELS` with its display name; otherwise load it with `SceneLoader.load_scene("my_level")`.
 6. For drivable rovers and a parts pile, use `rover_level.gd` as the root script (or extend `RoverLevel`) and follow its naming (`<Rover>` + `<Rover>Trigger`, `PartsPile`, `RespawnPartsTrigger`).
 
 ### Add a pickup prop
@@ -1082,3 +1094,46 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 **Tests:** `tests/test_audio.gd` (music, UI, volumes) and `tests/test_sfx.gd` (gameplay sounds on the Moon level). Headless Godot uses the Dummy audio driver, which plays in real time while `--fixed-fps` runs game time as fast as it can, so the test waits in real time for audio and in game time for tweens.
 
+---
+
+## 17. Save slot metadata
+
+There is **no save system or campaign state yet**. The campaign state (README_AI.md: "one authoritative campaign state") will own the real save data. The PLAY popup only needs a few display fields per slot, so it reads them from small metadata files that the campaign state writes **next to its own save data**. The UI never reads or writes gameplay data.
+
+- `src/save/save_slot_info.gd` (`SaveSlotInfo`): `slot_id`, `mission_id`, `saved_at`, `play_time_sec`, `story_progress`, `is_autosave`, `current_objective`; `from_dict()` validates a parsed file, `to_dict()` writes one.
+- `src/save/save_index.gd` (`SaveIndex`, static functions, no autoload):
+  - `list_saves() -> Array[SaveSlotInfo]`: every readable `user://saves/*.meta.json`, newest first (`saved_at` descending, then `slot_id`). `[]` when the folder or the files don't exist. Files that aren't JSON objects, or lack a valid `mission_id` / `saved_at`, are skipped with a warning.
+  - `load_slot(slot_id)`: **the hook for the campaign state.** Today a stub that prints `TODO(campaign state): ...` and starts the Moon level.
+  - `start_new_campaign()`: `SceneLoader.load_scene(CAMPAIGN_LEVEL)` (`"moon_level"`).
+  - `write_meta(info)`: writes a metadata file (the fake saves use it; the campaign state may too).
+  - `mission_title(id)` (from `docs/examples/MISSIONS.json`; unknown ids fall back to the id, capitalised), `mission_image(id)`, `format_date()`, `format_play_time()`, `write_fake_saves()` / `clear_fake_saves()` (console `fakesaves` / `clearsaves`).
+
+**File:** `user://saves/<slot_id>.meta.json`, one per slot. The slot id is the file name without `.meta.json` (letters, digits, `_` and `-`; `fake_` is reserved for the fake saves). Write it whenever the slot's save data is written, and delete it with the slot.
+
+```json
+{
+	"format": 1,
+	"slot_id": "slot_03",
+	"mission_id": "first_signal",
+	"saved_at": 1760301660,
+	"play_time_sec": 960,
+	"story_progress": 0.375,
+	"is_autosave": false,
+	"current_objective": "Activate IRIS"
+}
+```
+
+| Key | Type | Required | Meaning |
+|---|---|---|---|
+| `format` | int | no | Metadata format version, `1` |
+| `slot_id` | string | no | Informational; the file name is what counts |
+| `mission_id` | string | **yes** | A mission id from `docs/examples/MISSIONS.json` (`wake_kite`, `first_signal`, `beyond_the_rim`): picks the card's title and image |
+| `saved_at` | number | **yes** | Unix time in seconds (UTC) of the save; the card shows it in local time as DD/MM/YYYY HH:MM |
+| `play_time_sec` | number | no (0) | Total play time; shown as "16 min played" / "1 h 12 min played" |
+| `story_progress` | number | no (0) | Campaign progress 0..1 (clamped); the card fills `round(progress x 16)` of 16 segments and shows `round(progress x 100)` % |
+| `is_autosave` | bool | no (false) | Shows the Autosave tag |
+| `current_objective` | string | no ("") | The objective the save resumes at, for the "Resuming · <objective>" title card (not shown on the card) |
+
+Known limit: local time uses the system's current UTC offset, so a save made before a daylight-saving change shows one hour off.
+
+**Tests:** `tests/test_play_popup.gd` (the index's parsing and formats, both popup states, keyboard and mouse selection, scrolling, Esc closing only the popup, loading and START NEW CAMPAIGN, `testlevel`; it moves `user://saves` aside while it runs).
