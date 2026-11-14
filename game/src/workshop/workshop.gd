@@ -104,6 +104,7 @@ const SLOTS: Dictionary = {
 	13: ["res://src/robot/socket/mast_head_part.tscn", {}, ""],
 	14: ["res://src/robot/socket/arm_tool_part.tscn", {}, ""],
 	15: ["res://src/robot/socket/antenna_part.tscn", {}, ""],
+	16: ["res://src/robot/socket/battery_light_part.tscn", {}, "side"],
 	# The diagnostic cartridge (IRIS_KIT.md 4), lying flat on the top shelf
 	17: ["res://src/robot/socket/cartridge_part.tscn", {}, ""],
 }

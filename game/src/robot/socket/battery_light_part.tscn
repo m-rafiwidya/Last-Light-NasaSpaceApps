@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/robot/socket/battery_part.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://res/models/rover_kit/power_unit_light.glb" id="3_model"]
+
+[node name="BatteryLightPart" instance=ExtResource("1_base")]
+mass = 3.0
+script = ExtResource("2_script")
+catalog_id = "battery_light"
+capacity = 60.0
+part_type = 2
+tint_material = &"rover_dark"
+tint = Color(0.18, 0.42, 0.62, 1)
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("3_model")]

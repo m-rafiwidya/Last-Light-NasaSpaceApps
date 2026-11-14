@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: the workshop (tools/blender/WORKSHOP_KIT.md) in the Moon level, then in the
 ## test level.
-##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 16
+##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 17
 ##      parts on their slots, at rest; every label fits its plate at 50-65 mm caps.
 ##   2. Reach: from where the player stands (console, between the rover and the rack, the
 ##      charger), a ray from the eye reaches the console, the restock button, rack parts, the
@@ -147,7 +147,16 @@ func _layout_checks() -> void:
 		var aabb_centre: Vector3 = _visual_centre(part)
 		worst_slot = maxf(worst_slot, Vector2(aabb_centre.x - slot.x, aabb_centre.z - slot.z).length())
 		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
-	_check("the rack holds its 16 parts (with the cartridge)", stock.get_child_count() == 16, "%d" % stock.get_child_count())
+	_check("the rack holds its 17 parts (with the cartridge and the light battery)", stock.get_child_count() == 17, "%d" % stock.get_child_count())
+	var batteries: Array = []
+	for part in stock.get_children():
+		if part.has_method("drain"):  # a BatteryPart (named by method: the class needs the autoloads)
+			batteries.append(part)
+	var distinct: bool = batteries.size() == 2 and batteries[0].capacity != batteries[1].capacity and batteries[0].mass != batteries[1].mass \
+		and batteries[0].get_catalog_id() != batteries[1].get_catalog_id()
+	var named: bool = distinct and batteries.all(func(b): return b.get_display_name() != "Part")
+	_check("the rack holds two batteries with distinct Wh, kg and catalog entries", named,
+		", ".join(batteries.map(func(b): return "%s %.0f Wh %.1f kg" % [b.get_catalog_id(), b.capacity, b.mass])))
 	_check("rack parts on their slots, at rest", worst_slot < 0.06 and fastest < 0.01, "farthest %.3f m off its slot, fastest %.3f m/s" % [worst_slot, fastest])
 	var fit := true
 	var detail := ""

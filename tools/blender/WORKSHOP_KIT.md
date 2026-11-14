@@ -445,7 +445,7 @@ shelf at y -3.55.
 | `slot_13` | 2 | -0.90 | mast camera | upright |
 | `slot_14` | 2 | -0.35 | arm tool turret | upright |
 | `slot_15` | 2 | +0.25 | antenna | upright, dish up |
-| `slot_16` | 2 | +0.80 | empty (A10 module later) | |
+| `slot_16` | 2 | +0.80 | light battery (`power_unit_light`, on its side like `slot_12`); A10 module goes elsewhere | |
 | `slot_17`, `slot_18` | 3 | -0.60, +0.40 | empty (A06 cartridges later) | |
 
 **Labels.** One plate per group of slots, on the rail under them. Godot puts a `Label3D` 2 mm in
