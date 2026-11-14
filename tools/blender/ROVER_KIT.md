@@ -10,7 +10,10 @@ bracket's `socket_wheel` to `socket_wheel_hub` and added the Godot name rules (2
 connector recess position (2.5). Revised again while building the rocker and bogie: their
 budgets are 230 each (were 250 / 200), since round pivot housings and every keyed recess need
 about 228 per part (6.2). Added: keys on moving joints only mark the rest pose (2.5), and the
-clearance-checked pose range that the visuals must clamp to (5).
+clearance-checked pose range that the visuals must clamp to (5). Revised while building the
+chassis: socket_motor moves to the hatch floor (0.12, 0.33, 0.30) so the drive unit can sit flush
+and still mate at its origin; chassis wheel sockets are named socket_wheel_<front|middle|rear>_L/R;
+the hazcams set the lowest chassis point (3.3, 3.4).
 
 ---
 
@@ -125,7 +128,7 @@ All linkage rotation is about the X axis, so x bands never change.
 
 | Part | Origin (connection point) | Empties carried |
 |---|---|---|
-| `chassis` | world origin (0, 0, 0) | `socket_rocker_L/R` (+-0.25, 0.00, 0.27), `socket_mast` (0.15, 0.35, 0.44), `socket_arm` (-0.12, 0.45, 0.32), `socket_motor` (0.12, 0.45, 0.30), `socket_power` (0.00, -0.45, 0.36), `socket_antenna` (-0.15, -0.25, 0.44), `socket_wheel_<pos>_L/R` at the six wheel centres |
+| `chassis` | world origin (0, 0, 0) | `socket_rocker_L/R` (+-0.25, 0.00, 0.27), `socket_mast` (0.15, 0.35, 0.44), `socket_arm` (-0.12, 0.45, 0.32), `socket_motor` (0.12, 0.33, 0.30) on the hatch floor, `socket_power` (0.00, -0.45, 0.36), `socket_antenna` (-0.15, -0.25, 0.44), `socket_wheel_<front|middle|rear>_L/R` at the six wheel centres |
 | `rocker_R` | (0.25, 0.00, 0.27), mating face on the chassis side | `socket_steer_front` (0.50, 0.50, 0.30), `socket_bogie` (0.30, -0.25, 0.20) |
 | `bogie_R` | (0.30, -0.25, 0.20), mating face on the rocker | `socket_wheel_mid` (0.50, 0.00, 0.05), `socket_steer_rear` (0.50, -0.50, 0.30) |
 | `steer_bracket_R` | top of the steering actuator, on the steer axis: (0.50, +-0.50, 0.30) | `socket_wheel_hub` at the wheel centre (0.50, +-0.50, 0.05) |
@@ -137,7 +140,7 @@ All linkage rotation is about the X axis, so x bands never change.
 | `arm_forearm` | (-0.12, 0.83, 0.32) | `socket_arm_wrist` (-0.12, 1.11, 0.32) |
 | `arm_wrist` | (-0.12, 1.11, 0.32) | `socket_arm_tool` (-0.12, 1.19, 0.32) |
 | `arm_tool` | (-0.12, 1.19, 0.32) | none |
-| `motor` (drive unit) | (0.12, 0.45, 0.30), in the front hatch | none |
+| `motor` (drive unit) | (0.12, 0.33, 0.30), its back face on the hatch floor | none |
 | `power_unit` | (0.00, -0.45, 0.36) on the rear face | none |
 | `antenna` | (-0.15, -0.25, 0.44) on the deck | none |
 
@@ -161,7 +164,12 @@ Shape notes:
 - **Antenna:** flat hexagonal high-gain dish (about 0.22 across) on a small gimbal, gold accent.
 - **Mast head:** boxy camera head with two lenses (Curiosity Mastcam look).
 - **Motor:** drive unit box about 0.16 x 0.14 x 0.12 that sits flush in a recessed hatch on the
-  chassis front face, to the right of the arm shoulder.
+  chassis front face, to the right of the arm shoulder. The hatch is a 0.16 x 0.14 pocket
+  (x 0.04 to 0.20, z 0.23 to 0.37) from the front face back to y 0.33, with the connector recess
+  on its floor; the motor's origin and plug are on its back face.
+- **Chassis details:** 30 mm chamfer on the top edges; 3 mm inset panels (two per side, two at
+  the rear, one on the deck); hazcam pairs on bars under the front and rear edges (lowest point
+  z 0.16); low-gain antenna post at (0.15, -0.30) on the deck.
 
 ### 3.4 Clearance check (20 mm minimum)
 
@@ -178,6 +186,7 @@ Shape notes:
 | Bogie rear arm vs rear wheel and bracket sweep (y -0.37 to -0.63, x >= 0.32) | z (arm >= 0.30 there; bracket top 0.25) | >= 50 mm |
 | Rocker front leg (z >= 0.29 near y 0.31) vs front wheel top (0.20) | z | >= 90 mm |
 | Chassis bottom (0.20) vs ground (-0.10) | z | 300 mm |
+| Hazcams (lowest chassis point, z 0.16) vs ground | z | 260 mm |
 
 Connector joints (chassis-rocker, rocker-bogie, bogie/bracket-wheel stubs, bracket-horn) touch by
 design; the 20 mm rule applies everywhere else.
