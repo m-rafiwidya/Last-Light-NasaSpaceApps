@@ -1,17 +1,22 @@
 [gd_scene format=3 uid="uid://dfhsc2ngnj4eh"]
 
+[ext_resource type="Texture2D" uid="uid://b6i0nsumhm8x4" path="res://res/textures/dev/grey.png" id="1_br53r"]
+[ext_resource type="Texture2D" uid="uid://dt4imig118lxf" path="res://res/textures/dev/orange.png" id="2_7hvae"]
 [ext_resource type="Script" uid="uid://bw2al2a8dx44a" path="res://src/dialog/dialog.gd" id="13_tximp"]
 [ext_resource type="Script" uid="uid://djhpo3vaty23j" path="res://src/dialog/dialog_sequence.gd" id="14_cp8bs"]
 
-[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_woqy2"]
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
 
-[sub_resource type="Sky" id="Sky_43bbr"]
-sky_material = SubResource("PanoramaSkyMaterial_woqy2")
+[sub_resource type="Sky" id="Sky_hdcac"]
+sky_material = SubResource("ProceduralSkyMaterial_6o3kl")
 
-[sub_resource type="Environment" id="Environment_sj6ii"]
+[sub_resource type="Environment" id="Environment_br53r"]
 background_mode = 2
-sky = SubResource("Sky_43bbr")
+sky = SubResource("Sky_hdcac")
 tonemap_mode = 2
+glow_enabled = true
 
 [sub_resource type="Animation" id="Animation_sj6ii"]
 length = 0.001
@@ -83,10 +88,12 @@ cell_height = 0.1
 agent_height = 2.0
 agent_radius = 0.8
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1mav3"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_t1chq"]
+albedo_texture = ExtResource("1_br53r")
 uv1_triplanar = true
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_43bbr"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_45v6v"]
+albedo_texture = ExtResource("2_7hvae")
 uv1_triplanar = true
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_hdcac"]
@@ -186,12 +193,12 @@ radius = 0.6
 
 [node name="TestLevel" type="Node3D" unique_id=225028321]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1874588386]
-environment = SubResource("Environment_sj6ii")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=385206666]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1459703161]
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
 shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1456452773]
+environment = SubResource("Environment_br53r")
 
 [node name="CameraMarker" type="Marker3D" parent="." unique_id=973006948]
 transform = Transform3D(-0.7071068, -0.35355335, 0.6123724, 0, 0.8660254, 0.5, -0.7071067, 0.3535534, -0.6123724, 7, 4, -7)
@@ -208,13 +215,13 @@ navigation_mesh = SubResource("NavigationMesh_iynu6")
 
 [node name="CSGBox3D" type="CSGBox3D" parent="NavigationRegion3D" unique_id=908363993]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-material_override = SubResource("StandardMaterial3D_1mav3")
+material_override = SubResource("StandardMaterial3D_t1chq")
 use_collision = true
 collision_mask = 0
 size = Vector3(128, 1, 128)
 
 [node name="CSGCombiner3D" type="CSGCombiner3D" parent="NavigationRegion3D" unique_id=1727802787]
-material_override = SubResource("StandardMaterial3D_43bbr")
+material_override = SubResource("StandardMaterial3D_45v6v")
 use_collision = true
 collision_mask = 0
 

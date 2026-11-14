@@ -169,7 +169,6 @@ func update_held_object(delta: float) -> void:
 		pickup_translation_integral += translation_error * delta
 		var translation_derivative: Vector3 = -held_object.linear_velocity
 
-		# TODO: Properly tune this
 		var pickup_translate_kp = 10.0 * log(held_object.mass / 10.0 + 1.0) * 100.0
 		var pickup_translate_kd = 10.0 * log(held_object.mass / 10.0 + 1.0) * 10.0
 
@@ -262,8 +261,8 @@ func _on_controller_interact(value: bool) -> void:
 		var collider = raycast.get_collider()
 		if collider is RigidBody3D:
 			pickup_object(raycast.get_collider() as RigidBody3D)
-		#elif collider is InteractTrigger:
-			#collider.interact(self)
+		elif collider is InteractTrigger:
+			collider.interact(self)
 
 
 func _on_controller_primary(value: bool) -> void:
@@ -332,28 +331,20 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		# Negate friction in direction of movement
 		var relative_velocity = state.linear_velocity - local_velocity
 		# TODO: Doesnt work when walking then crouching
-		var accel_friction: Vector3 = (
-			gravity
-			* FRICTION
-			* Plane.PLANE_XZ.project(
-				-(
-					relative_velocity
-					- min(max(relative_velocity.dot(move_direction), 0.0), speed)
-					* move_direction.normalized()
-				).normalized()
-			)
-		)
+		# Friction acts only on the velocity that is not along the move direction
+		# (capped by the target speed), and is clamped so it can never overshoot.
+		var move_dir_unit: Vector3 = move_direction.normalized()
+		var target_speed: float = move_direction.length() * speed
+		var excess: Vector3 = relative_velocity - clampf(relative_velocity.dot(move_dir_unit), 0.0, target_speed) * move_dir_unit
+		excess.y = 0.0
+		var friction_dv: float = gravity * FRICTION * state.step
 
-		if sign(relative_velocity.dot(accel_friction)) != sign((relative_velocity + accel_friction * state.step).dot(accel_friction)):
-			# Friction causes object to move in different direction (static)
-			state.apply_central_impulse(
-				mass * -relative_velocity.dot(accel_friction.normalized()) * accel_friction.normalized()
-			)
+		if excess.length() <= friction_dv:
+			# Friction can stop the excess within this step (static)
+			state.apply_central_impulse(-excess * mass)
 		else:
-			# Same direction (kinetic)
-			state.apply_central_force(
-				mass * accel_friction
-			)
+			# Kinetic
+			state.apply_central_force(-excess.normalized() * gravity * FRICTION * mass)
 
 		# Compensation force on slope
 		var rotation_axis: Vector3 = normal.cross(Vector3.UP)
@@ -414,7 +405,7 @@ func _physics_process(delta: float) -> void:
 		azimuth_delta += 2.0 * PI
 	
 	#viewmodel_controller.offset += Vector2(azimuth_delta, -altitude_delta) / 32.0
-	
+	# TODO: Add viewmodel implementation
 	var crouch_check_is_colliding = $CrouchCheck.is_colliding()
 	if crouch_check_is_colliding != crouch_check_was_colliding:
 		crouch_check_was_colliding = crouch_check_is_colliding
@@ -423,11 +414,12 @@ func _physics_process(delta: float) -> void:
 		elif not want_to_crouch:
 			set_crouch(false)
 	
+	# TODO: Possibly object reorientation stuff?
 	#if is_rotating_held_object:
 		#pass
 		##held_object_original_orientation = new_basis.get_rotation_quaternion() * held_object_original_orientation
 		#controller.queued_rotation = Quaternion.IDENTITY
-	# TODO: Buggy state when doing both this and interacting with the breaker box
+	# TODO: Remove this relic of an old idea
 	#if Input.is_action_just_pressed("interact_inventory"):
 		#is_looking_at_map = !is_looking_at_map
 		#viewmodel_controller.show_map(is_looking_at_map)

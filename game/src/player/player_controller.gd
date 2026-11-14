@@ -41,6 +41,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
+		# TODO: This supports object rerotation for precise fenaggling 
 		#if Input.is_action_pressed("interact_secondary"):
 			#var new_basis := Basis.IDENTITY
 			##new_basis = new_basis.rotated(camera.transform.basis.x, px_to_rad(event.relative.y))

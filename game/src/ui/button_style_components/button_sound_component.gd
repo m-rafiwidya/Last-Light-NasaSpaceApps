@@ -2,12 +2,16 @@ class_name ButtonSoundComponent
 
 extends Node
 
+#var on_hover_sfx: AudioStream = preload()
+#var on_press_sfx: AudioStream = preload()
+
 @onready var hover_audio_player = AudioStreamPlayer.new()
 @onready var press_audio_player = AudioStreamPlayer.new()
 @onready var button: Button = get_parent()
 
 
 func _ready() -> void:
+	# TODO: Implement from above
 	#hover_audio_player.stream = ResourceLoader.load("res://res/sounds/ui/select.wav")
 	hover_audio_player.volume_db = -20.0
 	hover_audio_player.bus = "UI"

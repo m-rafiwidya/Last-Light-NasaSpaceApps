@@ -5,16 +5,12 @@ signal level_loaded(level_name)
 signal level_unloaded(level_name)
 
 const PLAYER_PACKED_SCENE: PackedScene = preload("res://src/player/player.tscn")
-#const PLAYER_CONTROLLER_PACKED_SCENE: PackedScene = preload("res://src/controllers/player_controller/player_controller.tscn")
 const MAIN_MENU_ID = "main_menu"
 # TODO: Kinda dangerous if someone forgot to change these to a valid path
 # is there a built in godot way for file paths?
 # or maybe just do a debug check over this and see if its a valid path
 const LEVEL_PATHS: Dictionary = {
 	"test_level": "res://src/levels/test_level.tscn",
-	"school_level": "res://src/levels/school_level.tscn",
-	"woods": "res://src/levels/woods.tscn",
-	"lab": "res://src/levels/lab.tscn",
 	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
 }
 
