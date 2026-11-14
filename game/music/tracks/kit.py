@@ -130,6 +130,13 @@ class Song:
             inst.control_changes.append(
                 pretty_midi.ControlChange(cc, value, self.t(bar, beat + beats * i / steps)))
 
+    def space(self, name):
+        """Synth space for all synth stems: "distant" (default), "dark", "dream" or "liminal"
+        (synth.SPACES)."""
+        if name not in synth.SPACES:
+            raise ValueError(f"unknown space {name!r}; choose from {', '.join(synth.SPACES)}")
+        self.midi.text_events.append(pretty_midi.Text(f"space:{name}", 0.0))
+
     def loop(self, bars):
         """Mark the loop length. Everything sounding after this point (held notes, release, reverb)
         is folded back onto the start by render.py, so notes may cross the loop point."""

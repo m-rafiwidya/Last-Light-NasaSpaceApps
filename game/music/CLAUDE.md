@@ -17,7 +17,9 @@ that mood's section and the shared rules.
 ## Mood 1: Deep Space (main style)
 
 Feel: calm, empty, mysterious, slightly magical, liminal: floating alone somewhere very large and
-very quiet. Reference feel: Brian Eno's *Apollo: Atmospheres and Soundtracks*.
+very quiet. Reference feel: Brian Eno's *Apollo: Atmospheres and Soundtracks*, heard from far away:
+distant and muffled, like dark ambient, dream ambient or liminal-spaces music. It sits quietly in
+the background and never feels present or close.
 
 All sounds come from the synthesis engine (`synth.py`), never the soundfont. The stem/instrument
 name picks the voice (a voice name, or a voice name plus `_suffix` for extra stems, e.g.
@@ -28,28 +30,41 @@ name picks the voice (a voice name, or a voice name plus `_suffix` for extra ste
 | `pad`      | Detuned saws, slow attack/release, lowpass slowly breathing | Main chord bed                            |
 | `pad_sine` | Detuned sine layers, glassier                               | High, quiet colour layer                  |
 | `drone`    | Very low sustained tone, slow beating, drift and swell      | Foundation, often a pedal through the loop |
-| `bell`     | Soft FM bell, long decay, echo                              | Sparse twinkles                           |
+| `bell`     | Soft FM bell, soft attack, long decay, dark echo            | Rare, distant twinkles                    |
 | `chime`    | Higher, glassier, shorter FM chime                          | Even sparser, highest sparkle             |
-| `texture`  | Very quiet band-passed noise (note pitch = band centre)     | Distant wind, held under everything       |
+| `texture`  | Band-passed noise, nearly silent with rare soft gusts      | Optional distant wind; leave out freely   |
 
-- Effects are built into each voice (`fx_chain` in `synth.py`): a huge synthetic hall on
-  everything, octave-up shimmer on pads and bells, slow chorus on pads, soft echo on bells, and a
-  very slight pitch wobble for the hazy, liminal feel. Tune voices and effects in `synth.py`,
-  not per track.
+- Effects are built into each voice (`fx_chain` in `synth.py`): a huge synthetic hall with
+  mostly wet and little dry sound, a steep lowpass that cuts most high frequencies, slow chorus
+  on pads, dark echo on bells, a slight pitch wobble, and at most a trace of octave-up shimmer
+  (it brightens, which works against the dark feel). Tune voices and effects in `synth.py`, not
+  per track.
+- Every track picks a space with `song.space(...)`, which sets how far away and through what the
+  music is heard (`SPACES` in `synth.py`):
+  - `distant` (default): huge hall, lowpass around 2.2 kHz.
+  - `dark`: heaviest muffling (around 900 Hz), biggest and darkest hall, no shimmer. For low,
+    minor, slightly ominous tracks.
+  - `dream`: warm and blurry, with deep chorus and slow wow. For soft major-7th washes.
+  - `liminal`: music from another room, through a smaller room and a wall (lowpass around 1 kHz
+    with a low-mid bump), on worn tape (strong wow, flutter, slight saturation). Eerie but calm.
+- Keep everything far away: soft attacks (the voices' attacks are already slow), no bright
+  notes in high registers, bells high only if the space muffles them anyway.
 - Never: choir, orchestral or acoustic instruments, drums or percussion, fast rhythms, arpeggiator
   patterns, or a clear hummable melody. Bells are isolated notes, not tunes.
 - Harmony: slow chord changes, every 8–16 seconds; pads crossfade through their long releases.
   Suspended and open chords (sus2, sus4, add9, open fifths, major 7th or 9th without the third),
   often over a drone pedal. Use Lydian (raised 4th, e.g. E F# G# A# B C# D#) for the magical
   moments. Leave things unresolved: no cadences, and the loop never "arrives".
-- Space and silence: lots of room between events. Bells and chimes are a handful per minute, at
-  irregular times. Evolve very slowly with `song.swell(..., cc=74)` (pad brightness) and `cc=11`
+- Space and silence: lots of room between events. Bells and chimes are rare (2–4 per minute) and
+  soft, at irregular times. Evolve very slowly with `song.swell(..., cc=74)` (pad brightness) and `cc=11`
   (volume) over tens of seconds.
 - Timing: write at `Song(60, 4)`, so one beat is one second and one bar is 4 seconds; a chord
   every 2–4 bars. Loops of about 1–3 minutes.
-- Velocities: pads 50–80, drone 50–90, bells 30–60, texture 40–70. Voice gains in `synth.py`
-  already set the balance between them.
-- Reference: `tracks/deep_space_demo.py` (engine demo, every voice).
+- Velocities: pads 50–80, drone 50–90, bells and chimes 20–35, texture 40–50 (if used at all).
+  Voice gains in `synth.py` already set the balance: at these velocities bells sit roughly
+  5–12 dB under the pads and the wind's rare gusts peak near −30 dB.
+- References: `tracks/deep_space_dark.py`, `deep_space_dream.py`, `deep_space_liminal.py`
+  (30 s comparison loops, one per space), and `deep_space_demo.py` (every voice, default space).
 
 ## Mood 2: Wilds (exploring planets)
 
@@ -110,8 +125,8 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 - Large reverb on everything. Deep Space voices have theirs built in (`synth.py`); soundfont
   instruments (Wilds, Journey) are rendered dry by FluidSynth and get the hall (`hall()` in
   `render.py`).
-- Loudness: the mix is normalised to −20 LUFS (peaks capped at −1 dBFS), and the same gain is
-  applied to every stem. Override per track with `./track <name> --lufs N` only if needed
+- Loudness: the mix is normalised to −26 LUFS, quiet background level (peaks capped at
+  −1 dBFS), and the same gain is applied to every stem. Override per track with `./track <name> --lufs N` only if needed
   (e.g. a very sparse Wilds track may need a lower target so its piano notes aren't too loud).
 - Use only the mood's instruments unless the user asks for others.
 - Every track loops seamlessly and ships as an OGG mix plus stems (below).

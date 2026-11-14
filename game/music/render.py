@@ -30,7 +30,7 @@ import synth
 HERE = Path(__file__).resolve().parent
 SOUNDFONT = HERE / "soundfonts" / "GeneralUser-GS.sf2"
 SAMPLE_RATE = 48000
-TARGET_LUFS = -20.0      # calm background music
+TARGET_LUFS = -26.0      # quiet background music
 PEAK_CEILING_DB = -1.0   # gain is lowered if the loudness target would push peaks above this
 TAIL_SECONDS = 15.0      # room for the reverb tail before it is folded back
 SILENCE = 1e-5           # -100 dBFS: where the tail counts as finished
@@ -43,6 +43,14 @@ def hall():
         pedalboard.Reverb(room_size=0.9, damping=0.5, wet_level=0.35, dry_level=0.7, width=1.0),
         pedalboard.HighShelfFilter(cutoff_frequency_hz=8000, gain_db=-3.0),  # keep bells soft
     ])
+
+
+def space_of(pm):
+    """Synth space from a "space:<name>" MIDI text event (kit Song.space), default "distant"."""
+    for text in pm.text_events:
+        if text.text.startswith("space:"):
+            return text.text.split(":", 1)[1].strip()
+    return "distant"
 
 
 def loop_end_seconds(pm):
@@ -111,6 +119,7 @@ def render(midi_path, out_dir=None, target_lufs=TARGET_LUFS):
     out_dir = Path(out_dir) if out_dir else HERE / "output" / name
     pm = pretty_midi.PrettyMIDI(str(midi_path))
     loop_len = round(loop_end_seconds(pm) * SAMPLE_RATE)
+    space = space_of(pm)
 
     groups = {}
     for inst in pm.instruments:
@@ -123,7 +132,7 @@ def render(midi_path, out_dir=None, target_lufs=TARGET_LUFS):
         for stem, insts in groups.items():
             voice = synth.voice_for(stem)
             if voice:
-                wet[stem] = synth.render_stem(insts, voice, SAMPLE_RATE, loop_len / SAMPLE_RATE)
+                wet[stem] = synth.render_stem(insts, voice, SAMPLE_RATE, loop_len / SAMPLE_RATE, space)
                 continue
             dry = render_dry(pm, insts, Path(tmp), stem)
             padded = np.zeros((max(loop_len, len(dry)) + tail, 2), dtype=np.float32)
@@ -149,7 +158,7 @@ def render(midi_path, out_dir=None, target_lufs=TARGET_LUFS):
         write_ogg(out_dir / "stems" / f"{stem}.ogg", audio * gain)
     write_ogg(out_dir / f"{name}_loop_test.ogg", np.tile(mix, (3, 1)))
 
-    print(f"loop {loop_len / SAMPLE_RATE:.2f}s, tail {(tail_end - loop_len) / SAMPLE_RATE:.1f}s folded back")
+    print(f"space {space}, loop {loop_len / SAMPLE_RATE:.2f}s, tail {(tail_end - loop_len) / SAMPLE_RATE:.1f}s folded back")
     print(f"loudness {lufs + gain_db:.1f} LUFS (target {target_lufs}), "
           f"peak {20 * np.log10(np.abs(mix).max()):.1f} dBFS")
     print(seam_report(mix))

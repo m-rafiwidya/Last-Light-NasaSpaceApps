@@ -152,7 +152,7 @@ def bell(note, inst, sr, loop_s, p):
     n = int(p["ring"] * sr)
     t = np.arange(n) / sr
     rng = rng_for(note)
-    attack = np.clip(t / 0.004, 0, 1)
+    attack = 0.5 - 0.5 * np.cos(np.pi * np.clip(t / p["attack"], 0, 1))  # soft mallet
     amp = attack * np.exp(-t / p["decay"])
     index = p["index"] * (0.5 + note.velocity / 127) * np.exp(-t / p["index_decay"])
     tone = np.sin(2 * np.pi * f * t + index * np.sin(2 * np.pi * f * p["ratio"] * t))
@@ -174,8 +174,10 @@ def texture(note, inst, sr, loop_s, p):
         noise = rng.standard_normal(n)
         sweep = p["sweep_oct"] * np.sin(2 * np.pi * snap(p["sweep_hz"], loop_s) * t + rng.uniform(0, 2 * np.pi))
         out[:, c] = tv_filter(noise, f * 2 ** sweep, sr, kind="band", q=p["q"])
-    gust = sum(np.sin(2 * np.pi * snap(hz, loop_s) * t + rng.uniform(0, 2 * np.pi)) for hz in (0.04, 0.09, 0.17))
-    gust = 0.6 + 0.4 * gust / 3
+    # Nearly silent, with a rare soft gust where two slow cycles happen to peak together.
+    slow, slower = (0.5 + 0.5 * np.sin(2 * np.pi * snap(hz, loop_s) * t + rng.uniform(0, 2 * np.pi))
+                    for hz in (1 / 25, 1 / 60))
+    gust = 0.04 + 0.6 * slow ** 6 * slower
     volume = (cc_curve(inst, 11, t, 127) / 127) ** 1.5
     return out * (env * gust * volume * velocity_gain(note) * p["gain"])[:, None]
 
@@ -188,10 +190,10 @@ def _pb(board, x, sr):
     return board(np.ascontiguousarray(x.T, dtype=np.float32), sr).T.astype(np.float64)
 
 
-@lru_cache(maxsize=4)
-def space_ir(sr, seconds=14.0, rt60=(10.0, 7.5, 3.5), predelay=0.04):
-    """Huge, smooth synthetic hall: stereo decaying noise, with lows decaying slowest."""
-    n = int(seconds * sr)
+@lru_cache(maxsize=8)
+def space_ir(sr, rt60=(10.0, 7.5, 3.5), predelay=0.06):
+    """Smooth synthetic hall: stereo decaying noise in three bands, lows decaying slowest."""
+    n = int(max(rt60) * 1.3 * sr)
     t = np.arange(n) / sr
     rng = np.random.default_rng(7)
     bands = [sig.butter(2, 300, "lowpass", fs=sr, output="sos"),
@@ -201,71 +203,100 @@ def space_ir(sr, seconds=14.0, rt60=(10.0, 7.5, 3.5), predelay=0.04):
     for c in range(2):
         for sos, rt in zip(bands, rt60):
             ir[c] += sig.sosfilt(sos, rng.standard_normal(n)) * np.exp(-6.91 * t / rt)
-    ir *= np.clip(t / 0.12, 0, 1)  # diffuse build-up instead of a hard first reflection
+    ir *= 0.5 - 0.5 * np.cos(np.pi * np.clip(t / 0.25, 0, 1))  # slow, diffuse build-up: no early reflection
     ir = np.concatenate([np.zeros((2, int(predelay * sr))), ir], axis=1)
     ir /= np.sqrt((ir ** 2).sum(axis=1, keepdims=True))
     return ir.astype(np.float32)
 
 
-def reverb(x, sr):
-    """Wet-only huge reverb."""
-    return _pb(pedalboard.Pedalboard([pedalboard.Convolution(space_ir(sr), 1.0, sr)]), x, sr)
+def reverb(x, sr, rt60):
+    """Wet-only reverb."""
+    return _pb(pedalboard.Pedalboard([pedalboard.Convolution(space_ir(sr, rt60), 1.0, sr)]), x, sr)
 
 
-def shimmer(x, sr):
-    """Wet-only octave-up shimmer: pitch up an octave, soften, then into the huge reverb."""
+def shimmer(x, sr, rt60):
+    """Wet-only octave-up shimmer, kept dark: pitch up, band-limit, then into the reverb."""
     up = _pb(pedalboard.Pedalboard([pedalboard.PitchShift(12), pedalboard.HighpassFilter(600),
-                                    pedalboard.LowpassFilter(7000)]), x, sr)
-    return reverb(up, sr)
+                                    pedalboard.LowpassFilter(2500)]), x, sr)
+    return reverb(up, sr, rt60)
 
 
-def chorus(x, sr, loop_s):
-    return _pb(pedalboard.Pedalboard([pedalboard.Chorus(rate_hz=snap(0.12, loop_s), depth=0.3,
-                                                        centre_delay_ms=12, feedback=0.0, mix=0.45)]), x, sr)
+def chorus(x, sr, loop_s, depth):
+    return _pb(pedalboard.Pedalboard([pedalboard.Chorus(rate_hz=snap(0.12, loop_s), depth=depth,
+                                                        centre_delay_ms=12, feedback=0.0, mix=0.5)]), x, sr)
 
 
 def echo(x, sr):
-    """Wet-only soft echo, slightly different times left and right."""
+    """Wet-only soft, dark echo, slightly different times left and right."""
     out = np.zeros_like(x)
     for c, seconds in enumerate((0.47, 0.62)):
-        board = pedalboard.Pedalboard([pedalboard.Delay(seconds, feedback=0.45, mix=1.0),
-                                       pedalboard.HighpassFilter(400), pedalboard.LowpassFilter(3500)])
+        board = pedalboard.Pedalboard([pedalboard.Delay(seconds, feedback=0.4, mix=1.0),
+                                       pedalboard.HighpassFilter(300), pedalboard.LowpassFilter(1500)])
         out[:, c] = board(np.ascontiguousarray(x[:, c], dtype=np.float32), sr)
     return out
 
 
-def wow(x, sr, loop_s, cents):
-    """Very slight tape-like pitch wobble: a slowly modulated delay read (no added latency)."""
-    if not cents:
+def wow(x, sr, loop_s, cents, flutter_cents=0.0):
+    """Tape-like pitch wobble: slow wow plus optional fast flutter, as a modulated delay read
+    (no added latency). A delay swinging by amplitude A at rate r detunes by up to 2*pi*r*A."""
+    if not cents and not flutter_cents:
         return x
     t = np.arange(len(x)) / sr
-    rates = (snap(0.21, loop_s), snap(0.067, loop_s))
-    # A delay swinging by amplitude A at rate r detunes by up to 2*pi*r*A (as a ratio).
-    depth = (2 ** (cents / 1200) - 1) / (2 * np.pi * rates[0])
-    mod = depth * (0.7 * np.sin(2 * np.pi * rates[0] * t) + 0.3 * rates[0] / rates[1] * np.sin(2 * np.pi * rates[1] * t + 1.0))
+    mod = np.zeros(len(x))
+    for hz, c, phase0 in ((0.21, 0.7 * cents, 0.0), (0.067, 0.3 * cents, 1.0),
+                          (5.3, 0.6 * flutter_cents, 2.0), (7.9, 0.4 * flutter_cents, 0.5)):
+        if c:
+            r = snap(hz, loop_s)
+            mod += (2 ** (c / 1200) - 1) / (2 * np.pi * r) * np.sin(2 * np.pi * r * t + phase0)
     read = np.arange(len(x)) - mod * sr
     return np.stack([np.interp(read, np.arange(len(x)), x[:, c]) for c in range(2)], axis=1)
 
 
-def soften(x, sr):
-    return _pb(pedalboard.Pedalboard([pedalboard.HighpassFilter(25),
-                                      pedalboard.HighShelfFilter(cutoff_frequency_hz=7000, gain_db=-4.0)]), x, sr)
+def saturate(x, drive):
+    """Soft tape-style saturation; level-matched for quiet signals."""
+    return np.tanh(drive * x) / drive
 
 
-def fx_chain(kind, x, sr, loop_s):
+def distance(x, sr, lowpass, room_boom_db=0.0):
+    """Push the sound far away: steep (24 dB/oct) lowpass, optional low-mid "through the wall"
+    bump, and no rumble below 25 Hz."""
+    chain = [pedalboard.HighpassFilter(25), pedalboard.LowpassFilter(lowpass), pedalboard.LowpassFilter(lowpass)]
+    if room_boom_db:
+        chain.append(pedalboard.PeakFilter(cutoff_frequency_hz=220, gain_db=room_boom_db, q=0.8))
+    return _pb(pedalboard.Pedalboard(chain), x, sr)
+
+
+# Spaces: how far away and through what the music is heard. A track picks one with
+# song.space("dark") (stored in the MIDI); "distant" is the default.
+SPACES = {
+    "distant": dict(rt60=(11.0, 8.0, 3.0), dry=0.25, wet=1.0, shimmer=0.04, lowpass=2200,
+                    chorus=0.3, wow=4, flutter=0, drive=0, boom=0),
+    # Heaviest muffling, biggest and darkest space.
+    "dark": dict(rt60=(14.0, 9.0, 2.5), dry=0.12, wet=1.1, shimmer=0.0, lowpass=900,
+                 chorus=0.25, wow=3, flutter=0, drive=0, boom=0),
+    # Warm and blurry: deeper chorus and slow wow smear everything.
+    "dream": dict(rt60=(10.0, 8.0, 3.5), dry=0.22, wet=1.0, shimmer=0.05, lowpass=1800,
+                  chorus=0.55, wow=9, flutter=0, drive=0, boom=0),
+    # Heard from another room: a smaller room, then muffled through the wall, on worn tape.
+    "liminal": dict(rt60=(4.5, 3.0, 1.2), dry=0.35, wet=0.75, shimmer=0.0, lowpass=1000,
+                    chorus=0.3, wow=14, flutter=4, drive=6.0, boom=3.0),
+}
+
+
+def fx_chain(kind, x, sr, loop_s, space):
+    s = SPACES[space]
     if kind == "pad":
-        x = chorus(x, sr, loop_s)
-        x = 0.6 * x + 0.55 * reverb(x, sr) + 0.2 * shimmer(x, sr)
-        return soften(wow(x, sr, loop_s, cents=5), sr)
-    if kind == "drone":
-        return soften(wow(0.8 * x + 0.35 * reverb(x, sr), sr, loop_s, cents=3), sr)
+        x = chorus(x, sr, loop_s, s["chorus"])
     if kind == "bell":
-        e = 0.35 * echo(x, sr)
-        x = 0.7 * x + e + 0.65 * reverb(x + e, sr) + 0.25 * shimmer(x, sr)
-        return soften(wow(x, sr, loop_s, cents=6), sr)
-    if kind == "texture":
-        return soften(0.6 * x + 0.6 * reverb(x, sr), sr)
-    raise ValueError(kind)
+        x = x + 0.35 * echo(x, sr)
+    out = s["dry"] * x + s["wet"] * reverb(x, sr, s["rt60"])
+    if kind in ("pad", "bell") and s["shimmer"]:
+        out += s["shimmer"] * shimmer(x, sr, s["rt60"])
+    out = wow(out, sr, loop_s, s["wow"], s["flutter"])
+    if s["drive"]:
+        out = saturate(out, s["drive"])
+    lowpass = s["lowpass"] * (0.8 if kind == "bell" else 1.0)  # bells a little more muffled
+    return distance(out, sr, lowpass, s["boom"])
 
 
 # ---------------------------------------------------------------- presets
@@ -273,27 +304,27 @@ def fx_chain(kind, x, sr, loop_s):
 VOICES = {
     # Warm detuned-saw pad, filter breathing slowly.
     "pad": dict(fn=pad, fx="pad", wave="saw", detune=(-11, -4, 4, 11), octave_sine=0.2,
-                attack=4.0, release=7.0, key=4.0, cutoff_min=450, cutoff_max=3500,
+                attack=7.0, release=8.0, key=4.0, cutoff_min=450, cutoff_max=3500,
                 sweep_oct=0.8, sweep_hz=1 / 20, gain=0.5, preview=89),
     # Glassier pad from detuned sines.
     "pad_sine": dict(fn=pad, fx="pad", wave="sine", detune=(-7, 0, 7), octave_sine=0.3,
-                     attack=5.0, release=8.0, key=8.0, cutoff_min=600, cutoff_max=6000,
+                     attack=8.0, release=9.0, key=8.0, cutoff_min=600, cutoff_max=6000,
                      sweep_oct=0.6, sweep_hz=1 / 25, gain=0.5, preview=88),
     # Very low sustained tone with slow beating, drift and swell.
     "drone": dict(fn=drone, fx="drone", partials=((1, 1.0), (2, 0.5), (3, 0.2), (4, 0.08)),
-                  beat_cents=4, drift_cents=3, key=6.0, attack=6.0, release=9.0, gain=0.16, preview=95),
-    # Soft FM bell, long decay.
-    "bell": dict(fn=bell, fx="bell", ratio=3.5, index=1.4, index_decay=0.5, ratio2=2.76, partial2=0.12,
-                 decay=2.8, ring=16.0, gain=1.0, preview=14),
+                  beat_cents=4, drift_cents=3, key=6.0, attack=8.0, release=10.0, gain=0.16, preview=95),
+    # Soft FM bell, long decay, soft attack.
+    "bell": dict(fn=bell, fx="bell", ratio=3.5, index=0.9, index_decay=0.5, ratio2=2.76, partial2=0.08,
+                 attack=0.03, decay=3.0, ring=16.0, gain=1.7, preview=14),
     # Higher, glassier, shorter chime.
-    "chime": dict(fn=bell, fx="bell", ratio=1.41, index=1.0, index_decay=0.3, ratio2=5.4, partial2=0.08,
-                  decay=1.6, ring=10.0, gain=1.0, preview=112),
-    # Distant wind: the note's pitch sets the band centre (around C5-C6 sounds airy).
-    "texture": dict(fn=texture, fx="texture", q=0.8, sweep_oct=1.0, sweep_hz=1 / 23,
-                    attack=6.0, release=8.0, gain=0.35, preview=122),
+    "chime": dict(fn=bell, fx="bell", ratio=1.41, index=0.7, index_decay=0.3, ratio2=5.4, partial2=0.05,
+                  attack=0.02, decay=1.8, ring=10.0, gain=1.7, preview=112),
+    # Distant wind, barely there with rare soft gusts; the note's pitch sets the band centre.
+    "texture": dict(fn=texture, fx="texture", q=0.8, sweep_oct=0.8, sweep_hz=1 / 23,
+                    attack=8.0, release=8.0, gain=0.6, preview=122),
 }
 
-REVERB_TAIL_SECONDS = 18.0  # IR length plus shimmer and echo build-up
+REVERB_TAIL_SECONDS = 22.0  # longest reverb plus echo build-up
 
 
 def voice_for(name):
@@ -302,8 +333,10 @@ def voice_for(name):
     return max(matches, key=len) if matches else None
 
 
-def render_stem(instruments, voice, sr, loop_s):
-    """Render all notes of `instruments` with `voice` and run the voice's effects; (n, 2)."""
+def render_stem(instruments, voice, sr, loop_s, space="distant"):
+    """Render all notes of `instruments` with `voice` and run its effects in `space`; (n, 2)."""
+    if space not in SPACES:
+        raise SystemExit(f"unknown space {space!r}; choose from {', '.join(SPACES)}")
     p = VOICES[voice]
     notes = [(inst, n) for inst in instruments for n in inst.notes]
     voices = [(int(round(n.start * sr)), p["fn"](n, inst, sr, loop_s, p)) for inst, n in notes]
@@ -311,4 +344,4 @@ def render_stem(instruments, voice, sr, loop_s):
     buf = np.zeros((length, 2))
     for s, v in voices:
         buf[s:s + len(v)] += v
-    return fx_chain(p["fx"], buf, sr, loop_s).astype(np.float32)
+    return fx_chain(p["fx"], buf, sr, loop_s, space).astype(np.float32)
