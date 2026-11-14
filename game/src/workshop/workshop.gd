@@ -54,6 +54,9 @@ var door_open: float = 0.0
 var personnel_open: float = 0.0
 var pad: ChargingPad = null
 var rack_stock: Node3D = null
+## The sample bench's tray stock (the scoop and the two sample containers), null without stock_rack
+var bench_stock: Node3D = null
+var sample_bench: Node3D = null
 var console_trigger: InteractTrigger = null
 var door_panel_trigger: InteractTrigger = null
 var restock_trigger: InteractTrigger = null
@@ -85,6 +88,7 @@ var _door_shadow_seal: MeshInstance3D = null
 var _door_bodies: Array = []
 var _personnel_area: Area3D = null
 var _stock := PartsStock.new()
+var _bench_parts := PartsStock.new()
 var _screen_lines: Array[Label] = []
 var _screen_time: float = 0.0
 var _time: float = 0.0
@@ -107,6 +111,16 @@ const SLOTS: Dictionary = {
 	16: ["res://src/robot/socket/battery_light_part.tscn", {}, "side"],
 	# The diagnostic cartridge (IRIS_KIT.md 4), lying flat on the top shelf
 	17: ["res://src/robot/socket/cartridge_part.tscn", {}, ""],
+	# The replacement radio-power module (IRIS_KIT.md 4.1), lying flat beside it: 0.134 m deep on the
+	# 0.14 m usable shelf
+	18: ["res://src/robot/socket/radio_module_part.tscn", {}, ""],
+}
+# The sample bench (anchor_bench) and what lies on its tray: slot empty -> [part scene, turn about up]
+const SAMPLE_BENCH: String = "res://res/models/workshop_kit/ws_sample_bench.glb"
+const BENCH_STOCK: Dictionary = {
+	"slot_sample_a": ["res://src/robot/socket/sample_container_part.tscn", 0.0],
+	"slot_sample_b": ["res://src/robot/socket/sample_container_far_part.tscn", 0.0],
+	"slot_sample_scoop": ["res://src/robot/socket/sample_scoop_part.tscn", PI / 2.0],
 }
 # Wheels rest on the cradle rails' inner edges (0.08 m off the wheel's centre, 0.04 m tall)
 const WHEEL_SEAT: float = 0.04 + 0.1269 - 0.15 + 0.003
@@ -115,7 +129,7 @@ const PART_LIFT: float = 0.005
 const LABELS: Dictionary = {
 	1: ["WHEELS", 2.23], 2: ["HIGH-GRIP WHEELS", 1.36], 3: ["MOTOR", 0.44], 4: ["BATTERY", 0.54],
 	5: ["MAST CAMERA", 0.66], 6: ["TOOL TURRET", 0.55], 7: ["ANTENNA", 0.56], 8: ["SPARE", 0.55],
-	9: ["CARTRIDGES", 2.38],
+	9: ["CARTRIDGES AND MODULE", 2.38],
 }
 ## Label text cap height (m) and the least it may shrink to while fitting its plate
 const LABEL_CAP: float = 0.065
@@ -141,6 +155,7 @@ func _ready() -> void:
 		add_child(decor)
 	if stock_rack:
 		_build_rack_stock()
+		_build_bench_stock()
 
 
 # --- Building ------------------------------------------------------------------------------
@@ -463,6 +478,28 @@ func _build_rack_stock() -> void:
 	_stock.record(rack_stock)
 
 
+func _build_bench_stock() -> void:
+	sample_bench = load(SAMPLE_BENCH).instantiate()
+	sample_bench.name = "SampleBench"
+	var at: Vector3 = anchors["anchor_bench"]
+	sample_bench.position = Vector3(at.x, 0.0, at.z)
+	add_child(sample_bench)
+	bench_stock = Node3D.new()
+	bench_stock.name = "BenchStock"
+	add_child(bench_stock)
+	for slot_name in BENCH_STOCK:
+		var entry: Array = BENCH_STOCK[slot_name]
+		var part: HotswapPart = load(entry[0]).instantiate()
+		var basis := Basis(Vector3.UP, entry[1])
+		var box := _part_aabb(part, basis)
+		var slot: Vector3 = to_local((sample_bench.find_child(slot_name, true, false) as Node3D).global_position)
+		part.transform = Transform3D(basis, Vector3(slot.x - box.get_center().x, slot.y + PART_LIFT - box.position.y,
+				slot.z - box.get_center().z))
+		part.name = String(slot_name).trim_prefix("slot_")
+		bench_stock.add_child(part)
+	_bench_parts.record(bench_stock)
+
+
 func _build_astronauts() -> void:
 	# The GLBs are modelled in the kit's frame, so they go at their anchors unrotated
 	suit_on_stand = load(ASTRONAUT_DIR + "astronaut_rack.glb").instantiate()
@@ -563,6 +600,8 @@ func _on_door_panel_interacted(_player: Player) -> void:
 func _on_restock_interacted(_player: Player) -> void:
 	if rack_stock:
 		_stock.restock(rack_stock, get_parent())
+	if bench_stock:
+		_bench_parts.restock(bench_stock, get_parent())
 
 
 func _doorway_occupied() -> bool:

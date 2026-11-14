@@ -15,6 +15,10 @@ extends SceneTree
 ##      arm stays 20 mm or more above the terrain and never inside IRIS.
 ##   7b. IRIS offline (indicator dark, antenna parked), then set_online: lit, antenna tracking; its
 ##      plate labels exist.
+##   7c. M2 assets (IRIS_KIT.md 4.1, 6.2.1): the radio-power module at IRIS's module seat, turned 90
+##      degrees about up, lies along the socket's long side and fits its opening, its bottom on the
+##      seat; its connector marker is on the seat; its mass (12 kg) is more than the battery's; the
+##      sample kit's catalog entries and masses; the near sample site by IRIS lies on the terrain.
 ##   8. Test level: the player can still lift a rover, and the rover's mast camera can still pick
 ##      a part up.
 ## Prints one line per check and PASS / FAIL.
@@ -60,6 +64,18 @@ func _check(name: String, ok: bool, detail: String = "") -> void:
 func _ticks(seconds: float) -> void:
 	for i in int(seconds * TICKS):
 		await physics_frame
+
+
+## A part's visual bounds in a frame (the part's meshes only)
+func _extent_in(frame: Transform3D, part: Node3D) -> AABB:
+	var inverse: Transform3D = frame.affine_inverse()
+	var result := AABB()
+	var first := true
+	for mesh in part.find_children("*", "MeshInstance3D", true, false):
+		var box: AABB = inverse * (mesh as Node3D).global_transform * (mesh as MeshInstance3D).get_aabb()
+		result = box if first else result.merge(box)
+		first = false
+	return result
 
 
 func _release_all() -> void:
@@ -382,6 +398,52 @@ func _run() -> void:
 	_check("IRIS: offline (dark, parked), then online (lit, antenna tracking)", parked and tracked, detail)
 	var labels: int = iris.find_children("Text", "Label3D", true, false).size()
 	_check("IRIS: the service panel's and connectors' labels are there", labels == iris.TEXTS.size(), "%d labels" % labels)
+
+	# 7c. M2 assets
+	var m2_module: RigidBody3D = load("res://src/robot/socket/radio_module_part.tscn").instantiate()
+	m2_module.freeze = true
+	level.add_child(m2_module)
+	var m2_seat: Transform3D = iris.module_seat_transform()
+	m2_module.global_transform = m2_seat
+	# In the seat's own frame (the socket is tilted with the terrain): the module's X (its long side) is turned
+	# onto the socket's long side, which is the seat's Z (IRIS's Y)
+	var m2_box: AABB = _extent_in(m2_seat, m2_module)
+	var m2_long: float = absf(m2_module.global_basis.x.normalized().dot(iris.module_seat.global_basis.z.normalized()))
+	var m2_connector: Node3D = m2_module.find_child("anchor_connector", true, false)
+	var m2_connector_off: float = (m2_connector.global_position - iris.module_seat.global_position).length()
+	# the opening is 0.32 m along the socket's long side, 0.22 m across; the module needs 10 mm a side
+	var m2_fits: bool = m2_long > 0.999 and m2_box.size.x >= 0.27 and m2_box.size.x <= 0.32 - 0.02 and m2_box.size.z <= 0.22 - 0.02 and m2_box.size.y <= 0.12
+	var m2_on_seat: bool = absf(m2_box.position.y) < 0.002 and absf(m2_box.get_center().x) < 0.002 and absf(m2_box.get_center().z) < 0.002
+	_check("radio module: turned onto the socket's long side, fits the opening, on the seat", m2_fits and m2_on_seat and m2_connector_off < 0.001,
+		"extent %s, long side vs the socket's %.4f, bottom %.4f m off the seat, centre off by (%.3f, %.3f), connector %.4f m off" % [m2_box.size, m2_long,
+		m2_box.position.y, m2_box.get_center().x, m2_box.get_center().z, m2_connector_off])
+	var m2_battery: RigidBody3D = load("res://src/robot/socket/battery_part.tscn").instantiate()
+	var m2_kit_ok: bool = m2_module.mass >= 10.0 and m2_module.mass > m2_battery.mass and m2_module.part_type == 6
+	m2_battery.free()
+	m2_module.queue_free()
+	var m2_kit_detail: String = "module %.1f kg" % m2_module.mass
+	for item in [["radio_module_part", 12.0], ["sample_scoop_part", 0.4], ["sample_container_part", 0.5], ["sample_container_far_part", 0.5]]:
+		var part: RigidBody3D = load("res://src/robot/socket/%s.tscn" % item[0]).instantiate()
+		m2_kit_ok = m2_kit_ok and absf(part.mass - item[1]) < 0.001 and part.get_display_name() != "Part" \
+			and not part.get_description().is_empty() and part.get_stat_lines() != null
+		m2_kit_detail += ", %s %s (%.1f kg)" % [item[0], part.get_display_name(), part.mass]
+		part.free()
+	var m2_far: RigidBody3D = load("res://src/robot/socket/sample_container_far_part.tscn").instantiate()
+	var m2_near: RigidBody3D = load("res://src/robot/socket/sample_container_part.tscn").instantiate()
+	m2_kit_ok = m2_kit_ok and m2_far.get_catalog_id() != m2_near.get_catalog_id() and m2_far.get_display_name() != m2_near.get_display_name()
+	m2_far.free()
+	m2_near.free()
+	_check("M2 parts: catalog entries, masses (module heavier than the battery), two distinct containers", m2_kit_ok, m2_kit_detail)
+	var m2_site: Node3D = level.get_node("SampleSiteNear")
+	var m2_centre: Node3D = m2_site.find_child("anchor_sample", true, false)
+	var m2_park: Node3D = m2_site.find_child("park_sample", true, false)
+	var m2_query := PhysicsRayQueryParameters3D.create(m2_centre.global_position + Vector3.UP * 3.0, m2_centre.global_position + Vector3.DOWN * 3.0, 1)
+	var m2_hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(m2_query)
+	var m2_lift: float = m2_centre.global_position.y - m2_hit["position"].y if m2_hit else INF
+	var m2_to_iris: float = (m2_park.global_position - iris.global_position).length()
+	_check("sample site: its centre 5-40 mm over the terrain, 2-4 m from IRIS, Kite's stop mark on the ground",
+		m2_lift > 0.005 and m2_lift < 0.04 and m2_to_iris > 2.0 and m2_to_iris < 4.0 and absf(m2_park.global_position.y - iris.global_position.y) < 0.2,
+		"lift %.3f m, %.2f m from IRIS" % [m2_lift, m2_to_iris])
 
 	# 8. The test level keeps its sandbox rules
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)

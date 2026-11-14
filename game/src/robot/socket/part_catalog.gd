@@ -53,6 +53,26 @@ const ENTRIES: Dictionary = {
 		"description": "IRIS's fault-log reader. Kite's arm delivers it to IRIS's service port.",
 		"mounts": "Rides on the rover's cargo mount, on the deck",
 	},
+	"radio_module": {
+		"name": "Radio-power module",
+		"description": "Replacement for IRIS's lost radio-power unit. Heavy: 12 kg. Kite's arm seats it in IRIS's module socket.",
+		"mounts": "Rides on the rover's cargo mount, in its cradle",
+	},
+	"sample_scoop": {
+		"name": "Sampling scoop",
+		"description": "Takes a spoonful of regolith from a marked site. 0.4 kg. Held by the arm tool.",
+		"mounts": "Carried by the arm tool; stored on the sample bench",
+	},
+	"sample_container": {
+		"name": "Sample container S-1",
+		"description": "Sealed jar with a fill gauge, for the near site by IRIS. 0.5 kg empty.",
+		"mounts": "Rides on the rover's cargo mount; stored on the sample bench",
+	},
+	"sample_container_far": {
+		"name": "Sample container S-2",
+		"description": "Sealed jar with a fill gauge, for the far site on the rim. 0.5 kg empty.",
+		"mounts": "Rides on the rover's cargo mount; stored on the sample bench",
+	},
 }
 
 ## Default catalog entry per HotswapPart.PartType (by value: WHEEL, MOTOR, BATTERY, MAST_HEAD,

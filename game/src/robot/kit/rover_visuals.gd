@@ -36,6 +36,7 @@ const MODELS: Dictionary = {
 	"arm_forearm": preload("res://res/models/rover_kit/arm_forearm.glb"),
 	"arm_wrist": preload("res://res/models/rover_kit/arm_wrist.glb"),
 	"cargo_mount": preload("res://res/models/rover_kit/cargo_mount.glb"),
+	"module_cradle": preload("res://res/models/rover_kit/module_cradle.glb"),
 }
 
 # ROVER_KIT.md 5: arm joint ranges (degrees) and the stowed pose
@@ -188,6 +189,8 @@ func _build_mast_and_arm() -> void:
 	var cargo_anchor := body.find_child("socket_cargo", true, false) as Node3D
 	if cargo_anchor:
 		_attach("cargo_mount", self, robot.to_local(cargo_anchor.global_position))
+		# Guide rails for the radio-power module (IRIS_KIT.md 4.1); the cartridge rides between them too
+		_attach("module_cradle", self, robot.to_local(cargo_anchor.global_position))
 
 
 ## True while the cargo mount holds something: the arm is the delivery's only (ROVER_KIT.md 9)
