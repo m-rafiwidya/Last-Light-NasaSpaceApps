@@ -47,7 +47,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (Moon: placeholder ground, lunar south pole sky and lighting); chosen on the main menu or switched from the pause menu |
+| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (Moon: real lunar south pole terrain from NASA LOLA data, sky and lighting); chosen on the main menu or switched from the pause menu |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -61,7 +61,8 @@ game/
 ├── project.godot            # autoloads, input map, display, physics engine
 ├── res/                     # raw assets
 │   ├── theme.tres           # global UI theme
-│   └── textures/{dev,ui,sky}/ # dev grid textures, crosshair.svg, interaction.svg; the Moon's star map and Earth (credits: ../CREDITS.md)
+│   ├── textures/{dev,ui,sky}/ # dev grid textures, crosshair.svg, interaction.svg; the Moon's star map and Earth (credits: ../CREDITS.md)
+│   └── terrain/moon_site01/  # the Moon's terrain: 16-bit heightmaps, horizon maps, rocks, terrain.json (made by ../tools/terrain/)
 └── src/
     ├── main.tscn / main.gd           # entry point (root "Main" node)
     ├── autoloads/
@@ -84,8 +85,10 @@ game/
     ├── levels/
     │   ├── rover_level.gd            # base for levels with rovers + a parts pile (class RoverLevel)
     │   ├── test_level.tscn / .gd     # the test sandbox (extends RoverLevel)
-    │   ├── moon_level.tscn           # Moon level, placeholder ground (script: rover_level.gd)
+    │   ├── moon_level.tscn           # Moon level (script: rover_level.gd)
+    │   ├── terrain/                  # MoonTerrain (moon_terrain.gd), RockField (rock_field.gd), regolith.gdshader
     │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
+    ├── settings/graphics_settings.gd # the settings that are really applied (terrain detail), user://settings.cfg
     ├── player/
     │   ├── player.tscn / player.gd           # RigidBody3D character (class Player)
     │   └── player_controller.gd              # input -> intent (class PlayerController)
@@ -97,6 +100,7 @@ game/
         ├── level_choice/             # one menu button per playable level (main menu, pause menu)
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
+        ├── boundary_hint/            # "Survey area boundary in 12 m" on both HUDs (BoundaryHint)
         ├── mission_console/          # computer-theme mission list (dummy content)
         ├── loading_screen/
         ├── console/
@@ -104,7 +108,7 @@ game/
         ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 tests/                                # headless test scripts (see each file's header)
-tools/                                # windowed helper scripts: render_sky_previews.gd, measure_moon_fps.gd
+tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, measure_moon_fps.gd
 ```
 
 ---
@@ -383,6 +387,8 @@ Expects a **`CameraMarker`** (`Marker3D`; if missing, an error is logged and the
 | `SpawnPoint` | `Marker3D` | any gameplay level |
 | `CameraMarker` | `Marker3D` | any level used as the main-menu backdrop |
 
+Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()` and a `content_ready` signal: `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
+
 Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoader._ready()`, so a typo is reported at startup. If a threaded load fails, `SceneLoader` clears its loading state and falls back to the main menu (unless the main menu itself failed). On unload it also clears `GameState.player`, `GameState.robot` and `Debug.current_robot` (the robot HUD's rover), so nothing points into the old level; its player, rovers, cameras and held props are freed with it, `DialogServer` stops any dialog (`level_unloaded`), leaving `PAUSED` unpauses the tree, and the new level's player camera is made current. `tests/test_level_switch.gd` checks all of this switching Test level -> Moon -> Test level -> main menu through the real menus (with a prop held on foot and by the driven rover).
 
 ### Rover levels (`levels/rover_level.gd`)
@@ -391,13 +397,29 @@ Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoa
 
 ### The Moon level (`levels/moon_level.tscn`)
 
-Placeholders until the real terrain and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture, no specular: regolith doesn't shine). The sky and light are the lunar south pole's (see Moon sky and lighting below). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below).
+Real terrain (`Terrain`, see Moon terrain below) at NASA's LOLA "Connecting ridge" landing site, and the lunar south pole's sky and light (Moon sky and lighting below). The base is a graded 46 x 32 m patch (0.8 degree plane) around (-337, -296) with the `SpawnPoint`, the ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, laid out as in the test level; a graded 100 m landing pad (1.5 degrees) is just east of it at (-246, -357). Lunar gravity: `gravity = 1.62` on the root (see Level gravity below); `camera_far = 200000` (200 km, to the horizon).
+
+### Moon terrain (`levels/terrain/`, `MoonTerrain`)
+
+Built by `tools/terrain/build_moon_terrain.py` from NASA LOLA data (sources, method and the decisions in `tools/terrain/MOON_TERRAIN.md`; credits in `../CREDITS.md`). The data (`res/terrain/moon_site01/`, `terrain.json` describes every file): four tiers of 16-bit heightmaps in metres on the tangent plane at the play centre, with the Moon's curvature: **play** 0.5 m to +-512 m (2049 x 2049, with procedural craters, roughness and graded base and pad), **near** 8 m to +-4 km, **mid** 128 m to +-33 km (Shackleton is in it, but hidden behind the ridge from the base), **far** 512 m to +-131 km; horizon maps per tier (16 azimuths, the first the sun's); rocks; a freshness map for bright fresh craters. Axes: X = polar stereographic +x, -Z = +y (towards longitude 0, where Earth is).
+
+- **Collision:** the play tier as one `HeightMapShape3D` (`Terrain/Ground`, layer 1), built in `_ready` so nothing falls through; rocks of 0.2 m and up as convex shapes (`Terrain/Rocks/RockCollision`, 1668 of 9427), so the wheels climb them. Nothing outside the play tier collides; the boundary keeps everything in (below).
+- **Meshes:** 64 x 64-cell chunks per tier (1400) with automatic LODs; each outer tier leaves out exactly the cells under the inner one and hangs skirts (2 / 40 / 400 m) from its edge. Triangles split like Jolt's heightfield, from (1,0) to (0,1) (the other diagonal is up to 2.5 cm off, enough to fail the wheel checks). Only the play and near tiers cast shadows. Built by low-priority worker tasks that only compute arrays and LODs (cached in `user://terrain_cache/`, written to a temporary file and renamed); the main thread turns 48 a frame into meshes. **Workers must not touch the RenderingServer or take every thread:** Jolt runs its physics jobs on the same pool, and the first version (high-priority tasks calling `ImporterMesh.get_mesh()` and `ResourceSaver.save`) deadlocked: the main thread waited in the physics step for Jolt's jobs, the workers waited for the main thread, and the loading screen stayed up for good. First load about 4.5 s (meshes 2.5-3.7 s), later 1-2.5 s. Not built headless (`build_meshes_headless` for tests).
+- **Detail setting:** `GraphicsSettings.terrain_detail` (Settings > Video > Terrain Detail, saved in `user://settings.cfg`, used at the next level load; `-- terrain_detail=low` on the command line): Low uses every other play sample (1 m) for both mesh and collision, so the wheels always stand on what is drawn.
+- **Material** (`regolith.gdshader`, procedural, no photo textures): grey albedo mottled at 120 / 15 / 2 m, brighter on steep slopes and around fresh craters; detail normals of 2 cm over 0.4 m and 4 mm over 0.08 m, fading out by 60 m (stronger turned half the ground black with the sun 9 degrees up); Lommel-Seeliger light with a mild opposition surge instead of Lambert, no specular; the sun (the directional light) is dimmed per vertex where the horizon map says distant terrain hides it, beyond the shadow cascades' 500 m. `LunarSky.sun_changed` keeps the shader's sun direction current.
+- **Boundary:** walls on collision layer 7 (Boundary) at +-500 m, 4 km tall; survey stakes every 25 m; `distance_to_boundary()` drives the HUDs' "Survey area boundary in N m" (`BoundaryHint`, within 20 m). The wheels' ground check doesn't include layer 7, so a wall is never ground. A `LostZone` 3 km down brings back anything lost (parts to the pile, rovers and the player to their spots).
+- **Cameras:** the level's `camera_far` reaches the horizon; `RoverLevel.near_for_far` raises near planes to far / 10^7 (2 cm here), since Godot's light culler fails every frame at 200 km / 1 mm.
+- **Light:** the sun is 9 degrees up at azimuth 39, the only azimuths (32-45) that keep the 7.9 ha permanently shadowed crater's floor fully dark (in NASA's map; centre about (192, 384), floor 120 m below the base) with the base and the pad lit. Higher ground to the north-east puts about 65% of the play area in its shadow. Earth: azimuth -3.5, 0.1 degrees up (2.5 above the skyline from the base), a 14% crescent 43 degrees from the sun.
+
+Previews: `tools/previews/terrain/` (`low_*` at the 1 m detail), from `tools/render_terrain_previews.gd` (needs a window). Frame rate (`tools/measure_moon_fps.gd`, MacBook Pro M4, 1920x1080, rover circling at full throttle with headlights on, then on foot): 0.5 m ground 163-189 fps with vsync off, 155-164 with vsync on (the window was on a 165 Hz display), p99 frame 7-12 ms, worst 14 ms; 1 m ground 166-168 / 153-165 fps, worst 15 ms. On this machine the two are the same speed (about 6 ms a frame either way: the cost is not the terrain's triangles); Low is for weaker GPUs.
+
+**Tests:** `tests/test_terrain.gd` (append `-- terrain_detail=low` for the 1 m ground): the layout on flat ground, mesh triangles = collision to 1 mm, the crater floor dark and the base lit, the boundary stopping the player and the rover (with the HUD warning), and a drive from the base past the pad into the shadowed crater and out (about 2.4 m/s, about 500 s) with the wheel checks of `test_wheel_contact.gd` every tick and frame.
 
 ### Level gravity
 
 Each level has its own gravity: `RoverLevel.gravity` (m/s^2, default 9.8, the project's `physics/3d/default_gravity`; the Moon sets 1.62). `SceneLoader._apply_level_gravity` sets it on the world's physics space as every level loads (a level without a `gravity` property, e.g. the menu backdrop's, gets the project default), so no level inherits the previous one's. Every rigid body falls with it; scripts read it back instead of the project setting: `Player` (`gravity` from `state.total_gravity` each physics step, for its ground friction and slope compensation) and `FrictionCircles` (`robot.get_gravity()` for the static wheel load). Levels also set player values: `SceneLoader.PLAYER_LEVEL_SETTINGS` lists the `Player` properties a level root may define (`RoverLevel.jump_height`, default `Player.JUMP_HEIGHT`, and `ground_friction`, default `Player.FRICTION`; the Moon caps the jump at 1.2 m and sets friction 1.6), copied onto the player when it spawns.
 
-What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on the Moon's flat ground under 9.8 and 1.62; numbers from the current tuning):
+What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on a flat floor the test builds under the Moon level, under 9.8 and 1.62; numbers from the current tuning):
 
 | | Earth 9.8 | Moon 1.62 |
 |---|---|---|
@@ -425,11 +447,11 @@ Not retuned yet (candidates, in order of impact):
 The Moon's `WorldEnvironment` carries `LunarSky` (a `@tool` script, so the editor shows it too). It places the `Sun` light and feeds `lunar_sky.gdshader`, a sky shader that draws, in one pass:
 - **Stars:** NASA's Deep Star Maps 2020 (`res/textures/sky/starmap_2020_4k.exr`, 4096x2048, imported BC6H: 8 MB of video memory), an equatorial plate carree panorama (RA 0h in the middle, RA growing to the left; checked against Canopus, Avior and Polaris in the map). `LunarSky.world_to_equatorial()` turns it so the south ecliptic pole is straight up, as from the lunar south pole (the Moon's axis is 1.5 degrees from it), so the ecliptic, with the sun and Earth on it, runs along the horizon; `forward_ecliptic_longitude` turns the sky about the zenith (any value is some moment: the stars circle the pole once a sidereal month). Straight up are the Magellanic Clouds, with Canopus 75.8 degrees up. `star_brightness` is how bright the stars look whatever the exposure.
 - **The sun's disc** (0.53 degrees, the light's `light_angular_distance`, which also softens shadows with distance like the real sun).
-- **Earth:** a sphere 1.9 degrees across (`earth_angular_diameter`) along the level's `earth_direction`, textured with NASA's Blue Marble (`res/textures/sky/earth_blue_marble_1024.jpg`), north pole where the celestial north pole is (below the horizon here, so it looks upside down) and lit by the `Sun` light, so its phase is right. The Moon puts it 4 degrees up, 115 degrees round from the sun: a gibbous Earth. Terrain always hides it (it is part of the sky).
+- **Earth:** a sphere 1.9 degrees across (`earth_angular_diameter`) along the level's `earth_direction`, textured with NASA's Blue Marble (`res/textures/sky/earth_blue_marble_1024.jpg`), north pole where the celestial north pole is (below the horizon here, so it looks upside down) and lit by the `Sun` light, so its phase is right. The Moon puts it where it is from this site (Moon terrain above): azimuth -3.5, 0.1 degrees up, 43 degrees from the sun, a 14% crescent. Terrain always hides it (it is part of the sky).
 
 Lighting: no atmosphere, fog or glow; one `Sun` (energy 2, shadows) and a faint blue-grey fill (ambient colour at energy 0.04), so shadows are nearly black. AgX tonemapping; with `auto_exposure` (default on) the exposure follows the sun's height (`LunarSky.exposure_for_elevation`: 2.0 at 9 degrees, 5.85 at 1.5), making up 60% of the darker flat ground in stops, so a lower sun still looks darker but the ground stays readable without washing out what faces the sun.
 
-**Sun height:** `sun_elevation`: the Moon sets 9 degrees, for visibility (the script's default, 1.5, is the real south pole's: flat ground nearly black, upright things lit, shadows about 38 times as long as their object); `sun_azimuth` (default 160: from behind the spawn, so the shadows and Earth are ahead). Compare them in `tools/previews/sky/` (`sun01.5_*` and `sun09.0_*`), rendered from the chase and mast cameras by `tools/render_sky_previews.gd` (needs a window: `<godot> --path game -s res://tools/render_sky_previews.gd --resolution 1920x1080`), which also checks the star map's orientation on screen (Canopus where `LunarSky` puts it).
+**Sun height:** `sun_elevation`: the Moon sets 9 degrees, for visibility (the script's default, 1.5, is the real south pole's: flat ground nearly black, upright things lit, shadows about 38 times as long as their object); `sun_azimuth` (the script's default 160; the Moon sets 39, chosen by the terrain pipeline so the permanently shadowed crater stays dark). Compare them in `tools/previews/sky/` (`sun01.5_*` and `sun09.0_*`), rendered from the chase and mast cameras by `tools/render_sky_previews.gd` (needs a window: `<godot> --path game -s res://tools/render_sky_previews.gd --resolution 1920x1080`), which also checks the star map's orientation on screen (Canopus where `LunarSky` puts it).
 
 **Shadows** (the `Sun`'s settings; project shadow settings are untouched): four cascades out to 500 m, the cameras' far plane, so everything in view of the middle of a 1 km area: 0-10, 10-40, 40-150 and 150-500 m. The first cascade covers the rover and the player at about 1 cm per texel. The directional shadow atlas stays at the project's 4096: 8192 looked the same up close, and with the headlights on it came with a 1 s stall in 2 of 4 measured runs (none in 8 runs with either change alone). Bias 0.03, normal bias 1.0 against acne on the ground at grazing light.
 
@@ -439,7 +461,7 @@ Lighting: no atmosphere, fog or glow; one `Sun` (energy 2, shadows) and a faint 
 
 ### Level Earth direction
 
-`RoverLevel.earth_direction` (a world direction) is where Earth is in the level's sky; every rover's high-gain antenna tracks it (`RoverVisuals` reads it from the nearest ancestor that has it as it starts, see 15.3c). The default, `RoverVisuals.DEFAULT_EARTH_DIRECTION`, is the old fixed direction 35 degrees up, which the test level keeps; the Moon sets its Earth's, 4 degrees up, and `LunarSky` draws Earth there.
+`RoverLevel.earth_direction` (a world direction) is where Earth is in the level's sky; every rover's high-gain antenna tracks it (`RoverVisuals` reads it from the nearest ancestor that has it as it starts, see 15.3c). The default, `RoverVisuals.DEFAULT_EARTH_DIRECTION`, is the old fixed direction 35 degrees up, which the test level keeps; the Moon sets its Earth's (from the terrain pipeline: 0.1 degrees up, towards longitude 0), and `LunarSky` draws Earth there.
 
 ### The test level (`levels/test_level.tscn`)
 
@@ -630,8 +652,9 @@ The robot shares the player's actions: `move_forward` = drive forward, `move_bac
 | 3 (4) | Pickup props | `Box`, `Text`, `Sphere`, see-saw plank; player mask; `CrouchCheck` mask |
 | 4 (8) | Held object | Applied in code during pickup (`held_layer = 4`) |
 | 5 (16) | Interact triggers | `InteractTrigger` `Area3D`s |
+| 7 (64) | Boundary | the Moon's boundary walls (`MoonTerrain`); in the player's, the rover's and parts' masks, not in the wheels' ground check |
 
-Player `collision_mask = 5` (world + props). Interaction raycast mask `53` (world, props, triggers, layer 6). When creating new content, put pickups on layer 3 and triggers on layer 5, and give triggers `collision_mask = 0`.
+Player `collision_mask = 69` (world, props, boundary). Interaction raycast mask `53` (world, props, triggers, layer 6). When creating new content, put pickups on layer 3 and triggers on layer 5, and give triggers `collision_mask = 0`.
 
 ---
 
@@ -668,6 +691,7 @@ Grounded in the current code; useful to know before changing things.
 
 - The player is still alive (frozen, input locked) while the robot is driven, and the robot is also in the world while the player walks around (it just coasts to a stop).
 - `InteractTrigger`s can't be used while driving (they rely on the `Player` raycast); Esc is the only way out.
+- **Hard landings bottom out the suspension.** On the Moon's real terrain at 4-6 m/s (40-70% throttle downhill) the rover leaves the ground over crater rims and lands at 2-2.9 m/s, more than its 0.30 m of suspension travel takes: for a few frames a wheel sits up to 28 cm in the ground until the bump stops catch, and a wheel against a slope that looks like a wall to the pitched rover stays there (found by `tests/test_terrain.gd`, which drives at about 2.4 m/s; flooring it whenever the nose was up launched the rover over a crest and rolled it). The Moon suspension isn't retuned yet (Level gravity).
 - A wheel finds ground up to the top of its ground check (wheel centre 0.30 m above its attachment point, about 0.55 m above flat ground for the wheel's top). A face taller than that touches the wheel's bump stop instead (the wheel is reported in contact but unloaded) and can't be climbed. The rover can't climb an edge much taller than its wheel radius: it straddles the ramp's 25 cm side edge rather than climbing it.
 - `robot.tscn` quirks inherited from `openwheel`: `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
@@ -750,7 +774,7 @@ Same idea as the player: the **controller** is *intent*, the **robot** is *body*
 
 ### 15.2 Scene structure (`robot.tscn`, root `Robot`)
 ```
-Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
+Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 71, COM (0,0.15,0), can_sleep=false, contact_monitor
 ├── Engine           RobotEngine: brushed DC motor (stall torque 10.7 Nm, no-load speed 345 rad/s)
 ├── RunningGear      RunningGear: 6 wheels, tyre + suspension params (wheelbase/track 1 m, default wheel radius 0.15, per wheel spring 2667, damping 267, ride height 0.15, max steer 30 degrees, rear counter-steer)
 ├── HotswapSocket x8 6 wheel sockets + 1 motor + 1 battery socket (`accepted_type`), wired to the `*_socket` / `motor_socket` / `battery_socket` exports, see 15.3a
@@ -828,7 +852,7 @@ The linkage and wheels are posed every frame from `Robot.visual_wheel_centers`: 
 
 **Arm control** (while driving): `R` (`arm_toggle`) deploys / stows the arm, moving every joint towards the deployed pose `0, 0, -45, 45, 0` or back to stowed at 60 degrees/s; while deployed, `1`-`5` (`arm_joint_1`..`5`) pick a joint and `Z` / `X` (`arm_rotate_down` / `_up`) turn it at 30 degrees/s within its range (J5 turns the mounted tool turret, any angle). `RobotController.arm_toggle` / `arm_joint` / `arm_rotate` carry the input; `RobotHUD` shows the arm state and selected joint. **Ground:** `RoverVisuals.arm_ground_clearance()` casts rays down (world layer 1) from the 16 lowest vertices of the forearm, wrist and mounted tool meshes. A step that would bring the arm within 20 mm of the terrain, and closer than it already is, is not taken (the HUD shows "(ground)"), so a blocked arm can still move away. While the rover moves, the same check 0.25 s ahead (the points moved by the rover's linear and angular velocity) lifts the shoulder, then the elbow, at 120 degrees/s, also in the middle of a deploy or stow. In a scripted run (manual lowering, driving onto a 15 cm step, reversing off it mid-deploy) the arm never came closer than 20 mm. The arm is visual only, so it cannot affect driving.
 
-**Antenna tracking:** `RoverVisuals._update_antenna()` keeps a mounted high-gain antenna's dish pointed at `earth_direction`: the level's (`RoverLevel.earth_direction`, read once at `_ready` from the nearest ancestor that has one; the Moon's Earth, 4 degrees up), else `DEFAULT_EARTH_DIRECTION` (35 degrees up, which the test level keeps). It turns the direction into the antenna mount's frame and solves pan = `atan2(d.x, d.z)` (base `antenna` about Y) and tilt = the angle from straight up (dish `antenna_dish` about X, capped at 90 degrees, so the dish turns edge-on when the direction is below the horizon), moving at up to 120 / 90 degrees/s. Measured while circling over bumps: within 1 degree of the target after the first second's slew. An antenna taken out returns to its rest pose.
+**Antenna tracking:** `RoverVisuals._update_antenna()` keeps a mounted high-gain antenna's dish pointed at `earth_direction`: the level's (`RoverLevel.earth_direction`, read once at `_ready` from the nearest ancestor that has one; the Moon's Earth, 0.1 degrees up), else `DEFAULT_EARTH_DIRECTION` (35 degrees up, which the test level keeps). It turns the direction into the antenna mount's frame and solves pan = `atan2(d.x, d.z)` (base `antenna` about Y) and tilt = the angle from straight up (dish `antenna_dish` about X, capped at 90 degrees, so the dish turns edge-on when the direction is below the horizon), moving at up to 120 / 90 degrees/s. Measured while circling over bumps: within 1 degree of the target after the first second's slew. An antenna taken out returns to its rest pose.
 
 Because the linkage is rigid and the six physics wheels are independent springs, the linkage can't reach all six wheels exactly; since the wheels sit at their physics positions, the mismatch (up to a few cm on rough ground) shows at the hubs, never as a wheel in the ground. The spin is applied to the wheel part's `Model` node (both kit wheels), about its local X.
 
@@ -865,7 +889,7 @@ The camera is **not** `current` in the scene: `Robot` listens to `GameState.stat
 ### 15.5 Collision layers
 **Shape.** The rover's only collision shape is `BodyCollision`. `Robot._adopt_body_collision()` copies the chassis model's `Collision` shape onto it at `_ready()` and removes the model's copy (a shape only counts as a direct child of the `RigidBody3D`). That `Collision` node comes from the chassis's `-convcolonly` mesh via the post-import script `src/robot/kit/rover_kit_import.gd`, which replaces the `StaticBody3D` Godot would otherwise create (a static body inside the rover collides with the rover and throws it around). The box in `robot.tscn` is only an editor stand-in. Mass (80 kg) and inertia are set explicitly, so the shape does not change them.
 
-The robot is on layers 2 and 3 (collision_layer 6) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The wheels' ground check hits layers 1 and 3 (world and props), so the rover drives over the see-saw plank and crates. Each wheel also has a **bump stop**: a wheel-sized collision cylinder on the rover body (`WheelBumpStop<n>`, added by `Robot._add_wheel_bump_stops`), at the top of the wheel's travel (centred `RunningGear.suspension_top`, 0.30 m, above its attachment point). The ground check finds anything lower than that from above, so the stops only meet faces taller than the wheel can reach and keep the wheels out of them; they never touch during normal suspension travel. (At 0.12 m they hit the foot of the ramp whenever the front suspension compressed 7 cm, costing a run-up a quarter of its speed.) Mass, centre of mass and inertia are set explicitly, so the extra shapes don't change them.
+The robot is on layers 2 and 3 (collision_layer 6) with mask 71 (world, vehicles, props, boundary), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The wheels' ground check hits layers 1 and 3 (world and props), so the rover drives over the see-saw plank and crates. Each wheel also has a **bump stop**: a wheel-sized collision cylinder on the rover body (`WheelBumpStop<n>`, added by `Robot._add_wheel_bump_stops`), at the top of the wheel's travel (centred `RunningGear.suspension_top`, 0.30 m, above its attachment point). The ground check finds anything lower than that from above, so the stops only meet faces taller than the wheel can reach and keep the wheels out of them; they never touch during normal suspension travel. (At 0.12 m they hit the foot of the ramp whenever the front suspension compressed 7 cm, costing a run-up a quarter of its speed.) Mass, centre of mass and inertia are set explicitly, so the extra shapes don't change them.
 
 **Test:** `tests/test_straight_line.gd`: a fresh assembled rover on a 2 km flat ground, under 9.8 and 1.62 m/s^2, facing 0 / 90 / 180 / 315 degrees, 12 s at full throttle with no steering; its heading must wander less than 1 degree (now 0.000 on Earth, up to 0.073 on the Moon; before the tread-contact fix 38-45).
 

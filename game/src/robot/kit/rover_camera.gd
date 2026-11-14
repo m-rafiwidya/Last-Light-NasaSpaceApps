@@ -165,7 +165,7 @@ func _physics_process(delta: float) -> void:
 	var attributes: CameraAttributes = _tool_attributes if view == View.TOOL else null
 	if robot.camera.attributes != attributes:
 		robot.camera.attributes = attributes
-	robot.camera.near = NEAR
+	robot.camera.near = maxf(NEAR, robot.min_camera_near)
 	robot.controller.look_scale = look_scale
 
 

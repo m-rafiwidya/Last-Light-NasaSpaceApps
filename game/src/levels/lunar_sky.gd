@@ -11,6 +11,9 @@ extends WorldEnvironment
 ## to lunar_sky.gdshader, which lights Earth with the sun, so its phase is right.
 ## Azimuths are degrees from -Z towards +X.
 
+## After the sun moved (MoonTerrain's shader follows it)
+signal sun_changed
+
 ## The light that is the sun
 @export var sun: DirectionalLight3D:
 	set(value):
@@ -119,6 +122,7 @@ func _update() -> void:
 		return
 	if sun:
 		sun.global_basis = Basis.looking_at(-sun_direction(), Vector3.UP)
+	sun_changed.emit()
 	if auto_exposure and environment:
 		environment.tonemap_exposure = exposure_for_elevation(sun_elevation)
 	var sky_material := environment.sky.sky_material as ShaderMaterial if environment and environment.sky else null

@@ -21,6 +21,9 @@ const PLAYABLE_LEVELS: Dictionary = {
 	"moon_level": "Moon",
 }
 
+## Longest wait (s) for a level's content (MoonTerrain's meshes) before starting it anyway
+const CONTENT_TIMEOUT: float = 120.0
+
 # For later to show intro like CS2
 var is_first_main_menu_load: bool = true
 
@@ -121,6 +124,11 @@ func _setup_scene() -> void:
 	current_level_id = loading_scene_id
 	_apply_level_gravity(current_scene)
 	main_node.add_child(current_scene)
+	# Content still being built (MoonTerrain's meshes, on worker threads): the loading screen
+	# stays up and the player spawns once it's there
+	for node in get_tree().get_nodes_in_group(&"loading_content"):
+		if current_scene.is_ancestor_of(node) and not node.is_ready_to_play():
+			await _content_ready_or_timeout(node)
 
 	# Can accomodate gamemodes for future projects
 	if loading_scene_id == MAIN_MENU_ID:
@@ -174,6 +182,10 @@ func _setup_player(spawn_transform: Transform3D) -> void:
 		if value != null:
 			player.set(property, value)
 	current_scene.add_child(player)
+	var camera_far = current_scene.get("camera_far")
+	if camera_far is float:
+		player.camera.far = camera_far
+		player.camera.near = RoverLevel.near_for_far(player.camera.near, camera_far)
 	# The robot's cameras are not current by default; make sure the player's is
 	player.camera.make_current()
 
@@ -193,3 +205,15 @@ func _setup_main_menu():
 
 	# Hey GameState, I finished loading, please start transition to MAIN_MENU
 	GameState.change_state_to(GameState.State.MAIN_MENU)
+
+
+## Waits for a node's content_ready, giving up after CONTENT_TIMEOUT seconds (logged), so a
+## problem building content can't leave the loading screen up for good
+func _content_ready_or_timeout(node: Node) -> void:
+	var timer := get_tree().create_timer(CONTENT_TIMEOUT, true, false, true)
+	var state: Dictionary = {"done": false}
+	node.content_ready.connect(func() -> void: state["done"] = true, CONNECT_ONE_SHOT)
+	while not state["done"] and timer.time_left > 0.0 and is_instance_valid(node):
+		await get_tree().process_frame
+	if not state["done"]:
+		push_error("SceneLoader: %s wasn't ready after %d s; starting the level anyway" % [node.get_path(), CONTENT_TIMEOUT])

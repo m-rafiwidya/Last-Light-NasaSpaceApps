@@ -22,6 +22,19 @@ extends Node3D
 ## Where Earth is in this level's sky (world direction): the rovers' high-gain antennas track it
 ## (RoverVisuals reads it from the level). The Moon puts its Earth here (LunarSky draws it)
 @export var earth_direction: Vector3 = RoverVisuals.DEFAULT_EARTH_DIRECTION
+## Far plane (m) of the player's and the rovers' cameras here: 500 m by default; the Moon's
+## terrain reaches the horizon, so it sets about 200 km
+@export var camera_far: float = 500.0
+
+## Nearest a camera's near plane may be for a far plane: Godot's light culler fails (an error
+## every frame) when far / near is much over 10^7, measured with a 200 km far plane: 1 mm fails,
+## 1 cm is fine
+const NEAR_PER_FAR: float = 1e-7
+
+
+## The near plane to use for `far`: `near`, or larger if far / near would be too big
+static func near_for_far(near: float, far: float) -> float:
+	return maxf(near, far * NEAR_PER_FAR)
 
 ## Pile parts' properties that are copied when the pile is respawned
 const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]

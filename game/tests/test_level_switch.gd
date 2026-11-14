@@ -145,7 +145,7 @@ func _run_step():
 		6:
 			_check_clean("moon_level", "MoonLevel", 1)
 			var scene: Node = SL.current_scene
-			for node_name in ["SpawnPoint", "Ground", "ReadyRover", "ReadyRoverTrigger", "PartsPile", "RespawnPartsTrigger"]:
+			for node_name in ["SpawnPoint", "Terrain", "ReadyRover", "ReadyRoverTrigger", "PartsPile", "RespawnPartsTrigger"]:
 				_check("[moon_level] has " + node_name, scene.has_node(node_name))
 			_check("[moon_level] rover starts assembled", scene.get_node("ReadyRover").start_assembled)
 			_drive_and_hold("ReadyRover")

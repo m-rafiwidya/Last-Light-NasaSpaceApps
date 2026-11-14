@@ -2,7 +2,8 @@ extends MarginContainer
 ## Settings sub-screen. Pressing a tab button (General / Audio / Video / Controls) instantly shows
 ## that tab's list of dummy settings under the tab row. Exactly one tab is always shown
 ## (General by default); pressing the active tab again does nothing.
-## None of the widgets are wired to anything yet - they are placeholders.
+## None of the widgets are wired to anything yet - they are placeholders - except Video > Terrain
+## Detail (GraphicsSettings).
 
 const LABEL_MIN_WIDTH := 260.0
 const WIDGET_MIN_WIDTH := 320.0
@@ -67,6 +68,7 @@ func _build_video(rows: VBoxContainer) -> void:
 	_add_option(rows, "Display Mode", ["Windowed", "Fullscreen", "Borderless"])
 	_add_option(rows, "Resolution", ["1280x720", "1920x1080", "2560x1440", "3840x2160"])
 	_add_option(rows, "Quality Preset", ["Low", "Medium", "High", "Ultra"])
+	_add_terrain_detail(rows)
 	_add_check(rows, "VSync", true)
 	_add_option(rows, "Frame Rate Limit", ["30", "60", "120", "Unlimited"])
 	_add_slider(rows, "Field Of View", 60.0, 120.0, 90.0, "")
@@ -141,6 +143,24 @@ func _add_option(rows: VBoxContainer, label_text: String, options: Array[String]
 	for item in options:
 		option.add_item(item)
 	row.add_child(option)
+
+
+# The one real setting so far (GraphicsSettings, saved in user://settings.cfg): the Moon terrain's
+# ground detail, used when a level loads
+func _add_terrain_detail(rows: VBoxContainer) -> void:
+	var row := _make_row(rows, "Terrain Detail")
+	var option := OptionButton.new()
+	option.focus_mode = Control.FOCUS_NONE
+	option.custom_minimum_size.x = WIDGET_MIN_WIDTH
+	for item in GraphicsSettings.TERRAIN_DETAIL_NAMES:
+		option.add_item(item)
+	option.selected = GraphicsSettings.get_terrain_detail()
+	option.item_selected.connect(func(index: int) -> void:
+		GraphicsSettings.set_terrain_detail(index as GraphicsSettings.TerrainDetail))
+	row.add_child(option)
+	var note := Label.new()
+	note.text = "(next level load)"
+	row.add_child(note)
 
 
 ## With `button_text` the row is "label ... [button]" (e.g. a key binding); without it the

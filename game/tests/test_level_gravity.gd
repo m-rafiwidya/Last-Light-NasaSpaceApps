@@ -3,7 +3,7 @@ extends SceneTree
 ##   1. Each level gets its own gravity: test level 9.8, Moon 1.62, back to 9.8 on the test
 ##      level and the main menu (the world's physics space, the player's and the rover's
 ##      get_gravity()).
-##   2. On the Moon level's flat ground, the same runs under 9.8 and under 1.62 m/s^2 (the
+##   2. On a flat floor under the Moon level, the same runs under 9.8 and under 1.62 m/s^2 (the
 ##      Earth run sets the space's gravity directly, so only gravity differs):
 ##        rover: ride height, straight runs, stops, a turn, and climbing a 26.6 degree wedge
 ##        (like the test level's ramp) with a 3 m run-up and from a standstill on the slope;
@@ -24,10 +24,12 @@ const EARTH: float = 9.8
 # The test level's player settings (RoverLevel's defaults), used for the Earth runs on the Moon
 # ground; the Moon runs use the Moon level's own
 const EARTH_PLAYER: Dictionary = {"jump_height": 0.8, "ground_friction": 0.5}
-# Open flat ground on the Moon level, away from the rover, pile and spawn
-const ROVER_START := Vector3(-120.0, 0.35, 60.0)
-const PLAYER_START := Vector3(-60.0, 1.0, 40.0)
-const RAMP_ORIGIN := Vector3(-180.0, 0.0, 0.0)
+# The Moon level has real terrain now: the runs use a flat floor (2 x 2 km, top at FLOOR) that the
+# test builds 5 km under it, in the same level, so the level's gravity and player settings apply
+const FLOOR := Vector3(0.0, -5000.0, 0.0)
+const ROVER_START := FLOOR + Vector3(-120.0, 0.35, 60.0)
+const PLAYER_START := FLOOR + Vector3(-60.0, 1.0, 40.0)
+const RAMP_ORIGIN := FLOOR + Vector3(-180.0, 0.0, 0.0)
 const RAMP_LENGTH: float = 6.0
 const RAMP_HEIGHT: float = 3.0   # atan(3 / 6) = 26.6 degrees
 
@@ -141,7 +143,7 @@ func _measure_rover(rover: RigidBody3D, g: float) -> void:
 	_set_space_gravity(g)
 	await _place_rover(rover, ROVER_START)
 	# Ride height: the body's origin above the ground at rest
-	_measure("rover ride height (body origin)", g, rover.global_position.y * 100.0, "cm")
+	_measure("rover ride height (body origin)", g, (rover.global_position.y - FLOOR.y) * 100.0, "cm")
 
 	await _straight_run(rover, g, 1.0, 12.0)
 	await _straight_run(rover, g, 0.3, 8.0)   # leaves the rover at a steady 30% speed
@@ -192,7 +194,7 @@ func _measure_rover(rover: RigidBody3D, g: float) -> void:
 	var highest := 0.0
 	for i in 12 * TICKS:
 		await physics_frame
-		highest = maxf(highest, rover.global_position.y)
+		highest = maxf(highest, rover.global_position.y - FLOOR.y)
 	_release_all()
 	_measure("ramp, 3 m run-up: highest (top 3.0)", g, highest, "m")
 
@@ -209,7 +211,7 @@ func _measure_rover(rover: RigidBody3D, g: float) -> void:
 	highest = 0.0
 	for i in 12 * TICKS:
 		await physics_frame
-		highest = maxf(highest, rover.global_position.y)
+		highest = maxf(highest, rover.global_position.y - FLOOR.y)
 	_release_all()
 	_measure("ramp from standstill 1 m up: highest (top 3.0)", g, highest, "m")
 
@@ -260,6 +262,18 @@ func _measure_player(player: RigidBody3D, g: float, settings: Dictionary) -> voi
 	_measure("player stop after letting go: distance", g, Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length(), "m")
 
 
+func _add_floor(level: Node) -> void:
+	var floor_body := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2000.0, 1.0, 2000.0)
+	shape.shape = box
+	shape.position = Vector3(0.0, -0.5, 0.0)
+	floor_body.add_child(shape)
+	level.add_child(floor_body)
+	floor_body.global_position = FLOOR
+
+
 func _add_ramp(level: Node) -> void:
 	var ramp := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
@@ -288,6 +302,7 @@ func _run() -> void:
 	_check_gravity("Moon level", MOON)
 
 	var level: Node = SL.current_scene
+	_add_floor(level)
 	_add_ramp(level)
 	var moon_player: Dictionary = {}
 	for property in EARTH_PLAYER:

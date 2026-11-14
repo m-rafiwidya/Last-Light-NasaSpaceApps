@@ -13,6 +13,7 @@ var fade_tween: Tween = null
 
 
 func _ready() -> void:
+	add_child(BoundaryHint.new(true))
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 

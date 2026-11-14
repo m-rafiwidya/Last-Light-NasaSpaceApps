@@ -8,6 +8,7 @@ var fade_tween: Tween = null
 func _ready() -> void:
 	DialogServer.dialog_played.connect(_on_dialog_played)
 	DialogServer.dialog_ended.connect(_on_dialog_ended)
+	add_child(BoundaryHint.new(false))
 	hide()
 
 

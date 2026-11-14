@@ -21,7 +21,10 @@ extends SceneTree
 
 const SUN_ELEVATIONS: Array = [1.5, 9.0]
 const OUT_DIR: String = "res://../tools/previews/sky"
-const ROVER_AT := Vector3(10.5, 0.35, 12.0)
+# At the base (x, z; the height comes from the Moon's terrain), and 120 m west of it for the far
+# shadows
+const ROVER_AT := Vector3(-336.0, 0.35, -300.4)
+const FAR_SHADOWS_AT := Vector3(-430.0, 0.35, -300.0)
 # Canopus (alpha Carinae), J2000
 const CANOPUS_RA: float = 95.988
 const CANOPUS_DEC: float = -52.696
@@ -40,6 +43,7 @@ var overrides: Dictionary = {}
 
 
 func _initialize() -> void:
+	_watchdog(600.0)
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -124,7 +128,7 @@ func _shots(sky: Node, rover: Node, tag: String) -> void:
 	await _shot("chase_shadows_lights_on", tag, rover, rig, CHASE, shadows_and_earth, 0.0, 0.0)
 	rover.headlights_on = false
 	await _shot("chase_toward_sun", tag, rover, rig, CHASE, sky.sun_azimuth, 0.0, 0.0)
-	await _shot("chase_far_shadows", tag, rover, rig, CHASE, away, 0.0, 0.0, Vector3(-40.0, 0.35, 12.0))
+	await _shot("chase_far_shadows", tag, rover, rig, CHASE, away, 0.0, 0.0, FAR_SHADOWS_AT)
 	await _shot("mast_earth", tag, rover, rig, MAST, earth_azimuth, 0.0, earth_elevation)
 	rig.mast_fov_target = MAST_FOV_MIN
 	await _shot("mast_earth_zoom", tag, rover, rig, MAST, earth_azimuth, 0.0, earth_elevation)
@@ -141,7 +145,9 @@ func _shot(shot: String, tag: String, rover: Node, rig: Node, view: int,
 	if GS.state != GS.State.IN_GAME_ROBOT:
 		push_warning("%s: back in the rover (the state was %s)" % [shot, GS.State.keys()[GS.state]])
 		GS.drive(rover)
-	rover.global_transform = Transform3D(Basis(Vector3.UP, -deg_to_rad(heading)), at)
+	var terrain: Node = rover.get_parent().get_node_or_null("Terrain")
+	var ground: float = terrain.height_at(at.x, at.z) if terrain else 0.0
+	rover.global_transform = Transform3D(Basis(Vector3.UP, -deg_to_rad(heading)), at + Vector3(0.0, ground, 0.0))
 	rover.linear_velocity = Vector3.ZERO
 	rover.angular_velocity = Vector3.ZERO
 	for wheel in rover.running_gear.wheel_states:
@@ -154,8 +160,9 @@ func _shot(shot: String, tag: String, rover: Node, rig: Node, view: int,
 	if GS.state != GS.State.IN_GAME_ROBOT:
 		push_warning("%s: left the rover while settling (state %s)" % [shot, GS.State.keys()[GS.state]])
 	var tilt: float = rad_to_deg(rover.global_basis.y.angle_to(Vector3.UP))
-	if tilt > 5.0 or rover.global_position.distance_to(at) > 0.5:
-		push_warning("%s: the rover moved (tilt %.1f deg, %.2f m away)" % [shot, tilt, rover.global_position.distance_to(at)])
+	var placed := Vector3(at.x, rover.global_position.y, at.z)
+	if tilt > 20.0 or rover.global_position.distance_to(placed) > 0.5:
+		push_warning("%s: the rover moved (tilt %.1f deg, %.2f m away)" % [shot, tilt, rover.global_position.distance_to(placed)])
 	var image: Image = root.get_texture().get_image()
 	var path: String = ProjectSettings.globalize_path("%s/%s_%s.jpg" % [OUT_DIR, tag, shot])
 	image.save_jpg(path, 0.92)
@@ -176,7 +183,9 @@ func _add_posts(level: Node, sky: Node) -> void:
 		mesh.material = material
 		post.mesh = mesh
 		level.add_child(post)
-		post.global_position = Vector3(-40.0, 1.0, 12.0) + away * distance + side * 3.0
+		var spot: Vector3 = FAR_SHADOWS_AT + away * distance + side * 3.0
+		var terrain: Node = level.get_node_or_null("Terrain")
+		post.global_position = Vector3(spot.x, (terrain.height_at(spot.x, spot.z) if terrain else 0.0) + 1.0, spot.z)
 
 
 ## Canopus must be the brightest thing in a 4 degree view centred on where LunarSky puts it
@@ -216,3 +225,10 @@ func _check_star_orientation(sky: Node, level: Node) -> void:
 	_check("star map orientation: Canopus at its computed direction", is_star and off_degrees < 0.3,
 		"(brightest spot %.2f deg from the centre, peak %.2f over %d px, elevation %.1f deg)" % [off_degrees, best, count, rad_to_deg(asin(direction.y))])
 	viewport.queue_free()
+
+
+# A hang fails the run instead of stalling it (the windowed tools wait for a level to load)
+func _watchdog(seconds: float) -> void:
+	await create_timer(seconds, true, false, true).timeout
+	printerr("WATCHDOG: no result after %d s, quitting" % seconds)
+	quit(2)

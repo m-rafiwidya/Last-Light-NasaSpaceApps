@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/levels/rover_level.gd" id="1_level"]
-[ext_resource type="Texture2D" uid="uid://b6i0nsumhm8x4" path="res://res/textures/dev/grey.png" id="2_grey"]
+[ext_resource type="Script" path="res://src/levels/terrain/moon_terrain.gd" id="2_terrain"]
 [ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
 [ext_resource type="PackedScene" uid="uid://dvqu81j65chtr" path="res://src/robot/robot.tscn" id="6_robot"]
 [ext_resource type="Script" uid="uid://dejcbl7savjo6" path="res://src/robot/robot_controller.gd" id="7_robotctl"]
@@ -36,12 +36,6 @@ reflected_light_source = 2
 tonemap_mode = 4
 tonemap_exposure = 2.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
-albedo_color = Color(0.72, 0.72, 0.7, 1)
-albedo_texture = ExtResource("2_grey")
-specular_mode = 2
-uv1_triplanar = true
-
 [sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_strxf"]
@@ -51,7 +45,8 @@ script = ExtResource("1_level")
 gravity = 1.62
 jump_height = 1.2
 ground_friction = 1.6
-earth_direction = Vector3(0.7054, 0.0698, -0.7054)
+earth_direction = Vector3(-0.061048, 0.001404, -0.998134)
+camera_far = 200000.0
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.9396926, -0.0534691, 0.3378186, 0, 0.9876883, 0.1564345, -0.3420201, -0.1469051, 0.9281479, 0, 0, 0)
@@ -70,19 +65,16 @@ environment = SubResource("Environment_moon")
 script = ExtResource("8_lunar_sky")
 sun = NodePath("../Sun")
 sun_elevation = 9.0
+sun_azimuth = 39.0
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -334.5, 51, -294.2)
 
-[node name="Ground" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-material_override = SubResource("StandardMaterial3D_ground")
-use_collision = true
-collision_mask = 0
-size = Vector3(512, 1, 512)
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
 
 [node name="ReadyRoverTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1, -3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -336, 50.93, -302.2)
 script = ExtResource("4_t1chq")
 tooltip = "Press \"E\" to drive this rover"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
@@ -109,12 +101,12 @@ text = "Ready to drive"
 script = ExtResource("7_robotctl")
 
 [node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.5, -1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -336, 50.45, -300.4)
 controller = NodePath("../ReadyRoverController")
 start_assembled = true
 
 [node name="RespawnPartsTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.8, 1, -2.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -325.7, 50.83, -302)
 script = ExtResource("4_t1chq")
 tooltip = "Press \"E\" to respawn the parts pile"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
@@ -138,6 +130,7 @@ font_size = 64
 text = "Respawn parts"
 
 [node name="PartsPile" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -346.5, 49.9, -299.2)
 
 [node name="WheelPart" parent="PartsPile" instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -0.5)

@@ -98,6 +98,8 @@ var traction_factors: Dictionary = {}
 var motor_angular_velocity: float = 0.0
 # Total torque (Nm) of the wheel motors this step. Read by engine_sound.gd
 var motor_torque: float = 0.0
+## The nearest the camera's near plane may be for its far plane (RoverCamera keeps to it)
+var min_camera_near: float = 0.0
 ## True while the automatic brake holds the wheels (see auto_brake). Read by the robot HUD.
 var braking: bool = true
 # The direction (+1 forwards, -1 backwards) of the last throttle, for the brake's hill hold
@@ -190,6 +192,14 @@ func _ready() -> void:
 		_mount_starting_parts.call_deferred()
 	controller.altitude_limit = RoverVisuals.CAMERA_PITCH_LIMIT
 	camera.transform = Transform3D.IDENTITY
+	# The level's camera range (RoverLevel.camera_far)
+	var level: Node = get_parent()
+	while level and not level.get("camera_far") is float:
+		level = level.get_parent()
+	if level:
+		camera.far = level.camera_far
+		min_camera_near = RoverLevel.near_for_far(0.0, camera.far)
+		camera.near = maxf(camera.near, min_camera_near)
 
 
 # Moves every HotswapSocket child that names an `anchor` onto that socket_* node, with zero

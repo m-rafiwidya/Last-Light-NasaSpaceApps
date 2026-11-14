@@ -4,8 +4,10 @@ extends SceneTree
 ##   1. Sky orientation (LunarSky.world_to_equatorial): the south ecliptic pole is straight up,
 ##      Canopus (14 degrees from it) is 75.8 degrees up, the ecliptic (where the sun and Earth
 ##      are) runs along the horizon, and Earth's north pole points below the horizon.
-##   2. The sun light shines from sun_elevation / sun_azimuth, the exposure follows the sun's
-##      height, and the sky shader gets the level's Earth direction, about 2 degrees across.
+##   2. The sun light shines from sun_elevation / sun_azimuth (where the terrain pipeline chose it),
+##      the exposure follows the sun's height, and the sky shader gets the level's Earth direction,
+##      about 2 degrees across, where Earth can be from this site and above the skyline from the
+##      base, lit to the phase its angle to the sun gives.
 ##   3. The assembled rover's high-gain antenna points at the level's Earth: the Moon's, low
 ##      over the horizon; the test level keeps the old fixed direction 35 degrees up.
 ##   4. L (the rover_lights action, sent as a real key event) toggles the driven rover's
@@ -115,11 +117,25 @@ func _check_sky(sky: Node, level: Node) -> void:
 	var material: ShaderMaterial = sky.environment.sky.sky_material
 	var shader_earth: Vector3 = material.get_shader_parameter("earth_direction")
 	_check("sky draws Earth along the level's earth_direction", shader_earth.is_equal_approx(level.earth_direction.normalized()))
-	_check("Earth low over the horizon", _elevation(shader_earth) > 1.0 and _elevation(shader_earth) < 8.0, "%.1f deg up" % _elevation(shader_earth))
+	# The terrain pipeline puts Earth where it can be from this site (libration: azimuth within 8
+	# degrees of longitude 0, elevation -7.1 to 6.2) and above the skyline seen from the base
+	var terrain_meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://res/terrain/moon_site01/terrain.json"))
+	var earth_meta: Dictionary = terrain_meta["earth"]
+	var earth_azimuth: float = rad_to_deg(atan2(shader_earth.x, -shader_earth.z))
+	_check("Earth where it can be from this site", absf(earth_azimuth) <= 8.0 and _elevation(shader_earth) >= -7.1 and _elevation(shader_earth) <= 6.2,
+		"azimuth %.1f, %.1f deg up" % [earth_azimuth, _elevation(shader_earth)])
+	_check("Earth above the skyline seen from the base", _elevation(shader_earth) - earth_meta["horizon_degrees"] >= 1.5,
+		"%.1f deg over the skyline" % (_elevation(shader_earth) - earth_meta["horizon_degrees"]))
+	var sun_meta: Dictionary = terrain_meta["sun"]
+	_check("the sun where the terrain pipeline chose it", is_equal_approx(sky.sun_azimuth, sun_meta["azimuth"]) and is_equal_approx(sky.sun_elevation, sun_meta["elevation"]),
+		"azimuth %.1f, %.1f deg up" % [sky.sun_azimuth, sky.sun_elevation])
 	var diameter: float = rad_to_deg(material.get_shader_parameter("earth_angular_radius")) * 2.0
 	_check("Earth about 2 deg across", absf(diameter - 1.9) < 0.05, "%.2f deg" % diameter)
-	var phase: float = rad_to_deg(shader_earth.angle_to(towards_sun))
-	_check("Earth and sun far enough apart for a gibbous Earth", phase > 90.0 and phase < 150.0, "%.0f deg apart" % phase)
+	# Earth's lit fraction as seen from here follows from its angle to the sun
+	var separation: float = rad_to_deg(shader_earth.angle_to(towards_sun))
+	var lit: float = (1.0 + cos(deg_to_rad(180.0 - separation))) / 2.0
+	_check("Earth's phase follows the sun", absf(lit - earth_meta["lit_fraction"]) < 0.01,
+		"%.0f deg from the sun: %.0f%% lit" % [separation, lit * 100.0])
 
 
 func _check_antenna(tag: String, level: Node, earth: Vector3) -> void:

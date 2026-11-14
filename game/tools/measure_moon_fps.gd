@@ -20,6 +20,7 @@ var args: Dictionary = {}
 
 
 func _initialize() -> void:
+	_watchdog(300.0)
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -91,3 +92,10 @@ func _measure(phase: String) -> void:
 	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames" % [
 		phase, 1000.0 / mean, mean, sorted[int(sorted.size() * 0.99)], sorted[-1],
 		frame_times.size()])
+
+
+# A hang fails the run instead of stalling it (the windowed tools wait for a level to load)
+func _watchdog(seconds: float) -> void:
+	await create_timer(seconds, true, false, true).timeout
+	printerr("WATCHDOG: no result after %d s, quitting" % seconds)
+	quit(2)
