@@ -1,11 +1,11 @@
 [gd_resource type="Theme" load_steps=20 format=3 uid="uid://be3ngjxfbjuew"]
 
-[ext_resource type="FontFile" uid="uid://cbui3kfjmh1a0" path="res://assets/fonts/IBMPlexMono-Bold.ttf" id="1_r7e3g"]
-[ext_resource type="FontFile" uid="uid://dtwjsyse0d6iy" path="res://assets/fonts/IBMPlexMono-BoldItalic.ttf" id="2_7h2l0"]
-[ext_resource type="StyleBox" uid="uid://dj8d7j1itsiti" path="res://assets/ui/computer_theme/outset_panel.tres" id="2_gc3xw"]
-[ext_resource type="FontFile" uid="uid://cppfgxyy0gveu" path="res://assets/fonts/IBMPlexMono-Italic.ttf" id="3_gc3xw"]
-[ext_resource type="FontFile" uid="uid://droll6l3wgns3" path="res://assets/fonts/IBMPlexMono-Regular.ttf" id="4_rvara"]
-[ext_resource type="StyleBox" uid="uid://b5ussrgw1r8c" path="res://assets/ui/computer_theme/inset_panel.tres" id="5_lan6a"]
+[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="1_r7e3g"]
+[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-BoldItalic.ttf" id="2_7h2l0"]
+[ext_resource type="StyleBox" uid="uid://dj8d7j1itsiti" path="res://res/computer_theme/outset_panel.tres" id="2_gc3xw"]
+[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Italic.ttf" id="3_gc3xw"]
+[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Regular.ttf" id="4_rvara"]
+[ext_resource type="StyleBox" uid="uid://b5ussrgw1r8c" path="res://res/computer_theme/inset_panel.tres" id="5_lan6a"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gc3xw"]
 bg_color = Color(0.838897, 0.838897, 0.838897, 1)

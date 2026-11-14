@@ -168,7 +168,7 @@ Key points:
 
 ## 5. Game state machine
 
-Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet. `MISSION_CONSOLE` is entered from `IN_GAME` by the `MissionConsoleTrigger` in the test level and left with Esc (`ui_cancel`, handled in `UIManager._process`) or the screen's Close button, both going back to `IN_GAME`.
+Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet. `MISSION_CONSOLE` is entered from `IN_GAME` by the `MissionConsoleTrigger` in the test level and left with Esc (`ui_cancel`, handled in `UIManager._process`) or the window's X button, both going back to `IN_GAME`.
 
 ```mermaid
 stateDiagram-v2
@@ -191,7 +191,7 @@ stateDiagram-v2
 | `LOADING` | - | - | `LoadingScreen` visible |
 | `IN_GAME` | Restore saved mouse mode (default `CAPTURED`) | Save current mouse mode into `in_game_mouse_state` | `HUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
-| `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (white square placeholder + Close button, opacity fade) |
+| `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (computer-theme window with hardcoded dummy mission list, X button closes, opacity fade) |
 
 ### Player input lock
 
@@ -218,7 +218,7 @@ UIManager
 ├── HUD            (CanvasLayer)
 ├── MainMenu       (CanvasLayer)
 ├── PauseMenu      (CanvasLayer)
-├── MissionConsole (CanvasLayer, white square placeholder)
+├── MissionConsole (CanvasLayer, computer-theme window, hardcoded dummy items)
 ├── LoadingScreen  (CanvasLayer, layer = 256, always on top)
 └── Console        (PopupPanel, hidden)
 ```
