@@ -1,0 +1,69 @@
+{
+	"name": "moon_apollo12",
+	"description": "Apollo 12 landing site (Oceanus Procellarum): LROC NAC DTM NAC_DTM_APOLLO12_E030S3365, 2 m posts verbatim in a 1 km play area holding the LM, Surveyor 3 and the whole EVA 2 route. See tools/terrain/MOON_TERRAIN.md.",
+	"site_type": "equirectangular",
+	"raw_dir": "tools/terrain/raw",
+	"out_dir": "game/res/terrain/moon_apollo12",
+	"preview_dir": "tools/terrain/previews/moon_apollo12",
+	"seed": 20261009,
+	"sources": {
+		"dtm": {
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_E030S3365.IMG",
+			"bytes": 13504896,
+			"credit": "LROC NAC DTM of the Apollo 12 landing site, NAC_DTM_APOLLO12_E030S3365 v1.9, NASA/GSFC/Arizona State University (Henriksen et al. 2017)"
+		},
+		"conf": {
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_CONF.IMG",
+			"bytes": 3378692,
+			"credit": "LROC NAC DTM confidence map NAC_DTM_APOLLO12_CONF, NASA/GSFC/Arizona State University"
+		},
+		"ortho": {
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_M120005333_2M.IMG",
+			"bytes": 6752448,
+			"credit": "LROC NAC orthophoto NAC_DTM_APOLLO12_M120005333_2M (2 m, from the DTM's stereo pair), NASA/GSFC/Arizona State University"
+		},
+		"sldem": {
+			"url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/float_img/sldem2015_512_30s_00s_315_360_float.img",
+			"label_url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/float_img/sldem2015_512_30s_00s_315_360_float.lbl",
+			"file": "sldem2015_512_30s_00s_315_360_float_rows0720-2360.img",
+			"rows": [720, 2360],
+			"range": [66355200, 217497600],
+			"bytes": 151142400,
+			"full_bytes": 1415577600,
+			"credit": "SLDEM2015 (LOLA and SELENE Terrain Camera), 512 px/deg, NASA PDS Geosciences Node (Barker et al. 2016)"
+		}
+	},
+	"play_centre_post": [807, 1857],
+	"dtm_feather_m": 100.0,
+	"tiers": [
+		{"name": "play", "metres_per_pixel": 2.0, "half_size": 512, "source": "dtm_verbatim", "detail": true, "horizon_step": 2},
+		{"name": "near", "metres_per_pixel": 8.0, "half_size": 4096, "source": "dtm+sldem", "horizon_step": 2},
+		{"name": "mid", "metres_per_pixel": 64.0, "half_size": 32768, "source": "sldem", "horizon_step": 2}
+	],
+	"detail": {
+		"roughness": false,
+		"craters": false,
+		"rock_density_over_10cm": 0.01,
+		"rock_size_exponent": 2.5,
+		"rock_sizes": [0.1, 1.5],
+		"rock_collision_min_size": 0.2
+	},
+	"protected": [
+		{"name": "base", "centre": [-300, 252], "size": [46, 32], "blend": 10}
+	],
+	"spots": {
+		"player_spawn": [-298, 262],
+		"rover_parking": [-314, 248],
+		"parts_pile": [-291, 246],
+		"base": [-300, 252]
+	},
+	"artifacts": {
+		"lm": {"name": "Apollo 12 LM descent stage (Intrepid)", "lat": -3.0128, "lon": 336.5781, "keep_out_m": 75},
+		"alsep": {"name": "Apollo 12 ALSEP central station", "lat": -3.0098, "lon": 336.5751, "keep_out_m": 75},
+		"surveyor3": {"name": "Surveyor 3", "lat": -3.0162, "lon": 336.5820, "keep_out_m": 75}
+	},
+	"artifact_source": "LROC Coordinates of Lunar Anthropogenic Features, 28 July 2016 (Wagner et al. 2016), mean-Earth frame",
+	"boundary_half_size": 500,
+	"ephemeris": {"utc": "1969-11-20 05:49", "moment": "Apollo 12 EVA 2 midpoint (03:54:45-07:44 UTC, the walk to Surveyor 3)", "check_bodies": ["599", "499"]},
+	"site_brightness": {"blur_m": 8.0, "range": 0.3}
+}

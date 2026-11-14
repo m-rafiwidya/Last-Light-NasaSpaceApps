@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
-"""Builds the Moon level's terrain from NASA LOLA elevation data (see MOON_TERRAIN.md).
+"""Builds the Moon level's terrain from NASA elevation data (see MOON_TERRAIN.md).
 
     python3 tools/terrain/build_moon_terrain.py [--fetch] [config.json]
 
-Run from the repo root. Needs numpy, scipy and Pillow (no GDAL). Steps:
-  1. --fetch: downloads the sources into the raw folder (gitignored), resumable; every run checks
-     their byte counts and georeferencing.
+Run from the repo root. Needs numpy, scipy and Pillow (no GDAL). Two kinds of site, chosen by the
+settings file's `site_type`:
+  - "polar_stereographic" (moon_site01.json, the default): LOLA 5 m south pole site DEM, PDS polar
+    mosaics for the ring, the sun chosen to keep a permanently shadowed crater dark;
+  - "equirectangular" (moon_apollo12.json): an LROC NAC DTM, its play tier taken verbatim (2 m posts,
+    float32, minus one constant), SLDEM2015 for the ring, the sun, Earth and the star map's
+    orientation from JPL Horizons at one moment.
+Steps:
+  1. --fetch: downloads the sources into the raw folder (gitignored), resumable, only the rows
+     needed of a big mosaic (`range`); every run checks their byte counts and georeferencing.
   2. Exact conversion to game metres: for each output sample (X east-ish, Z south-ish, metres along
      the local tangent plane at the play centre) finds the surface point that projects there, so
-     X / Z are true distances and Y includes the Moon's curvature.
-  3. Four tiers (play 0.5 m, near 8 m, mid 128 m, far 512 m), aligned so each outer tier's cells
-     under the inner tier can be dropped exactly. Outer tiers from the PDS polar mosaics are shifted
-     to match the 5 m site data where they overlap (the offset is reported and checked).
-  4. Rover-scale detail on the play tier only below 10 m: fractal roughness, small craters (lunar
-     equilibrium density), rocks (instances, not in the heightmap); protected areas graded flat.
-  5. Horizon maps (16 azimuths) per tier for shadows beyond the sun's shadow cascades; the sun
-     azimuth that keeps the permanently shadowed crater floor dark at the configured elevation
-     with the base and the pad lit; Earth's position above the local horizon.
-  6. Outputs: 16-bit heightmaps (.r16), horizon PNGs, rocks, an albedo map, terrain.json, previews.
+     X / Z are true distances and Y includes the Moon's curvature. A verbatim play tier skips this:
+     its posts go at (spacing * column, height - constant, spacing * row).
+  3. Tiers aligned so each outer tier's cells under the inner tier can be dropped exactly. Outer
+     tiers from coarser mosaics are shifted to match the site data where they overlap (the offset is
+     reported and checked).
+  4. Detail on the play tier (each part switchable): fractal roughness and small craters below the
+     data's resolution, rocks (instances, not in the heightmap), protected areas graded flat. What
+     changes the measured ground is listed in terrain.json's `authored_changes`.
+  5. Horizon maps (16 azimuths) per tier for shadows beyond the sun's shadow cascades; the sun and
+     Earth (chosen, or from the ephemeris).
+  6. Outputs: heightmaps (.r16, or .f32 for a verbatim tier), horizon PNGs, rocks, a freshness or
+     site brightness map, terrain.json (with `provenance`), previews.
 """
 
 import json
@@ -48,27 +57,42 @@ def log(*args):
 
 # --- Sources ----------------------------------------------------------------------------------
 
+def source_path(cfg, src):
+	"""A source's file in the raw folder: `file` if given (a byte range of a bigger file), else the
+	URL's name."""
+	return os.path.join(cfg["raw_dir"], src.get("file", os.path.basename(src["url"])))
+
+
 def fetch(cfg):
 	raw = cfg["raw_dir"]
 	os.makedirs(raw, exist_ok=True)
 	for key, src in cfg["sources"].items():
-		path = os.path.join(raw, os.path.basename(src["url"]))
+		path = source_path(cfg, src)
 		have = os.path.getsize(path) if os.path.exists(path) else 0
 		if have == src["bytes"]:
 			continue
 		if src["bytes"] > 1_000_000_000:
 			sys.exit(f"{key}: {src['bytes']} bytes is over 1 GB; download it by hand after checking")
-		log(f"fetching {src['url']} ({have} of {src['bytes']} bytes)")
-		request = urllib.request.Request(src["url"], headers={"Range": f"bytes={have}-"} if have else {})
+		# `range`: only bytes [start, end) of the file at the URL (rows of a big mosaic)
+		start = src["range"][0] if "range" in src else 0
+		headers = {"Range": f"bytes={start + have}-{start + src['bytes'] - 1}"} if have or "range" in src else {}
+		log(f"fetching {src['url']} ({have} of {src['bytes']} bytes{', a byte range' if 'range' in src else ''})")
+		request = urllib.request.Request(src["url"], headers=headers)
 		with urllib.request.urlopen(request, timeout=120) as response, open(path, "ab" if have else "wb") as out:
+			if headers and response.status != 206:
+				sys.exit(f"{key}: the server ignored the byte range (HTTP {response.status})")
 			while chunk := response.read(1 << 20):
 				out.write(chunk)
+		if "label_url" in src:
+			label = path + ".lbl"
+			if not os.path.exists(label):
+				urllib.request.urlretrieve(src["label_url"], label)
 
 
 def check_sources(cfg):
 	report = {}
 	for key, src in cfg["sources"].items():
-		path = os.path.join(cfg["raw_dir"], os.path.basename(src["url"]))
+		path = source_path(cfg, src)
 		if not os.path.exists(path):
 			sys.exit(f"missing {path}: run with --fetch")
 		size = os.path.getsize(path)
@@ -79,7 +103,146 @@ def check_sources(cfg):
 			while chunk := f.read(1 << 22):
 				digest.update(chunk)
 		report[key] = {"file": os.path.basename(path), "bytes": size, "sha256": digest.hexdigest(), "url": src["url"], "credit": src["credit"]}
+		if "range" in src:
+			report[key]["byte_range"] = src["range"]
 	return report
+
+
+# --- PDS3 images (LROC NAC DTMs and orthophotos, SLDEM2015) -------------------------------------
+
+def pds3_label(text):
+	"""Keyword = value pairs of a PDS3 label (the first value wins for keys repeated in objects,
+	units like <KM> dropped)."""
+	keys = {}
+	for line in text.split("\n"):
+		if line.strip() == "END":
+			break
+		if "=" in line and not line.lstrip().startswith("/*"):
+			k, v = line.split("=", 1)
+			k = k.strip()
+			v = v.split("/*")[0].strip().strip('"')
+			if "<" in v:
+				v = v.split("<")[0].strip()
+			keys.setdefault(k, v)
+	return keys
+
+
+def read_pds3(path, label_path=None):
+	"""(label keys, image array) of a PDS3 IMG with an attached label (or `label_path`'s detached
+	one, the image then at the start of the file)."""
+	with open(label_path or path, "rb") as f:
+		head = f.read(65536).decode("latin1")
+	keys = pds3_label(head)
+	lines, samples = int(keys["LINES"]), int(keys["LINE_SAMPLES"])
+	types = {("PC_REAL", "32"): "<f4", ("LSB_INTEGER", "16"): "<i2", ("MSB_UNSIGNED_INTEGER", "8"): "u1"}
+	dtype = types[(keys["SAMPLE_TYPE"], keys["SAMPLE_BITS"])]
+	offset = 0 if label_path else (int(keys["^IMAGE"].split()[0]) - 1) * int(keys["RECORD_BYTES"])
+	data = np.fromfile(path, dtype, count=lines * samples, offset=offset)
+	if data.size != lines * samples:
+		sys.exit(f"{path}: {data.size} samples, the label says {lines} x {samples}")
+	return keys, data.reshape(lines, samples)
+
+
+class LrocDTM:
+	"""LROC NAC DTM (PDS3, float32 metres above the 1737.4 km sphere, equirectangular). Posts are
+	pixel centres; line l, sample s (0-based) is at x = (s - SAMPLE_PROJECTION_OFFSET) * scale,
+	y = (LINE_PROJECTION_OFFSET - l) * scale from the projection centre."""
+
+	def __init__(self, path):
+		keys, z = read_pds3(path)
+		if keys["MAP_PROJECTION_TYPE"] != "EQUIRECTANGULAR" or abs(float(keys["A_AXIS_RADIUS"]) * 1000.0 - R_MOON) > 1e-6:
+			sys.exit(f"{path}: unexpected projection {keys['MAP_PROJECTION_TYPE']}, radius {keys['A_AXIS_RADIUS']} km")
+		self.keys = keys
+		self.scale = float(keys["MAP_SCALE"])
+		self.loff, self.soff = float(keys["LINE_PROJECTION_OFFSET"]), float(keys["SAMPLE_PROJECTION_OFFSET"])
+		self.clat, self.clon = float(keys["CENTER_LATITUDE"]), float(keys["CENTER_LONGITUDE"])
+		self.coslat = math.cos(math.radians(self.clat))
+		self.raw = z
+		self.valid = np.isfinite(z) & (z > -1e30)
+		self.z = np.where(self.valid, z, np.nan).astype(np.float64)
+		# No-data filled from the nearest post, for smoothing and interpolation only
+		idx = ndimage.distance_transform_edt(~self.valid, return_distances=False, return_indices=True)
+		self.filled = self.z[tuple(idx)]
+		# Weight for blending with a coarser DEM: 1 more than `feather` metres inside the data
+		self.inside_m = ndimage.distance_transform_edt(np.pad(self.valid, 1)) [1:-1, 1:-1] * self.scale
+		self._coeffs = {}
+		self.lines, self.samples = z.shape
+
+	def pixel(self, lon, lat):
+		"""(line, sample) of a longitude / latitude (degrees)"""
+		s = self.soff + np.radians(lon - self.clon) * R_MOON * self.coslat / self.scale
+		l = self.loff - np.radians(lat) * R_MOON / self.scale
+		return l, s
+
+	def lon_lat(self, l, s):
+		lon = self.clon + np.degrees((s - self.soff) * self.scale / (R_MOON * self.coslat))
+		lat = np.degrees((self.loff - l) * self.scale / R_MOON)
+		return lon, lat
+
+	def sample(self, lon, lat, smooth_px=0.0):
+		key = round(smooth_px, 3)
+		if key not in self._coeffs:
+			data = self.filled if smooth_px < 0.5 else ndimage.gaussian_filter(self.filled, smooth_px)
+			self._coeffs[key] = ndimage.spline_filter(data, order=3)
+		l, s = self.pixel(lon, lat)
+		return ndimage.map_coordinates(self._coeffs[key], [l, s], order=3, mode="nearest", prefilter=False)
+
+	def weight(self, lon, lat, feather):
+		l, s = self.pixel(lon, lat)
+		d = ndimage.map_coordinates(self.inside_m, [l, s], order=1, mode="constant", cval=0.0)
+		t = np.clip((d - self.scale) / feather, 0.0, 1.0)
+		return t * t * (3.0 - 2.0 * t)
+
+
+class SldemBand:
+	"""Rows `rows` of an SLDEM2015 tile (float32 km above 1737.4 km, simple cylindrical, `res`
+	pixels per degree), as downloaded by a byte range, cropped to the longitudes needed."""
+
+	def __init__(self, path, src, lon_range, smooth_px):
+		keys = pds3_label(open(path + ".lbl", encoding="latin1").read())
+		res = float(keys["MAP_RESOLUTION"])
+		samples = int(keys["LINE_SAMPLES"])
+		if keys["SAMPLE_TYPE"] != "PC_REAL" or keys["SAMPLE_BITS"] != "32" or abs(float(keys["OFFSET"]) * 1000.0 - R_MOON) > 1e-6:
+			sys.exit(f"{path}: unexpected SLDEM2015 format")
+		r0, r1 = src["rows"]
+		if src["range"] != [r0 * samples * 4, r1 * samples * 4]:
+			sys.exit(f"{path}: byte range doesn't match rows {r0}-{r1}")
+		self.res, self.r0 = res, r0
+		self.loff, self.soff = float(keys["LINE_PROJECTION_OFFSET"]), float(keys["SAMPLE_PROJECTION_OFFSET"])
+		self.clat, self.clon = float(keys["CENTER_LATITUDE"]), float(keys["CENTER_LONGITUDE"])
+		c0 = max(int(self.soff + (lon_range[0] - self.clon) * res), 0)
+		c1 = min(int(self.soff + (lon_range[1] - self.clon) * res) + 2, samples)
+		band = np.fromfile(path, "<f4").reshape(r1 - r0, samples)[:, c0:c1].astype(np.float64) * 1000.0
+		if not np.isfinite(band).all() or np.abs(band).max() > 20000.0:
+			sys.exit(f"{path}: bad values")
+		self.c0 = c0
+		self.z = ndimage.gaussian_filter(band, smooth_px) if smooth_px > 0.5 else band
+		self.shift = 0.0
+		self.metres_per_pixel = math.radians(1.0 / res) * R_MOON
+
+	def sample(self, lon, lat):
+		l = self.loff - (lat - self.clat) * self.res - self.r0
+		s = self.soff + (lon - self.clon) * self.res - self.c0
+		if l.min() < 0 or l.max() > self.z.shape[0] - 1:
+			sys.exit("SLDEM2015 band: a point outside the downloaded rows")
+		return ndimage.map_coordinates(self.z, [l, s], order=1, mode="nearest") + self.shift
+
+	def calibrate(self, dtm, label):
+		"""Mean offset and RMS difference to the DTM (smoothed to this mosaic's resolution)."""
+		rng = np.random.default_rng(1)
+		l = rng.uniform(0, dtm.lines - 1, 40000)
+		s = rng.uniform(0, dtm.samples - 1, 40000)
+		keep = dtm.inside_m[l.astype(int), s.astype(int)] > 300.0
+		lon, lat = dtm.lon_lat(l[keep], s[keep])
+		truth = dtm.sample(lon, lat, smooth_px=self.metres_per_pixel / dtm.scale / 2.0)
+		self.shift = 0.0
+		diff = truth - self.sample(lon, lat)
+		self.shift = float(diff.mean())
+		rms = float(np.sqrt(np.mean((diff - self.shift) ** 2)))
+		log(f"{label}: offset to the DTM {self.shift:+.2f} m, RMS difference {rms:.2f} m over {keep.sum()} points")
+		if rms > 15.0 or abs(self.shift) > 50.0:
+			sys.exit(f"{label} doesn't match the DTM (RMS {rms:.1f} m, offset {self.shift:.1f} m)")
+		return {"offset_to_dtm_m": round(self.shift, 3), "rms_difference_m": round(rms, 3), "points": int(keep.sum())}
 
 
 class SiteDEM:
@@ -175,20 +338,49 @@ def dir_to_stereo(d):
 	return rho * np.sin(lon), rho * np.cos(lon)
 
 
-class LocalFrame:
-	"""Tangent plane at the play centre: X along the stereographic +x, Z along -y, Y up."""
+def lonlat_to_dir(lon, lat):
+	"""Longitude east, latitude (degrees) -> unit vectors in the Moon's mean-Earth frame."""
+	lo, la = np.radians(lon), np.radians(lat)
+	return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], axis=-1)
 
-	def __init__(self, cx, cy, height_at):
-		self.up = stereo_to_dir(np.array(cx), np.array(cy))
-		ex = stereo_to_dir(np.array(cx + 1.0), np.array(cy)) - self.up
-		ey = stereo_to_dir(np.array(cx), np.array(cy + 1.0)) - self.up
+
+def dir_to_lonlat(d):
+	lat = np.degrees(np.arcsin(np.clip(d[..., 2], -1.0, 1.0)))
+	lon = np.degrees(np.arctan2(d[..., 1], d[..., 0])) % 360.0
+	return lon, lat
+
+
+class Projection:
+	"""Map coordinates <-> directions: polar stereographic (x, y in m) or longitude / latitude
+	(degrees, for equirectangular sources). `step` is a small map-coordinate step for the frame's
+	axes."""
+
+	def __init__(self, kind):
+		self.kind = kind
+		if kind == "polar_stereographic":
+			self.to_dir, self.from_dir, self.step = stereo_to_dir, dir_to_stereo, 1.0
+		else:
+			self.to_dir, self.from_dir, self.step = lonlat_to_dir, dir_to_lonlat, 1e-5
+
+
+class LocalFrame:
+	"""Tangent plane at the play centre, Y up. Polar stereographic: X along the stereographic +x,
+	Z along -y. Longitude / latitude: X east, Z south. `cx`, `cy` in the projection's map
+	coordinates; `h0` overrides the centre's height (a verbatim tier's constant)."""
+
+	def __init__(self, cx, cy, height_at, proj=None, h0=None):
+		self.proj = proj or Projection("polar_stereographic")
+		to_dir, step = self.proj.to_dir, self.proj.step
+		self.up = to_dir(np.array(cx), np.array(cy))
+		ex = to_dir(np.array(cx + step), np.array(cy)) - self.up
+		ey = to_dir(np.array(cx), np.array(cy + step)) - self.up
 		ex -= ex.dot(self.up) * self.up
 		ey -= ey.dot(self.up) * self.up
 		self.ex = ex / np.linalg.norm(ex)
 		self.ez = np.cross(self.ex, self.up)            # X x Y = Z
 		if self.ez.dot(ey / np.linalg.norm(ey)) > -0.999:
-			sys.exit("local frame: stereographic +y is not world -Z")
-		self.h0 = float(height_at(np.array([cx]), np.array([cy]))[0])
+			sys.exit("local frame: the map's +y is not world -Z")
+		self.h0 = float(height_at(np.array([cx]), np.array([cy]))[0]) if h0 is None else float(h0)
 		self.origin = (R_MOON + self.h0) * self.up
 		lat = math.degrees(math.asin(self.up[2]))
 		lon = math.degrees(math.atan2(self.up[1], self.up[0])) % 360.0
@@ -201,7 +393,7 @@ class LocalFrame:
 		for _ in range(iterations):
 			p = self.origin + tx[..., None] * self.ex + tz[..., None] * self.ez
 			d = p / np.linalg.norm(p, axis=-1, keepdims=True)
-			sx, sy = dir_to_stereo(d)
+			sx, sy = self.proj.from_dir(d)
 			h = height_at(sx, sy)
 			s = (R_MOON + h)[..., None] * d - self.origin
 			gx, gz = s @ self.ex, s @ self.ez
@@ -212,8 +404,8 @@ class LocalFrame:
 			sys.exit("exact conversion: non-finite heights")
 		return Y, float(np.max(np.hypot(X - gx, Z - gz)))
 
-	def from_stereo(self, sx, sy, h):
-		d = stereo_to_dir(sx, sy)
+	def from_map(self, sx, sy, h):
+		d = self.proj.to_dir(sx, sy)
 		s = (R_MOON + h)[..., None] * d - self.origin
 		return s @ self.ex, s @ self.ez, s @ self.up
 
@@ -419,71 +611,170 @@ def main():
 	if "--fetch" in sys.argv:
 		fetch(cfg)
 	sources = check_sources(cfg)
-	raw = lambda key: os.path.join(cfg["raw_dir"], os.path.basename(cfg["sources"][key]["url"]))
+	raw = lambda key: source_path(cfg, cfg["sources"][key])
 	os.makedirs(cfg["out_dir"], exist_ok=True)
 	os.makedirs(cfg["preview_dir"], exist_ok=True)
+	site_type = cfg.get("site_type", "polar_stereographic")
 
-	log("reading the site DEM")
-	site = SiteDEM(raw("site"))
-	cx, cy = cfg["centre_stereographic"]
-	frame = LocalFrame(cx, cy, site.sample)
-	log(f"play centre: {frame.lat_lon[0]:.4f} N, {frame.lat_lon[1]:.2f} E, {frame.h0:.1f} m above the 1737.4 km sphere")
+	calibration, extras, provenance = {}, {}, {}
+	authored = []          # changes to the measured ground (terrain.json `authored_changes`)
+	if site_type == "polar_stereographic":
+		log("reading the site DEM")
+		site = SiteDEM(raw("site"))
+		cx, cy = cfg["centre_stereographic"]
+		frame = LocalFrame(cx, cy, site.sample)
+		polar = {}
+		for t in cfg["tiers"]:
+			if t["source"].startswith("polar") and t["source"] not in polar:
+				src = cfg["sources"][t["source"]]
+				log(f"reading {t['source']}")
+				dem = PolarDEM(raw(t["source"]), src, t["metres_per_pixel"] / src["metres_per_pixel"] / 2.0)
+				calibration[t["source"]] = dem.calibrate(site, t["source"])
+				polar[t["source"]] = dem
 
-	calibration = {}
-	polar = {}
-	for t in cfg["tiers"]:
-		if t["source"].startswith("polar") and t["source"] not in polar:
-			src = cfg["sources"][t["source"]]
-			log(f"reading {t['source']}")
-			dem = PolarDEM(raw(t["source"]), src, t["metres_per_pixel"] / src["metres_per_pixel"] / 2.0)
-			calibration[t["source"]] = dem.calibrate(site, t["source"])
-			polar[t["source"]] = dem
+		def tier_function(t):
+			spacing = t["metres_per_pixel"]
+			if t["source"] == "site":
+				smooth = None if spacing <= site.px else spacing / site.px / 2.0
+				return (lambda sx, sy: site.sample(sx, sy)) if smooth is None else (lambda sx, sy, s=smooth: site.sample(sx, sy, smooth=s))
+			return polar[t["source"]].sample
+		centre = {"stereographic_m": cfg["centre_stereographic"]}
+		axes = "X = polar stereographic +x, Z = -y (towards longitude 180), Y up; metres along the tangent plane at the centre; heights include the Moon's curvature"
+	else:
+		log("reading the NAC DTM")
+		dtm = LrocDTM(raw("dtm"))
+		r0, c0 = cfg["play_centre_post"]
+		if not dtm.valid[r0, c0]:
+			sys.exit("the play centre post has no data")
+		clon, clat = dtm.lon_lat(float(r0), float(c0))
+		frame = LocalFrame(clon, clat, None, proj=Projection("equirectangular"), h0=float(dtm.raw[r0, c0]))
+		sldem = {}
+		reach = max(t["half_size"] for t in cfg["tiers"]) * 1.5
+		lon_range = (clon - math.degrees(reach / (R_MOON * math.cos(math.radians(clat)))), clon + math.degrees(reach / (R_MOON * math.cos(math.radians(clat)))))
+		for t in cfg["tiers"]:
+			if "sldem" in t["source"]:
+				src = cfg["sources"]["sldem"]
+				log(f"reading SLDEM2015 rows {src['rows'][0]}-{src['rows'][1]} for {t['name']}")
+				band = SldemBand(raw("sldem"), src, lon_range, 0.0)
+				smooth = t["metres_per_pixel"] / band.metres_per_pixel / 2.0
+				if smooth > 0.5:
+					band.z = ndimage.gaussian_filter(band.z, smooth)
+				calibration[f"sldem_{t['name']}"] = band.calibrate(dtm, f"SLDEM2015 ({t['name']})")
+				sldem[t["name"]] = band
+		feather = cfg.get("dtm_feather_m", 100.0)
+
+		def tier_function(t):
+			band = sldem.get(t["name"])
+			if t["source"] == "sldem":
+				return band.sample
+			smooth = t["metres_per_pixel"] / dtm.scale / 2.0
+
+			def blended(lon, lat):
+				w = dtm.weight(lon, lat, feather)
+				return w * dtm.sample(lon, lat, smooth) + (1.0 - w) * band.sample(lon, lat)
+			return blended
+		centre = {"dtm_post": [r0, c0]}
+		axes = "X east, Z south (rows along +Z), Y up, metres. The verbatim play tier: NAC DTM posts at (2 * column, height - constant, 2 * row) from the centre post, no curvature (as delivered); outer tiers: metres along the tangent plane at the centre, heights include the Moon's curvature"
+	log(f"play centre: {frame.lat_lon[0]:.5f} N, {frame.lat_lon[1]:.5f} E, {frame.h0:.3f} m above the 1737.4 km sphere")
+	centre.update({"lat": frame.lat_lon[0], "lon_east": frame.lat_lon[1], "height_above_1737400_m": frame.h0})
 
 	tiers_out, world_tiers, heights = [], [], {}
 	detail = cfg["detail"]
-	extras = {}
 	for t in cfg["tiers"]:
 		spacing, half = t["metres_per_pixel"], t["half_size"]
 		n = int(round(2 * half / spacing)) + 1
 		axis = -half + np.arange(n) * spacing
 		X, Z = np.meshgrid(axis, axis)
-		if t["source"] == "site":
-			smooth = None if spacing <= site.px else spacing / site.px / 2.0
-			fn = (lambda sx, sy: site.sample(sx, sy)) if smooth is None else (lambda sx, sy, s=smooth: site.sample(sx, sy, smooth=s))
+		if t["source"] == "dtm_verbatim":
+			if abs(spacing - dtm.scale) > 1e-6:
+				sys.exit(f"tier {t['name']}: a verbatim tier must use the DTM's {dtm.scale} m")
+			k = (n - 1) // 2
+			if r0 - k < 0 or c0 - k < 0 or r0 + k >= dtm.lines or c0 + k >= dtm.samples:
+				sys.exit(f"tier {t['name']}: outside the DTM")
+			window = dtm.raw[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1]
+			if not dtm.valid[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1].all():
+				sys.exit(f"tier {t['name']}: no-data posts inside")
+			Y = window.astype(np.float64) - frame.h0
+			measured = Y.astype("<f4")
+			measured.tofile(os.path.join(cfg["out_dir"], f"{t['name']}_measured.f32"))
+			provenance = {
+				"product_id": dtm.keys["PRODUCT_ID"], "product_version": dtm.keys["PRODUCT_VERSION_ID"],
+				"file": sources["dtm"]["file"], "sha256": sources["dtm"]["sha256"],
+				"window": {"first_line": r0 - k, "first_sample": c0 - k, "lines": n, "samples": n, "centre_post": [r0, c0], "zero_based": True},
+				"constant_subtracted_m": frame.h0,
+				"placement": f"post (line first_line + i, sample first_sample + j) at X = {spacing:g} * (j - {k}), Z = {spacing:g} * (i - {k}), Y = height - constant_subtracted_m; float32",
+				"measured_file": f"{t['name']}_measured.f32",
+				"note": "The starter pack named in ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
+			}
+			if "conf" in cfg["sources"]:
+				# The DTM's confidence map over the window (0 no data, 1 shadowed, 2 saturated, 3 suspicious,
+				# 4 interpolated, 10-14 correlated, 15 edited: the product's readme)
+				_, conf = read_pds3(raw("conf"))
+				w = conf[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1]
+				values, counts = np.unique(w, return_counts=True)
+				provenance["confidence_percent"] = {int(v): round(float(c) / w.size * 100.0, 2) for v, c in zip(values, counts)}
+				log(f"  confidence map over the window (%): {provenance['confidence_percent']}")
+			log(f"tier {t['name']}: {n} x {n} DTM posts verbatim from line {r0 - k}, sample {c0 - k}; heights {Y.min():.2f} .. {Y.max():.2f} m")
 		else:
-			fn = polar[t["source"]].sample
-		log(f"tier {t['name']}: {n} x {n} at {spacing} m (exact conversion)")
-		Y, miss = frame.to_world(X, Z, fn)
-		log(f"  converged to {miss * 1000:.2f} mm; heights {Y.min():.1f} .. {Y.max():.1f} m")
+			log(f"tier {t['name']}: {n} x {n} at {spacing} m (exact conversion)")
+			Y, miss = frame.to_world(X, Z, tier_function(t))
+			log(f"  converged to {miss * 1000:.2f} mm; heights {Y.min():.1f} .. {Y.max():.1f} m")
 		if t.get("detail"):
 			# No detail on protected ground, and none at the tier's edge (it fades out over the last 22 m,
 			# past the boundary), so the play tier meets the smooth ring without a step
 			edge = np.maximum(np.abs(X), np.abs(Z))
 			protect = np.maximum(protection_mask(X, Z, cfg["protected"]), np.clip((edge - (half - 22.0)) / 12.0, 0.0, 1.0))
 			before = Y.copy()
-			Y += roughness(n, spacing, detail, rng) * (1.0 - protect)
-			craters, fresh, crater_count = add_craters(Y, -half, spacing, detail, rng, protect)
-			log(f"  {crater_count} craters {detail['crater_min_diameter']}-{detail['crater_max_diameter']} m")
+			if detail.get("roughness", True):
+				Y += roughness(n, spacing, detail, rng) * (1.0 - protect)
+				authored.append({"change": "fractal roughness below the data's resolution", "collision": True, "seed": cfg["seed"]})
+			craters, fresh = [], None
+			if detail.get("craters", True):
+				craters, fresh, crater_count = add_craters(Y, -half, spacing, detail, rng, protect)
+				log(f"  {crater_count} craters {detail['crater_min_diameter']}-{detail['crater_max_diameter']} m")
+				authored.append({"change": f"{crater_count} procedural craters {detail['crater_min_diameter']}-{detail['crater_max_diameter']} m", "collision": True, "seed": cfg["seed"]})
+			graded = Y.copy()
 			extras["grading"] = grade(Y, X, Z, cfg["protected"], before)
+			for a, g in zip(cfg["protected"], extras["grading"]):
+				change = np.abs(Y - graded) * (protection_mask(X, Z, [a]) > 0.0)
+				touched = change > 1e-6
+				g["max_change_m"] = round(float(change.max()), 3)
+				authored.append({"change": f"{a['name']} graded to its mean plane ({g['plane_slope_degrees']} deg)", "collision": True,
+					"area_m": a["size"], "centre": a["centre"], "blend_m": a["blend"], "max_height_change_m": g["max_change_m"],
+					"posts_changed": int(touched.sum())})
 			rocks = make_rocks(Y, -half, spacing, detail, rng, protect, craters)
 			rocks.tofile(os.path.join(cfg["out_dir"], "rocks.f32"))
 			extras["rocks"] = {"file": "rocks.f32", "count": len(rocks), "fields": ["x", "ground_y", "z", "size", "yaw", "shape"],
 				"collision_min_size": detail["rock_collision_min_size"], "with_collision": int((rocks[:, 3] >= detail["rock_collision_min_size"]).sum())}
+			authored.append({"change": f"{len(rocks)} procedural rocks {detail['rock_sizes'][0]}-{detail['rock_sizes'][1]} m (instances, not in the heightmap)",
+				"collision": f"convex, {extras['rocks']['with_collision']} of {detail['rock_collision_min_size']} m and up", "seed": cfg["seed"]})
 			log(f"  {len(rocks)} rocks, {extras['rocks']['with_collision']} of {detail['rock_collision_min_size']} m and up")
-			albedo = np.clip(128 + fresh[::2, ::2] * 127, 0, 255).astype(np.uint8)
-			Image.fromarray(albedo, "L").save(os.path.join(cfg["out_dir"], "freshness_play.png"), optimize=True)
-			extras["freshness"] = {"file": "freshness_play.png", "metres_per_pixel": spacing * 2, "encoding": "0.5 + 0.5 * freshness"}
+			if fresh is not None:
+				albedo = np.clip(128 + fresh[::2, ::2] * 127, 0, 255).astype(np.uint8)
+				Image.fromarray(albedo, "L").save(os.path.join(cfg["out_dir"], "freshness_play.png"), optimize=True)
+				extras["freshness"] = {"file": "freshness_play.png", "metres_per_pixel": spacing * 2, "encoding": "0.5 + 0.5 * freshness"}
+			if t["source"] == "dtm_verbatim":
+				# Outside the graded areas the play tier is the measured surface, bit for bit
+				outside = protection_mask(X, Z, cfg["protected"]) == 0.0
+				if not detail.get("roughness", True) and not detail.get("craters", True) and not np.array_equal(Y.astype("<f4")[outside], measured[outside]):
+					sys.exit("play tier: changed outside the graded areas")
 			gz, gx = np.gradient(Y, spacing)
 			slope = np.degrees(np.arctan(np.hypot(gx, gz)))
 			inner = (np.abs(X) <= cfg["boundary_half_size"]) & (np.abs(Z) <= cfg["boundary_half_size"])
 			extras["play_slopes"] = {f"over_{s}": round(float((slope[inner] > s).mean() * 100), 3) for s in (15, 25, 30, 40)}
 			extras["play_slopes"]["max"] = round(float(slope[inner].max()), 1)
+			extras["play_slopes"]["baseline_m"] = 2 * spacing
 			log(f"  slopes inside the boundary (% over 15/25/30/40): {extras['play_slopes']}")
 		heights[t["name"]] = Y
-		info = save_r16(os.path.join(cfg["out_dir"], f"{t['name']}.r16"), Y)
-		log(f"  r16: {info['scale'] * 1000:.2f} mm per step, worst rounding {info['max_error_m'] * 1000:.2f} mm")
-		tiers_out.append({"name": t["name"], "file": f"{t['name']}.r16", "size": n, "metres_per_pixel": spacing,
-			"half_size": half, "height_min": info["min"], "height_scale": info["scale"], "source": t["source"]})
+		entry = {"name": t["name"], "size": n, "metres_per_pixel": spacing, "half_size": half, "source": t["source"]}
+		if t["source"] == "dtm_verbatim":
+			Y.astype("<f4").tofile(os.path.join(cfg["out_dir"], f"{t['name']}.f32"))
+			entry.update({"file": f"{t['name']}.f32", "format": "float32"})
+		else:
+			info = save_r16(os.path.join(cfg["out_dir"], f"{t['name']}.r16"), Y)
+			log(f"  r16: {info['scale'] * 1000:.2f} mm per step, worst rounding {info['max_error_m'] * 1000:.2f} mm")
+			entry.update({"file": f"{t['name']}.r16", "format": "uint16", "height_min": info["min"], "height_scale": info["scale"]})
+		tiers_out.append(entry)
 		world_tiers.append((half, spacing, Y))
 
 	world = World(world_tiers)
@@ -493,9 +784,23 @@ def main():
 	for name, (x, z) in cfg["spots"].items():
 		spots[name] = [x, float(world.height(np.array([float(x)]), np.array([float(z)]))[0]), z]
 
-	# Sun azimuth: the big permanently shadowed crater floors dark, base and pad lit
-	sun = choose_sun(cfg, frame, world, raw("psr"))
-	earth = choose_earth(cfg, world, spots, sun)
+	if "ephemeris" in cfg:
+		sun, earth, sky = ephemeris(cfg, frame)
+		sun.update(sunlight_checks(cfg, world, sun))
+		extras["sky"] = sky
+		artifacts = {}
+		for name, a in cfg.get("artifacts", {}).items():
+			l, s = dtm.pixel(np.array(a["lon"]), np.array(a["lat"]))
+			x, z = float((s - c0) * dtm.scale), float((l - r0) * dtm.scale)
+			artifacts[name] = {**a, "position": [round(x, 2), float(world.height(np.array([x]), np.array([z]))[0]), round(z, 2)]}
+			log(f"  {name}: x {x:+.1f}, z {z:+.1f}")
+		extras["artifacts"] = artifacts
+		if "ortho" in cfg["sources"]:
+			extras["site_brightness"] = site_brightness(cfg, raw("ortho"), dtm, (r0, c0), cfg["tiers"][0], frame)
+	else:
+		# Sun azimuth: the big permanently shadowed crater floors dark, base and pad lit
+		sun = choose_sun(cfg, frame, world, raw("psr"))
+		earth = choose_earth(cfg, world, spots, sun)
 
 	# Horizon maps, starting at the sun's azimuth so its own direction needs no interpolation
 	azimuths = [(sun["azimuth"] + i * 360.0 / AZIMUTHS) % 360.0 for i in range(AZIMUTHS)]
@@ -514,21 +819,179 @@ def main():
 	meta = {
 		"name": cfg["name"], "description": cfg["description"], "generated": time.strftime("%Y-%m-%d %H:%M"),
 		"generator": "tools/terrain/build_moon_terrain.py " + os.path.basename(cfg_path), "seed": cfg["seed"],
-		"centre": {"stereographic_m": cfg["centre_stereographic"], "lat": frame.lat_lon[0], "lon_east": frame.lat_lon[1],
-			"height_above_1737400_m": frame.h0},
-		"axes": "X = polar stereographic +x, Z = -y (towards longitude 180), Y up; metres along the tangent plane at the centre; heights include the Moon's curvature",
-		"height_encoding": "height = height_min + uint16 * height_scale (little-endian, row-major, rows along +Z)",
+		"site_type": site_type, "centre": centre, "axes": axes,
+		"height_encoding": "uint16 tiers: height = height_min + uint16 * height_scale; float32 tiers: height; little-endian, row-major, rows along +Z",
 		"tiers": tiers_out,
 		"horizons": {"azimuths_degrees": azimuths, "first_azimuth": azimuths[0], "step_degrees": 360.0 / AZIMUTHS,
 			"encoding": f"degrees = {HORIZON_MIN} + byte / 255 * {HORIZON_RANGE}",
 			"azimuth_convention": "degrees from -Z towards +X", "channels": "file k holds azimuths 4k..4k+3 in R, G, B, A",
 			"tiers": horizon_files},
 		"boundary_half_size": cfg["boundary_half_size"], "protected": cfg["protected"], "spots": spots,
-		"sun": sun, "earth": earth, "calibration": calibration, "sources": sources, **extras,
+		"sun": sun, "earth": earth, "calibration": calibration, "sources": sources,
+		"provenance": provenance, "authored_changes": authored, **extras,
 	}
 	json.dump(meta, open(os.path.join(cfg["out_dir"], "terrain.json"), "w"), indent="\t")
 	previews(cfg, heights, world_tiers, play_horizon, spots, sun)
 	log("done")
+
+
+# --- Ephemeris (JPL Horizons) ---------------------------------------------------------------------
+
+HORIZONS_API = "https://ssd.jpl.nasa.gov/api/horizons.api"
+
+
+def horizons(cfg, command, utc, lon, lat, alt_km):
+	"""One row of a Horizons observer table for `command` seen from (lon, lat, alt) on the Moon at
+	`utc` ("YYYY-MM-DD HH:MM"): ICRF RA/Dec, airless apparent azimuth / elevation, illuminated %,
+	angular diameter (arcsec), sub-observer longitude / latitude. Replies are cached in raw/."""
+	import datetime
+	import urllib.parse
+	stop = (datetime.datetime.strptime(utc, "%Y-%m-%d %H:%M") + datetime.timedelta(minutes=1)).strftime("%Y-%m-%d %H:%M")
+	params = {"format": "text", "COMMAND": f"'{command}'", "CENTER": "'coord@301'", "COORD_TYPE": "'GEODETIC'",
+		"SITE_COORD": f"'{lon:.6f},{lat:.6f},{alt_km:.4f}'", "EPHEM_TYPE": "'OBSERVER'", "QUANTITIES": "'1,4,10,13,14'",
+		"START_TIME": f"'{utc}'", "STOP_TIME": f"'{stop}'", "STEP_SIZE": "'1 m'", "ANG_FORMAT": "'DEG'",
+		"APPARENT": "'AIRLESS'", "CSV_FORMAT": "'YES'", "EXTRA_PREC": "'YES'"}
+	url = HORIZONS_API + "?" + urllib.parse.urlencode(params)
+	cache = os.path.join(cfg["raw_dir"], f"horizons_{hashlib.sha1(url.encode()).hexdigest()[:12]}.txt")
+	if not os.path.exists(cache):
+		log(f"asking JPL Horizons for {command} at {utc} UTC")
+		with urllib.request.urlopen(url, timeout=60) as response:
+			text = response.read().decode()
+		with open(cache, "w") as f:
+			f.write(text)
+	text = open(cache).read()
+	if "$$SOE" not in text:
+		sys.exit(f"Horizons: no ephemeris in {cache}")
+	lines = text.split("\n")
+	soe = lines.index("$$SOE")
+	header = [h.strip() for h in next(l for l in reversed(lines[:soe]) if "Date__" in l).split(",")]
+	row = [v.strip() for v in lines[soe + 1].split(",")]
+	col = lambda prefix: float(row[next(i for i, h in enumerate(header) if h.startswith(prefix))])
+	if "Center pole/equ : MEAN_ME" not in text:
+		sys.exit("Horizons: the site isn't in the Moon's mean-Earth frame")
+	return {"ra": col("R.A."), "dec": col("DEC"), "azimuth": col("Azimuth") % 360.0, "elevation": col("Elevation"),
+		"illuminated": col("Illu%") / 100.0, "diameter_arcsec": col("Ang-diam"), "sub_lon": col("ObsSub-LON"), "sub_lat": col("ObsSub-LAT"),
+		"cache": os.path.basename(cache)}
+
+
+def world_direction(azimuth, elevation):
+	a, e = math.radians(azimuth), math.radians(elevation)
+	return np.array([math.sin(a) * math.cos(e), math.sin(e), -math.cos(a) * math.cos(e)])
+
+
+def equatorial_direction(ra, dec):
+	a, d = math.radians(ra), math.radians(dec)
+	return np.array([math.cos(d) * math.cos(a), math.cos(d) * math.sin(a), math.sin(d)])
+
+
+def ephemeris(cfg, frame):
+	"""The sun, Earth and the sky's orientation at the settings file's moment, from Horizons seen
+	from the play centre. The orientation (equatorial = M @ world) is the rotation that best maps
+	the sun's and Earth's ICRF directions onto their az / el; other bodies check it."""
+	e = cfg["ephemeris"]
+	lat, lon = frame.lat_lon
+	at = lambda body: horizons(cfg, body, e["utc"], lon, lat, frame.h0 / 1000.0)
+	sun_h, earth_h = at("10"), at("399")
+	checks = {b: at(b) for b in e.get("check_bodies", [])}
+	fit = {"sun": sun_h, "earth": earth_h}
+	A = np.array([equatorial_direction(b["ra"], b["dec"]) for b in fit.values()])
+	B = np.array([world_direction(b["azimuth"], b["elevation"]) for b in fit.values()])
+	U, _, Vt = np.linalg.svd(A.T @ B)
+	d = np.sign(np.linalg.det(Vt.T @ U.T))
+	world_from_eq = Vt.T @ np.diag([1.0, 1.0, d]) @ U.T
+	residual = {}
+	for name, b in {**fit, **{f"check {k}": v for k, v in checks.items()}}.items():
+		p = world_from_eq @ equatorial_direction(b["ra"], b["dec"])
+		residual[name] = round(math.degrees(math.acos(min(1.0, float(p @ world_direction(b["azimuth"], b["elevation"]))))) * 3600.0, 1)
+	log(f"sky orientation at {e['utc']} UTC: residuals (arcsec) {residual}")
+	if max(residual.values()) > 60.0:
+		sys.exit("sky orientation: a body is over 1 arcminute off")
+	M = world_from_eq.T
+	zen = M @ np.array([0.0, 1.0, 0.0])
+	ncp = world_from_eq @ np.array([0.0, 0.0, 1.0])
+	sun = {"elevation": round(sun_h["elevation"], 4), "azimuth": round(sun_h["azimuth"], 4), "utc": e["utc"], "moment": e.get("moment", ""),
+		"source": "JPL Horizons, airless apparent az / el from the play centre", "horizons_cache": sun_h["cache"]}
+	sdir = world_direction(sun_h["azimuth"], sun_h["elevation"])
+	edir = world_direction(earth_h["azimuth"], earth_h["elevation"])
+	earth = {"azimuth": round(earth_h["azimuth"], 4), "elevation": round(earth_h["elevation"], 4), "direction": [float(v) for v in edir],
+		"angular_diameter_degrees": round(earth_h["diameter_arcsec"] / 3600.0, 4), "lit_fraction": round(earth_h["illuminated"], 4),
+		"facing_longitude_east": round(earth_h["sub_lon"], 3), "facing_latitude": round(earth_h["sub_lat"], 3),
+		"sun_separation_degrees": round(math.degrees(math.acos(float(sdir @ edir))), 2), "horizons_cache": earth_h["cache"]}
+	log(f"sun {sun['elevation']:.2f} deg up at azimuth {sun['azimuth']:.2f}; Earth {earth['elevation']:.2f} up at {earth['azimuth']:.2f}, {earth['lit_fraction'] * 100:.0f}% lit, {earth['angular_diameter_degrees']:.3f} deg across")
+	sky = {"utc": e["utc"], "world_to_equatorial": [[float(v) for v in r] for r in M],
+		"convention": "equatorial = M @ world (rows); equatorial: x towards RA 0h, z the north celestial pole (ICRF / J2000, as the NASA SVS star map); world: X east, Y up, Z south",
+		"fit_bodies": ["sun", "earth"], "residual_arcsec": residual,
+		"zenith_ra_dec": [round(math.degrees(math.atan2(zen[1], zen[0])) % 360.0, 3), round(math.degrees(math.asin(zen[2])), 3)],
+		"north_celestial_pole_az_el": [round(math.degrees(math.atan2(ncp[0], -ncp[2])) % 360.0, 3), round(math.degrees(math.asin(ncp[1])), 3)],
+		"checks": {k: {"ra": v["ra"], "dec": v["dec"], "azimuth": v["azimuth"], "elevation": v["elevation"]} for k, v in checks.items()},
+		"sun_ra_dec": [sun_h["ra"], sun_h["dec"]], "earth_ra_dec": [earth_h["ra"], earth_h["dec"]]}
+	return sun, earth, sky
+
+
+def sunlight_checks(cfg, world, sun):
+	"""How much of the play area the sun lights, and the protected areas' highest horizon towards it."""
+	half = cfg["boundary_half_size"]
+	ax = np.arange(-half + 8, half, 16.0)
+	AX, AZ = np.meshgrid(ax, ax)
+	AX, AZ = AX.ravel(), AZ.ravel()
+	lit = float((horizon_angles(world, AX, AZ, world.height(AX, AZ) + 0.05, [sun["azimuth"]], start=4.0)[0] < sun["elevation"]).mean())
+	highest = -90.0
+	for a in cfg["protected"]:
+		xs = np.arange(a["centre"][0] - a["size"][0] / 2, a["centre"][0] + a["size"][0] / 2 + 0.1, 4.0)
+		zs = np.arange(a["centre"][1] - a["size"][1] / 2, a["centre"][1] + a["size"][1] / 2 + 0.1, 4.0)
+		gx, gz = np.meshgrid(xs, zs)
+		gx, gz = gx.ravel(), gz.ravel()
+		highest = max(highest, float(horizon_angles(world, gx, gz, world.height(gx, gz) + 1.0, [sun["azimuth"]], start=2.0)[0].max()))
+	log(f"sun: {lit * 100:.0f}% of the play area in sunlight; protected areas' highest horizon towards it {highest:.2f} deg")
+	if highest > sun["elevation"] - 0.27:
+		sys.exit("sun: the base isn't fully lit")
+	return {"play_area_lit_fraction": round(lit, 3), "base_highest_horizon_degrees": round(highest, 2)}
+
+
+def site_brightness(cfg, path, dtm, centre_post, tier, frame):
+	"""An approximate brightness pattern from the orthophoto (not albedo): the image divided by the
+	DTM's own shading under the image's sun, normalised to its median, blurred to `blur_m`, limited
+	to +-`range`, fading to neutral over the tier's last 30 m. Encoded as 8-bit,
+	brightness = 1 + range * (byte / 127.5 - 1)."""
+	s = cfg["site_brightness"]
+	keys, img = read_pds3(path)
+	for k in ("LINE_PROJECTION_OFFSET", "SAMPLE_PROJECTION_OFFSET", "MAP_SCALE", "LINES", "LINE_SAMPLES"):
+		if keys[k] != dtm.keys[k]:
+			sys.exit(f"orthophoto: {k} differs from the DTM's")
+	start = keys["START_TIME"].replace("T", " ")[:16]
+	lat, lon = frame.lat_lon
+	sun_h = horizons(cfg, "10", start, lon, lat, frame.h0 / 1000.0)
+	r0, c0 = centre_post
+	n = int(round(2 * tier["half_size"] / tier["metres_per_pixel"])) + 1
+	k = (n - 1) // 2
+	win = img[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1].astype(np.float64)
+	valid = win > float(keys.get("CORE_NULL", -32768))
+	h = dtm.filled[r0 - k:r0 + k + 1, c0 - k:c0 + k + 1]
+	gz, gx = np.gradient(h, dtm.scale)
+	nrm = np.stack([-gx, np.ones_like(h), -gz], -1)
+	nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+	mu0 = np.clip(nrm @ world_direction(sun_h["azimuth"], sun_h["elevation"]), 0.0, None)
+	mu = nrm[..., 1]                       # looking straight down
+	shading = mu0 / (mu0 + mu)
+	ok = valid & (shading > 0.05)
+	ratio = np.where(ok, win / np.where(ok, shading, 1.0), 0.0)
+	ratio /= np.median(ratio[ok])
+	sigma = s["blur_m"] / 2.355 / dtm.scale
+	weight = ndimage.gaussian_filter(ok.astype(np.float64), sigma)
+	ratio = np.where(weight > 0.05, ndimage.gaussian_filter(ratio, sigma) / np.maximum(weight, 1e-6), 1.0)
+	X = (np.arange(n) - k) * dtm.scale
+	edge = np.maximum(np.abs(X)[None, :], np.abs(X)[:, None])
+	fade = np.clip((tier["half_size"] - edge) / 30.0, 0.0, 1.0)
+	r = s["range"]
+	b = 1.0 + (np.clip(ratio, 1.0 - r, 1.0 + r) - 1.0) * fade
+	enc = np.clip(np.round((b - 1.0) / r * 127.5 + 127.5), 0, 255).astype(np.uint8)
+	Image.fromarray(enc, "L").save(os.path.join(cfg["out_dir"], "site_brightness_play.png"), optimize=True)
+	log(f"site brightness: orthophoto sun {sun_h['elevation']:.1f} deg at {sun_h['azimuth']:.1f}; spread (5-95%) {np.percentile(b, 5):.2f} .. {np.percentile(b, 95):.2f}")
+	return {"file": "site_brightness_play.png", "metres_per_pixel": dtm.scale, "half_size": tier["half_size"],
+		"encoding": f"brightness = 1 + {r} * (byte / 127.5 - 1)", "range": r, "blur_m": s["blur_m"],
+		"orthophoto": keys["PRODUCT_ID"], "image_time": keys["START_TIME"],
+		"orthophoto_sun": {"azimuth": round(sun_h["azimuth"], 2), "elevation": round(sun_h["elevation"], 2), "horizons_cache": sun_h["cache"]},
+		"note": "Approximate brightness pattern, not albedo: the orthophoto divided by the DTM's Lommel-Seeliger shading under the image's own sun, then blurred. Shading by relief smaller than the DTM resolves stays in it. Shading only, never collision."}
 
 
 def psr_patches(cfg, frame, path):
@@ -565,7 +1028,7 @@ def psr_patches(cfg, frame, path):
 		ii, jj = np.nonzero(lab == k)
 		sx = x0 + (col - half + jj + 0.5) * px
 		sy = y0 - (row - half + ii + 0.5) * px
-		X, Z, _ = frame.from_stereo(sx, sy, np.full(sx.shape, frame.h0))
+		X, Z, _ = frame.from_map(sx, sy, np.full(sx.shape, frame.h0))
 		inside = (np.abs(X) < cfg["boundary_half_size"]) & (np.abs(Z) < cfg["boundary_half_size"])
 		if inside.sum() == 0:
 			continue

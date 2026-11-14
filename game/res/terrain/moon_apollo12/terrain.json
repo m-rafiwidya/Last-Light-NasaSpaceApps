@@ -1,0 +1,412 @@
+{
+	"name": "moon_apollo12",
+	"description": "Apollo 12 landing site (Oceanus Procellarum): LROC NAC DTM NAC_DTM_APOLLO12_E030S3365, 2 m posts verbatim in a 1 km play area holding the LM, Surveyor 3 and the whole EVA 2 route. See tools/terrain/MOON_TERRAIN.md.",
+	"generated": "2026-10-09 07:49",
+	"generator": "tools/terrain/build_moon_terrain.py moon_apollo12.json",
+	"seed": 20261009,
+	"site_type": "equirectangular",
+	"centre": {
+		"dtm_post": [
+			807,
+			1857
+		],
+		"lat": -3.0154649377796168,
+		"lon_east": 336.5747757709075,
+		"height_above_1737400_m": -1422.59033203125
+	},
+	"axes": "X east, Z south (rows along +Z), Y up, metres. The verbatim play tier: NAC DTM posts at (2 * column, height - constant, 2 * row) from the centre post, no curvature (as delivered); outer tiers: metres along the tangent plane at the centre, heights include the Moon's curvature",
+	"height_encoding": "uint16 tiers: height = height_min + uint16 * height_scale; float32 tiers: height; little-endian, row-major, rows along +Z",
+	"tiers": [
+		{
+			"name": "play",
+			"size": 513,
+			"metres_per_pixel": 2.0,
+			"half_size": 512,
+			"source": "dtm_verbatim",
+			"file": "play.f32",
+			"format": "float32"
+		},
+		{
+			"name": "near",
+			"size": 1025,
+			"metres_per_pixel": 8.0,
+			"half_size": 4096,
+			"source": "dtm+sldem",
+			"file": "near.r16",
+			"format": "uint16",
+			"height_min": -64.39534763320248,
+			"height_scale": 0.0017328703635543933
+		},
+		{
+			"name": "mid",
+			"size": 1025,
+			"metres_per_pixel": 64.0,
+			"half_size": 32768,
+			"source": "sldem",
+			"file": "mid.r16",
+			"format": "uint16",
+			"height_min": -1025.4966360873252,
+			"height_scale": 0.016396226935903164
+		}
+	],
+	"horizons": {
+		"azimuths_degrees": [
+			90.6247,
+			113.1247,
+			135.62470000000002,
+			158.12470000000002,
+			180.62470000000002,
+			203.12470000000002,
+			225.62470000000002,
+			248.12470000000002,
+			270.6247,
+			293.1247,
+			315.6247,
+			338.1247,
+			0.6247000000000185,
+			23.12470000000002,
+			45.62470000000002,
+			68.12470000000002
+		],
+		"first_azimuth": 90.6247,
+		"step_degrees": 22.5,
+		"encoding": "degrees = -10.0 + byte / 255 * 60.0",
+		"azimuth_convention": "degrees from -Z towards +X",
+		"channels": "file k holds azimuths 4k..4k+3 in R, G, B, A",
+		"tiers": {
+			"play": {
+				"files": [
+					"horizon_play_0.png",
+					"horizon_play_1.png",
+					"horizon_play_2.png",
+					"horizon_play_3.png"
+				],
+				"metres_per_pixel": 4.0,
+				"size": 257,
+				"half_size": 512
+			},
+			"near": {
+				"files": [
+					"horizon_near_0.png",
+					"horizon_near_1.png",
+					"horizon_near_2.png",
+					"horizon_near_3.png"
+				],
+				"metres_per_pixel": 16.0,
+				"size": 513,
+				"half_size": 4096
+			},
+			"mid": {
+				"files": [
+					"horizon_mid_0.png",
+					"horizon_mid_1.png",
+					"horizon_mid_2.png",
+					"horizon_mid_3.png"
+				],
+				"metres_per_pixel": 128.0,
+				"size": 513,
+				"half_size": 32768
+			}
+		}
+	},
+	"boundary_half_size": 500,
+	"protected": [
+		{
+			"name": "base",
+			"centre": [
+				-300,
+				252
+			],
+			"size": [
+				46,
+				32
+			],
+			"blend": 10
+		}
+	],
+	"spots": {
+		"player_spawn": [
+			-298,
+			-5.467990556244034,
+			262
+		],
+		"rover_parking": [
+			-314,
+			-5.304343493125385,
+			248
+		],
+		"parts_pile": [
+			-291,
+			-5.392371803182579,
+			246
+		],
+		"base": [
+			-300,
+			-5.392641189458118,
+			252
+		]
+	},
+	"sun": {
+		"elevation": 16.7229,
+		"azimuth": 90.6247,
+		"utc": "1969-11-20 05:49",
+		"moment": "Apollo 12 EVA 2 midpoint (03:54:45-07:44 UTC, the walk to Surveyor 3)",
+		"source": "JPL Horizons, airless apparent az / el from the play centre",
+		"horizons_cache": "horizons_86d386f3adba.txt",
+		"play_area_lit_fraction": 0.997,
+		"base_highest_horizon_degrees": 0.41
+	},
+	"earth": {
+		"azimuth": 90.2398,
+		"elevation": 61.302,
+		"direction": [
+			0.48018938457795773,
+			0.8771625366287588,
+			0.002009794428219594
+		],
+		"angular_diameter_degrees": 1.9195,
+		"lit_fraction": 0.1445,
+		"facing_longitude_east": 224.923,
+		"facing_latitude": 7.126,
+		"sun_separation_degrees": 44.58,
+		"horizons_cache": "horizons_0509a008d4cf.txt"
+	},
+	"calibration": {
+		"sldem_near": {
+			"offset_to_dtm_m": 0.292,
+			"rms_difference_m": 1.857,
+			"points": 25936
+		},
+		"sldem_mid": {
+			"offset_to_dtm_m": 0.293,
+			"rms_difference_m": 1.724,
+			"points": 25936
+		}
+	},
+	"sources": {
+		"dtm": {
+			"file": "NAC_DTM_APOLLO12_E030S3365.IMG",
+			"bytes": 13504896,
+			"sha256": "7bda714cf7f31210500b902a9617923ff21e2fcd7e349cfe8c733ff8c4be0163",
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_E030S3365.IMG",
+			"credit": "LROC NAC DTM of the Apollo 12 landing site, NAC_DTM_APOLLO12_E030S3365 v1.9, NASA/GSFC/Arizona State University (Henriksen et al. 2017)"
+		},
+		"conf": {
+			"file": "NAC_DTM_APOLLO12_CONF.IMG",
+			"bytes": 3378692,
+			"sha256": "ab700b1dff8cb908f091b8713ebb26fa8210276d553b85123c3ee753a083688b",
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_CONF.IMG",
+			"credit": "LROC NAC DTM confidence map NAC_DTM_APOLLO12_CONF, NASA/GSFC/Arizona State University"
+		},
+		"ortho": {
+			"file": "NAC_DTM_APOLLO12_M120005333_2M.IMG",
+			"bytes": 6752448,
+			"sha256": "d84001f60738f99a4b1d90d905f0f7ce0132c316293cd61a08df43663458b046",
+			"url": "https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO12/NAC_DTM_APOLLO12_M120005333_2M.IMG",
+			"credit": "LROC NAC orthophoto NAC_DTM_APOLLO12_M120005333_2M (2 m, from the DTM's stereo pair), NASA/GSFC/Arizona State University"
+		},
+		"sldem": {
+			"file": "sldem2015_512_30s_00s_315_360_float_rows0720-2360.img",
+			"bytes": 151142400,
+			"sha256": "19bb132d55311e2505f040c08d62b62a46a0f143df117a758d919ef8c9b787b3",
+			"url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/tiles/float_img/sldem2015_512_30s_00s_315_360_float.img",
+			"credit": "SLDEM2015 (LOLA and SELENE Terrain Camera), 512 px/deg, NASA PDS Geosciences Node (Barker et al. 2016)",
+			"byte_range": [
+				66355200,
+				217497600
+			]
+		}
+	},
+	"provenance": {
+		"product_id": "NAC_DTM_APOLLO12_E030S3365",
+		"product_version": "v1.9",
+		"file": "NAC_DTM_APOLLO12_E030S3365.IMG",
+		"sha256": "7bda714cf7f31210500b902a9617923ff21e2fcd7e349cfe8c733ff8c4be0163",
+		"window": {
+			"first_line": 551,
+			"first_sample": 1601,
+			"lines": 513,
+			"samples": 513,
+			"centre_post": [
+				807,
+				1857
+			],
+			"zero_based": true
+		},
+		"constant_subtracted_m": -1422.59033203125,
+		"placement": "post (line first_line + i, sample first_sample + j) at X = 2 * (j - 256), Z = 2 * (i - 256), Y = height - constant_subtracted_m; float32",
+		"measured_file": "play_measured.f32",
+		"note": "The starter pack named in ASSET_BRIEF.md doesn't exist; this window of the public PDS product is used instead (MOON_TERRAIN.md).",
+		"confidence_percent": {
+			"3": 7.18,
+			"10": 0.92,
+			"11": 4.21,
+			"12": 12.96,
+			"13": 32.91,
+			"14": 41.82
+		}
+	},
+	"authored_changes": [
+		{
+			"change": "base graded to its mean plane (0.46 deg)",
+			"collision": true,
+			"area_m": [
+				46,
+				32
+			],
+			"centre": [
+				-300,
+				252
+			],
+			"blend_m": 10,
+			"max_height_change_m": 0.215,
+			"posts_changed": 813
+		},
+		{
+			"change": "9619 procedural rocks 0.1-1.5 m (instances, not in the heightmap)",
+			"collision": "convex, 1709 of 0.2 m and up",
+			"seed": 20261009
+		}
+	],
+	"grading": [
+		{
+			"name": "base",
+			"plane_slope_degrees": 0.46,
+			"max_change_m": 0.215
+		}
+	],
+	"rocks": {
+		"file": "rocks.f32",
+		"count": 9619,
+		"fields": [
+			"x",
+			"ground_y",
+			"z",
+			"size",
+			"yaw",
+			"shape"
+		],
+		"collision_min_size": 0.2,
+		"with_collision": 1709
+	},
+	"play_slopes": {
+		"over_15": 2.281,
+		"over_25": 0.108,
+		"over_30": 0.012,
+		"over_40": 0.0,
+		"max": 32.4,
+		"baseline_m": 4.0
+	},
+	"sky": {
+		"utc": "1969-11-20 05:49",
+		"world_to_equatorial": [
+			[
+				-0.2633290461129009,
+				-0.9636723977157013,
+				0.044646649976685646
+			],
+			[
+				-0.8954277694384313,
+				0.26137818408004737,
+				0.36040332213442783
+			],
+			[
+				-0.35898039388215197,
+				0.054926812832057505,
+				-0.9317274934444765
+			]
+		],
+		"convention": "equatorial = M @ world (rows); equatorial: x towards RA 0h, z the north celestial pole (ICRF / J2000, as the NASA SVS star map); world: X east, Y up, Z south",
+		"fit_bodies": [
+			"sun",
+			"earth"
+		],
+		"residual_arcsec": {
+			"sun": 3.0,
+			"earth": 3.0,
+			"check 599": 0.6,
+			"check 499": 12.4
+		},
+		"zenith_ra_dec": [
+			164.825,
+			3.149
+		],
+		"north_celestial_pole_az_el": [
+			338.929,
+			3.149
+		],
+		"checks": {
+			"599": {
+				"ra": 204.108967661,
+				"dec": -8.84153734,
+				"azimuth": 86.280462574,
+				"elevation": 49.044515406
+			},
+			"499": {
+				"ra": 314.478916198,
+				"dec": -18.889579812,
+				"azimuth": 99.147978941,
+				"elevation": -56.418287272
+			}
+		},
+		"sun_ra_dec": [
+			235.805369448,
+			-19.737031241
+		],
+		"earth_ra_dec": [
+			191.629051342,
+			-7.242339171
+		]
+	},
+	"artifacts": {
+		"lm": {
+			"name": "Apollo 12 LM descent stage (Intrepid)",
+			"lat": -3.0128,
+			"lon": 336.5781,
+			"keep_out_m": 75,
+			"position": [
+				100.66,
+				0.5688428687233441,
+				-80.81
+			]
+		},
+		"alsep": {
+			"name": "Apollo 12 ALSEP central station",
+			"lat": -3.0098,
+			"lon": 336.5751,
+			"keep_out_m": 75,
+			"position": [
+				9.82,
+				0.22953738784565864,
+				-171.78
+			]
+		},
+		"surveyor3": {
+			"name": "Surveyor 3",
+			"lat": -3.0162,
+			"lon": 336.582,
+			"keep_out_m": 75,
+			"position": [
+				218.76,
+				-9.957970197652134,
+				22.29
+			]
+		}
+	},
+	"site_brightness": {
+		"file": "site_brightness_play.png",
+		"metres_per_pixel": 2.0000000000006,
+		"half_size": 512,
+		"encoding": "brightness = 1 + 0.3 * (byte / 127.5 - 1)",
+		"range": 0.3,
+		"blur_m": 8.0,
+		"orthophoto": "NAC_DTM_APOLLO12_M120005333_2M",
+		"image_time": "2010-02-05T10:34:26",
+		"orthophoto_sun": {
+			"azimuth": 273.26,
+			"elevation": 37.86,
+			"horizons_cache": "horizons_e1e95be86cfb.txt"
+		},
+		"note": "Approximate brightness pattern, not albedo: the orthophoto divided by the DTM's Lommel-Seeliger shading under the image's own sun, then blurred. Shading by relief smaller than the DTM resolves stays in it. Shading only, never collision."
+	}
+}
