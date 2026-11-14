@@ -2,15 +2,12 @@
 
 [ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
 [ext_resource type="Script" uid="uid://b5slexw13j287" path="res://src/robot/socket/wheel_part.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://du2o0ws3pggda" path="res://res/models/rover_kit/wheel_L.glb" id="3_wheel_l"]
+[ext_resource type="PackedScene" uid="uid://bmm7y65h3alxw" path="res://res/models/rover_kit/wheel_R.glb" id="4_wheel_r"]
 
 [sub_resource type="CylinderShape3D" id="Shape_wheel"]
-height = 0.2
+height = 0.24
 radius = 0.15
-
-[sub_resource type="CylinderMesh" id="Mesh_wheel"]
-top_radius = 0.15
-bottom_radius = 0.15
-height = 0.2
 
 [node name="WheelPart" unique_id=836262940 instance=ExtResource("1_base")]
 script = ExtResource("2_script")
@@ -24,5 +21,9 @@ transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
 shape = SubResource("Shape_wheel")
 
 [node name="Model" parent="." index="1"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
-mesh = SubResource("Mesh_wheel")
+mesh = null
+
+[node name="WheelL" parent="Model" unique_id=1203948581 instance=ExtResource("3_wheel_l")]
+
+[node name="WheelR" parent="Model" unique_id=1203948582 instance=ExtResource("4_wheel_r")]
+visible = false
