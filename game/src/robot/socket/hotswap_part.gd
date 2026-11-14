@@ -6,9 +6,11 @@ extends RigidBody3D
 ## batteries...). While loose it is an ordinary pickup prop on the props layer. While
 ## mounted it is frozen, has no collision (so it can't push the robot around) and is
 ## parented to the socket's mount point, so it follows the robot without any lag.
-## Concrete parts (WheelPart, MotorPart, BatteryPart) add the stats the robot reads.
+## Concrete parts (WheelPart, MotorPart, BatteryPart) add the stats the robot reads; mast heads,
+## arm tools and antennas are plain HotswapParts for now (no stats yet).
 
-enum PartType { WHEEL, MOTOR, BATTERY }
+# New types are appended so the stored values of existing scenes stay valid
+enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA }
 
 @export var part_type: PartType = PartType.WHEEL
 @export var display_name: String = "Hotswap Part"

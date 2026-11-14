@@ -19,6 +19,14 @@ signal part_unmounted(part: HotswapPart)
 ## Where a mounted part's origin goes, relative to the socket. Kit parts have their origin
 ## at their connector, so their sockets use zero (ROVER_KIT.md 4).
 @export var mount_offset: Vector3 = Vector3(0.0, 0.1, 0.0)
+## Size and centre (socket space) of the PartCapture box where a dropped part is mounted.
+## Kit sockets sit close together, so each one gets a box that fits its spot.
+@export var capture_size: Vector3 = Vector3(0.5, 0.6, 0.5)
+@export var capture_offset: Vector3 = Vector3(0.0, 0.35, 0.0)
+## Size and centre (socket space) of the InteractTrigger box the player uses (E) to take
+## the mounted part out
+@export var trigger_size: Vector3 = Vector3(0.5, 0.8, 0.4)
+@export var trigger_offset: Vector3 = Vector3(0.0, 0.4, 0.0)
 ## Name of a socket_* node in the robot's body model (e.g. "socket_wheel_front_L"). The
 ## robot moves this socket onto it, with zero rotation, when it is ready. Empty = stays put.
 @export var anchor: StringName = &""
@@ -48,10 +56,20 @@ const REFUSAL_BLINK_TIME: float = 0.15
 
 func _ready() -> void:
 	_mount_point.position = mount_offset
+	_set_box($PartCapture/CollisionShape3D, capture_size, capture_offset)
+	_set_box(_trigger_shape, trigger_size, trigger_offset)
 	_base_material = _base.material_override
 	_capture.body_exited.connect(func(body: Node3D) -> void: _refused.erase(body))
 	_trigger.interacted.connect(_on_interact_trigger_interacted)
 	_set_trigger_enabled(false)
+
+
+# The shapes are shared by every socket instance, so each socket gets its own copy
+func _set_box(shape_node: CollisionShape3D, size: Vector3, offset: Vector3) -> void:
+	var box := BoxShape3D.new()
+	box.size = size
+	shape_node.shape = box
+	shape_node.position = offset
 
 
 func is_occupied() -> bool:
