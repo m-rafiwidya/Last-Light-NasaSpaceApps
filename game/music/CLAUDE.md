@@ -48,38 +48,41 @@ asks for them.
 - Soft dynamics: MIDI velocities about 40–90, nothing above 100. Shape phrases with velocity
   and string swells (CC11 expression), not loudness jumps.
 - Nothing harsh: no sharp attacks stacked in the same register, keep glockenspiel sparse and
-  soft, gently roll off highs above ~10 kHz on the master if bells sparkle too much.
-- Large hall reverb on everything, applied in Python with pedalboard
-  (e.g. `Reverb(room_size≈0.85, damping≈0.5, wet_level≈0.3, dry_level≈0.7)`). Render FluidSynth
-  dry (`-R 0 -C 0`) so pedalboard's hall is the only reverb.
-- Master peak normalised to about −3 dBFS, with the same gain applied to every stem.
+  soft. `render.py` already softens highs (−3 dB shelf above 8 kHz).
+- Large hall reverb on everything: `render.py` renders FluidSynth dry and applies the hall
+  (`hall()`) with pedalboard. Tune it there, not per track.
+- Loudness: the mix is normalised to −20 LUFS (peaks capped at −1 dBFS), and the same gain is
+  applied to every stem. Override per track with `./track <name> --lufs N` only if needed.
 
 ## Seamless loops (required for every track)
 
-1. Compose the loop as an exact number of bars. Loop length in samples is
-   `round(bars * beats_per_bar * 60 / bpm * sample_rate)`.
-2. Write the MIDI with the loop played **twice** back to back, then render and add reverb.
-3. Keep only the **second** copy, from `loop_len` to `2 * loop_len` samples. It starts with the
-   reverb and release tails carried in from the first copy, so the end flows back into the
-   start without a gap or click.
-4. Check the joint: play `audio[-2s:] + audio[:2s]` back to back and listen; there must be no
-   click, dip or level jump. Notes that sustain over the loop point are fine.
+- Compose the loop as a whole number of bars and end the track with `song.loop(bars)`, which
+  writes a `loop_end` marker into the MIDI.
+- `render.py` cuts the audio at `loop_end` and folds everything after it (held notes, releases,
+  the reverb tail) back onto the start. The end of the loop therefore flows into its own
+  beginning, with no gap or click. Notes may cross the loop point; e.g. a final chord can
+  sustain into the downbeat.
+- Check every track: the render prints a seam report (the sample jump at the loop point should
+  be no bigger than the 99th-percentile step), then listen to `<name>_loop_test.ogg` (three
+  loops back to back) at both seams.
 
-## Output
+## Pipeline and output
 
-Per track `<name>` (snake_case):
-
-- `tracks/<name>.py`: the composition script (pretty_midi → FluidSynth → pedalboard → files).
-- `out/<name>/`: working files (`.mid`, dry and wet `.wav`); git-ignored.
-- Game files in `../res/music/<name>/`:
-  - `<name>.ogg`: full mix.
-  - `stems/<group>.ogg`: one per stem group used (`bells`, `harp`, `strings`, `choir`, `flute`).
-- Stems: render each group separately from the same MIDI (only that group's instruments), run
-  each through the same reverb and loop cut, and build the full mix as the sum of the stems so
-  stems and mix line up sample-exactly and have identical length.
-- Write OGG with soundfile, not ffmpeg (this ffmpeg build has no libvorbis):
-  `sf.write(path, audio, 48000, format="OGG", subtype="VORBIS", compression_level=0.4)`.
-- In Godot, enable looping on each imported OGG (Import dock → Loop, offset 0).
+- `tracks/<name>.py` (snake_case): composition only. It defines `compose() -> Song` using
+  `tracks/kit.py` (bars/beats timing, `PROGRAMS`, `scale()` with `LYDIAN`, `notes`, `chord`,
+  `sustain` for tied pads, `swell` for CC11) and ends with
+  `if __name__ == "__main__": kit.main(compose)`. `tracks/first_light.py` is the reference example.
+- Each `song.instrument(name)` is one MIDI track and one stem. Instruments with the same name
+  share a stem, e.g. name both celesta and glockenspiel `"bells"` for a combined stem.
+- `render.py <file.mid>` renders any multi-track MIDI. It writes to `output/<name>/`:
+  - `<name>.mid`: the composition (written by `kit.main`).
+  - `<name>.ogg`: the full loop mix (48 kHz stereo Vorbis), the file for the game.
+  - `stems/<instrument>.ogg`: one per stem, the same length as the mix, and summing to it.
+  - `<name>_loop_test.ogg`: the mix three times in a row, for checking the seam.
+- `output/` is git-ignored and inside this `.gdignore`d folder. Copy finished files to
+  `game/res/music/` for the game and enable Loop in Godot's Import dock (offset 0).
+- OGG is written with soundfile (this ffmpeg build has no libvorbis), in blocks, because
+  libsndfile's Vorbis encoder segfaults on long single writes.
 
 ## Commands
 
@@ -87,7 +90,8 @@ Setup on a fresh clone (the venv and the 32 MB soundfont are git-ignored; FluidS
 `brew install fluid-synth`):
 
 ```sh
-python3 -m venv .venv && .venv/bin/pip install pretty_midi mido numpy scipy pedalboard soundfile
+python3 -m venv .venv
+.venv/bin/pip install pretty_midi mido numpy scipy pedalboard soundfile pyloudnorm
 curl -fL -o soundfonts/GeneralUser-GS.sf2 \
   https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/GeneralUser-GS.sf2
 ```
@@ -95,10 +99,10 @@ curl -fL -o soundfonts/GeneralUser-GS.sf2 \
 Run from `game/music/`:
 
 ```sh
-.venv/bin/python tracks/<name>.py                      # compose + render + export
-fluidsynth -ni -q -R 0 -C 0 -r 48000 -F out.wav soundfonts/GeneralUser-GS.sf2 in.mid
-afplay out/<name>/<name>.wav                           # listen
+./track <name>                               # compose tracks/<name>.py and render everything
+./track --list                               # available tracks
+.venv/bin/python render.py some.mid          # render an existing MIDI into output/some/
+afplay output/<name>/<name>_loop_test.ogg    # listen to the seam
 ```
 
-`test_setup.py` is the smoke test for the toolchain. This folder has a `.gdignore`, so Godot
-does not import anything here; only files copied to `game/res/music/` reach the game.
+`test_setup.py` is the original toolchain smoke test.
