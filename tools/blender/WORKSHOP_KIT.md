@@ -39,9 +39,15 @@ wins:
   the ground (terrain chunks and rock field, render layer 10) out of its shadow casters.
 - **Console screen:** bottom edge z 0.966, top 1.314 (0.36 m tall at 15 degrees).
 - **Rack labels:** 65 mm capitals, except MAST CAMERA (63 mm) and TOOL TURRET (55 mm), shrunk to
-  fit their plates. The bottom two rows sit under the shelf above: from closer than 1.14 m
-  (standing) or 0.93 m (crouched) the shelf hides the floor tray; from 1.4 m every part is in view
-  and in reach.
+  fit their plates.
+- **Stepped rack.** Level depths from the bottom up: 0.48, 0.40, 0.28, 0.18 m (fronts at y -3.32,
+  -3.40, -3.52, -3.62); the uprights step back with them. Each part stands 2 cm behind its own
+  level's front, so it sits 60-100 mm in front of the shelf above it: in view and in reach from the
+  walkway at any distance (`make_rack.py` checks the sight lines from 0.3-2.5 m, standing and
+  crouched; `test_workshop.gd` reaches every part from 0.45, 1.2 and 2.0 m). The battery lies on
+  its side turned so its 0.355 m side runs across the shelf. The restock button is beside the
+  east upright at shelf 1's step, (1.21, -3.41, 0.90). The rack's footprint is unchanged (0.48 m
+  deep at the floor), so the U-turn margin stays 0.48 m.
 - **Markers:** the stripes round the bay door's swing outside are left out (the regolith there
   isn't flat); the 0.30 m tall sign plate is 16 px tall at 10 m (22 px wide). The Moon level has a
   base sign on a post at the apron's end; route and heritage posts wait for the route work.
@@ -399,12 +405,17 @@ floor, (-0.1, -3.8, 0.0).
 - **Each level has a full-width label rail**: a 0.14 m tall front board under the shelf top,
   with the label plates on it.
 
-| Level | Shelf top (z) | Label rail (z) | Clear above |
-|---|---|---|---|
-| Floor tray | 0.16 | 0.02 to 0.16 | 0.38 m |
-| Shelf 1 | 0.68 | 0.54 to 0.68 | 0.38 m |
-| Shelf 2 | 1.20 | 1.06 to 1.20 | 0.28 m |
-| Shelf 3 | 1.62 | 1.48 to 1.62 | 0.18 m to the top rail |
+| Level | Shelf top (z) | Label rail (z) | Clear above | Depth (front at y) |
+|---|---|---|---|---|
+| Floor tray | 0.16 | 0.02 to 0.16 | 0.38 m | 0.48 m (-3.32) |
+| Shelf 1 | 0.68 | 0.54 to 0.68 | 0.38 m | 0.40 m (-3.40) |
+| Shelf 2 | 1.20 | 1.06 to 1.20 | 0.28 m | 0.28 m (-3.52) |
+| Shelf 3 | 1.62 | 1.48 to 1.62 | 0.18 m to the top rail | 0.18 m (-3.62) |
+
+The rack is **stepped** (revised after the build): each level is shallower than the one below and
+each part stands 2 cm behind its own level's front, so it sits in front of the shelf above it and
+is in view from the walkway at any distance. Slot y = the level's front - 0.02 - half the part's
+depth.
 
 Wheel cradles (two 15 mm rails, 0.18 m apart) sit on the floor tray and shelf 1, so wheels
 stand on their tread.

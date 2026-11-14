@@ -65,6 +65,9 @@ CONTACT_PLATE = 1.0
 RACK_ORIGIN = Vector((-0.1, -INNER_Y, 0.0))   # middle of its back edge on the floor
 RACK_SIZE = (2.5, 0.5, 1.8)
 SHELF_TOPS = [0.16, 0.68, 1.20, 1.62]
+# Stepped: each level is shallower than the one below, so its parts stand in front of the shelf
+# above them and are seen from the walkway at any distance (WORKSHOP_KIT.md 6.3)
+SHELF_DEPTHS = [0.48, 0.40, 0.28, 0.18]
 LABEL_RAIL = 0.14
 CHARGER_ORIGIN = Vector((PARTITION_X - PARTITION_THICKNESS / 2.0, 3.1, 0.0))
 CONSOLE_ORIGIN = Vector((PARTITION_X + PARTITION_THICKNESS / 2.0, -0.3, 0.0))

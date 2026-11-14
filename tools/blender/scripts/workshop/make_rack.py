@@ -30,7 +30,11 @@ TOP = ws.RACK_SIZE[2]
 UPRIGHT = 0.04
 BOARD = 0.03
 RAIL = 0.02                     # label rail board thickness, at the front
-SLOT_Y = -3.55
+# Each level's front (its label rail's face)
+FRONTS = [Y_BACK + d for d in ws.SHELF_DEPTHS]
+# Depth (along Y) of each part as it rests on the rack, to stand it 2 cm behind its level's front
+PART_DEPTH = {"wheel_L": 0.248, "motor": 0.128, "power_unit": 0.355, "mast_head": 0.092, "arm_tool": 0.058,
+              "antenna": 0.191, None: 0.12}
 CRADLE_SPACING, CRADLE_HEIGHT = 0.18, 0.04
 
 # WORKSHOP_KIT.md 6.3: slot -> (level, kit x, part GLB, part name). Wheels stand on their tread.
@@ -50,55 +54,71 @@ LABELS = {
     7: (2, -0.05, 0.53, "ANTENNA"), 8: (2, 0.53, 1.10, "SPARE"), 9: (3, -1.30, 1.10, "CARTRIDGES"),
 }
 PLATE_GAP = 0.01                # half of the 2 cm gap between neighbouring plates
-RESTOCK = Vector((X1 + 0.06, Y_FRONT - 0.02, 1.2))
+RESTOCK = Vector((X1 + 0.06, FRONTS[1] - 0.01, 0.90))
+
+
+def slot_y(n: int) -> float:
+    level, _, name = SLOTS[n]
+    return FRONTS[level] - RAIL - PART_DEPTH[name] / 2.0
+
+
+def band(level: int) -> tuple:
+    """Height range of the uprights' step at this level's depth."""
+    z0 = 0.0 if level == 0 else ws.SHELF_TOPS[level]
+    z1 = ws.SHELF_TOPS[level + 1] if level + 1 < len(ws.SHELF_TOPS) else TOP
+    return (z0, z1)
 
 
 def make_rack():
     bm = ws.new_bmesh()
     ws.box(bm, (X0, X1), (Y_BACK, Y_BACK + 0.02), (0.0, TOP), 0)                      # pale back panel
-    for x in ((X0, X0 + UPRIGHT), (X1 - UPRIGHT, X1)):
-        ws.box(bm, x, (Y_BACK + 0.02, Y_FRONT), (0.0, TOP), 1)
-    ws.box(bm, (X0 + UPRIGHT, X1 - UPRIGHT), (Y_BACK + 0.02, Y_FRONT), (TOP - 0.02, TOP), 1)
     inner = (X0 + UPRIGHT, X1 - UPRIGHT)
-    for s in ws.SHELF_TOPS:
-        ws.box(bm, inner, (Y_BACK + 0.02, Y_FRONT - RAIL), (s - BOARD, s), 1)
-        ws.box(bm, inner, (Y_FRONT - RAIL, Y_FRONT), (s - ws.LABEL_RAIL, s), 1)
+    for level, front in enumerate(FRONTS):
+        # Uprights step back with the shelves
+        for x in ((X0, X0 + UPRIGHT), (X1 - UPRIGHT, X1)):
+            ws.box(bm, x, (Y_BACK + 0.02, front), band(level), 1)
+        s = ws.SHELF_TOPS[level]
+        ws.box(bm, inner, (Y_BACK + 0.02, front - RAIL), (s - BOARD, s), 1)
+        ws.box(bm, inner, (front - RAIL, front), (s - ws.LABEL_RAIL, s), 1)
+    ws.box(bm, inner, (Y_BACK + 0.02, FRONTS[-1]), (TOP - 0.02, TOP), 1)
     for n in WHEEL_SLOTS:
         level, x, _ = SLOTS[n]
-        s = ws.SHELF_TOPS[level]
+        s, y = ws.SHELF_TOPS[level], slot_y(n)
         for dx in (-CRADLE_SPACING / 2.0, CRADLE_SPACING / 2.0):
-            ws.trim(bm, (x + dx - 0.01, x + dx + 0.01), (SLOT_Y - 0.15, SLOT_Y + 0.15), (s, s + CRADLE_HEIGHT), 2, "-z")
+            ws.trim(bm, (x + dx - 0.01, x + dx + 0.01), (y - 0.15, y + 0.15), (s, s + CRADLE_HEIGHT), 2, "-z")
     # Label plates on the rails
     for n, (level, xa, xb, _) in LABELS.items():
         s = ws.SHELF_TOPS[level]
-        y = Y_FRONT + 0.002
+        y = FRONTS[level] + 0.002
         ws.quad(bm, [(xa + PLATE_GAP, y, s - 0.13), (xb - PLATE_GAP, y, s - 0.13), (xb - PLATE_GAP, y, s - 0.01),
                      (xa + PLATE_GAP, y, s - 0.01)], 3, (0, 1, 0))
-    # Restock button on a small panel beside the east upright
-    ws.box(bm, (X1, X1 + 0.10), (Y_FRONT - 0.10, Y_FRONT - 0.02), (1.10, 1.30), 0)
-    ws.trim(bm, (X1 + 0.02, X1 + 0.08), (Y_FRONT - 0.02, Y_FRONT), (1.17, 1.23), 4, "-y")
+    # Restock button on a small panel beside the east upright, at shelf 1's step
+    panel_y = (FRONTS[1] - 0.10, FRONTS[1] - 0.02)
+    ws.box(bm, (X1, X1 + 0.10), panel_y, (0.80, 1.00), 0)
+    ws.trim(bm, (X1 + 0.02, X1 + 0.08), (panel_y[1], panel_y[1] + 0.02), (0.87, 0.93), 4, "-y")
     root = ws.make_object("ws_rack", bm, ["ws_panel", "ws_frame", "ws_dark", "ws_label", "ws_accent"], origin=O)
 
     ws.collision_box(root, "ws_rack_back", (X0, X1), (Y_BACK, Y_BACK + 0.02), (0.0, TOP))
-    for i, x in enumerate(((X0, X0 + UPRIGHT), (X1 - UPRIGHT, X1))):
-        ws.collision_box(root, "ws_rack_upright_%d" % i, x, (Y_BACK + 0.02, Y_FRONT), (0.0, TOP))
-    ws.collision_box(root, "ws_rack_top", inner, (Y_BACK + 0.02, Y_FRONT), (TOP - 0.02, TOP))
-    for i, s in enumerate(ws.SHELF_TOPS):
-        ws.collision_box(root, "ws_rack_shelf_%d" % i, inner, (Y_BACK + 0.02, Y_FRONT - RAIL), (s - BOARD, s))
-        ws.collision_box(root, "ws_rack_rail_%d" % i, inner, (Y_FRONT - RAIL, Y_FRONT), (s - ws.LABEL_RAIL, s))
+    for level, front in enumerate(FRONTS):
+        for i, x in enumerate(((X0, X0 + UPRIGHT), (X1 - UPRIGHT, X1))):
+            ws.collision_box(root, "ws_rack_upright_%d_%d" % (i, level), x, (Y_BACK + 0.02, front), band(level))
+        s = ws.SHELF_TOPS[level]
+        ws.collision_box(root, "ws_rack_shelf_%d" % level, inner, (Y_BACK + 0.02, front - RAIL), (s - BOARD, s))
+        ws.collision_box(root, "ws_rack_rail_%d" % level, inner, (front - RAIL, front), (s - ws.LABEL_RAIL, s))
+    ws.collision_box(root, "ws_rack_top", inner, (Y_BACK + 0.02, FRONTS[-1]), (TOP - 0.02, TOP))
     for n in WHEEL_SLOTS:
         level, x, _ = SLOTS[n]
-        s = ws.SHELF_TOPS[level]
+        s, y = ws.SHELF_TOPS[level], slot_y(n)
         for k, dx in enumerate((-CRADLE_SPACING / 2.0, CRADLE_SPACING / 2.0)):
             ws.collision_box(root, "ws_rack_cradle_%02d_%d" % (n, k), (x + dx - 0.01, x + dx + 0.01),
-                             (SLOT_Y - 0.15, SLOT_Y + 0.15), (s, s + CRADLE_HEIGHT))
-    ws.collision_box(root, "ws_rack_restock", (X1, X1 + 0.10), (Y_FRONT - 0.10, Y_FRONT - 0.02), (1.10, 1.30))
+                             (y - 0.15, y + 0.15), (s, s + CRADLE_HEIGHT))
+    ws.collision_box(root, "ws_rack_restock", (X1, X1 + 0.10), panel_y, (0.80, 1.00))
 
     for n, (level, x, _) in SLOTS.items():
-        ws.add_empty(root, "slot_%02d" % n, (x, SLOT_Y, ws.SHELF_TOPS[level]))
+        ws.add_empty(root, "slot_%02d" % n, (x, slot_y(n), ws.SHELF_TOPS[level]))
     for n, (level, xa, xb, _) in LABELS.items():
         s = ws.SHELF_TOPS[level]
-        ws.add_empty(root, "label_%02d" % n, ((xa + xb) / 2.0, Y_FRONT + 0.002, s - 0.07))
+        ws.add_empty(root, "label_%02d" % n, ((xa + xb) / 2.0, FRONTS[level] + 0.002, s - 0.07))
     ws.add_empty(root, "trigger_restock", RESTOCK)
     return root
 
@@ -127,7 +147,8 @@ def load_parts() -> list:
         if name == "wheel_L":
             turn = Matrix.Rotation(math.radians(90), 4, "Z")
         elif name == "power_unit":
-            turn = Matrix.Rotation(math.radians(90), 4, "Y")
+            # On its side, then turned so its 0.355 m side runs across the shelf
+            turn = Matrix.Rotation(math.radians(90), 4, "Z") @ Matrix.Rotation(math.radians(90), 4, "Y")
         for r in roots:
             r.matrix_world = turn @ r.matrix_world
         bpy.context.view_layer.update()
@@ -139,7 +160,7 @@ def load_parts() -> list:
             bottom = s + CRADLE_HEIGHT + math.sqrt(0.15 ** 2 - (CRADLE_SPACING / 2.0 - 0.01) ** 2) - 0.15 + 0.003   # on the rails' inner edges
         else:
             bottom = s + 0.005
-        shift = Vector((x - (lo.x + hi.x) / 2.0, SLOT_Y - (lo.y + hi.y) / 2.0, bottom - lo.z))
+        shift = Vector((x - (lo.x + hi.x) / 2.0, slot_y(n) - (lo.y + hi.y) / 2.0, bottom - lo.z))
         for r in roots:
             r.location += shift
         bpy.context.view_layer.update()
@@ -160,6 +181,33 @@ def run_checks(root, placed: list, rows: list) -> int:
         failures += 0 if ok else 1
         rows.append("slot_%02d %-10s %.3f x %.3f x %.3f m, %.0f mm under the shelf above, %.1f mm from the rack%s" % (
             n, name, hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, above * 1000.0, g * 1000.0, "" if ok else "  FAIL"))
+    # Seen from the walkway at any distance: from eyes standing (1.5 m) and crouched (1.25 m), 0.3 to
+    # 2.5 m in front of the rack, a ray to a point near the top front of every part's protruding
+    # part reaches it without crossing the rack
+    from mathutils.bvhtree import BVHTree
+    from make_shell import bvh
+    rack_tree = bvh([root])
+    blocked = []
+    for n, name, meshes in placed:
+        level = SLOTS[n][0]
+        lo, hi = ws.bounds(meshes)
+        above = FRONTS[level + 1] if level + 1 < len(FRONTS) else Y_BACK
+        protrudes = hi.y - above
+        target = Vector(((lo.x + hi.x) / 2.0, hi.y - 0.01, hi.z - 0.01))
+        part_tree = bvh(meshes)
+        for d in (0.3, 0.6, 1.0, 1.5, 2.0, 2.5):
+            for eye_z in (1.5, 1.25):
+                eye = Vector((target.x, Y_FRONT + d, eye_z))
+                direction = (target - eye).normalized()
+                hit_rack = rack_tree.ray_cast(eye, direction, (target - eye).length)
+                hit_part = part_tree.ray_cast(eye, direction, (target - eye).length + 0.05)
+                if hit_rack[0] is not None and (hit_part[0] is None or hit_rack[3] < hit_part[3]):
+                    blocked.append("slot_%02d from %.1f m, eye %.2f" % (n, d, eye_z))
+        rows.append("slot_%02d %-10s stands %.0f mm in front of the shelf above" % (n, name, protrudes * 1000.0))
+        failures += 0 if protrudes >= 0.04 else 1
+    failures += 1 if blocked else 0
+    rows.append("sight lines from the walkway (0.3-2.5 m, standing and crouched): %s" % (
+        "all clear" if not blocked else "BLOCKED " + ", ".join(blocked) + "  FAIL"))
     # Neighbours on the same level keep apart
     worst = 1e9
     for i in range(len(placed)):
