@@ -54,11 +54,15 @@ var active_item_index: int = -1
 # -1 should mean not holding anything
 # anything else is fair game
 
-@onready var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+## Gravity where the player is (m/s^2; the level's, see SceneLoader), updated every physics
+## step: ground friction and the slope compensation scale with it
+var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var gravity_vector: Vector3 = (
 	ProjectSettings.get_setting("physics/3d/default_gravity_vector")
 )
-@onready var jump_impulse: float = sqrt(2.0 * JUMP_HEIGHT * gravity)
+## Jump take-off speed: JUMP_HEIGHT under the project's (Earth) gravity. The legs push the same
+## everywhere, so lower gravity gives a higher, longer jump (about 4.8 m on the Moon).
+@onready var jump_impulse: float = sqrt(2.0 * JUMP_HEIGHT * float(ProjectSettings.get_setting("physics/3d/default_gravity")))
 
 
 var want_to_crouch: bool = false
@@ -183,6 +187,7 @@ func _on_controller_secondary(value: bool) -> void:
 
 # TODO: Write custom integrator
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	gravity = state.total_gravity.length()
 	var contact_count: int = state.get_contact_count()
 	var max_floor_cosine: float = cos(PI/4.0)
 	var normal: Vector3 = Vector3.ZERO

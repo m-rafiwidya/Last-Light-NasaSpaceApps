@@ -83,7 +83,7 @@ func _update_data(delta: float) -> void:
 	var up: Vector3 = robot.global_basis.y.normalized()
 	var blend: float = 1.0 - exp(-SMOOTHING * delta)
 
-	_static_load = maxf(robot.mass * float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) / float(RunningGear.Wheel.size()), 1.0)
+	_static_load = maxf(robot.mass * robot.get_gravity().length() / float(RunningGear.Wheel.size()), 1.0)
 	_local_velocity = inverse_basis * robot.linear_velocity
 
 	for wheel in RunningGear.Wheel.values():

@@ -31,6 +31,7 @@ uv1_triplanar = true
 
 [node name="MoonLevel" type="Node3D"]
 script = ExtResource("1_level")
+gravity = 1.62
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.8660254, -0.2241439, 0.4472136, 0, 0.8944272, 0.4472136, -0.5, 0.3882286, -0.7745967, 0, 0, 0)

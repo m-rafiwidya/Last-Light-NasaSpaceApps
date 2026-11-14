@@ -388,7 +388,37 @@ Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoa
 
 ### The Moon level (`levels/moon_level.tscn`)
 
-Placeholders until the real terrain, sky and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture), a black sky with grey ambient light and a low `Sun` (about 23 degrees up, shadows). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Gravity is still the project's 9.8 m/s^2.
+Placeholders until the real terrain, sky and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture), a black sky with grey ambient light and a low `Sun` (about 23 degrees up, shadows). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below).
+
+### Level gravity
+
+Each level has its own gravity: `RoverLevel.gravity` (m/s^2, default 9.8, the project's `physics/3d/default_gravity`; the Moon sets 1.62). `SceneLoader._apply_level_gravity` sets it on the world's physics space as every level loads (a level without a `gravity` property, e.g. the menu backdrop's, gets the project default), so no level inherits the previous one's. Every rigid body falls with it; scripts read it back instead of the project setting: `Player` (`gravity` from `state.total_gravity` each physics step, for its ground friction and slope compensation) and `FrictionCircles` (`robot.get_gravity()` for the static wheel load). The player's jump keeps its take-off speed (`JUMP_HEIGHT` under the project gravity): the legs push the same, so the jump goes higher on the Moon.
+
+What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on the Moon's flat ground under 9.8 and 1.62; numbers from the current tuning):
+
+| | Earth 9.8 | Moon 1.62 |
+|---|---|---|
+| Player jump height / time in the air | 0.82 m / 0.8 s | 4.2 m / 4.5 s |
+| Player walking speed | 2.0 m/s | 2.0 m/s |
+| Player stop after letting go (from walking) | 0.4 m | 2.1 m |
+| Rover ride height (body origin) | 10.1 cm | 14.2 cm (springs sag a sixth) |
+| Rover full throttle: top speed / heading drift, no steering | 9.7 m/s / 39 deg in 12 s | 2.0 m/s, then spins round (180 deg) |
+| Rover 30% throttle: top speed / drift | 2.6 m/s / 0.2 deg | 2.6 m/s / 0.4-1.4 deg |
+| From 30%: full-reverse stop distance / deceleration | 1.6 m / 2.4 m/s^2 | 2.8 m / 1.2 m/s^2 |
+| From 30%: coasting distance | 6.4 m | 6.0 m |
+| 30% full-lock turn: speed / radius / lateral accel per g | 0.75 m/s / 1.1 m / 0.05 | 1.3 m/s / 1.5 m / 0.68 |
+| 26.6 degree ramp, 3 m run-up, full throttle | reaches the top | spins out, 0.9 m |
+| Same ramp from a standstill 1 m up | stalls at 2.6 m | reaches the top |
+| Parked on that ramp, no throttle, 1 s | rolls back 0.9 m | rolls back 0.24 m |
+
+Tyre forces scale with the wheel load, so everything grip-limited drops to about a sixth: at full throttle the motors (357 N at stall) far exceed what the tyres carry (about 130 N), the wheels spin, a spinning tyre loses its sideways grip, and the rover yaws round. Speed and anything motor-limited stay the same (top speed at part throttle, coasting: `rolling_resistance_force` is a fixed 12 N, not load-scaled).
+
+Not retuned yet (candidates, in order of impact):
+- **Rover wheelspin / spin-out at full throttle** (makes the Moon hard to drive): limit drive torque to what the tyres can carry, e.g. traction control on wheel slip, or scale the motor voltage by the level's gravity.
+- **Player jump** (4.2 m, 4.5 s in the air): physical for the same legs, but it may break level design; a per-level jump height would cap it.
+- **Player stopping** (2.1 m to stop from walking): physical Coulomb friction; give the player more friction (or braking) on the Moon if it feels icy.
+- **Rover suspension** sits 4 cm higher with little sag, so less droop travel over dips; springs a sixth as stiff (and dampers about 0.4x) would restore the Earth ride.
+- **Rolling resistance** is a fixed 12 N; making it proportional to the wheel load would let the Moon rover coast further (minor).
 
 ### The test level (`levels/test_level.tscn`)
 
@@ -450,10 +480,10 @@ This is a **custom force-based character controller** on top of a rigidbody:
    | Ground, crouching | `SPEED_CROUCH` = 1.0 | 12 |
    | Airborne | `SPEED_AIR` = 1.0 | `ACCEL_AIR` = 3 |
 
-3. **Custom friction** (grounded only): acts on the velocity component *not* along the wished direction (relative to the floor's velocity). If the friction impulse can fully stop it within one step it is applied as an impulse (static friction), otherwise as a force (kinetic). `FRICTION = 0.5`.
+3. **Custom friction** (grounded only; `gravity * FRICTION`, with the level's gravity, so about a sixth on the Moon): acts on the velocity component *not* along the wished direction (relative to the floor's velocity). If the friction impulse can fully stop it within one step it is applied as an impulse (static friction), otherwise as a force (kinetic). `FRICTION = 0.5`.
 4. **Slope handling**: the wish direction is rotated onto the slope plane, and a compensation force cancels the horizontal part of gravity so the player doesn't slide.
 5. **Acceleration**: applies a force toward the wish direction; if the next step would exceed the target speed, it applies the exact impulse needed to hit the target speed instead (no overshoot).
-6. **Jump**: if on floor and `request_jump`, applies an impulse of `sqrt(2 * JUMP_HEIGHT * gravity)` (`JUMP_HEIGHT` = 0.8 m), nudges `origin.y` up by 0.05 to leave the ground, and clears the request.
+6. **Jump**: if on floor and `request_jump`, applies an impulse of `sqrt(2 * JUMP_HEIGHT * project gravity)` (`JUMP_HEIGHT` = 0.8 m under the project's 9.8, the same take-off speed in every level, so about 4.2 m on the Moon), nudges `origin.y` up by 0.05 to leave the ground, and clears the request.
 
 ### 8.5 Look & camera (`_physics_process`)
 

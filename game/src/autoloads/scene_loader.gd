@@ -117,6 +117,7 @@ func _setup_scene() -> void:
 	var level_scene = ResourceLoader.load_threaded_get(LEVEL_PATHS[loading_scene_id])
 	current_scene = level_scene.instantiate()
 	current_level_id = loading_scene_id
+	_apply_level_gravity(current_scene)
 	main_node.add_child(current_scene)
 
 	# Can accomodate gamemodes for future projects
@@ -127,6 +128,18 @@ func _setup_scene() -> void:
 	loading_scene_id = ""
 
 	level_loaded.emit(current_scene.name)
+
+
+## Sets the world's gravity for `level` before it enters the tree: the root's `gravity`
+## property (m/s^2) if it has one (RoverLevel exports it), else the project's default. Every
+## level sets it, so none inherits the previous level's. Bodies fall with it; scripts that
+## need the value read it back with Node3D.get_gravity() (Player, FrictionCircles).
+func _apply_level_gravity(level: Node) -> void:
+	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	var level_gravity = level.get("gravity")
+	if level_gravity is float:
+		gravity = level_gravity
+	PhysicsServer3D.area_set_param(main_node.get_viewport().find_world_3d().space, PhysicsServer3D.AREA_PARAM_GRAVITY, gravity)
 
 
 func _setup_level():

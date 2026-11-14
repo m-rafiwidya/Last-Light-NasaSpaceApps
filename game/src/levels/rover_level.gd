@@ -9,6 +9,10 @@ extends Node3D
 ##   RespawnPartsTrigger  E clears the loose pile parts and lays out the recorded pile again
 
 
+## Gravity in this level (m/s^2), applied by SceneLoader as the level loads: Earth's 9.8 (the
+## project default) unless the level sets its own, e.g. 1.62 on the Moon
+@export var gravity: float = 9.8
+
 ## Pile parts' properties that are copied when the pile is respawned
 const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]
 
