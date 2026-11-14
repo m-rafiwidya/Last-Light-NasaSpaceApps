@@ -3,8 +3,9 @@ extends SceneTree
 ## is left behind.
 ##   1. Main menu "Play Test level". Drive the ready rover and pick up a pile part with it, Esc
 ##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), "Switch to Moon".
-##   2. On the Moon: the level's contents, then drive its rover, Esc out, respawn the parts
-##      pile, pick up a pile part on foot, pause, "Switch to Test level".
+##   2. On the Moon: the level's contents (the workshop; no outdoor drive trigger or pile), then
+##      drive its rover from the workshop console and pick up a rack part with it, Esc out,
+##      restock the rack, pick up a rack part on foot, pause, "Switch to Test level".
 ##   3. Back in the test level: the same checks, then pause, "Quit To Menu".
 ## After every switch: one level under Main and the old one freed; no rover driven
 ## (GameState.robot, root.get_node("Debug").current_robot); the new player's camera is current and holds
@@ -90,8 +91,14 @@ func _check_clean(level_id: String, level_name: String, rover_count: int) -> voi
 
 func _drive_and_hold(rover_name: String) -> void:
 	var rover = SL.current_scene.get_node(rover_name)
-	SL.current_scene._on_robot_trigger_interacted(GS.player, rover)
-	var part: RigidBody3D = SL.current_scene.get_node("PartsPile").get_child(0)
+	var part: RigidBody3D
+	if SL.current_scene.has_node("PartsPile"):
+		SL.current_scene._on_robot_trigger_interacted(GS.player, rover)
+		part = SL.current_scene.get_node("PartsPile").get_child(0)
+	else:
+		# The Moon: driven from the workshop console, parts on the rack
+		SL.current_scene.get_node("Workshop")._on_console_interacted(GS.player)
+		part = SL.current_scene.get_node("Workshop").rack_stock.get_child(0)
 	rover.holder.pickup(part)
 
 
@@ -118,7 +125,7 @@ func _run_step():
 		1:
 			if GS.state != GS.State.IN_GAME_PLAYER:
 				return null
-			_check_clean("test_level", "TestLevel", 2)
+			_check_clean("test_level", "TestLevel", 3)
 			_drive_and_hold("ReadyRover")
 			held = weakref(GS.robot.holder.held_object)
 			return 0.5
@@ -145,8 +152,10 @@ func _run_step():
 		6:
 			_check_clean("moon_level", "MoonLevel", 1)
 			var scene: Node = SL.current_scene
-			for node_name in ["SpawnPoint", "Terrain", "ReadyRover", "ReadyRoverTrigger", "PartsPile", "RespawnPartsTrigger"]:
+			for node_name in ["SpawnPoint", "Terrain", "ReadyRover", "Workshop"]:
 				_check("[moon_level] has " + node_name, scene.has_node(node_name))
+			for node_name in ["ReadyRoverTrigger", "PartsPile", "RespawnPartsTrigger"]:
+				_check("[moon_level] no outdoor " + node_name, not scene.has_node(node_name))
 			_check("[moon_level] rover starts assembled", scene.get_node("ReadyRover").start_assembled)
 			_drive_and_hold("ReadyRover")
 			return 0.5
@@ -155,15 +164,15 @@ func _run_step():
 			_press_esc()
 			return 0.5
 		8:
-			var pile: Node = SL.current_scene.get_node("PartsPile")
+			var pile: Node = SL.current_scene.get_node("Workshop").rack_stock
 			var count: int = pile.get_child_count()
-			SL.current_scene._on_respawn_parts_trigger_interacted(GS.player)
+			SL.current_scene.get_node("Workshop")._on_restock_interacted(GS.player)
 			set_meta("pile_count", count)
 			return 0.1
 		9:
-			var pile: Node = SL.current_scene.get_node("PartsPile")
-			# The part the rover holds stays (it is loose, so it is cleared too and respawned)
-			_check("[moon_level] respawn lays out the full pile", pile.get_child_count() == 15, "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
+			var pile: Node = SL.current_scene.get_node("Workshop").rack_stock
+			# The part the rover holds stays (it is loose, so it is cleared too and restocked)
+			_check("[moon_level] restock lays out the full rack", pile.get_child_count() == 15, "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
 			var part: RigidBody3D = pile.get_child(0)
 			GS.player.holder.pickup(part)
 			held = weakref(part)
@@ -178,7 +187,7 @@ func _run_step():
 				return null
 			return 0.6
 		12:
-			_check_clean("test_level", "TestLevel", 2)
+			_check_clean("test_level", "TestLevel", 3)
 			_check("[test_level] intro dialog and mission console still wired", SL.current_scene.get_node("DialogTrigger").interacted.get_connections().size() > 0
 				and SL.current_scene.get_node("MissionConsoleTrigger").interacted.get_connections().size() > 0
 				and SL.current_scene.get_node("BareRoverTrigger").interacted.get_connections().size() > 0)

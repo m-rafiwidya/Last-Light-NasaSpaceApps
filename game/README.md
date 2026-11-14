@@ -81,6 +81,7 @@ game/
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
     │   └── dialog_sequence.gd        # Resource: ordered array of Dialog
+    ├── workshop/                     # the lunar workshop: workshop.tscn/.gd (Workshop), charging_pad.gd (ChargingPad), workshop_kit_import.gd
     ├── interact_trigger/
     │   └── interact_trigger.gd       # Area3D the player can "use" with E
     ├── levels/
@@ -102,6 +103,7 @@ game/
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
         ├── boundary_hint/            # "Survey area boundary in 12 m" on both HUDs (BoundaryHint)
+        ├── dock_hint/                # "Charging pad: 0.8 m ahead" on the robot HUD (DockHint)
         ├── mission_console/          # computer-theme mission list (dummy content)
         ├── loading_screen/
         ├── console/
@@ -109,7 +111,7 @@ game/
         ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 tests/                                # headless test scripts (see each file's header)
-tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, measure_moon_fps.gd
+tools/                                # windowed helper scripts: render_sky_previews.gd, render_terrain_previews.gd, render_workshop_previews.gd, measure_moon_fps.gd
 ```
 
 ---
@@ -395,11 +397,27 @@ Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoa
 
 ### Rover levels (`levels/rover_level.gd`)
 
-`RoverLevel` is the shared level script for rovers and the parts pile, found by name: every `Robot` child `<Rover>` with an `InteractTrigger` named `<Rover>Trigger` gets "E drives this rover"; `PartsPile` is recorded as the level starts and `RespawnPartsTrigger` clears its loose parts and lays it out again. `test_level.gd` extends it (adding the dialog and mission console triggers); the Moon level uses it as is.
+`RoverLevel` is the shared level script for rovers and the parts pile, found by name: every `Robot` child `<Rover>` with an `InteractTrigger` named `<Rover>Trigger` gets "E drives this rover"; `PartsPile` is recorded as the level starts (`PartsStock`) and `RespawnPartsTrigger` clears its loose parts and lays it out again. A rover served by a `Workshop` is driven from the workshop's console instead. `test_level.gd` extends it (adding the dialog and mission console triggers); the Moon level uses it as is.
 
 ### The Moon level (`levels/moon_level.tscn`)
 
-The Apollo 12 landing site in Oceanus Procellarum (`Terrain`, see Moon terrain below), with the sky and light of the moment Conrad and Bean walked to Surveyor 3 (Moon sky and lighting below). The 1 km play area holds the LM, the ALSEP, Surveyor 3 and the whole EVA 2 route (Head, Bench and Sharp craters, Halo, Surveyor crater, Block); the historic hardware isn't modelled (`terrain.json` `artifacts` has its positions, from LROC). The base is a graded 46 x 32 m patch (0.46 degree plane, 0.22 m largest change) around (-300, 252), over 225 m from the hardware and 120 m from the EVA 2 stations, with the `SpawnPoint`, the ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, laid out as in the test level. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below); `camera_far = 50000` (50 km: the ring reaches 33 km, and the mare's horizon is 2.6 km away).
+The Apollo 12 landing site in Oceanus Procellarum (`Terrain`, see Moon terrain below), with the sky and light of the moment Conrad and Bean walked to Surveyor 3 (Moon sky and lighting below). The 1 km play area holds the LM, the ALSEP, Surveyor 3 and the whole EVA 2 route (Head, Bench and Sharp craters, Halo, Surveyor crater, Block); the historic hardware isn't modelled (`terrain.json` `artifacts` has its positions, from LROC). The base is a graded 46 x 32 m patch (0.46 degree plane, 0.22 m largest change) around (-300, 252), over 225 m from the hardware and 120 m from the EVA 2 stations, with the `Workshop` on it (below: door facing azimuth 30, floor at y -5.37) and a `BaseSign` post at the end of its apron. The player spawns inside the workshop (`SpawnPoint`, facing the console) and stays inside; the ready rover (`ReadyRover`, `start_assembled`, with its `ReadyRoverController`) starts docked on the charging pad and is driven from the console; the rover parts sit on the rack. There is no outdoor drive trigger or parts pile. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below); `camera_far = 50000` (50 km: the ring reaches 33 km, and the mare's horizon is 2.6 km away).
+
+### The workshop (`src/workshop/`, `Workshop`)
+
+The lunar workshop of the asset brief (A01-A04, A07; spec, measurements and layout in `tools/blender/WORKSHOP_KIT.md`, models in `res/models/workshop_kit/` from `tools/blender/scripts/workshop/`): a 10 x 8 m building with a rover service bay (charging pad, parts rack) and an operator area (mission console) behind a glazed partition with a sliding personnel door. One scene, `workshop.tscn`, used by the Moon level and the test level; the level places it and the rover it serves (`rover` export). `Workshop._ready` builds it from the kit: `ws_layout.glb` holds one `place_<part>_NN` empty per part GLB (102 instances) and the empties for lights, triggers, spawn and anchors; the parts' own empties (dock point, rack slots and labels, console anchors) are collected into `anchors` (positions in the workshop's frame). Axes: the bay door faces the workshop's -Z, floor top at y 0.
+
+- **Console** (`ConsoleTrigger`, E): stands the player at the console (`anchor_operator`, facing the screen) and drives `rover`, so Esc brings the view back to the console. The screen (`console_screen`, one 16:9 quad) shows a `SubViewport` status page (rover, battery, dock and door state); the mission UI belongs to the UI work.
+- **Charging pad** (`charging_pad.gd`, `ChargingPad`, group `charging_pad`): a rover whose origin is within 0.4 m of the dock point, at any heading, slower than 0.05 m/s, with a battery, docks: the charge probe slides under the contact plate to below the rover's origin (always inside the belly's clear zone), rises to 20 mm under the belly, and the battery charges at `charge_power` (2000 W: a flat 100 Wh battery in 3 minutes) through `BatteryPart.add_charge`. The probe has no collision and never touches the rover's physics; the vehicle controller is unchanged. The pad's edge strips and the charger's beacon show the state (idle dim white, on the pad amber 1 Hz blink, charging green pulse, full green, fault red 4 Hz blink); the charger's tooltip and the console say it in words. `DockHint` (`ui/dock_hint/`, on the robot HUD under the boundary hint, with the same notification sound) tells the driver "Charging pad: 0.8 m ahead, 0.3 m to the right", "Stop here to charge", "Charging 63%" or "No battery to charge" within 3 m of a pad.
+- **Bay door** (fold-down ramp, `bay_door`): opens while a rover is being driven inside the building or near the door (`DoorArea`), closes 3 s after the doorway is clear (never onto a rover); the panel beside it (`BayDoorTrigger`, E) opens and closes it by hand. In the test level the player on foot near the door opens it too.
+- **Pressure curtain** (`airlock_barrier`, on in the Moon level, off in the test level): an invisible wall across the bay door on collision layer 8, which only the player's mask includes, so the player stays inside while rovers and parts pass. The personnel door is locked (red light) while the bay door is open and the curtain is on.
+- **Doors' colliders:** `AnimatableBody3D`s (the import script `workshop_kit_import.gd` turns the doors' `-convcolonly` bodies into them). An `AnimatableBody3D` only follows its own transform, not its parent's, so `Workshop` makes them top-level and places them on their leaves every physics frame.
+- **Rack**: the 15 rover parts (six wheels, four high-grip wheels, motor, battery, mast camera, tool turret, antenna) on numbered slots, wheels standing in cradles; `Label3D`s on the label rails (65 mm capitals, shrunk to fit their plate but never under 50 mm); `RestockTrigger` ("Restock rack") lays them out again (`PartsStock`, `levels/parts_stock.gd`, shared with `RoverLevel`'s parts pile). The bottom two rows are hidden behind the shelf above from closer than about 1.1 m standing: step back or crouch.
+- **Lights**: one shadowed spot over the pad, three amber / warm lamps without shadows, an exterior flood over the apron, and an interior `ReflectionProbe` (ambient colour, updated once) for fill, since the Moon's sky fill is tuned for open ground.
+- **Lost and found:** `MoonTerrain`'s `LostZone` returns the player to the level's `SpawnPoint` and a workshop's rover to its dock.
+- **Frame rate** (`tools/measure_moon_fps.gd`, last phase; MacBook Pro M4, 1920x1080, vsync off): standing in the bay facing the docked rover 148.6 fps (6.73 ms), 0.65 ms more than facing the rover outside in the same run. The bay light's shadow left the ground out of its casters for this: the rock field is one multimesh across the play area, and drew 1.6 M triangles into it (the terrain's chunks and rocks are on render layer 10, `MoonTerrain.RENDER_LAYER`). Lighting previews: `tools/render_workshop_previews.gd` (window) into `tools/previews/workshop/`.
+
+`tests/test_workshop.gd` (Moon level, then test level): the layout, the rover starting docked, the rack parts on their slots and the labels fitting; reach from where the player stands (console, rack, charger, the rover's battery socket); charging at the dock point and at the zone's edge at an odd heading, not 0.6 m off (and the hint), the no-battery fault; console drive and return; a scripted drive out through the door (which closes behind it), back in along the entry lane, round the U-turn and onto the pad, never touching the workshop; the personnel door, its lock, and the curtain (holding on the Moon, open in the test level).
 
 ### Moon terrain (`levels/terrain/`, `MoonTerrain`)
 
@@ -671,8 +689,9 @@ The robot shares the player's actions: `move_forward` = drive forward, `move_bac
 | 4 (8) | Held object | Applied in code during pickup (`held_layer = 4`) |
 | 5 (16) | Interact triggers | `InteractTrigger` `Area3D`s |
 | 7 (64) | Boundary | the Moon's boundary walls (`MoonTerrain`); in the player's, the rover's and parts' masks, not in the wheels' ground check |
+| 8 (128) | Player barrier | the workshop's pressure curtain (`Workshop.airlock_barrier`); only in the player's mask |
 
-Player `collision_mask = 69` (world, props, boundary). Interaction raycast mask `53` (world, props, triggers, layer 6). When creating new content, put pickups on layer 3 and triggers on layer 5, and give triggers `collision_mask = 0`.
+Player `collision_mask = 197` (world, props, boundary, player barrier). Interaction raycast mask `53` (world, props, triggers, layer 6). When creating new content, put pickups on layer 3 and triggers on layer 5, and give triggers `collision_mask = 0`.
 
 ---
 

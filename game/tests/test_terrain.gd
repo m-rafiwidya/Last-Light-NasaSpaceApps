@@ -4,8 +4,10 @@ extends SceneTree
 ##   1. Data and layout: the terrain is ready before the player spawns, its collision is the play
 ##      tier's measured 2 m posts (at either Terrain Detail: Low never thins a measured tier) and
 ##      equals the pipeline's play.f32, which is the untouched DTM (play_measured.f32) everywhere but
-##      the graded base; the spawn, the rover and the parts pile stand on flat ground (under 3
-##      degrees) and nothing fell through after 4 s.
+##      the graded base; the spawn and the docked rover stand on flat ground (under 3 degrees),
+##      the workshop's floor sits just above the ground under it, the rack parts rest on their
+##      shelves, and nothing fell through after 4 s. (The workshop's bodies are left out of the
+##      rays that look for the terrain.)
 ##   2. What you see is what the wheels stand on: play-tier chunk meshes (at the base, near the LM,
 ##      Surveyor crater, Head crater, the centre) agree with the collision to 1 mm at every
 ##      triangle's centre.
@@ -90,8 +92,19 @@ func _ticks(seconds: float) -> void:
 
 func _ray_down(x: float, z: float, mask: int = GROUND_MASK) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 2000.0, z), Vector3(x, -2000.0, z), mask)
-	q.exclude = [rover.get_rid(), terrain.get_node("Rocks/RockCollision").get_rid()]
+	q.exclude = [rover.get_rid(), terrain.get_node("Rocks/RockCollision").get_rid()] + _workshop_rids()
 	return root.world_3d.direct_space_state.intersect_ray(q)
+
+
+# The workshop's floor, walls and roof stand on the graded base: rays looking for the terrain
+# go through them
+var _workshop_bodies: Array = []
+func _workshop_rids() -> Array:
+	if _workshop_bodies.is_empty():
+		for workshop in root.get_tree().get_nodes_in_group(&"workshop"):
+			for body in workshop.find_children("*", "CollisionObject3D", true, false):
+				_workshop_bodies.append(body.get_rid())
+	return _workshop_bodies
 
 
 func _slope_at(x: float, z: float) -> float:
@@ -155,15 +168,21 @@ func _run() -> void:
 		_check("%s stands on the ground" % item[0], above > item[2] and above < item[3], "%.2f m above it" % above)
 		var slope: float = _slope_at(body.global_position.x, body.global_position.z)
 		_check("%s's spot is flat" % item[0], slope < 3.0, "%.1f deg" % slope)
-	var pile: Node3D = level.get_node("PartsPile")
-	var worst: float = -INF
-	var steepest: float = 0.0
-	for part in pile.get_children():
-		var p: Vector3 = part.global_position
-		worst = maxf(worst, absf(p.y - terrain.height_at(p.x, p.z)))
-		steepest = maxf(steepest, _slope_at(p.x, p.z))
-	_check("parts pile resting on the ground", worst < 0.4, "highest part centre %.2f m from the ground" % worst)
-	_check("parts pile's spot is flat", steepest < 3.0, "%.1f deg" % steepest)
+	# The workshop on the graded base: its floor just above the highest ground under it, the rack
+	# parts resting on their shelves
+	var workshop: Node3D = level.get_node("Workshop")
+	var highest: float = -INF
+	for corner in [Vector3(-5.4, 0, -4.4), Vector3(5.4, 0, -4.4), Vector3(-5.4, 0, 4.4), Vector3(5.4, 0, 4.4), Vector3.ZERO]:
+		for k in 11:
+			var p: Vector3 = workshop.to_global(corner * (k / 10.0))
+			highest = maxf(highest, terrain.height_at(p.x, p.z))
+	var floor_gap: float = workshop.global_position.y - highest
+	_check("workshop floor just above the ground under it", floor_gap > 0.0 and floor_gap < 0.03, "%.1f cm above the highest ground" % (floor_gap * 100.0))
+	var fastest: float = 0.0
+	for part in workshop.rack_stock.get_children():
+		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
+	_check("rack parts resting on their shelves", workshop.rack_stock.get_child_count() == 15 and fastest < 0.01,
+		"%d parts, fastest %.3f m/s" % [workshop.rack_stock.get_child_count(), fastest])
 
 	# 2. Mesh = collision
 	var lm: Array = meta["artifacts"]["lm"]["position"]

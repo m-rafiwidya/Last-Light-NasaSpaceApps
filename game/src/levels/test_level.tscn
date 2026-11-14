@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://src/robot/socket/mast_head_part.tscn" id="24_mast_head"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/arm_tool_part.tscn" id="25_arm_tool"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/antenna_part.tscn" id="26_antenna"]
+[ext_resource type="PackedScene" path="res://src/workshop/workshop.tscn" id="30_workshop"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -553,3 +554,16 @@ transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -1.5)
 
 [node name="WheelPart10" parent="PartsPile" unique_id=1203948627 instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -1.5)
+
+[node name="WorkshopRoverController" type="Node" parent="."]
+script = ExtResource("7_robotctl")
+
+[node name="WorkshopRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.1, 0.16, 30.3)
+controller = NodePath("../WorkshopRoverController")
+start_assembled = true
+
+[node name="Workshop" parent="." node_paths=PackedStringArray("rover") instance=ExtResource("30_workshop")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0.01, 30)
+rover = NodePath("../WorkshopRover")
+airlock_barrier = false

@@ -28,6 +28,9 @@ extends Node3D
 signal content_ready
 
 const BOUNDARY_LAYER: int = 7
+## Render layer of the ground's meshes (only that layer): a local light can leave the ground out
+## of its shadow casters (the workshop's bay light, under whose floor the ground can't be seen)
+const RENDER_LAYER: int = 10
 const CHUNK_CELLS: int = 64
 ## Skirt depth (m) at each tier's outer edge, hiding cracks where it meets the coarser tier
 const SKIRT_DEPTH: Dictionary = {"play": 2.0, "near": 40.0, "mid": 400.0, "far": 0.0}
@@ -238,8 +241,17 @@ func _on_lost_body(body: Node3D) -> void:
 		spot = spots["player_spawn"]
 	elif body is Robot:
 		spot = spots["rover_parking"]
+	var target := Vector3(spot[0], spot[1] + 2.0, spot[2])
+	# The level's own spots win: the player's spawn, a rover's workshop dock
+	var spawn := get_parent().get_node_or_null("SpawnPoint") as Node3D
+	if body is Player and spawn:
+		target = spawn.global_position + Vector3(0.0, 0.5, 0.0)
+	elif body is Robot:
+		for workshop in get_tree().get_nodes_in_group(&"workshop"):
+			if workshop.rover == body:
+				target = workshop.get_dock_transform().origin + Vector3(0.0, 0.3, 0.0)
 	(func() -> void:
-		body.global_position = Vector3(spot[0], spot[1] + 2.0, spot[2])
+		body.global_position = target
 		if body is RigidBody3D:
 			body.linear_velocity = Vector3.ZERO
 			body.angular_velocity = Vector3.ZERO
@@ -374,6 +386,7 @@ func _flush_meshes(limit: int) -> int:
 		instance.name = "%s_%d_%d" % [t["name"], entry[1], entry[2]]
 		instance.mesh = mesh_from_chunk(entry[3])
 		instance.material_override = materials[t["name"]]
+		instance.layers = 1 << (RENDER_LAYER - 1)
 		# The sun's cascades only reach 500 m: beyond the near tier the horizon map shades instead
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if entry[0] <= 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)

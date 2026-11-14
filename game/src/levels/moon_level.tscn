@@ -2,16 +2,12 @@
 
 [ext_resource type="Script" path="res://src/levels/rover_level.gd" id="1_level"]
 [ext_resource type="Script" path="res://src/levels/terrain/moon_terrain.gd" id="2_terrain"]
-[ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
 [ext_resource type="PackedScene" uid="uid://dvqu81j65chtr" path="res://src/robot/robot.tscn" id="6_robot"]
 [ext_resource type="Script" uid="uid://dejcbl7savjo6" path="res://src/robot/robot_controller.gd" id="7_robotctl"]
-[ext_resource type="PackedScene" uid="uid://dtk4pjjttlx0" path="res://src/robot/socket/wheel_part.tscn" id="21_wheel"]
-[ext_resource type="PackedScene" path="res://src/robot/socket/motor_part.tscn" id="22_motor"]
-[ext_resource type="PackedScene" path="res://src/robot/socket/battery_part.tscn" id="23_battery"]
-[ext_resource type="PackedScene" path="res://src/robot/socket/mast_head_part.tscn" id="24_mast_head"]
-[ext_resource type="PackedScene" path="res://src/robot/socket/arm_tool_part.tscn" id="25_arm_tool"]
-[ext_resource type="PackedScene" path="res://src/robot/socket/antenna_part.tscn" id="26_antenna"]
 [ext_resource type="Script" path="res://src/levels/lunar_sky.gd" id="8_lunar_sky"]
+[ext_resource type="PackedScene" path="res://src/workshop/workshop.tscn" id="30_workshop"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_marker_post.glb" id="31_post"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_base.glb" id="32_sign"]
 [ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
@@ -35,10 +31,6 @@ ambient_light_energy = 0.0736
 reflected_light_source = 2
 tonemap_mode = 4
 tonemap_exposure = 1.3875
-
-[sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_strxf"]
 
 [node name="MoonLevel" type="Node3D"]
 script = ExtResource("1_level")
@@ -80,127 +72,35 @@ earth_angular_diameter = 1.9195
 earth_facing_longitude = -135.077
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -297.5, -4.41, 253.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -297.709, -5.32, 260.168)
 
 [node name="Terrain" type="Node3D" parent="."]
 script = ExtResource("2_terrain")
-
-[node name="ReadyRoverTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -299, -4.35, 245.8)
-script = ExtResource("4_t1chq")
-tooltip = "Press \"E\" to drive this rover"
-metadata/_custom_type_script = "uid://b3epixqjbcndx"
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ReadyRoverTrigger"]
-shape = SubResource("BoxShape3D_strxf")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="ReadyRoverTrigger"]
-mesh = SubResource("BoxMesh_xa74p")
-
-[node name="Label3D" type="Label3D" parent="ReadyRoverTrigger"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
-text = "Drive Robot"
-
-[node name="Sign" type="Label3D" parent="ReadyRoverTrigger"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-billboard = 1
-modulate = Color(1, 0.85, 0.4, 1)
-outline_size = 16
-font_size = 64
-text = "Ready to drive"
 
 [node name="ReadyRoverController" type="Node" parent="."]
 script = ExtResource("7_robotctl")
 
 [node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -299, -4.86, 247.6)
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302.2366, -5.22, 260.2098)
 controller = NodePath("../ReadyRoverController")
 start_assembled = true
 
-[node name="RespawnPartsTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -288.7, -4.41, 246)
-script = ExtResource("4_t1chq")
-tooltip = "Press \"E\" to respawn the parts pile"
-metadata/_custom_type_script = "uid://b3epixqjbcndx"
+[node name="Workshop" parent="." node_paths=PackedStringArray("rover") instance=ExtResource("30_workshop")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302, -5.37, 260)
+rover = NodePath("../ReadyRover")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="RespawnPartsTrigger"]
-shape = SubResource("BoxShape3D_strxf")
+[node name="BaseSign" type="Node3D" parent="."]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -294.62, -5.371, 245.21)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="RespawnPartsTrigger"]
-mesh = SubResource("BoxMesh_xa74p")
+[node name="Post" parent="BaseSign" instance=ExtResource("31_post")]
 
-[node name="Label3D" type="Label3D" parent="RespawnPartsTrigger"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
-text = "Respawn parts"
+[node name="Sign" parent="BaseSign" instance=ExtResource("32_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)
 
-[node name="Sign" type="Label3D" parent="RespawnPartsTrigger"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-billboard = 1
-modulate = Color(1, 0.85, 0.4, 1)
-outline_size = 16
-font_size = 64
-text = "Respawn parts"
-
-[node name="PartsPile" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -309.5, -5.49, 248.8)
-
-[node name="WheelPart" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -0.5)
-
-[node name="WheelPart2" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -0.5)
-
-[node name="WheelPart3" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -0.5)
-
-[node name="WheelPart4" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -1.5)
-
-[node name="WheelPart5" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -5.2)
-grip = 1.3
-catalog_id = "wheel_high_grip"
-tint = Color(0.62, 0.34, 0.12, 1)
-
-[node name="WheelPart6" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -5.2)
-grip = 1.3
-catalog_id = "wheel_high_grip"
-tint = Color(0.62, 0.34, 0.12, 1)
-
-[node name="WheelPart7" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -5.2)
-grip = 1.3
-catalog_id = "wheel_high_grip"
-tint = Color(0.62, 0.34, 0.12, 1)
-
-[node name="WheelPart8" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 20, 0.5, -5.2)
-grip = 1.3
-catalog_id = "wheel_high_grip"
-tint = Color(0.62, 0.34, 0.12, 1)
-
-[node name="MotorPart" parent="PartsPile" instance=ExtResource("22_motor")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0.5, -2.8)
-stall_torque = 10.7
-no_load_speed = 345.0
-
-[node name="BatteryPart" parent="PartsPile" instance=ExtResource("23_battery")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.2, 0.5, -2.8)
-capacity = 100.0
-initial_charge = 1.0
-
-[node name="MastHeadPart" parent="PartsPile" instance=ExtResource("24_mast_head")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.4, 0.3, -2.8)
-
-[node name="ArmToolPart" parent="PartsPile" instance=ExtResource("25_arm_tool")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0.3, -3.9)
-
-[node name="AntennaPart" parent="PartsPile" instance=ExtResource("26_antenna")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.2, 0.3, -3.9)
-
-[node name="WheelPart9" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -1.5)
-
-[node name="WheelPart10" parent="PartsPile" instance=ExtResource("21_wheel")]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -1.5)
+[node name="Label3D" type="Label3D" parent="BaseSign/Sign"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, -0.115, -0.02)
+modulate = Color(0.11, 0.115, 0.125, 1)
+outline_size = 0
+font_size = 96
+pixel_size = 0.00088
+text = "BASE"

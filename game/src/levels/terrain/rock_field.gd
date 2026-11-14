@@ -62,6 +62,8 @@ func build(terrain: Node3D, data: String, collision_min_size: float, collision_o
 		instance.multimesh = multimesh
 		# Small things: no need to draw them far away
 		instance.visibility_range_end = 250.0
+		# Part of the ground: on its render layer (MoonTerrain.RENDER_LAYER)
+		instance.layers = 1 << (MoonTerrain.RENDER_LAYER - 1)
 		add_child(instance)
 		_instances.append(instance)
 

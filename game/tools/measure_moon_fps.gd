@@ -2,7 +2,8 @@ extends SceneTree
 ## Measures the Moon level's frame rate in a window: the rover drives a full-throttle circle
 ## with its headlights on, SECONDS each in the chase and the mast view, then the player walks
 ## on foot with the helmet light on, then stands facing the parked rover, its headlights and the
-## helmet light both in view (the player's helmet light is on throughout). Prints per phase the mean frame rate and the 99th percentile and worst frame times
+## helmet light both in view (the player's helmet light is on throughout), then stands in the
+## workshop's bay facing the docked rover (the workshop's lights, WORKSHOP_KIT.md 8). Prints per phase the mean frame rate and the 99th percentile and worst frame times
 ## and the triangles drawn per frame; before that the load time (main menu to playing, and the
 ## terrain's own data / mesh times: the meshes come from user://terrain_cache after the first load)
 ## and the memory in use (static and video) on the menu and once the level is in.
@@ -78,6 +79,9 @@ func _run() -> void:
 		args.get("atlas", "default"), args.get("quality", "default"), "lights off" if args.get("lights") == "off" else "lights on"])
 
 	var rover: Node = level.get_node("ReadyRover")
+	var workshop: Node3D = level.get_node("Workshop")
+	# The rover starts docked in the workshop: out onto the apron for the drive
+	rover.global_transform = Transform3D(workshop.global_basis, workshop.to_global(Vector3(-1.0, 0.4, -16.0)))
 	GS.drive(rover)
 	if "headlights_on" in rover:
 		rover.headlights_on = args.get("lights") != "off"
@@ -107,6 +111,17 @@ func _run() -> void:
 	player.controller.camera_azimuth = atan2(rover_forward.x, rover_forward.z)
 	player.controller.camera_altitude = deg_to_rad(-15.0)
 	await _measure("player facing the rover, both lights")
+
+	# In the workshop: the rover docked, the player in the bay beside the pad looking at it
+	rover.global_transform = workshop.get_dock_transform().translated(Vector3.UP * 0.05)
+	rover.linear_velocity = Vector3.ZERO
+	rover.angular_velocity = Vector3.ZERO
+	player.global_position = workshop.to_global(Vector3(1.3, 0.05, -2.6))
+	player.linear_velocity = Vector3.ZERO
+	var to_rover: Vector3 = rover.global_position - player.global_position
+	player.controller.camera_azimuth = atan2(-to_rover.x, -to_rover.z)
+	player.controller.camera_altitude = deg_to_rad(-20.0)
+	await _measure("player in the workshop, facing the docked rover")
 	quit()
 
 
