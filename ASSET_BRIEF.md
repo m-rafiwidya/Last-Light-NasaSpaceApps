@@ -1,3 +1,5 @@
+> **Superseded by [game/docs/ASSET_BRIEF.md](game/docs/ASSET_BRIEF.md) (final Moon chapter story).**
+
 # LAST LIGHT — asset brief and references
 
 **Build target: one lunar workshop, one rover, one disabled rover and one station.** Start with the first-sortie objects. Asset work follows the mission's needed interactions.
