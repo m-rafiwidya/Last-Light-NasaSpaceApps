@@ -72,8 +72,13 @@ var motor_angular_velocity: float = 0.0
 var motor_torque: float = 0.0
 
 var wheel_sockets: Dictionary = {}
-# Physics wheel centre (robot space) per RunningGear.Wheel, updated every physics frame. Read by RoverVisuals
+# Physics wheel centre (robot space) per RunningGear.Wheel, from the last physics step's ground
+# check, updated every physics frame (consistent with the wheels' IN_CONTACT)
 var wheel_centers: Dictionary = {}
+# Where the visible wheels go (robot space): the same ground check, run every frame from the
+# rover's pose after the physics step, so the wheels match the ground as it is drawn (also
+# moving ground, like the see-saw). Read by RoverVisuals.
+var visual_wheel_centers: Dictionary = {}
 
 # Power state
 # Mounted battery / motor parts, null while their sockets are empty. Read by robot_hud.gd
@@ -100,12 +105,13 @@ const STARTING_PARTS: Dictionary = {
 }
 # The reset puts the rover's origin this far above the ground under it (it rests at 0.10)
 const RESET_HEIGHT: float = 0.25
-# A wheel-sized collision cylinder per wheel on the rover body, centred this high (rover space
-# Y) above the wheel's attachment point: 7 cm clear of flat ground at rest, so normal driving
-# never touches it, but it keeps the wheel out of walls and kerb faces taller than the ground
-# check can climb, and its rounded front helps it up edges. Mass, centre of mass and inertia
-# are set explicitly, so the shapes don't change them.
-const BUMP_STOP_HEIGHT: float = 0.12
+# A wheel-sized collision cylinder per wheel on the rover body: the wheel at the top of its
+# travel (centred at RunningGear.suspension_top above its attachment point), i.e. the end-of-
+# travel stop. The ground check finds anything lower than that from above, so the stops only
+# meet faces taller than the wheel can reach and keep the wheels out of them; they never touch
+# during normal suspension travel (at 0.12 m they hit the foot of the ramp whenever the front
+# suspension compressed 7 cm). Mass, centre of mass and inertia are set explicitly, so the
+# shapes don't change them.
 
 var _reset_pending: bool = false
 
@@ -203,7 +209,7 @@ func _add_wheel_bump_stops() -> void:
 		stop.shape = cylinder
 		var position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
 		# Cylinder axis (Y) along the axle (X)
-		stop.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(position.x, BUMP_STOP_HEIGHT, position.z))
+		stop.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(position.x, running_gear.suspension_top, position.z))
 		add_child(stop)
 
 
@@ -281,6 +287,18 @@ func _physics_process(delta: float) -> void:
 	_update_power_parts()
 
 
+# Visible wheel centres for this frame: the physics' ground check, run from where the rover is
+# now (after the physics step), for each wheel
+func _process(_delta: float) -> void:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var exclude: Array[RID] = [get_rid()]
+	for wheel in running_gear.wheel_properties:
+		var centre: Vector3 = running_gear.wheel_properties[wheel][RunningGear.WheelProperty.POSITION]
+		var ground: Dictionary = running_gear.find_ground(wheel, global_transform, controller.steer, space, exclude)
+		centre.y = ground["centre_height"] if ground["hit"] else running_gear.full_extension_height(wheel)
+		visual_wheel_centers[wheel] = centre
+
+
 # Picks up the mounted motor and battery. The motor's values are copied into the
 # engine only when the mounted part changes; the battery is read directly.
 # An empty motor socket falls back to the engine's built-in values.
@@ -303,7 +321,6 @@ func _update_power_parts() -> void:
 # moves the parts onto the visual linkage.
 # An empty socket falls back to the running gear's default wheel_radius and grip 1.
 func _update_wheel_parts() -> void:
-	var inverse_basis: Basis = global_transform.basis.inverse()
 	for wheel in wheel_sockets:
 		var properties: Dictionary = running_gear.wheel_properties[wheel]
 		var wheel_part: WheelPart = null
@@ -314,8 +331,7 @@ func _update_wheel_parts() -> void:
 		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
 		properties[RunningGear.WheelProperty.GRIP] = wheel_part.grip if wheel_part else 1.0
 
-		# Wheel centre height in robot space: where the ground check stopped, or fully
-		# extended without contact
+		# Physics wheel centre: where the step's ground check stopped, or fully extended
 		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
 		wheel_position.y = running_gear.full_extension_height(wheel)
 		if running_gear.wheel_states[wheel][RunningGear.WheelState.IN_CONTACT]:

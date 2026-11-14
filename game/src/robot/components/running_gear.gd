@@ -212,6 +212,55 @@ var _ground_shape := CylinderShape3D.new()
 var _ground_query := PhysicsShapeQueryParameters3D.new()
 
 
+## The wheel's ground check for the rover at `rover_transform`: a cylinder the size of the
+## wheel (axle along the steered axle) cast down the rover's -Y from its centre at
+## suspension_top above the wheel's attachment point to CONTACT_TOLERANCE past full extension.
+## Returns {hit, centre_height (robot space Y where it first touches), point, normal, velocity,
+## body, started_inside (already touching at the top)}. Used by the physics every step and by
+## the Robot to place the visible wheels where the rover is after the step.
+func find_ground(wheel: Wheel, rover_transform: Transform3D, steer: float,
+		space_state: PhysicsDirectSpaceState3D, exclude: Array[RID]) -> Dictionary:
+	var basis: Basis = rover_transform.basis
+	var y_basis: Vector3 = basis.y
+	var position: Vector3 = wheel_properties[wheel][WheelProperty.POSITION]
+	var attach: Vector3 = rover_transform.origin + basis.x * position.x + basis.z * position.z
+	var radius: float = wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS]
+	var full_extension: float = full_extension_height(wheel)
+	var top: float = maxf(suspension_top, full_extension)
+	var wheel_steer_angle: float = get_steer_angle(wheel, steer)
+	var wheel_direction: Vector3 = -basis.z.rotated(y_basis, wheel_steer_angle)
+	var axle: Vector3 = basis.x.rotated(y_basis, wheel_steer_angle)
+
+	_ground_shape.radius = radius
+	_ground_shape.height = wheel_width
+	var cast_basis := Basis(wheel_direction, axle, wheel_direction.cross(axle))
+	_ground_query.shape = _ground_shape
+	_ground_query.collision_mask = ground_mask
+	_ground_query.exclude = exclude
+	_ground_query.transform = Transform3D(cast_basis, attach + y_basis * top)
+	var reach: float = top - full_extension + CONTACT_TOLERANCE
+	_ground_query.motion = -y_basis * reach
+	var fractions: PackedFloat32Array = space_state.cast_motion(_ground_query)
+	if fractions[1] >= 1.0:
+		return {"hit": false}
+	# The wheel stands where the cast first touches the ground (the same place the old ray hit
+	# on flat ground); the surface is read there too
+	var centre_height: float = top - reach * fractions[1]
+	_ground_query.transform = Transform3D(cast_basis, attach + y_basis * centre_height)
+	_ground_query.motion = Vector3.ZERO
+	var info: Dictionary = space_state.get_rest_info(_ground_query)
+	var centre: Vector3 = attach + y_basis * centre_height
+	return {
+		"hit": true,
+		"centre_height": centre_height,
+		"point": info.get("point", centre - y_basis * radius),
+		"normal": info.get("normal", y_basis),
+		"velocity": info.get("linear_velocity", Vector3.ZERO),
+		"body": instance_from_id(info["collider_id"]) if info.has("collider_id") else null,
+		"started_inside": fractions[0] <= 0.0,
+	}
+
+
 func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, exclude: Array[RID] = []) -> void:
 	var origin = state.transform.origin
 	var x_basis = state.transform.basis.x
@@ -225,43 +274,21 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, 
 			z_basis * wheel_properties[wheel][WheelProperty.POSITION].z
 		)
 
-		var space_state: PhysicsDirectSpaceState3D = state.get_space_state()
-		var attach: Vector3 = origin + offset
-		var radius: float = wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS]
-		var full_extension: float = full_extension_height(wheel)
-		var top: float = maxf(suspension_top, full_extension)
 		var wheel_steer_angle: float = get_steer_angle(wheel, steer)
 		var wheel_direction: Vector3 = -z_basis.rotated(y_basis, wheel_steer_angle)
-		var axle: Vector3 = x_basis.rotated(y_basis, wheel_steer_angle)
-
-		# Wheel-sized cylinder (axis = axle), cast from `top` down to full extension
-		_ground_shape.radius = radius
-		_ground_shape.height = wheel_width
-		var cast_basis := Basis(wheel_direction, axle, wheel_direction.cross(axle))
-		_ground_query.shape = _ground_shape
-		_ground_query.collision_mask = ground_mask
-		_ground_query.exclude = exclude
-		_ground_query.transform = Transform3D(cast_basis, attach + y_basis * top)
-		var reach: float = top - full_extension + CONTACT_TOLERANCE
-		_ground_query.motion = -y_basis * reach
-		var fractions: PackedFloat32Array = space_state.cast_motion(_ground_query)
-		if fractions[1] >= 1.0:
+		var ground: Dictionary = find_ground(wheel, state.transform, steer, state.get_space_state(), exclude)
+		if not ground["hit"]:
 			# Nothing within the suspension's travel
 			_clear_wheel_contact(wheel)
 			continue
-		# The wheel stands where the cast first touches the ground (the same place the old ray
-		# hit on flat ground); the surface is read there too
-		var centre_height: float = top - reach * fractions[1]
-		_ground_query.transform = Transform3D(cast_basis, attach + y_basis * (top - reach * fractions[1]))
-		_ground_query.motion = Vector3.ZERO
-		var info: Dictionary = space_state.get_rest_info(_ground_query)
-		var centre: Vector3 = attach + y_basis * centre_height
-		var collision_point: Vector3 = info.get("point", centre - y_basis * radius)
-		var ground_normal: Vector3 = info.get("normal", y_basis)
-		var ground_velocity: Vector3 = info.get("linear_velocity", Vector3.ZERO)
-		var ground_body: Object = instance_from_id(info["collider_id"]) if info.has("collider_id") else null
+		var centre_height: float = ground["centre_height"]
+		var collision_point: Vector3 = ground["point"]
+		var ground_normal: Vector3 = ground["normal"]
+		var ground_velocity: Vector3 = ground["velocity"]
+		var ground_body: Object = ground["body"]
+		var full_extension: float = full_extension_height(wheel)
 
-		if fractions[0] <= 0.0 and ground_normal.dot(y_basis) < WALL_NORMAL_LIMIT:
+		if ground["started_inside"] and ground_normal.dot(y_basis) < WALL_NORMAL_LIMIT:
 			# Already against a face taller than the suspension reaches: touching, not held up
 			# (the wheel's bump stop on the rover body keeps it out of the face)
 			_set_unloaded_contact(wheel, collision_point - origin, centre_height, ground_body)

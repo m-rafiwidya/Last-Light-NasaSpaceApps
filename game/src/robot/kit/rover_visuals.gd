@@ -125,8 +125,10 @@ var _model_rest: Dictionary = {}     # WheelPart -> its model's unspun rotation
 
 
 func _ready() -> void:
-	# Run after the Robot, which places the wheel parts at their physics positions first
+	# Run after the Robot, which places the wheel parts at their physics positions first and
+	# works out the visual wheel centres
 	process_physics_priority = 10
+	process_priority = 10
 	for side in SIDE_WHEELS:
 		_build_side(side)
 	_build_mast_and_arm()
@@ -336,14 +338,20 @@ func _socket_local(part: Node3D, socket_name: String) -> Vector3:
 
 
 func _physics_process(delta: float) -> void:
-	if robot.wheel_centers.size() < RunningGear.Wheel.size():
+	_update_mast_head()
+	_update_arm(delta)
+	_update_antenna(delta)
+
+
+# The linkage and the visible wheels are posed each frame, after the physics step, from the
+# Robot's visual wheel centres (a fresh ground check from the rover's current pose), so they
+# match the rover and the ground exactly as they are drawn.
+func _process(delta: float) -> void:
+	if robot.visual_wheel_centers.size() < RunningGear.Wheel.size():
 		return
 	for side in sides:
 		_pose_side(side)
 	_place_and_spin_wheels(delta)
-	_update_mast_head()
-	_update_arm(delta)
-	_update_antenna(delta)
 
 
 # Angle of the vector a -> b in the robot's side (z, y) plane. Rotating about +X by t changes
@@ -363,7 +371,7 @@ func _pose_side(side: String) -> void:
 	var rest: Array = data["rest_hubs"].map(func(p: Vector3) -> Vector2: return Vector2(p.z, p.y))
 	var now: Array = []
 	for i in 3:
-		now.append(Vector2(rest[i].x, robot.wheel_centers[wheels[i]].y))
+		now.append(Vector2(rest[i].x, robot.visual_wheel_centers[wheels[i]].y))
 	var rest_pivot := Vector2(data["rest_bogie_pivot"].z, data["rest_bogie_pivot"].y)
 
 	# Bogie: its world angle lines the middle and rear hubs up with their wheels; its pivot
@@ -446,7 +454,7 @@ func _place_and_spin_wheels(delta: float) -> void:
 			if part == null:
 				continue
 			part.global_transform = Transform3D((sides[side]["hubs"][i] as Node3D).global_basis,
-				robot.to_global(robot.wheel_centers[wheel]))
+				robot.to_global(robot.visual_wheel_centers[wheel]))
 			# Positive wheel speed rolls forward (-Z), which is a negative turn about +X
 			var speed: float = robot.running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY]
 			_spin[wheel] = wrapf(_spin.get(wheel, 0.0) - speed * delta, -PI, PI)

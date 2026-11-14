@@ -10,7 +10,12 @@ extends SceneTree
 ##     the wheel is reported out of contact
 ##   - "inside terrain": a wheel reported in contact whose physics position is more than 1 cm
 ##     inside the terrain (it found a surface below the one it is actually on)
-##   - "mesh in ground": the visible wheel (1 cm smaller) overlaps the ground
+##   - "mesh in ground": the visible wheel (1 cm smaller) overlaps the ground, checked every
+##     frame after the rover's visuals have been placed (what the player sees)
+## The ramp climb (3 m run-up) also has to reach the top with nothing on the rover's body
+## (chassis, bump stops) touching the ramp on the way: nothing may catch. From a standstill
+## the motor can't hold the 26.6 degree slope at 9.8 m/s^2 gravity (it needs 363 N, the six
+## motors give 357 N at stall), so that run only reports how high it gets.
 ## Prints one line per scenario and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd
@@ -37,6 +42,16 @@ var _query := PhysicsShapeQueryParameters3D.new()
 
 func _initialize() -> void:
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
+	# A node that runs after every other node's _process (RoverVisuals places the visible
+	# wheels there), i.e. last before the frame is drawn
+	var checker_script := GDScript.new()
+	checker_script.source_code = "extends Node\nvar callback: Callable\nfunc _process(_delta: float) -> void:\n\tcallback.call()\n"
+	checker_script.reload()
+	var checker := Node.new()
+	checker.set_script(checker_script)
+	checker.set("callback", _check_frame)
+	checker.process_priority = 1000
+	root.add_child.call_deferred(checker)
 
 
 func _ground_height(space: PhysicsDirectSpaceState3D, x: float, z: float) -> float:
@@ -48,6 +63,12 @@ func _ground_height(space: PhysicsDirectSpaceState3D, x: float, z: float) -> flo
 
 func _setup_scenarios() -> void:
 	var space := rover.get_world_3d().direct_space_state
+	# The level's loose demo props (Box, Text, Sphere) stand next to the see-saw; move them out
+	# of the drives' way (driving into loose props is not what this test checks)
+	for prop_name in ["Box", "Text", "Sphere"]:
+		var prop := level.get_node_or_null(prop_name) as RigidBody3D
+		if prop:
+			prop.global_position = Vector3(-30.0 - prop.get_index() * 2.0, 1.0, 30.0)
 	# The ramp: highest at x 0, ground at x 6; find which way its depth runs from z -5
 	var z_mid: float = -6.5 if _ground_height(space, 3.0, -6.5) > 1.0 else -3.5
 	var side_z: float = -5.0
@@ -71,6 +92,8 @@ func _setup_scenarios() -> void:
 	scenarios = [
 		# name, start position, yaw (degrees; 0 = facing -Z, 90 = facing -X), throttle, seconds, extra setup
 		["ramp, front (up the slope)", Vector3(9.0, 0.3, z_mid), 90.0, 1.0, 6.0, ""],
+		["ramp climb, 3 m run-up", Vector3(9.6, 0.2, z_mid), 90.0, 1.0, 9.0, "climb"],
+		["ramp climb from standstill", Vector3(6.6, 0.2, z_mid), 90.0, 1.0, 7.0, "climb_info"],
 		["ramp, side edge (left wheels)", Vector3(6.0, 0.3, side_z + approach_from * 2.0), 0.0 if approach_from > 0.0 else 180.0, 0.6, 5.0, ""],
 		["20 cm kerb", Vector3(30.0, 0.3, 8.0), 0.0, 0.7, 5.0, "kerb"],
 		["see-saw, across the low end", Vector3(cross_x, 0.3, 2.5), 0.0, 0.6, 5.0, ""],
@@ -82,8 +105,12 @@ func _setup_scenarios() -> void:
 func _start_scenario(index: int) -> void:
 	scenario = index
 	scenario_t = 0.0
-	stats = {"ticks": 0, "touching_airborne": 0, "inside_terrain": 0, "mesh_in_ground": 0, "worst_mesh": 0.0, "examples": [], "max_compression_seen": 0.0}
+	stats = {"ticks": 0, "frames": 0, "touching_airborne": 0, "inside_terrain": 0, "mesh_in_ground": 0, "worst_mesh": 0.0, "examples": [], "max_compression_seen": 0.0}
 	var s: Array = scenarios[index]
+	stats["max_height"] = -INF
+	stats["body_contacts"] = 0
+	stats["throttle_off"] = false
+	rover.max_contacts_reported = 16
 	if s[5] == "kerb":
 		var kerb := StaticBody3D.new()
 		var shape := CollisionShape3D.new()
@@ -130,6 +157,18 @@ func _check_tick() -> void:
 	var space := rover.get_world_3d().direct_space_state
 	var gear = rover.running_gear
 	stats["ticks"] += 1
+	if scenarios[scenario][5].begins_with("climb"):
+		stats["max_height"] = maxf(stats["max_height"], rover.global_position.y)
+		# Anything on the body (chassis, bump stops) touching the ramp while on it
+		var direct := PhysicsServer3D.body_get_direct_state(rover.get_rid())
+		for c in direct.get_contact_count():
+			var collider = direct.get_contact_collider_object(c)
+			if collider and collider.name == "CSGCombiner3D" and rover.global_position.x > 0.0:
+				stats["body_contacts"] += 1
+		# Off the throttle at the top, before the walls beyond it
+		if rover.global_position.y > 3.0 and not stats["throttle_off"]:
+			stats["throttle_off"] = true
+			Input.action_release("move_forward")
 	for wheel in gear.wheel_states:
 		var state: Dictionary = gear.wheel_states[wheel]
 		var steer: float = gear.get_steer_angle(wheel, rover.controller.steer)
@@ -151,6 +190,16 @@ func _check_tick() -> void:
 				var terrain: float = _ground_height(space, ray_start.x, ray_start.z)
 				stats["examples"].append("%s at t %.2f: the old suspension ray would start %.0f mm %s the terrain top" % [
 					WHEEL_NAMES[wheel], scenario_t, absf(ray_start.y - terrain) * 1000.0, "below (inside)" if ray_start.y < terrain else "above"])
+
+
+
+# Every frame, after the visuals: no visible wheel may be in the ground
+func _check_frame() -> void:
+	if scenario < 0 or scenario_t <= 0.2 or not is_instance_valid(rover):
+		return
+	var space := rover.get_world_3d().direct_space_state
+	stats["frames"] += 1
+	for wheel in rover.wheel_sockets:
 		var socket = rover.wheel_sockets[wheel]
 		if socket and socket.part:
 			var part: Node3D = socket.part
@@ -169,9 +218,15 @@ func _check_tick() -> void:
 func _finish_scenario() -> void:
 	var s: Array = scenarios[scenario]
 	var ok: bool = stats["touching_airborne"] == 0 and stats["inside_terrain"] == 0 and stats["mesh_in_ground"] == 0
+	var climb_note := ""
+	if s[5] == "climb":
+		ok = ok and stats["max_height"] >= 2.95 and stats["body_contacts"] == 0
+		climb_note = "  climb: highest %.2f m (top 3.0), body touching the ramp %d ticks;" % [stats["max_height"], stats["body_contacts"]]
+	elif s[5] == "climb_info":
+		climb_note = "  (info, motor-limited) highest %.2f m of 3.0;" % stats["max_height"]
 	failures += 0 if ok else 1
-	print("RESULT %-30s %s  ticks %d, touching-but-airborne %d, in contact but inside terrain %d, wheel mesh in ground %d (deepest %.0f mm); rover ended at %s, upright %s" % [
-		s[0], "PASS" if ok else "FAIL", stats["ticks"], stats["touching_airborne"], stats["inside_terrain"], stats["mesh_in_ground"], stats["worst_mesh"] * 1000.0,
+	print("RESULT %-30s %s %s ticks %d, frames %d, touching-but-airborne %d, in contact but inside terrain %d, wheel mesh in ground %d (deepest %.0f mm); rover ended at %s, upright %s" % [
+		s[0], "PASS" if ok else "FAIL", climb_note, stats["ticks"], stats["frames"], stats["touching_airborne"], stats["inside_terrain"], stats["mesh_in_ground"], stats["worst_mesh"] * 1000.0,
 		rover.global_position.snapped(Vector3.ONE * 0.01), rover.global_basis.y.y > 0.7])
 	for e in stats["examples"]:
 		print("        e.g. " + e)
