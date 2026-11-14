@@ -22,3 +22,11 @@ extends HotswapPart
 
 func _init() -> void:
 	part_type = PartType.MOTOR
+
+
+func get_stat_lines() -> PackedStringArray:
+	return PackedStringArray([
+		"Stall torque %.1f Nm" % stall_torque,
+		"No-load speed %.0f rad/s" % no_load_speed,
+		"Stall power %.0f W" % stall_power,
+	])

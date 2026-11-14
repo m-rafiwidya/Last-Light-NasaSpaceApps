@@ -5,7 +5,6 @@
 
 [node name="MastHeadPart" instance=ExtResource("1_base")]
 part_type = 3
-display_name = "Mast camera"
 
 [node name="Model" parent="." index="1"]
 mesh = null

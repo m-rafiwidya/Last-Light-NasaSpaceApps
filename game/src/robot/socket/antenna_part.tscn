@@ -5,7 +5,6 @@
 
 [node name="AntennaPart" instance=ExtResource("1_base")]
 part_type = 5
-display_name = "High-gain antenna"
 
 [node name="Model" parent="." index="1"]
 mesh = null

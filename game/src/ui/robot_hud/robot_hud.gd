@@ -19,7 +19,9 @@ func _process(_delta: float) -> void:
 	if is_instance_valid(Debug.current_robot):
 		%Speed.text = "SPEED  %4.1f m/s" % Debug.current_robot.linear_velocity.length()
 		var looking_at = Debug.current_robot.looking_at_object
-		looking_at_prop = looking_at is InteractTrigger or looking_at is RigidBody3D
+		looking_at_prop = looking_at is RigidBody3D
+		var holding: bool = looking_at != null and looking_at == Debug.current_robot.holder.held_object
+		%PartTooltip.show_for(looking_at, false, holding)
 		_update_battery_label(Debug.current_robot)
 		_update_arm_label(Debug.current_robot)
 		_update_view_label(Debug.current_robot)
@@ -28,6 +30,7 @@ func _process(_delta: float) -> void:
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
 		%Arm.text = "ARM  --"
+		%PartTooltip.hide()
 	var aiming: bool = is_instance_valid(Debug.current_robot) and Debug.current_robot.is_aiming()
 	%Crosshair.visible = aiming and not looking_at_prop
 	%InteractCrosshair.visible = looking_at_prop

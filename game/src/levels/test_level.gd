@@ -28,7 +28,7 @@ func _on_robot_trigger_interacted(_player: Player, rover: Robot):
 # --- Parts pile -----------------------------------------------------------------------------
 
 ## Pile parts' properties that are copied when the pile is respawned
-const PILE_PROPERTIES: Array[String] = ["display_name", "tint", "radius", "grip"]
+const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]
 
 # One entry per part in PartsPile as the level starts: scene, transform and properties
 var _pile_layout: Array = []

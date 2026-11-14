@@ -50,6 +50,10 @@ func detach() -> void:
 	_show_side("L")
 
 
+func get_stat_lines() -> PackedStringArray:
+	return PackedStringArray(["Grip %.2f (standard 1.00)" % grip, "Radius %.2f m" % radius])
+
+
 ## Refuses any radius other than the kit's (ROVER_KIT.md 3.1).
 func get_mount_problem() -> String:
 	if absf(radius - KIT_RADIUS) > RADIUS_TOLERANCE:

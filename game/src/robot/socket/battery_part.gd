@@ -27,6 +27,10 @@ func _ready() -> void:
 	charge = capacity * initial_charge
 
 
+func get_stat_lines() -> PackedStringArray:
+	return PackedStringArray(["Charge %d%% (%.0f of %.0f Wh)" % [roundi(get_charge_fraction() * 100.0), charge, capacity]])
+
+
 ## Charge as a fraction of capacity, 0..1
 func get_charge_fraction() -> float:
 	if capacity <= 0.0:

@@ -358,6 +358,7 @@ shape = SubResource("BoxShape3D_43bbr")
 [node name="DialogTrigger" type="Area3D" parent="." unique_id=474091454]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -3)
 script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to talk"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="DialogTrigger" unique_id=609204700]
@@ -373,6 +374,7 @@ text = "Dialog Test"
 [node name="MissionConsoleTrigger" type="Area3D" parent="." unique_id=474091455]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -5.5)
 script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to open the mission console"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="MissionConsoleTrigger" unique_id=609204701]
@@ -388,6 +390,7 @@ text = "Mission Console"
 [node name="ReadyRoverTrigger" type="Area3D" parent="." unique_id=251062919]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1, -3)
 script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to drive this rover"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ReadyRoverTrigger" unique_id=2091237796]
@@ -436,6 +439,7 @@ accepted_type = 2
 [node name="BareRoverTrigger" type="Area3D" parent="." unique_id=1203948610]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, 1, -3)
 script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to drive this rover"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="BareRoverTrigger" unique_id=1203948611]
@@ -466,6 +470,7 @@ controller = NodePath("../BareRoverController")
 [node name="RespawnPartsTrigger" type="Area3D" parent="." unique_id=1203948620]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.8, 1, -2.8)
 script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to respawn the parts pile"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RespawnPartsTrigger" unique_id=1203948621]
@@ -503,25 +508,25 @@ transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -1.5)
 [node name="WheelPart5" parent="PartsPile" unique_id=896151358 instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -5.2)
 grip = 1.3
-display_name = "High-grip wheel"
+catalog_id = "wheel_high_grip"
 tint = Color(0.62, 0.34, 0.12, 1)
 
 [node name="WheelPart6" parent="PartsPile" unique_id=1784414197 instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -5.2)
 grip = 1.3
-display_name = "High-grip wheel"
+catalog_id = "wheel_high_grip"
 tint = Color(0.62, 0.34, 0.12, 1)
 
 [node name="WheelPart7" parent="PartsPile" unique_id=1706634199 instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -5.2)
 grip = 1.3
-display_name = "High-grip wheel"
+catalog_id = "wheel_high_grip"
 tint = Color(0.62, 0.34, 0.12, 1)
 
 [node name="WheelPart8" parent="PartsPile" unique_id=785140708 instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 20, 0.5, -5.2)
 grip = 1.3
-display_name = "High-grip wheel"
+catalog_id = "wheel_high_grip"
 tint = Color(0.62, 0.34, 0.12, 1)
 
 [node name="MotorPart" parent="PartsPile" unique_id=664850556 instance=ExtResource("22_motor")]

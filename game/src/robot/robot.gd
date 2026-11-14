@@ -121,6 +121,10 @@ func _ready() -> void:
 
 	# The robot is on the props layer, so the pickup ray must not pick up the robot itself
 	raycast.add_exception(self)
+	for socket in find_children("*", "HotswapSocket", true, false):
+		socket.part_mounted.connect(func(_part) -> void: _update_ray_exceptions())
+		socket.part_unmounted.connect(func(_part) -> void: _update_ray_exceptions())
+	_update_ray_exceptions()
 	holder = ObjectHolder.new(self, pivot, camera)
 	controller.interact.connect(_on_controller_interact)
 	controller.primary.connect(_on_controller_primary)
@@ -166,6 +170,18 @@ func _adopt_body_collision() -> void:
 	body_collision.transform = global_transform.affine_inverse() * source.global_transform
 	source.get_parent().remove_child(source)
 	source.queue_free()
+
+
+# The pickup ray ignores this rover's empty sockets (their trigger boxes would block it; there
+# is nothing to see) and its mast head socket (the camera sits right next to it). Mounted
+# parts stay visible to it, so the tooltip works on them from the mast view.
+func _update_ray_exceptions() -> void:
+	for socket in find_children("*", "HotswapSocket", true, false):
+		var trigger: InteractTrigger = socket.get_trigger()
+		if socket.part == null or socket.name == "MastHeadSocket":
+			raycast.add_exception(trigger)
+		else:
+			raycast.remove_exception(trigger)
 
 
 ## True while this rover is the one being driven (or was the last one, while paused)

@@ -13,7 +13,8 @@ extends RigidBody3D
 enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA }
 
 @export var part_type: PartType = PartType.WHEEL
-@export var display_name: String = "Hotswap Part"
+## Entry in PartCatalog (name, description, where it mounts); empty = the default for part_type
+@export var catalog_id: String = ""
 ## Recolours the part's main kit material (ROVER_KIT.md 6.3), e.g. to mark a variant. Only
 ## surfaces using `tint_material` change; the rest keep the kit palette. Alpha 0 = no tint.
 @export var tint: Color = Color(0.0, 0.0, 0.0, 0.0)
@@ -89,8 +90,27 @@ func _transform_in_part(node: Node3D) -> Transform3D:
 	return result
 
 
+func get_catalog_id() -> String:
+	return catalog_id if not catalog_id.is_empty() else PartCatalog.default_id(part_type)
+
+
 func get_display_name() -> String:
-	return display_name
+	return PartCatalog.entry(get_catalog_id())["name"]
+
+
+## One line on what the part does (PartCatalog)
+func get_description() -> String:
+	return PartCatalog.entry(get_catalog_id())["description"]
+
+
+## Where the part mounts (PartCatalog)
+func get_mount_hint() -> String:
+	return PartCatalog.entry(get_catalog_id())["mounts"]
+
+
+## Stat lines for the tooltip; parts with stats override it
+func get_stat_lines() -> PackedStringArray:
+	return PackedStringArray()
 
 
 ## Why this part can't be mounted ("" if it can). Parts with limits, like the wheel envelope,

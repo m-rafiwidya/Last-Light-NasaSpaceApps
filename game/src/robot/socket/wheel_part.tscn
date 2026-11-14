@@ -13,7 +13,6 @@ radius = 0.15
 script = ExtResource("2_script")
 radius = 0.15
 grip = 1.0
-display_name = "Wheel"
 tint_material = &"rover_dark"
 
 [node name="CollisionShape3D" parent="." index="0"]

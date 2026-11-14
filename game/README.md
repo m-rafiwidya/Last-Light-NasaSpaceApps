@@ -293,7 +293,8 @@ The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`. `RobotHUD
 - `CanvasModulate` is tweened to fade the whole HUD (alpha 0/1). Both HUDs start hidden, `show()` on `fade_in()` and `hide()` once `fade_out()` finishes; the running fade tween is killed first, so a quick out -> in can't leave the HUD hidden.
 - **Crosshair swap** (every frame): shows `crosshair.svg` normally, `interaction.svg` when `GameState.player.looking_at_object` is an `InteractTrigger` or a `RigidBody3D` (something you can use/pick up). Both hidden while `player.hide_crosshair` is true.
 - **Subtitles**: listens to `DialogServer.dialog_played/ended`, instantiates a `DialogBox` into `DialogBoxContainer/Boxes` (bottom-centre) and fades it out on end. `DialogBoxContainer` is a single themed `PanelContainer` that draws one background behind the whole stack; `Boxes` is a `VBoxContainer` inside it. It is anchored to a zero-height line near the bottom, so it grows upward as boxes are added and collapses to nothing when empty.
-- `Tooltip` label and a static `DialogBox` node exist in `hud.tscn` but are hidden and unused (see known issues).
+- **Part tooltip:** `PartTooltip` (`ui/part_tooltip/`, a small panel next to the crosshair, also in `RobotHUD`) describes what the crosshair is on: a part, loose or mounted (name, what it does, where it mounts, stats, and the E prompt), an empty socket ("Empty: Mast camera goes here") or any other `InteractTrigger` (just its `tooltip`, the E prompt). On foot it reads `Player.looking_at_object`, in the rover's mast view `Robot.looking_at_object`. Names, descriptions and mount hints come from `PartCatalog` (`robot/socket/part_catalog.gd`): to add a part, add an entry there and set the part scene's `catalog_id` (empty = the default for its part type; e.g. the high-grip wheels use `wheel_high_grip`). Stats come from `HotswapPart.get_stat_lines()` (wheel grip and radius, battery charge, motor values).
+- The old `Tooltip` label and a static `DialogBox` node still exist in `hud.tscn` but are hidden and unused.
 
 ### 6.7 Loading screen (`ui/loading_screen/`)
 
@@ -469,7 +470,7 @@ The raycast has `collide_with_areas = true`, mask `53` = layers 1, 3, 5, 6 (worl
 
 ### `InteractTrigger` (`interact_trigger/interact_trigger.gd`)
 
-`class_name InteractTrigger extends Area3D`. Has `@export var tooltip: String` and signal `interacted(player: Player)`. It's a generic hook: gameplay code connects to `interacted`. The `tooltip` is not displayed anywhere yet.
+`class_name InteractTrigger extends Area3D`. Has `@export var tooltip: String` and signal `interacted(player: Player)`. It's a generic hook: gameplay code connects to `interacted`. The `tooltip` is the E prompt the part tooltip panel shows (e.g. 'Press "E" to drive this rover'; a socket sets 'Press "E" to take out <part>' while it holds a part).
 
 ### Holding / throwing a `RigidBody3D`
 
@@ -569,7 +570,6 @@ Player `collision_mask = 5` (world + props). Interaction raycast mask `53` (worl
 Grounded in the current code; useful to know before changing things.
 
 **Gameplay / wiring**
-- `InteractTrigger.tooltip` and the HUD `Tooltip` label are not connected.
 - Esc while driving leaves the robot instead of pausing, so the pause menu is only reachable on foot.
 - `GameState.State.IN_GAME_MENU`, `Player.inventory`/`active_item_index`, `viewmodel_controller`, `AudioStreamPlayer3D`, `is_rotating_held_object` are placeholders with no behaviour.
 
@@ -715,6 +715,7 @@ Each wheel can be a swappable `WheelPart` (`socket/wheel_part.gd`, a `HotswapPar
 - **Placement.** The part is not a child that follows the body rigidly: it is moved to where the running gear puts the wheel (hanging from the suspension at ground height + radius) and turned by the wheel's steer angle.
 - **Grip.** `WheelPart.grip` (default 1.0) is written into the wheel's `GRIP` property and multiplies both friction coefficients (`RunningGear.get_longitudinal_friction(wheel)` / `get_lateral_friction(wheel)`), so a grip of 0.5 halves that tyre's force limit. Their ratio is unchanged, so the tyre's shape stays the same. An empty socket uses 1.0. The friction circles in `RobotHUD` include it.
 
+- **Socket triggers stay on when empty,** so the crosshair finds an empty socket and the tooltip says what goes there; using an empty socket's trigger does nothing (and the crosshair doesn't show the interact icon). A rover's own pickup ray ignores its empty sockets' triggers and its mast head socket (`Robot._update_ray_exceptions`), so they never block picking things up from the mast view.
 - **Mast head, arm tool and antenna sockets.** `MastHeadSocket` (anchor `socket_mast_head` on the mast top), `ArmToolSocket` (anchor `socket_arm_tool` on the wrist, `follow_anchor = true`, so it is parented to the wrist and moves with the arm) and `AntennaSocket` (anchor `socket_antenna` on the deck) take the `MAST_HEAD`, `ARM_TOOL` and `ANTENNA` parts (`mast_head_part.tscn`, `arm_tool_part.tscn`, `antenna_part.tscn`: the kit GLB under `Model`, no stats yet). Anchors are looked up anywhere on the rover, so the mast's and arm's sockets (built by `RoverVisuals` before the `Robot` is ready) work like the chassis's. Each socket has its own `capture_size` / `capture_offset` and `trigger_size` / `trigger_offset`. A kit part adopts its GLB's `Collision` shape as its own collision (`HotswapPart._adopt_model_collision`). The mast head is not animated yet and the rover camera does not follow it.
 - **Motor and battery sockets.** They are anchored like the wheel sockets: the motor socket on `socket_motor` (the floor of the chassis's front hatch) and the battery socket on `socket_power` (rear face), with zero mount offsets. The pickups use the kit models (`motor.glb`, a drive unit that sits flush in the hatch, and `power_unit.glb`, the finned RTG-style cylinder), adopting their convex colliders; their stats are unchanged. The capture boxes sit in front of the hatch and behind the rear face.
 - **Motor.** A `MotorPart` (`socket/motor_part.gd`) carries the same values as `RobotEngine`: `stall_torque`, `no_load_speed`, `rotor_inertia` (not `inertia`, which `RigidBody3D` already has), `stall_power` and an optional `torque_curve`. When the motor socket's part changes, `Robot` calls `engine.use_motor_part(part)`, which copies the values into the `Engine` node. With the socket empty the engine goes back to its built-in values (the scene defaults). Because everything reads `engine.*` (`_step_drivetrain`, `engine_sound.gd`), torque, top speed (`~ voltage * no_load_speed / ratio * wheel radius`), rotor inertia and the motor sound follow the mounted motor automatically.

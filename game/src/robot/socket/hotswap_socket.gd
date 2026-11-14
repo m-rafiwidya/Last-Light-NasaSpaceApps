@@ -65,7 +65,9 @@ func _ready() -> void:
 	_base_material = _base.material_override
 	_capture.body_exited.connect(func(body: Node3D) -> void: _refused.erase(body))
 	_trigger.interacted.connect(_on_interact_trigger_interacted)
-	_set_trigger_enabled(false)
+	# The trigger stays on while the socket is empty too, so the crosshair can find the socket
+	# (the tooltip says what goes there); using it then does nothing
+	_set_trigger_enabled(true)
 
 
 # The shapes are shared by every socket instance, so each socket gets its own copy
@@ -74,6 +76,16 @@ func _set_box(shape_node: CollisionShape3D, size: Vector3, offset: Vector3) -> v
 	box.size = size
 	shape_node.shape = box
 	shape_node.position = offset
+
+
+## The area the player aims at to take the part out (and the crosshair finds the socket by)
+func get_trigger() -> InteractTrigger:
+	return _trigger
+
+
+## What goes in this socket, for the tooltip of an empty socket
+func get_accepted_name() -> String:
+	return "Any part" if accepts_any_type else PartCatalog.type_name(accepted_type)
 
 
 func is_occupied() -> bool:
@@ -99,7 +111,6 @@ func mount(new_part: HotswapPart) -> void:
 	new_part.reparent(_mount_point, false)
 	new_part.transform = Transform3D(Basis.IDENTITY, new_part.mount_offset)
 	_trigger.tooltip = 'Press "E" to take out ' + new_part.get_display_name()
-	_set_trigger_enabled(true)
 	part_mounted.emit(new_part)
 
 
@@ -114,7 +125,6 @@ func unmount() -> HotswapPart:
 	old_part.reparent(new_parent, true)
 	old_part.detach()
 	_trigger.tooltip = ""
-	_set_trigger_enabled(false)
 	part_unmounted.emit(old_part)
 	return old_part
 
