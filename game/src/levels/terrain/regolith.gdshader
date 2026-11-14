@@ -11,6 +11,10 @@ render_mode specular_disabled;
 //   towards grazing light, and brightens with the sun behind you), no specular. The sun (the
 //   directional light) is dimmed where the baked horizon map says terrain beyond the shadow
 //   cascades' 500 m hides it: horizon elevation per texel at 16 azimuths, the first one the sun's.
+//   Local lights (the helmet light, headlights) lit from nearly where you look from use the smooth
+//   surface normal instead of the detail normals (shadow hiding: regolith shows no relief lit from
+//   behind you); the detail normals that face away from both the light and the eye otherwise
+//   speckled the far edge of a helmet light's pool black.
 
 uniform vec3 albedo_color : source_color = vec3(0.47, 0.46, 0.44);
 uniform float albedo_variation = 0.18;
@@ -42,6 +46,8 @@ uniform float freshness_brightening = 0.35;
 
 varying vec3 world_position;
 varying float sun_visible;
+// The surface normal before the detail normals (view space), for local lights
+varying vec3 smooth_normal;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -96,6 +102,7 @@ void vertex() {
 void fragment() {
 	vec3 p = world_position;
 	vec3 world_normal = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	smooth_normal = NORMAL;
 
 	// Albedo
 	float mottle = noise2(p.xz / 120.0) * 0.5 + noise2(p.xz / 15.0) * 0.3 + noise2(p.xz / 2.0) * 0.2;
@@ -124,8 +131,13 @@ void fragment() {
 }
 
 void light() {
-	float mu0 = max(dot(NORMAL, LIGHT), 0.0);
-	float mu = max(dot(NORMAL, VIEW), 0.05);
+	vec3 n = NORMAL;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		// Smooth normal within about 2 degrees of the view direction, detail normals past 20
+		n = normalize(mix(NORMAL, smooth_normal, smoothstep(0.94, 0.9994, dot(LIGHT, VIEW))));
+	}
+	float mu0 = max(dot(n, LIGHT), 0.0);
+	float mu = max(dot(n, VIEW), 0.05);
 	// Lommel-Seeliger, scaled to match Lambert looking straight down
 	float lommel_seeliger = 2.0 * mu0 / (mu0 + mu);
 	float phase = acos(clamp(dot(LIGHT, VIEW), -1.0, 1.0));

@@ -298,7 +298,7 @@ Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Con
 
 ### 6.6 HUD (`ui/hud/`) and Robot HUD (`ui/robot_hud/`)
 
-The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`. `RobotHUD` (`robot_hud.tscn/.gd`, extends `UIScreen`) is shown only in `IN_GAME_ROBOT`: a speed readout (`Debug.current_robot.linear_velocity`) bottom-left and a controls hint bottom-right, faded with a `CanvasModulate` like the player HUD. A debug **friction circle** panel (`friction_circles.gd`, top-right) reads `Debug.current_robot` directly and draws one circle per wheel (six, in a front / middle / rear grid): the circle is the grip limit (`mu * load`), the dot is the ground force in the wheel's own (steered) frame (up = drive, down = brake, sideways = cornering), with a fading trail, a grip-used arc/percentage, a load bar and the chassis-frame velocity in the middle.
+The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`, with its own controls hint bottom-right (move, sprint, jump, crouch, look, E, throw, L: helmet light, Esc). `RobotHUD` (`robot_hud.tscn/.gd`, extends `UIScreen`) is shown only in `IN_GAME_ROBOT`: a speed readout (`Debug.current_robot.linear_velocity`) bottom-left and a controls hint bottom-right, faded with a `CanvasModulate` like the player HUD. A debug **friction circle** panel (`friction_circles.gd`, top-right) reads `Debug.current_robot` directly and draws one circle per wheel (six, in a front / middle / rear grid): the circle is the grip limit (`mu * load`), the dot is the ground force in the wheel's own (steered) frame (up = drive, down = brake, sideways = cornering), with a fading trail, a grip-used arc/percentage, a load bar and the chassis-frame velocity in the middle.
 
 - `CanvasModulate` is tweened to fade the whole HUD (alpha 0/1). Both HUDs start hidden, `show()` on `fade_in()` and `hide()` once `fade_out()` finishes; the running fade tween is killed first, so a quick out -> in can't leave the HUD hidden.
 - **Crosshair swap** (every frame): shows `crosshair.svg` normally, `interaction.svg` when `GameState.player.looking_at_object` is an `InteractTrigger` or a `RigidBody3D` (something you can use/pick up). Both hidden while `player.hide_crosshair` is true.
@@ -467,9 +467,9 @@ Lighting: no atmosphere, fog or glow; one `Sun` (energy 2, shadows) and a faint 
 
 **Shadows** (the `Sun`'s settings; project shadow settings are untouched): four cascades out to 500 m, the cameras' far plane, so everything in view of the middle of a 1 km area: 0-10, 10-40, 40-150 and 150-500 m. The first cascade covers the rover and the player at about 1 cm per texel. The directional shadow atlas stays at the project's 4096: 8192 looked the same up close, and with the headlights on it came with a 1 s stall in 2 of 4 measured runs (none in 8 runs with either change alone). Bias 0.03, normal bias 1.0 against acne on the ground at grazing light.
 
-**Frame rate** (`tools/measure_moon_fps.gd`: the rover circles at full throttle with its headlights on, 12 s each in the chase and mast views, then on foot; MacBook Pro M4, 1920x1080, Godot 4.7): with vsync on it holds the display's 120 fps (p99 frame 9-12 ms, worst 19 ms in five runs; the Moon level before this work: p99 10-14 ms, worst 18 ms); vsync off, 180-290 fps at either sun height.
+**Frame rate** (`tools/measure_moon_fps.gd`: the rover circles at full throttle with its headlights on, 12 s each in the chase and mast views, then on foot; MacBook Pro M4, 1920x1080, Godot 4.7): with vsync on it holds the display's 120 fps (p99 frame 9-12 ms, worst 19 ms in five runs; the Moon level before this work: p99 10-14 ms, worst 18 ms); vsync off, 180-290 fps at either sun height. With the helmet light too (`measure_moon_fps.gd` now also stands the player facing the parked rover, both lights in view): vsync on, a steady 120 fps in every phase, p99 9 ms, worst 18 ms, the same as with all lights off; vsync off, 139-163 fps with the lights against 170-248 without (the two shadowed light sets cost about 1.4 ms a frame), p99 10-15 ms, worst 19 ms.
 
-`tests/test_moon_sky.gd` checks the sky's orientation, the sun, exposure and Earth placement, the antennas' target in both levels and the headlight key.
+`tests/test_moon_sky.gd` checks the sky's orientation, the sun, exposure and Earth placement, the antennas' target in both levels, and in both levels the L key: the helmet light on foot, the headlights driving, each keeping its state through getting in and out, and L in both controls hints.
 
 ### Level Earth direction
 
@@ -498,10 +498,13 @@ PlayerCharacter (RigidBody3D, script player.gd)
 ├── Pivot (Node3D)        rotates around Y = yaw (azimuth)
 │   ├── Marker3D          hidden, offset "look at map" marker (legacy)
 │   └── Camera3D          y=1.5, FOV 90, near 0.001, far 500, rotates around X = pitch
-│       └── RayCast3D     3 m forward, collides with areas, mask 53
+│       ├── RayCast3D     3 m forward, collides with areas, mask 53
+│       └── HelmetLight   SpotLight3D 12 cm above the eyes, aimed with the view: 34 degree cone, 25 m range, energy 1.5, soft edge (angle attenuation 0.3), shadows; hidden = off
 ├── AudioStreamPlayer3D   (unused)
 └── CrouchCheck (RayCast3D)  upward 1.95 m, detects low ceilings
 ```
+
+**Helmet light:** `L` (the `lights` action, the rover's headlights while driving: L means lights in both modes) toggles `Player.helmet_light_on` on foot (`PlayerController.lights_toggle`). It starts off in each level, and the player keeps it as it is while driving a rover (the player stays standing in the world), so it is the same after getting in and out; the rover's headlights keep their own state the same way. Tuned on the floor of the Moon's permanently shadowed crater (`tools/render_helmet_light.gd`, previews in `tools/previews/helmet_light/`): a wheel, a motor and a battery on the ground 2.5-8 m ahead, invisible without it (screen brightness 0.005-0.08), stand out dark against ground lit to 0.27-0.47 (energy 4 clipped the near ground to white). Local lights lit from where you look from use the regolith's smooth normal (`regolith.gdshader`, shadow hiding), since its detail normals speckled the far edge of the pool black.
 
 Body settings: mass 50, all angular axes locked (never tips over), friction 0 physics material (friction is done manually), `can_sleep = false`, continuous CD, contact monitor on (16 contacts reported - needed for floor detection).
 
@@ -649,11 +652,11 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `camera_next` | C (robot: next camera view) |
-| `rover_lights` | L (robot: headlights on / off) |
+| `lights` | L (on foot: helmet light on / off; robot: headlights on / off) |
 | `camera_zoom_in` / `camera_zoom_out` | Mouse wheel up / down, `=` / `-` (robot: mast camera zoom; trackpad scroll and pinch are handled in code, see 15.4) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
 
-The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. Its own actions: `arm_toggle`, `arm_joint_1`..`5`, `arm_rotate_down` / `_up`, `robot_reset`, `camera_next`, `camera_zoom_in` / `_out` and `rover_lights`.
+The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. Its own actions: `arm_toggle`, `arm_joint_1`..`5`, `arm_rotate_down` / `_up`, `robot_reset`, `camera_next`, `camera_zoom_in` / `_out`, and it shares `lights` (headlights; the player's helmet light on foot).
 
 ### Collision layers (bit value in parentheses)
 
@@ -773,7 +776,7 @@ Place a `RobotController` node and a `robot.tscn` instance in the level (assign 
 
 Files: `src/robot/robot.tscn`, `robot.gd` (`class_name Robot`), `robot_controller.gd` (`class_name RobotController`), `components/engine.gd` (`RobotEngine`, a brushed DC motor model), `components/running_gear.gd` (`RunningGear`), `components/engine_sound.gd` (procedural motor sound). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
 
-**Status:** rovers are placed manually in a level, each with its own `RobotController`. `GameState.robot` is the rover being driven: `GameState.drive(rover)` sets it and enters `IN_GAME_ROBOT` (Esc leaves). Only that rover's controller takes input, only it takes the camera (and gives it back to the player on leaving) and sets `Debug.current_robot`, which the robot HUD reads; `SceneLoader` clears `GameState.robot` on level unload. A parked rover ignores input and rolls to a stop. `Robot.start_assembled` mounts a full set of new parts when the rover is ready. `F` (`robot_reset`) puts the driven rover upright where it is, facing the way it faced, 0.25 m above the ground under it, at rest. `L` (`rover_lights`) switches the driven rover's headlights on and off (`Robot.headlights_on`; they start off).
+**Status:** rovers are placed manually in a level, each with its own `RobotController`. `GameState.robot` is the rover being driven: `GameState.drive(rover)` sets it and enters `IN_GAME_ROBOT` (Esc leaves). Only that rover's controller takes input, only it takes the camera (and gives it back to the player on leaving) and sets `Debug.current_robot`, which the robot HUD reads; `SceneLoader` clears `GameState.robot` on level unload. A parked rover ignores input and rolls to a stop. `Robot.start_assembled` mounts a full set of new parts when the rover is ready. `F` (`robot_reset`) puts the driven rover upright where it is, facing the way it faced, 0.25 m above the ground under it, at rest. `L` (`lights`) switches the driven rover's headlights on and off (`Robot.headlights_on`; they start off; on foot the same key is the player's helmet light, 8.2).
 
 **Test level:** two rovers. `ReadyRover` (`start_assembled`, sign "Ready to drive") and `BareRover` (nothing mounted, sign "Build it yourself"), each with its own "Drive Robot" trigger. `PartsPile` next to the bare rover holds a full build (six wheels, motor, battery, mast camera, antenna, tool turret) plus four high-grip wheels; the "Respawn parts" trigger clears the loose pile parts (mounted parts stay, a held one is released first) and lays out a fresh pile as recorded when the level started.
 

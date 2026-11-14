@@ -29,6 +29,16 @@ const STEP_SIZE_SPRINT: float = 1.0
 @export var raycast: RayCast3D
 @export var viewmodel_controller: Node3D
 @export var controller: PlayerController
+## A spotlight on the helmet, above the eyes, aimed with the view (hidden = off); L toggles it
+## on foot. The player keeps it as it is while driving a rover (L then works the headlights).
+@export var helmet_light: SpotLight3D
+
+## True while the helmet light is on
+var helmet_light_on: bool = false:
+	set(value):
+		helmet_light_on = value
+		if helmet_light:
+			helmet_light.visible = value
 
 # Object pickup (shared with the robot, see ObjectHolder)
 var looking_at_object: Node3D = null
@@ -154,6 +164,8 @@ func _ready() -> void:
 	controller.interact.connect(_on_controller_interact)
 	controller.primary.connect(_on_controller_primary)
 	controller.secondary.connect(_on_controller_secondary)
+	controller.lights_toggle.connect(func() -> void: helmet_light_on = not helmet_light_on)
+	helmet_light_on = helmet_light_on
 
 
 # Controller signals

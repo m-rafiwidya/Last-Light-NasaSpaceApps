@@ -55,6 +55,17 @@ layout_mode = 2
 text = "This is a super long text ahahahahaha hahahahahaha hahahahahaha hahahahaha hahahahaha hahahaha hahahahah"
 fit_content = true
 
+[node name="Hint" type="Label" parent="MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+mouse_filter = 2
+theme_override_font_sizes/font_size = 24
+text = "WASD: move   Shift: sprint   Space: jump   Ctrl: crouch   Mouse: look
+E: use / pick up / drop   LMB: throw   L: helmet light   Esc: pause"
+horizontal_alignment = 2
+
 [node name="DialogBoxContainer" type="PanelContainer" parent="." unique_id=1663830133]
 anchors_preset = 12
 anchor_top = 1.0

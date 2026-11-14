@@ -1,7 +1,8 @@
 extends SceneTree
 ## Measures the Moon level's frame rate in a window: the rover drives a full-throttle circle
 ## with its headlights on, SECONDS each in the chase and the mast view, then the player walks
-## on foot. Prints per phase the mean frame rate and the 99th percentile and worst frame times.
+## on foot with the helmet light on, then stands facing the parked rover, its headlights and the
+## helmet light both in view (the player's helmet light is on throughout). Prints per phase the mean frame rate and the 99th percentile and worst frame times.
 ## Vsync is off unless `vsync` is given, so the numbers show the headroom.
 ##
 ##     Godot --path game -s res://tools/measure_moon_fps.gd --resolution 1920x1080
@@ -34,6 +35,7 @@ func _run() -> void:
 	# not drive, leave the rover or pause the game. Input.action_press still works.
 	for action in InputMap.get_actions():
 		InputMap.action_erase_events(action)
+	DisplayServer.window_move_to_foreground()
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if args.has("vsync") else DisplayServer.VSYNC_DISABLED)
 
 	while GS.state != GS.State.MAIN_MENU:
@@ -49,14 +51,16 @@ func _run() -> void:
 		RenderingServer.directional_shadow_atlas_set_size(int(args["atlas"]), true)
 	if args.has("quality"):
 		RenderingServer.directional_soft_shadow_filter_set_quality(int(args["quality"]))
-	print("SETUP %s, sun %s deg, vsync %s, atlas %s, soft shadow quality %s, %s" % [
-		RenderingServer.get_video_adapter_name(), sky.get("sun_elevation"), args.has("vsync"),
+	print("SETUP %s, %.0f Hz screen, sun %s deg, vsync %s, atlas %s, soft shadow quality %s, %s" % [
+		RenderingServer.get_video_adapter_name(), DisplayServer.screen_get_refresh_rate(), sky.get("sun_elevation"), args.has("vsync"),
 		args.get("atlas", "default"), args.get("quality", "default"), "lights off" if args.get("lights") == "off" else "lights on"])
 
 	var rover: Node = level.get_node("ReadyRover")
 	GS.drive(rover)
 	if "headlights_on" in rover:
 		rover.headlights_on = args.get("lights") != "off"
+	if "helmet_light_on" in GS.player:
+		GS.player.helmet_light_on = args.get("lights") != "off"
 	Input.action_press("move_forward")
 	Input.action_press("move_left", 0.6)
 	var rig: Node = rover.get_node("CameraRig")
@@ -71,6 +75,16 @@ func _run() -> void:
 	Input.action_press("move_forward")
 	await _measure("player on foot")
 	Input.action_release("move_forward")
+
+	# 4 m in front of the parked rover, looking at it and the ground its headlights light
+	var player: Node = GS.player
+	var rover_forward: Vector3 = -rover.global_basis.z
+	rover_forward = Vector3(rover_forward.x, 0.0, rover_forward.z).normalized()
+	player.global_position = rover.global_position + rover_forward * 4.0 + Vector3.UP * 0.5
+	player.linear_velocity = Vector3.ZERO
+	player.controller.camera_azimuth = atan2(rover_forward.x, rover_forward.z)
+	player.controller.camera_altitude = deg_to_rad(-15.0)
+	await _measure("player facing the rover, both lights")
 	quit()
 
 

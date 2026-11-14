@@ -23,7 +23,7 @@ signal reset_requested
 signal zoom(steps: float)
 ## C: next camera view (press only)
 signal camera_next
-## L: headlights on / off (press only)
+## L (the `lights` action, the player's helmet light on foot): headlights on / off (press only)
 signal lights_toggle
 
 ## The Robot this controller drives (set by the Robot)
@@ -137,7 +137,7 @@ func _physics_process(delta: float) -> void:
 			reset_requested.emit()
 		if Input.is_action_just_pressed("camera_next"):
 			camera_next.emit()
-		if Input.is_action_just_pressed("rover_lights"):
+		if Input.is_action_just_pressed("lights"):
 			lights_toggle.emit()
 		for joint in range(1, 6):
 			if Input.is_action_just_pressed("arm_joint_%d" % joint):

@@ -7,6 +7,8 @@ signal crouch(value: bool)
 signal interact(value: bool)
 signal primary(value: bool)
 signal secondary(value: bool)
+## L (the `lights` action, the rover's headlights while driving): helmet light on / off
+signal lights_toggle
 
 
 const SENS: float = 20.8 / 2.0
@@ -113,6 +115,9 @@ func _physics_process(_delta: float) -> void:
 	elif Input.is_action_just_released("interact_primary"):
 		primary.emit(false)
 	
+	if Input.is_action_just_pressed("lights"):
+		lights_toggle.emit()
+
 	if Input.is_action_just_pressed("interact_secondary"):
 		secondary.emit(true)
 	elif Input.is_action_just_released("interact_secondary"):

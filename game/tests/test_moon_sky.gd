@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless test: the Moon level's sky, sun and Earth, the antenna target as a level setting,
-## and the rover headlights.
+## and the lights.
 ##   1. Sky orientation (LunarSky.world_to_equatorial): the south ecliptic pole is straight up,
 ##      Canopus (14 degrees from it) is 75.8 degrees up, the ecliptic (where the sun and Earth
 ##      are) runs along the horizon, and Earth's north pole points below the horizon.
@@ -10,8 +10,10 @@ extends SceneTree
 ##      base, lit to the phase its angle to the sun gives.
 ##   3. The assembled rover's high-gain antenna points at the level's Earth: the Moon's, low
 ##      over the horizon; the test level keeps the old fixed direction 35 degrees up.
-##   4. L (the rover_lights action, sent as a real key event) toggles the driven rover's
-##      headlights; on foot it does nothing.
+##   4. In both levels, L (the `lights` action, sent as real key events) toggles the player's
+##      helmet light on foot (a shadowed spotlight on the head, aimed with the view) and the driven
+##      rover's headlights while driving, each keeping its state while the other mode is used
+##      (getting in and out of the rover); the on-foot and the rover controls hints show L.
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_moon_sky.gd
@@ -76,12 +78,13 @@ func _run() -> void:
 	var sky: Node = moon.get_node("WorldEnvironment")
 	_check_sky(sky, moon)
 	await _check_antenna("Moon", moon, moon.earth_direction)
-	await _check_headlights(moon)
+	await _check_lights("Moon", moon)
 
 	var test_level: Node = await _load("test_level")
 	_check("test level: Earth direction is the old fixed one",
 		test_level.earth_direction.is_equal_approx(TEST_LEVEL_EARTH), str(test_level.earth_direction))
 	await _check_antenna("test level", test_level, TEST_LEVEL_EARTH.normalized())
+	await _check_lights("test level", test_level)
 
 	print("DONE %d failures" % failures)
 	quit(1 if failures else 0)
@@ -152,23 +155,54 @@ func _check_antenna(tag: String, level: Node, earth: Vector3) -> void:
 		"%.2f deg off, Earth %.1f deg up" % [error, _elevation(earth)])
 
 
-func _check_headlights(level: Node) -> void:
+# L (the `lights` action, real key events) in `level`, tagged `tag`: on foot the player's helmet
+# light, driving the rover's headlights; each keeps its state while the other mode is in use
+func _check_lights(tag: String, level: Node) -> void:
 	var rover: Node = level.get_node("ReadyRover")
 	var lights: Node3D = rover.headlights
-	_check("headlights start off", not lights.visible)
+	var player: Node = GS.player
+	var helmet: SpotLight3D = player.helmet_light
+	var hud_hint := root.get_node("Main/UIManager/HUD").find_child("Hint", true, false) as Label
+	var rover_hint := root.get_node("Main/UIManager/RobotHUD").find_child("Hint", true, false) as Label
+	_check(tag + ": helmet light and headlights start off", not helmet.visible and not lights.visible)
+	_check(tag + ": the on-foot hint shows L", hud_hint != null and hud_hint.is_visible_in_tree() and "L: helmet light" in hud_hint.text)
+
+	# On foot
 	await _key(KEY_L)
-	_check("L on foot leaves them off", not lights.visible)
+	_check(tag + ": L on foot turns the helmet light on", helmet.visible and player.helmet_light_on)
+	_check(tag + ": ... and leaves the headlights off", not lights.visible)
+	var view: Vector3 = -player.camera.global_basis.z
+	_check(tag + ": a shadowed spotlight on the head, aimed with the view",
+		helmet.shadow_enabled and (-helmet.global_basis.z).angle_to(view) < deg_to_rad(2.0)
+		and helmet.global_position.distance_to(player.camera.global_position) < 0.3,
+		"%.1f deg off the view, %.2f m from the eyes" % [rad_to_deg((-helmet.global_basis.z).angle_to(view)), helmet.global_position.distance_to(player.camera.global_position)])
+
+	# Driving
 	GS.drive(rover)
 	await _ticks(0.2)
+	_check(tag + ": the rover hint shows L", rover_hint != null and rover_hint.is_visible_in_tree() and "L: headlights" in rover_hint.text)
 	await _key(KEY_L)
-	_check("L while driving turns them on", lights.visible and rover.headlights_on)
+	_check(tag + ": L while driving turns the headlights on", lights.visible and rover.headlights_on)
+	_check(tag + ": ... and leaves the helmet light as it was (on)", helmet.visible)
 	var spots: Array = lights.find_children("*", "SpotLight3D", true, false)
 	var forward: Vector3 = -rover.global_basis.z
 	var aimed: bool = spots.size() == 2
 	for spot in spots:
 		aimed = aimed and (-spot.global_basis.z).angle_to(forward) < deg_to_rad(15.0) and spot.shadow_enabled
-	_check("two shadowed spotlights aimed ahead", aimed, "%d spots" % spots.size())
+	_check(tag + ": two shadowed headlights aimed ahead", aimed, "%d spots" % spots.size())
 	await _key(KEY_L)
-	_check("L again turns them off", not lights.visible and not rover.headlights_on)
+	_check(tag + ": L again turns the headlights off", not lights.visible and not rover.headlights_on and helmet.visible)
+
+	# Out of the rover and back in: each light keeps its state
+	await _key(KEY_L)
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.2)
+	_check(tag + ": out of the rover, the helmet light is still on", helmet.visible and player.helmet_light_on)
+	await _key(KEY_L)
+	_check(tag + ": L on foot turns it off, the headlights stay on", not helmet.visible and lights.visible)
+	GS.drive(rover)
+	await _ticks(0.2)
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	await _ticks(0.2)
+	_check(tag + ": in and out again, the helmet light is still off", not helmet.visible and not player.helmet_light_on)
+	rover.headlights_on = false
