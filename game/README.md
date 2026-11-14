@@ -547,6 +547,8 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_primary` | Left mouse (throw held object) |
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
+| `camera_next` | C (robot: next camera view) |
+| `camera_zoom_in` / `camera_zoom_out` | Mouse wheel up / down, `=` / `-` (robot: mast camera zoom; trackpad scroll and pinch are handled in code, see 15.4) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
 
 The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. It has no robot-only actions.
@@ -753,7 +755,13 @@ The robot has a single **first-person camera on the mast head**. `Pivot` -> `Cam
 - **Arm tool:** just outside the tool turret's camera lens, looking along it (turns with the arm and J5), FOV 60 (needs a tool turret).
 If the current view's part is taken out (or the rover starts without it), the view falls back to Chase. Picking up, holding and throwing aim with the mast camera, so they only work in the mast view (switching away drops a held prop; the crosshair only shows there). Checked headless: no view's camera is ever inside rover geometry, the mast view never shows the head and the tool view never shows its own turret. `RobotHUD` shows the current view's name as its top line ("VIEW  Mast camera", plus the zoom factor when zoomed in).
 
-**Zoom:** the mouse wheel (`camera_zoom_in` / `camera_zoom_out`, buttons 4 / 5) narrows / widens the mast camera's vertical field of view (mast view only) by 20% per notch, between 90 degrees (no zoom) and 20 degrees (5.7x), easing towards the target; mouse look sensitivity scales with it (`RobotController.look_scale`).
+**Zoom:** narrows / widens the mast camera's vertical field of view (mast view only) by 20% per step, between 90 degrees (no zoom) and 20 degrees (5.7x), easing towards the target; mouse look sensitivity scales with it (`RobotController.look_scale`). `RobotController` turns every zoom input into steps (the `zoom` signal, fractional steps allowed):
+- mouse wheel (`camera_zoom_in` / `camera_zoom_out`, buttons 4 / 5): one step per notch (`event.factor` is ignored, on macOS it includes scroll acceleration);
+- trackpad two-finger scroll: macOS sends precise scrolling as `InputEventPanGesture`, not wheel buttons; 0.5 steps per unit of `delta.y` (about 0.03 per pixel scrolled), the same direction as the wheel;
+- trackpad pinch (`InputEventMagnifyGesture`): 4.5 steps per natural log of `factor`, so spreading the fingers to twice their distance zooms about 2x;
+- `=` / `-` (keys on the same two actions), held: 4 steps per second, polled in `_physics_process`.
+
+Godot 4.7 dispatches each gesture event twice (two event objects, same frame, also for `Input.parse_input_event`), so the controller drops a gesture equal to the previous one in the same frame. Zoom input in any other view changes nothing and records `RoverCamera.zoom_refused_age`; `RobotHUD` then shows "No zoom on the ...: only the mast camera zooms (C to switch)" (or "zooming needs a mast camera" without one) below the crosshair for 1.8 s.
 
 With the full +-90 degrees the pickup ray reaches the ground right in front of the rover again (a prop 0.6 m in front of the camera, just past the front wheels, can be picked up).
 
@@ -767,6 +775,8 @@ The camera is **not** `current` in the scene: `Robot` listens to `GameState.stat
 The robot is on layers 2 and 3 (collision_layer 6) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The wheels' ground check hits layers 1 and 3 (world and props), so the rover drives over the see-saw plank and crates. Each wheel also has a **bump stop**: a wheel-sized collision cylinder on the rover body (`WheelBumpStop<n>`, added by `Robot._add_wheel_bump_stops`), at the top of the wheel's travel (centred `RunningGear.suspension_top`, 0.30 m, above its attachment point). The ground check finds anything lower than that from above, so the stops only meet faces taller than the wheel can reach and keep the wheels out of them; they never touch during normal suspension travel. (At 0.12 m they hit the foot of the ramp whenever the front suspension compressed 7 cm, costing a run-up a quarter of its speed.) Mass, centre of mass and inertia are set explicitly, so the extra shapes don't change them.
 
 **Test:** `tests/test_wheel_contact.gd` drives the assembled rover onto the ramp (up the slope, a climb with a 3 m run-up, a climb from a standstill, and onto its side edge with the left wheels), over a 20 cm kerb and across the low end of the tipped see-saw, and checks every wheel: every physics tick, none reported airborne while within 5 mm of standing on something and none in contact while inside the terrain; every frame, after the visuals, no wheel mesh more than 1 cm into the ground. The run-up climb must reach the top with nothing on the body touching the ramp. The standstill climb only reports how high it gets: at 9.8 m/s^2 the 26.6 degree ramp needs 363 N and the six motors give 357 N at stall, so it stalls at about 1.3 m of 3. Run it with `<godot> --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd` (prints `RESULT ... PASS / FAIL` per scenario).
+
+`tests/test_camera_zoom.gd` sends wheel, pan, pinch and key events through `Input.parse_input_event` while driving, and checks the mast zoom steps, the limits, that the hazard view doesn't zoom and that the HUD hint shows and goes away.
 
 ### 15.6 Recipe: spawn the robot in a new place
 Instance `robot.tscn` in the level and set its `transform`. The origin is the robot's centre and `RunningGear` ride height is 0.15 m, so leave a bit of height above the ground. Add a `RobotController` node and assign it to the robot's `controller` export in the scene (it must be set before `Robot._ready()`, which scene instancing does).

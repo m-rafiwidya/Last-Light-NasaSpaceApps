@@ -4,6 +4,11 @@ extends UIScreen
 ## The player HUD (crosshair, subtitles) is shown in IN_GAME_PLAYER instead.
 
 
+# How long the "no zoom here" hint stays up after a zoom input in a view without zoom, and
+# how long it takes to fade out at the end
+const ZOOM_HINT_TIME: float = 1.8
+const ZOOM_HINT_FADE: float = 0.4
+
 var fade_tween: Tween = null
 
 
@@ -27,6 +32,7 @@ func _process(_delta: float) -> void:
 		_update_view_label(Debug.current_robot)
 	else:
 		%View.text = "VIEW  --"
+		%ZoomHint.hide()
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
 		%Arm.text = "ARM  --"
@@ -52,11 +58,27 @@ func _update_view_label(robot: Robot) -> void:
 	var rig := robot.get_node_or_null("CameraRig") as RoverCamera
 	if rig == null:
 		%View.text = "VIEW  --"
+		%ZoomHint.hide()
 		return
+	_update_zoom_hint(rig)
 	var text: String = "VIEW  " + rig.view_name()
 	if rig.view == RoverCamera.View.MAST and rig.mast_zoom() > 1.05:
 		text += "  %.1fx" % rig.mast_zoom()
 	%View.text = text
+
+
+# Shown for a moment after a zoom input in a view that has no zoom
+func _update_zoom_hint(rig: RoverCamera) -> void:
+	var age: float = rig.zoom_refused_age
+	if age > ZOOM_HINT_TIME or rig.view == RoverCamera.View.MAST:
+		%ZoomHint.hide()
+		return
+	if rig.is_available(RoverCamera.View.MAST):
+		%ZoomHint.text = "No zoom on the %s: only the mast camera zooms (C to switch)" % rig.view_name().to_lower()
+	else:
+		%ZoomHint.text = "No zoom on the %s: zooming needs a mast camera" % rig.view_name().to_lower()
+	%ZoomHint.modulate.a = clampf((ZOOM_HINT_TIME - age) / ZOOM_HINT_FADE, 0.0, 1.0)
+	%ZoomHint.show()
 
 
 func _update_arm_label(robot: Robot) -> void:

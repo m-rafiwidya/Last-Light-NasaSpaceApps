@@ -7,7 +7,8 @@ extends Node
 ## Runs after RoverVisuals, which poses the mast head and arm first.
 ##   CHASE      behind and above the rover, following its heading; mouse look orbits it
 ##   MAST       on the mast head (needs a mast camera): mouse look pans / tilts the head and
-##              pitches the camera to +-90 degrees, the wheel zooms
+##              pitches the camera to +-90 degrees; the only view that zooms (wheel, trackpad
+##              scroll / pinch, = / -)
 ##   HAZ_FRONT  between the front hazard camera pair under the chassis, looking out and down
 ##   HAZ_REAR   the same at the rear
 ##   TOOL       on the tool turret's camera (needs a tool turret), looking out of its lens
@@ -18,7 +19,7 @@ const VIEW_NAMES: Array[String] = ["Chase camera", "Mast camera", "Front hazard 
 	"Rear hazard camera", "Arm tool camera"]
 
 # Mast camera zoom: vertical field of view from MAST_FOV_MAX (no zoom) down to MAST_FOV_MIN
-# (5.7x magnification), changed by MAST_ZOOM_STEP per wheel notch and eased towards
+# (5.7x magnification), scaled by MAST_ZOOM_STEP per wheel notch and eased towards
 const MAST_FOV_MAX: float = 90.0
 const MAST_FOV_MIN: float = 20.0
 const MAST_ZOOM_STEP: float = 0.8
@@ -56,6 +57,8 @@ var view: View = View.MAST
 ## Mast camera field of view (degrees): where it is easing to, and now
 var mast_fov_target: float = MAST_FOV_MAX
 var mast_fov: float = MAST_FOV_MAX
+## Seconds (game time) since the last zoom input in a view without zoom, for the HUD's hint
+var zoom_refused_age: float = INF
 
 var _look: Dictionary = {}           # View -> Vector2(azimuth, altitude) while not current
 var _chase_heading: float = 0.0
@@ -116,12 +119,15 @@ func _switch(new_view: View) -> void:
 		robot.holder.release()
 
 
-func _on_zoom(steps: int) -> void:
+func _on_zoom(steps: float) -> void:
 	if view == View.MAST:
 		mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, MAST_FOV_MAX)
+	else:
+		zoom_refused_age = 0.0
 
 
 func _physics_process(delta: float) -> void:
+	zoom_refused_age += delta
 	if not is_available(view):
 		# The mast camera or tool turret was taken out (or never mounted): the chase view
 		# always works and shows the whole rover

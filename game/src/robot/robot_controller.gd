@@ -18,8 +18,9 @@ signal primary(value: bool)
 signal arm_toggle
 ## F: put the rover back upright where it is (press only)
 signal reset_requested
-## Mouse wheel: +1 per notch zooming in, -1 zooming out
-signal zoom(steps: int)
+## Zoom, in wheel notches: + zooms in, - out. Fractional for trackpad scroll / pinch and the
+## held zoom keys (see _unhandled_input / _physics_process)
+signal zoom(steps: float)
 ## C: next camera view (press only)
 signal camera_next
 
@@ -47,10 +48,22 @@ var arm_joint: int = 2
 ## -1 (Z, lower) .. 1 (X, raise) while held, 0 otherwise
 var arm_rotate: float = 0.0
 
+## Trackpad two-finger scroll: notches per unit of InputEventPanGesture.delta (macOS sends
+## precise scrolling as pan gestures, about 0.03 per pixel scrolled, not as wheel buttons)
+var pan_zoom_steps: float = 0.5
+## Trackpad pinch: notches per natural log of the InputEventMagnifyGesture factor
+## (4.5 = 1 / -ln(0.8): spreading the fingers to twice their distance zooms about 2x)
+var pinch_zoom_steps: float = 4.5
+## Zoom keys (= / -) held: notches per second
+var key_zoom_rate: float = 4.0
+
 var steer_speed: float = 2.0
 var desired_speed_rate: float = 2.0
 
 var was_input_enabled: bool = false
+# The last trackpad gesture (type, value, frame): Godot 4.7 dispatches each gesture event
+# twice, so a repeat within the same frame is dropped
+var _last_gesture: Array = []
 
 
 func is_input_enabled() -> bool:
@@ -67,10 +80,28 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y) * look_scale, -altitude_limit, altitude_limit)
 		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x) * look_scale, 2.0 * PI)
-	elif event.is_action_pressed("camera_zoom_in"):
-		zoom.emit(1)
-	elif event.is_action_pressed("camera_zoom_out"):
-		zoom.emit(-1)
+	elif event is InputEventMouseButton and event.pressed:
+		# One step per wheel notch (not event.factor: on macOS it includes scroll acceleration)
+		if event.is_action("camera_zoom_in"):
+			zoom.emit(1.0)
+		elif event.is_action("camera_zoom_out"):
+			zoom.emit(-1.0)
+	elif event is InputEventPanGesture:
+		# Two-finger scroll, same direction as the wheel: scrolling up (delta.y < 0) zooms in
+		if event.delta.y != 0.0 and _is_new_gesture(event, event.delta):
+			zoom.emit(-event.delta.y * pan_zoom_steps)
+	elif event is InputEventMagnifyGesture:
+		# Pinch: spreading the fingers (factor > 1) zooms in
+		if event.factor > 0.0 and _is_new_gesture(event, event.factor):
+			zoom.emit(log(event.factor) * pinch_zoom_steps)
+
+
+func _is_new_gesture(event: InputEventGesture, value: Variant) -> bool:
+	var gesture: Array = [event.get_class(), value, Engine.get_process_frames()]
+	if gesture == _last_gesture:
+		return false
+	_last_gesture = gesture
+	return true
 
 
 func _physics_process(delta: float) -> void:
@@ -108,6 +139,11 @@ func _physics_process(delta: float) -> void:
 			if Input.is_action_just_pressed("arm_joint_%d" % joint):
 				arm_joint = joint
 		arm_rotate = Input.get_axis("arm_rotate_down", "arm_rotate_up")
+		# The zoom keys zoom smoothly while held (the actions' wheel buttons are handled as
+		# notches in _unhandled_input; a wheel press is released again before this poll)
+		var key_zoom: float = Input.get_axis("camera_zoom_out", "camera_zoom_in")
+		if key_zoom != 0.0:
+			zoom.emit(key_zoom * key_zoom_rate * delta)
 	else:
 		arm_rotate = 0.0
 		# While locked only let releases through; presses are ignored.

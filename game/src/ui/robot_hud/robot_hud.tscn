@@ -84,7 +84,27 @@ size_flags_vertical = 8
 theme_override_font_sizes/font_size = 24
 text = "WASD: drive   Mouse: look   E: pick up / drop   LMB: throw   Esc: exit robot
 R: deploy / stow arm   1-5: arm joint   Z / X: move joint   F: reset upright
-C: camera view   Wheel: zoom (mast camera)"
+C: camera view   Wheel / two-finger scroll / pinch / = -: zoom (mast camera)"
+
+[node name="ZoomHint" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -600.0
+offset_top = 80.0
+offset_right = 600.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+theme_override_font_sizes/font_size = 28
+text = "No zoom in this view"
+horizontal_alignment = 1
 
 [node name="PartTooltip" type="PanelContainer" parent="." unique_id=1203948640]
 unique_name_in_owner = true
