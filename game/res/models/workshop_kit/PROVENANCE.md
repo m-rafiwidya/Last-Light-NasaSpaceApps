@@ -11,6 +11,7 @@ assets. Sources: `tools/blender/parts/workshop/<asset>.blend`.
 | `ws_rack` | `make_rack.py` |
 | `ws_console` (with `console_screen`) | `make_console.py` |
 | `ws_marker_post`, `ws_sign_route`, `ws_sign_base`, `ws_sign_heritage`, `ws_floor_chevron`, `ws_floor_stripe`, `ws_door_sign` | `make_markers.py` |
+| `ws_suit_stand`, `ws_stool` (for the astronaut, `tools/blender/ASTRONAUT_KIT.md`) | `make_suit_props.py` |
 | `ws_layout` (empties only) | `make_layout.py` |
 
 Scale and collision were reviewed by the generators' own checks (dimensions, clearances, the

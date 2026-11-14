@@ -75,6 +75,19 @@ LABEL_RAIL = 0.14
 CHARGER_ORIGIN = Vector((PARTITION_X - PARTITION_THICKNESS / 2.0, 3.1, 0.0))
 CONSOLE_ORIGIN = Vector((PARTITION_X + PARTITION_THICKNESS / 2.0, -0.3, 0.0))
 SPAWN = Vector((3.8, 2.0, 0.0))
+# Astronaut (ASTRONAUT_KIT.md 7). The counter stool at the console, where the seated operator is
+# shown while the console drives the rover (its centre on the floor), and the empty suit's stand
+# in the operator area's south-east corner (the middle of its back edge on the wall face) with
+# the point where the suit's origin goes
+SEAT = Vector((3.22, -0.30, 0.0))
+STOOL_SEAT_TOP = 0.62
+STOOL_SEAT_RADIUS = 0.19
+STOOL_RING_TOP = 0.21
+STOOL_RING_RADIUS = 0.20
+SUIT_STAND = Vector((4.0, -INNER_Y, 0.0))
+SUIT_STAND_PLATE = 0.03
+SUIT_ON_STAND = Vector((4.0, -3.33, SUIT_STAND_PLATE + 0.002))   # boots 2 mm over the plate, backpack on the clamp
+SUIT_STAND_SHELF = 1.83                # the helmet shelf's top
 
 # Rover (WORKSHOP_KIT.md 2.1), origin at its physics origin, facing +Y
 ROVER_HALF_WIDTH = 0.628

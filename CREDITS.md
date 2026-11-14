@@ -14,6 +14,11 @@ third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
 this project's scripts from its own rover kit; nothing third-party
 (`game/res/models/kite_kit/PROVENANCE.md`).
 
+## Astronaut kit
+
+`game/res/models/astronaut_kit/`: original, made by this project's scripts; nothing
+third-party (`game/res/models/astronaut_kit/PROVENANCE.md`).
+
 ## Star map
 
 `game/res/textures/sky/starmap_2020_4k.exr`: the Moon level's sky.

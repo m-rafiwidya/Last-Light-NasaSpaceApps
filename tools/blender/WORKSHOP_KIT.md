@@ -64,6 +64,14 @@ wins:
 - **Frame rate** (MacBook Pro M4, 1920 x 1080, vsync off, `measure_moon_fps.gd`): standing in the
   bay facing the docked rover 148.6 fps (6.73 ms), against 164.6 fps (6.08 ms) facing the rover
   outside in the same run: +0.65 ms. p99 14.5 ms (14.6-18.1 ms in the other phases of that run).
+- **Astronaut** (`ASTRONAUT_KIT.md`, 2026-10-10):
+  - `ws_suit_stand` (122 triangles), with the empty suit, in the operator area's south-east
+    corner: origin (4.0, -3.8), collision x 3.55 to 4.45, y -3.80 to -3.00.
+  - `anchor_seat` (3.22, -0.30) in `ws_layout`, for `ws_stool` (172) and the seated operator,
+    which `Workshop` shows only while the console drives the rover. Neither has collision.
+  - The layout now has 103 part instances and 6,914 triangles.
+  - The walkway and reach checks are unchanged, plus "walking past the suit stand" (0.18 m
+    clear).
 - **p99 frame times are not a workshop regression.** Measured back to back, three runs each,
   alternating with the commit before the workshop (8761955): in the runs that kept the window's
   focus the old commit's p99 was 12.5-18.0 ms against 10.1-17.3 ms now, phase for phase; the
