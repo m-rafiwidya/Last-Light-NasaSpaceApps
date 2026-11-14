@@ -64,6 +64,9 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 ## take-off speed follows from it, so the time in the air grows as gravity drops (0.8 m:
 ## 0.8 s on Earth; the Moon's 1.2 m: 2.4 s).
 var jump_height: float = JUMP_HEIGHT
+## Ground friction coefficient (stopping and turning on foot decelerate at gravity * this);
+## the level sets it (SceneLoader). The Moon raises it so a walk still stops within a metre.
+var ground_friction: float = FRICTION
 
 
 var want_to_crouch: bool = false
@@ -242,14 +245,14 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var target_speed: float = move_direction.length() * speed
 		var excess: Vector3 = relative_velocity - clampf(relative_velocity.dot(move_dir_unit), 0.0, target_speed) * move_dir_unit
 		excess.y = 0.0
-		var friction_dv: float = gravity * FRICTION * state.step
+		var friction_dv: float = gravity * ground_friction * state.step
 
 		if excess.length() <= friction_dv:
 			# Friction can stop the excess within this step (static)
 			state.apply_central_impulse(-excess * mass)
 		else:
 			# Kinetic
-			state.apply_central_force(-excess.normalized() * gravity * FRICTION * mass)
+			state.apply_central_force(-excess.normalized() * gravity * ground_friction * mass)
 
 		# Compensation force on slope
 		var rotation_axis: Vector3 = normal.cross(Vector3.UP)

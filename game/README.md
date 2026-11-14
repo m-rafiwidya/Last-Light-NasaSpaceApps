@@ -392,7 +392,7 @@ Placeholders until the real terrain, sky and base exist: a flat 512x512 m `Groun
 
 ### Level gravity
 
-Each level has its own gravity: `RoverLevel.gravity` (m/s^2, default 9.8, the project's `physics/3d/default_gravity`; the Moon sets 1.62). `SceneLoader._apply_level_gravity` sets it on the world's physics space as every level loads (a level without a `gravity` property, e.g. the menu backdrop's, gets the project default), so no level inherits the previous one's. Every rigid body falls with it; scripts read it back instead of the project setting: `Player` (`gravity` from `state.total_gravity` each physics step, for its ground friction and slope compensation) and `FrictionCircles` (`robot.get_gravity()` for the static wheel load). Levels also set player values: `SceneLoader.PLAYER_LEVEL_SETTINGS` lists the `Player` properties a level root may define (`RoverLevel.jump_height`, default `Player.JUMP_HEIGHT`; the Moon caps the jump at 1.2 m), copied onto the player when it spawns.
+Each level has its own gravity: `RoverLevel.gravity` (m/s^2, default 9.8, the project's `physics/3d/default_gravity`; the Moon sets 1.62). `SceneLoader._apply_level_gravity` sets it on the world's physics space as every level loads (a level without a `gravity` property, e.g. the menu backdrop's, gets the project default), so no level inherits the previous one's. Every rigid body falls with it; scripts read it back instead of the project setting: `Player` (`gravity` from `state.total_gravity` each physics step, for its ground friction and slope compensation) and `FrictionCircles` (`robot.get_gravity()` for the static wheel load). Levels also set player values: `SceneLoader.PLAYER_LEVEL_SETTINGS` lists the `Player` properties a level root may define (`RoverLevel.jump_height`, default `Player.JUMP_HEIGHT`, and `ground_friction`, default `Player.FRICTION`; the Moon caps the jump at 1.2 m and sets friction 1.6), copied onto the player when it spawns.
 
 What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on the Moon's flat ground under 9.8 and 1.62; numbers from the current tuning):
 
@@ -400,7 +400,7 @@ What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on the Moo
 |---|---|---|
 | Player jump height / time in the air | 0.82 m / 0.8 s | 1.16 m / 2.3 s (`jump_height` 1.2; with Earth's take-off speed it would be 4.2 m / 4.5 s) |
 | Player walking speed | 2.0 m/s | 2.0 m/s |
-| Player stop after letting go (from walking) | 0.4 m | 2.1 m |
+| Player stop after letting go (from walking) | 0.4 m | 0.74 m (`ground_friction` 1.6; at Earth's 0.5 it would be 2.1 m) |
 | Rover ride height (body origin) | 10.1 cm | 14.2 cm (springs sag a sixth) |
 | Rover full throttle: top speed / heading drift, no steering | 9.7 m/s / 39 deg in 12 s | 9.4 m/s / 41 deg (without traction control: 2.0 m/s, then spins round) |
 | Rover 30% throttle: top speed / drift | 2.6 m/s / 0.2 deg | 2.6 m/s / 0.4-1.4 deg |
@@ -414,7 +414,6 @@ What lunar gravity does (`tests/test_level_gravity.gd`, the same runs on the Moo
 Tyre forces scale with the wheel load, so everything grip-limited drops to about a sixth: at full throttle the motors (357 N at stall) far exceed what the tyres carry (about 130 N). Without traction control the wheels spin, a spinning tyre loses its sideways grip, and the rover yaws round; the rover's traction control (15.3) keeps the slip near the tyre's peak instead. Speed and anything motor-limited stay the same (top speed at part throttle, coasting: `rolling_resistance_force` is a fixed 12 N, not load-scaled).
 
 Not retuned yet (candidates, in order of impact):
-- **Player stopping** (2.1 m to stop from walking): physical Coulomb friction; give the player more friction (or braking) on the Moon if it feels icy.
 - **Rover suspension** sits 4 cm higher with little sag, so less droop travel over dips; springs a sixth as stiff (and dampers about 0.4x) would restore the Earth ride.
 - **Rolling resistance** is a fixed 12 N; making it proportional to the wheel load would let the Moon rover coast further (minor).
 
@@ -478,7 +477,7 @@ This is a **custom force-based character controller** on top of a rigidbody:
    | Ground, crouching | `SPEED_CROUCH` = 1.0 | 12 |
    | Airborne | `SPEED_AIR` = 1.0 | `ACCEL_AIR` = 3 |
 
-3. **Custom friction** (grounded only; `gravity * FRICTION`, with the level's gravity, so about a sixth on the Moon): acts on the velocity component *not* along the wished direction (relative to the floor's velocity). If the friction impulse can fully stop it within one step it is applied as an impulse (static friction), otherwise as a force (kinetic). `FRICTION = 0.5`.
+3. **Custom friction** (grounded only; deceleration `gravity * ground_friction`, both from the level: `ground_friction` defaults to `FRICTION` = 0.5, the Moon sets 1.6 so a walk still stops in 0.74 m instead of 2.1 m): acts on the velocity component *not* along the wished direction (relative to the floor's velocity). If the friction impulse can fully stop it within one step it is applied as an impulse (static friction), otherwise as a force (kinetic). `FRICTION = 0.5`.
 4. **Slope handling**: the wish direction is rotated onto the slope plane, and a compensation force cancels the horizontal part of gravity so the player doesn't slide.
 5. **Acceleration**: applies a force toward the wish direction; if the next step would exceed the target speed, it applies the exact impulse needed to hit the target speed instead (no overshoot).
 6. **Jump**: if on floor and `request_jump`, applies an impulse of `sqrt(2 * jump_height * gravity)` (`jump_height` defaults to `JUMP_HEIGHT` = 0.8 m; the level sets it, the Moon 1.2 m, so the jump keeps its height and the time in the air grows as gravity drops: 0.8 s on Earth, 2.3 s on the Moon), nudges `origin.y` up by 0.05 to leave the ground, and clears the request.

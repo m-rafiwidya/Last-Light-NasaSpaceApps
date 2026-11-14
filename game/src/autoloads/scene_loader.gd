@@ -14,7 +14,7 @@ const LEVEL_PATHS: Dictionary = {
 	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
 }
 ## Player properties a level can set by having a property of the same name on its root
-const PLAYER_LEVEL_SETTINGS: Array[String] = ["jump_height"]
+const PLAYER_LEVEL_SETTINGS: Array[String] = ["jump_height", "ground_friction"]
 ## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
 const PLAYABLE_LEVELS: Dictionary = {
 	"test_level": "Test level",

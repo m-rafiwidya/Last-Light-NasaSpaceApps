@@ -23,7 +23,7 @@ const MOON: float = 1.62
 const EARTH: float = 9.8
 # The test level's player settings (RoverLevel's defaults), used for the Earth runs on the Moon
 # ground; the Moon runs use the Moon level's own
-const EARTH_PLAYER: Dictionary = {"jump_height": 0.8}
+const EARTH_PLAYER: Dictionary = {"jump_height": 0.8, "ground_friction": 0.5}
 # Open flat ground on the Moon level, away from the rover, pile and spawn
 const ROVER_START := Vector3(-120.0, 0.35, 60.0)
 const PLAYER_START := Vector3(-60.0, 1.0, 40.0)
@@ -327,6 +327,10 @@ func _run() -> void:
 		absf(r["player jump height@%s" % MOON] - 1.2) < 0.15, "%.2f m" % r["player jump height@%s" % MOON])
 	_check("Moon jump still floaty: over 2 s in the air (Earth 0.8 s)",
 		r["player time in the air@%s" % MOON] > 2.0, "%.2f s" % r["player time in the air@%s" % MOON])
+	_check("Earth walk stops in 0.4 m (+-0.05)", absf(r["player stop after letting go: distance@%s" % EARTH] - 0.4) < 0.05,
+		"%.2f m" % r["player stop after letting go: distance@%s" % EARTH])
+	_check("Moon walk stops within 1 m (level ground friction)", r["player stop after letting go: distance@%s" % MOON] < 1.0,
+		"%.2f m" % r["player stop after letting go: distance@%s" % MOON])
 	_check("walking speed doesn't depend on gravity (within 5%)",
 		absf(r["player walking speed@%s" % MOON] / r["player walking speed@%s" % EARTH] - 1.0) < 0.05)
 

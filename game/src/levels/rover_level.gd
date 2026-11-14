@@ -15,6 +15,10 @@ extends Node3D
 ## How high the player jumps here (m), whatever the gravity (handed to the Player by
 ## SceneLoader); the Moon caps it at 1.2 m, still floaty: 2.4 s in the air
 @export var jump_height: float = Player.JUMP_HEIGHT
+## The player's ground friction coefficient here (deceleration = gravity * this). Lunar
+## gravity alone would leave a sixth of Earth's grip (2.1 m to stop from a walk); the Moon
+## sets 1.6 (0.8 m)
+@export var ground_friction: float = Player.FRICTION
 
 ## Pile parts' properties that are copied when the pile is respawned
 const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]
