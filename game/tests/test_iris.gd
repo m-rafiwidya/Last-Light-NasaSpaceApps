@@ -403,6 +403,17 @@ func _run() -> void:
 	_check("IRIS: offline (dark, parked), then online (lit, antenna tracking)", parked and tracked, detail)
 	var labels: int = iris.find_children("Text", "Label3D", true, false).size()
 	_check("IRIS: the service panel's and connectors' labels are there", labels == iris.TEXTS.size(), "%d labels" % labels)
+	# 7c. M1's scan target: IRIS's own service panel (IrisServicePanel) on scan_point. Untyped: naming the
+	# class here would compile the Robot scripts before the autoloads exist
+	var panel = iris.get_node_or_null("ServicePanel")
+	var scan_point: Node3D = iris.find_child("scan_point", true, false)
+	var panel_ok: bool = panel != null and panel.get_script().resource_path == "res://src/iris/iris_service_panel.gd" \
+		and panel.target_id == "iris_panel" and panel.is_in_group(&"scan_target") \
+		and panel.collision_layer == 2 and panel.collision_mask == 0 and scan_point != null \
+		and panel.global_position.distance_to(scan_point.global_position) < 0.001 \
+		and panel.highlight_node == iris.find_child("iris_service_panel", true, false)
+	_check("IRIS: its service panel is a scan target (iris_panel) on scan_point, layer 2", panel_ok,
+		"%s, %s" % [panel, panel.get("target_id") if panel else "-"])
 
 	# 7c. M2 assets
 	var m2_module: RigidBody3D = load("res://src/robot/socket/radio_module_part.tscn").instantiate()
