@@ -22,6 +22,8 @@ func _process(_delta: float) -> void:
 			GameState.change_state_to(GameState.State.PAUSED)
 		elif GameState.state == GameState.State.PAUSED:
 			GameState.change_state_to(GameState.State.IN_GAME)
+		elif GameState.state == GameState.State.MISSION_CONSOLE:
+			GameState.change_state_to(GameState.State.IN_GAME)
 
 func _on_game_state_changed(old_state, new_state):
 	if new_state == GameState.State.MAIN_MENU:
@@ -38,6 +40,11 @@ func _on_game_state_changed(old_state, new_state):
 		$HUD.fade_in()
 	else:
 		$HUD.fade_out()
+	
+	if new_state == GameState.State.MISSION_CONSOLE:
+		$MissionConsole.fade_in()
+	else:
+		$MissionConsole.fade_out()
 	
 	$LoadingScreen.visible = (
 		new_state == GameState.State.LOADING or old_state == GameState.State.LOADING

@@ -1,0 +1,203 @@
+[gd_scene load_steps=13 format=3 uid="uid://dy6k2fttiugbr"]
+
+[ext_resource type="Script" uid="uid://b57tt32eel5oq" path="res://src/ui/level_select/level_select.gd" id="1_10ygn"]
+[ext_resource type="Script" uid="uid://c6v80ydxxmgdr" path="res://src/ui/level_select/level_menu_item/level_menu_item.gd" id="2_hhdkr"]
+[ext_resource type="Resource" uid="uid://osywk8gg8ddu" path="res://src/ui/level_select/level_menu_item/prototype_level.tres" id="3_6yl3t"]
+[ext_resource type="Theme" uid="uid://be3ngjxfbjuew" path="res://assets/ui/computer_theme/computer_theme.tres" id="5_rfvau"]
+[ext_resource type="FontFile" uid="uid://cbui3kfjmh1a0" path="res://assets/fonts/IBMPlexMono-Bold.ttf" id="6_j7m7e"]
+[ext_resource type="Texture2D" uid="uid://d0rwq587k8dlx" path="res://assets/screenshots/sample_screenshot.png" id="6_rfvau"]
+[ext_resource type="Resource" uid="uid://cf7fuw0hakdrd" path="res://src/ui/level_select/level_menu_item/circuitry_level.tres" id="7_swrul"]
+[ext_resource type="Resource" uid="uid://unimrk42eyms" path="res://src/ui/level_select/level_menu_item/toaster.tres" id="8_hn0kg"]
+[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/components/button_sound_component.gd" id="10_hn0kg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rfvau"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.0576, 0.09696, 0.32, 1)
+border_width_top = 32
+border_color = Color(0.1974, 0.25192, 0.47, 1)
+border_blend = true
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_rfvau"]
+
+[sub_resource type="GDScript" id="GDScript_swrul"]
+script/source = "extends HBoxContainer
+
+
+#func _on_button_mouse_entered() -> void:
+	#$Click.play() #  # Replace with function body.
+"
+
+[node name="LevelSelect" type="PopupPanel" node_paths=PackedStringArray("item_list", "preview", "level_title", "description")]
+initial_position = 1
+size = Vector2i(1369, 1013)
+visible = true
+max_size = Vector2i(1369, 1013)
+theme = ExtResource("5_rfvau")
+script = ExtResource("1_10ygn")
+items = Array[ExtResource("2_hhdkr")]([ExtResource("3_6yl3t"), ExtResource("7_swrul"), ExtResource("8_hn0kg")])
+item_list = NodePath("VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer/ItemList")
+preview = NodePath("VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer/HBoxContainer/TextureRect")
+level_title = NodePath("VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/Title")
+description = NodePath("VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/Description")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1367.0
+offset_bottom = 1011.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_rfvau")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/PanelContainer"]
+layout_mode = 2
+
+[node name="RichTextLabel" type="RichTextLabel" parent="VBoxContainer/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_rfvau")
+bbcode_enabled = true
+text = "[b][wave amp=16 freq=8]Macrohard Inhear 9000[/wave][/b]"
+fit_content = true
+vertical_alignment = 1
+
+[node name="Close" type="Button" parent="VBoxContainer/PanelContainer/HBoxContainer"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.196143, 0.196143, 0.196143, 1)
+theme_override_fonts/font = ExtResource("6_j7m7e")
+text = "X"
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 405
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/MarginContainer/HSplitContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
+layout_mode = 2
+text = "You've got mail!"
+
+[node name="ItemList" type="ItemList" parent="VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 0
+fixed_icon_size = Vector2i(64, 64)
+
+[node name="VSplitContainer" type="VSplitContainer" parent="VBoxContainer/MarginContainer/HSplitContainer"]
+layout_mode = 2
+split_offset = 495
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
+custom_minimum_size = Vector2(0, 256)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
+layout_mode = 2
+text = "Attachments"
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 16
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+texture = ExtResource("6_rfvau")
+expand_mode = 3
+
+[node name="TextureRect2" type="TextureRect" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+texture = ExtResource("6_rfvau")
+expand_mode = 3
+
+[node name="TextureRect3" type="TextureRect" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer/HBoxContainer"]
+layout_mode = 2
+texture = ExtResource("6_rfvau")
+expand_mode = 3
+stretch_mode = 4
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
+layout_mode = 2
+
+[node name="Title" type="RichTextLabel" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/bold_italics_font_size = 32
+theme_override_font_sizes/italics_font_size = 32
+theme_override_font_sizes/mono_font_size = 32
+theme_override_font_sizes/normal_font_size = 32
+theme_override_font_sizes/bold_font_size = 32
+bbcode_enabled = true
+text = "[b][i]Title[/i][/b]"
+fit_content = true
+scroll_active = false
+
+[node name="Description" type="RichTextLabel" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Wow! [color=green]test[/color] [wave amp=10 freq=10]Wavy text![/wave]
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+layout_mode = 2
+script = SubResource("GDScript_swrul")
+
+[node name="Button" type="Button" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+text = "Start This Job"
+
+[node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button"]
+script = ExtResource("10_hn0kg")
+metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+
+[connection signal="about_to_popup" from="." to="." method="_on_about_to_popup"]
+[connection signal="popup_hide" from="." to="." method="_on_popup_hide"]
+[connection signal="pressed" from="VBoxContainer/PanelContainer/HBoxContainer/Close" to="." method="_on_close_pressed"]
+[connection signal="item_clicked" from="VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer/ItemList" to="." method="_on_item_list_item_clicked"]
+[connection signal="mouse_entered" from="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button" to="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer" method="_on_button_mouse_entered"]
+[connection signal="pressed" from="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button" to="VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer" method="_on_button_pressed"]

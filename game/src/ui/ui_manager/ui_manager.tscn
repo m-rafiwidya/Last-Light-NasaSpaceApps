@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" uid="uid://bcg040sdcwn84" path="res://src/ui/console/console.tscn" id="4_duyv2"]
 [ext_resource type="PackedScene" uid="uid://dhqyoeojs2xo3" path="res://src/ui/hud/hud.tscn" id="5_eg4bn"]
 
+[ext_resource type="PackedScene" path="res://src/ui/mission_console/mission_console.tscn" id="6_mcscr"]
+
 [node name="UIManager" type="Node" unique_id=908995993]
 process_mode = 3
 script = ExtResource("1_1xrw1")
@@ -16,6 +18,8 @@ script = ExtResource("1_1xrw1")
 [node name="MainMenu" parent="." unique_id=809060339 instance=ExtResource("2_06kls")]
 
 [node name="PauseMenu" parent="." unique_id=1299602452 instance=ExtResource("3_v1lk4")]
+
+[node name="MissionConsole" parent="." instance=ExtResource("6_mcscr")]
 
 [node name="LoadingScreen" parent="." unique_id=707683472 instance=ExtResource("3_0wk4j")]
 

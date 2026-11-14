@@ -168,7 +168,7 @@ Key points:
 
 ## 5. Game state machine
 
-Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
+Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet. `MISSION_CONSOLE` is entered from `IN_GAME` by the `MissionConsoleTrigger` in the test level and left with Esc (`ui_cancel`, handled in `UIManager._process`) or the screen's Close button, both going back to `IN_GAME`.
 
 ```mermaid
 stateDiagram-v2
@@ -191,6 +191,11 @@ stateDiagram-v2
 | `LOADING` | - | - | `LoadingScreen` visible |
 | `IN_GAME` | Restore saved mouse mode (default `CAPTURED`) | Save current mouse mode into `in_game_mouse_state` | `HUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
+| `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (white square placeholder + Close button, opacity fade) |
+
+### Player input lock
+
+`PlayerController` (the only place gameplay input is read) only accepts input while `GameState.state == IN_GAME` (`is_input_enabled()`). In any other state it zeroes `move_direction`, `is_sprinting` and `request_jump`, ignores mouse look and all presses, but still forwards key/button **releases** so crouch/interact/primary/secondary can't get stuck. The first physics tick after re-entering `IN_GAME` is also treated as locked, so a click used to close a UI screen isn't read as a throw. New states automatically lock the player; to allow input in a new state, change `is_input_enabled()`.
 
 ### Pausing
 
@@ -213,6 +218,7 @@ UIManager
 ├── HUD            (CanvasLayer)
 ├── MainMenu       (CanvasLayer)
 ├── PauseMenu      (CanvasLayer)
+├── MissionConsole (CanvasLayer, white square placeholder)
 ├── LoadingScreen  (CanvasLayer, layer = 256, always on top)
 └── Console        (PopupPanel, hidden)
 ```
@@ -223,6 +229,7 @@ UIManager
    - `new == MAIN_MENU` -> `MainMenu.fade_in()` else `fade_out()`
    - `new == PAUSED` -> `PauseMenu.fade_in()` else `fade_out()`
    - `new == IN_GAME` -> `HUD.fade_in()` else `fade_out()`
+   - `new == MISSION_CONSOLE` -> `MissionConsole.fade_in()` else `fade_out()`
    - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out).
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
 3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc).
@@ -337,7 +344,7 @@ Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then crea
 
 ### The test level (`levels/test_level.tscn`)
 
-A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). It also contains a `DialogTrigger` (`InteractTrigger`) that plays a demo dialog sequence.
+A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). It also contains a `DialogTrigger` (`InteractTrigger`) that plays a demo dialog sequence, and a `MissionConsoleTrigger` (copy of that cube) that switches `GameState` to `MISSION_CONSOLE`.
 
 ---
 

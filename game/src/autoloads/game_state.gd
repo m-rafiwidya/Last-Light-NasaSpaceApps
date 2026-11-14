@@ -2,7 +2,7 @@ extends Node
 
 signal state_changed(old_state, new_state)
 
-enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU}
+enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}
 
 var state: State = State.LOADING
 
@@ -39,6 +39,8 @@ func _on_state_exit(_state: State):
 			in_game_mouse_state = Input.mouse_mode
 		State.PAUSED:
 			unpause_game()
+		State.MISSION_CONSOLE:
+			pass
 
 
 func _on_state_enter(_state: State):
@@ -52,6 +54,8 @@ func _on_state_enter(_state: State):
 		State.PAUSED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			pause_game()
+		State.MISSION_CONSOLE:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func pause_game():

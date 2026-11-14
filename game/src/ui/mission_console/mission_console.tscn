@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/mission_console/mission_console.gd" id="1_mcscr"]
+[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_mcthm"]
+
+[node name="MissionConsole" type="CanvasLayer"]
+script = ExtResource("1_mcscr")
+
+[node name="Square" type="ColorRect" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -200.0
+offset_right = 200.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+
+[node name="Close" type="Button" parent="Square"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -75.0
+offset_top = 20.0
+offset_right = 75.0
+offset_bottom = 70.0
+grow_horizontal = 2
+grow_vertical = 0
+focus_mode = 0
+theme = ExtResource("2_mcthm")
+text = "Close"

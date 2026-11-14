@@ -6,6 +6,12 @@ extends Node3D
 
 func _ready() -> void:
 	$DialogTrigger.interacted.connect(_on_dialog_trigger_interacted)
+	$MissionConsoleTrigger.interacted.connect(_on_mission_console_trigger_interacted)
+
+
+func _on_mission_console_trigger_interacted(_player: Player):
+	if GameState.state == GameState.State.IN_GAME:
+		GameState.change_state_to(GameState.State.MISSION_CONSOLE)
 
 
 func _on_dialog_trigger_interacted(_player: Player):

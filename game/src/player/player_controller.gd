@@ -30,14 +30,22 @@ var camera_altitude: float = 0.0
 
 var queued_rotation: Quaternion = Quaternion.IDENTITY
 
+var was_input_enabled: bool = false
+
 
 func px_to_rad(pixels: float) -> float:
 	return pixels / (DPI / 2.54) / SENS * PI * 2.0
 
 
 
+## Player input is only accepted while the game is in the IN_GAME state
+## (not in menus, the mission console, loading screens, etc.).
+func is_input_enabled() -> bool:
+	return GameState.state == GameState.State.IN_GAME
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.state == GameState.State.PAUSED:
+	if not is_input_enabled():
 		return
 
 	if event is InputEventMouseMotion:
@@ -57,6 +65,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # TODO: Maybe try to put everything inside unhandled input? idk if thats better;
 func _physics_process(_delta: float) -> void:
+	if not is_input_enabled():
+		was_input_enabled = false
+		_process_locked_input()
+		return
+	# Treat the first tick after unlocking as locked too, so a press that started
+	# while locked (e.g. clicking a UI button to close a screen) isn't read as a
+	# fresh gameplay press.
+	if not was_input_enabled:
+		was_input_enabled = true
+		_process_locked_input()
+		return
+
 	var input_forward: float = (
 		Input.get_action_strength("move_forward") - Input.get_action_strength("move_backward")
 	)
@@ -94,4 +114,22 @@ func _physics_process(_delta: float) -> void:
 	if Input.is_action_just_pressed("interact_secondary"):
 		secondary.emit(true)
 	elif Input.is_action_just_released("interact_secondary"):
+		secondary.emit(false)
+
+
+## While input is locked, clear any continuous intent and only let key/button
+## releases through, so the player can't get stuck crouching or rotating if a
+## key was released during the lock. Presses are ignored.
+func _process_locked_input() -> void:
+	move_direction = Vector3.ZERO
+	is_sprinting = false
+	request_jump = false
+
+	if Input.is_action_just_released("move_crouch"):
+		crouch.emit(false)
+	if Input.is_action_just_released("interact_use"):
+		interact.emit(false)
+	if Input.is_action_just_released("interact_primary"):
+		primary.emit(false)
+	if Input.is_action_just_released("interact_secondary"):
 		secondary.emit(false)

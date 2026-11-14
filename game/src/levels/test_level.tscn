@@ -360,3 +360,18 @@ mesh = SubResource("BoxMesh_xa74p")
 [node name="Label3D" type="Label3D" parent="DialogTrigger" unique_id=1215746775]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
 text = "Dialog Test"
+
+[node name="MissionConsoleTrigger" type="Area3D" parent="." unique_id=474091455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -5.5)
+script = ExtResource("4_t1chq")
+metadata/_custom_type_script = "uid://b3epixqjbcndx"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MissionConsoleTrigger" unique_id=609204701]
+shape = SubResource("BoxShape3D_strxf")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="MissionConsoleTrigger" unique_id=630802577]
+mesh = SubResource("BoxMesh_xa74p")
+
+[node name="Label3D" type="Label3D" parent="MissionConsoleTrigger" unique_id=1215746776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
+text = "Mission Console"
