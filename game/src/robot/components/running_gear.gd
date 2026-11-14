@@ -47,6 +47,22 @@ const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
 @export var front_ride_height: float = 0.15
 @export var middle_ride_height: float = 0.15
 @export var rear_ride_height: float = 0.15
+@export_subgroup("Ground contact")
+# Each wheel's ground check is a cylinder the size of the wheel (wheel radius x wheel_width,
+# axle along the steered axle) cast straight down the rover's -Y, from its centre at
+# suspension_top above the wheel's attachment point (the steering actuator / rocker horn
+# height, above the suspension's whole travel) down to full extension. Starting above the
+# travel means kerbs and ramp edges up to that height are found from above instead of the
+# check starting inside them, and the wheel-sized shape finds edges it touches off-centre.
+@export var wheel_width: float = 0.24
+@export var suspension_top: float = 0.30
+# World (layer 1) and props (layer 3: the see-saw plank, crates, loose parts, other rovers)
+@export_flags_3d_physics var ground_mask: int = 1 | 4
+# Below this up-component the touched surface is a wall: the wheel is in contact but not held up
+const WALL_NORMAL_LIMIT: float = 0.3
+# The check reaches this far past full extension, so a wheel resting on the ground at full
+# extension still counts as touching it (with no load)
+const CONTACT_TOLERANCE: float = 0.01
 @export_subgroup("Steering")
 @export var max_steer_angle_degrees: float = 30.0
 # Rear wheels counter-steer (Curiosity style), which halves the turning radius
@@ -71,6 +87,10 @@ enum WheelState{
 	CONTACT_POINT,
 	TORQUE,
 	IS_SLIPPING,
+	# Wheel centre height (robot space Y) where the ground check stopped
+	CENTER_HEIGHT,
+	# The body the wheel stands on (null if none)
+	GROUND_BODY,
 }
 
 var wheel_states: Dictionary = {}
@@ -86,6 +106,8 @@ func _init() -> void:
 			WheelState.CONTACT_POINT: Vector3.ZERO,
 			WheelState.TORQUE: 0.0,
 			WheelState.IS_SLIPPING: false,
+			WheelState.CENTER_HEIGHT: 0.0,
+			WheelState.GROUND_BODY: null,
 		}
 
 enum WheelProperty{
@@ -137,6 +159,22 @@ func _clear_wheel_contact(wheel: Wheel) -> void:
 	wheel_states[wheel][WheelState.LOAD] = Vector3.ZERO
 	wheel_states[wheel][WheelState.FORCE] = Vector3.ZERO
 	wheel_states[wheel][WheelState.TORQUE] = 0.0
+	wheel_states[wheel][WheelState.GROUND_BODY] = null
+
+
+# Touching the ground without being held up by it (a wall, or the spring extending faster
+# than the damper allows): in contact, no load and no tyre force.
+func _set_unloaded_contact(wheel: Wheel, contact_point: Vector3, centre_height: float, ground_body: Object) -> void:
+	_clear_wheel_contact(wheel)
+	wheel_states[wheel][WheelState.IN_CONTACT] = true
+	wheel_states[wheel][WheelState.CONTACT_POINT] = contact_point
+	wheel_states[wheel][WheelState.CENTER_HEIGHT] = centre_height
+	wheel_states[wheel][WheelState.GROUND_BODY] = ground_body
+
+
+## Wheel centre height (robot space Y) with the spring fully extended
+func full_extension_height(wheel: Wheel) -> float:
+	return wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS] - wheel_properties[wheel][WheelProperty.RIDE_HEIGHT]
 
 func calculate_suspension_load(spring_compression_delta, suspension_velocity, spring_stiffness, shock_damping):
 	var spring_force: Vector3 = (
@@ -168,8 +206,13 @@ func get_lateral_friction(wheel: Wheel) -> float:
 ## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque
 ## really has to move (e.g. a driven wheel with its share of the drivetrain). Those wheels'
 ## speeds are left to the caller's drivetrain; wheels not in it use their own inertia and
-## are spun up and down by the ground here.
-func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) -> void:
+## are spun up and down by the ground here. `exclude` are bodies the ground check ignores (the
+## rover itself).
+var _ground_shape := CylinderShape3D.new()
+var _ground_query := PhysicsShapeQueryParameters3D.new()
+
+
+func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, exclude: Array[RID] = []) -> void:
 	var origin = state.transform.origin
 	var x_basis = state.transform.basis.x
 	var y_basis = state.transform.basis.y
@@ -182,49 +225,77 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 			z_basis * wheel_properties[wheel][WheelProperty.POSITION].z
 		)
 
-		var margin = 0.04
-		var cast_origin = (origin + offset) + (y_basis * margin)
-		var cast_end = (
-			cast_origin +
-			-y_basis * (
-				wheel_properties[wheel][WheelProperty.RIDE_HEIGHT] +
-				margin
-			)
-		)
-
 		var space_state: PhysicsDirectSpaceState3D = state.get_space_state()
-		var query = PhysicsRayQueryParameters3D.create(cast_origin, cast_end, 0x01)
-		var result = space_state.intersect_ray(query)
+		var attach: Vector3 = origin + offset
+		var radius: float = wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS]
+		var full_extension: float = full_extension_height(wheel)
+		var top: float = maxf(suspension_top, full_extension)
+		var wheel_steer_angle: float = get_steer_angle(wheel, steer)
+		var wheel_direction: Vector3 = -z_basis.rotated(y_basis, wheel_steer_angle)
+		var axle: Vector3 = x_basis.rotated(y_basis, wheel_steer_angle)
 
-		if not result:
+		# Wheel-sized cylinder (axis = axle), cast from `top` down to full extension
+		_ground_shape.radius = radius
+		_ground_shape.height = wheel_width
+		var cast_basis := Basis(wheel_direction, axle, wheel_direction.cross(axle))
+		_ground_query.shape = _ground_shape
+		_ground_query.collision_mask = ground_mask
+		_ground_query.exclude = exclude
+		_ground_query.transform = Transform3D(cast_basis, attach + y_basis * top)
+		var reach: float = top - full_extension + CONTACT_TOLERANCE
+		_ground_query.motion = -y_basis * reach
+		var fractions: PackedFloat32Array = space_state.cast_motion(_ground_query)
+		if fractions[1] >= 1.0:
+			# Nothing within the suspension's travel
 			_clear_wheel_contact(wheel)
 			continue
-		#LGTM
-		var collision_point: Vector3 = result["position"]
+		# The wheel stands where the cast first touches the ground (the same place the old ray
+		# hit on flat ground); the surface is read there too
+		var centre_height: float = top - reach * fractions[1]
+		_ground_query.transform = Transform3D(cast_basis, attach + y_basis * (top - reach * fractions[1]))
+		_ground_query.motion = Vector3.ZERO
+		var info: Dictionary = space_state.get_rest_info(_ground_query)
+		var centre: Vector3 = attach + y_basis * centre_height
+		var collision_point: Vector3 = info.get("point", centre - y_basis * radius)
+		var ground_normal: Vector3 = info.get("normal", y_basis)
+		var ground_velocity: Vector3 = info.get("linear_velocity", Vector3.ZERO)
+		var ground_body: Object = instance_from_id(info["collider_id"]) if info.has("collider_id") else null
+
+		if fractions[0] <= 0.0 and ground_normal.dot(y_basis) < WALL_NORMAL_LIMIT:
+			# Already against a face taller than the suspension reaches: touching, not held up
+			# (the wheel's bump stop on the rover body keeps it out of the face)
+			_set_unloaded_contact(wheel, collision_point - origin, centre_height, ground_body)
+			continue
+		if centre_height <= full_extension:
+			# Resting on the ground at full extension: touching, unloaded
+			_set_unloaded_contact(wheel, collision_point - origin, full_extension, ground_body)
+			continue
+
 		var rotation_radius: Vector3 = (
 			collision_point - (origin + state.transform.basis * state.center_of_mass)
 		)
+		# Velocity of the contact point relative to the ground under it (moving see-saw etc.)
 		var contact_velocity: Vector3 = (
-			state.linear_velocity + state.angular_velocity.cross(rotation_radius)
+			state.linear_velocity + state.angular_velocity.cross(rotation_radius) - ground_velocity
 		)
 		var suspension_load: Vector3 = calculate_suspension_load(
-			cast_end - collision_point,             # Spring compression distance (state.step x)
-			contact_velocity.project(y_basis),      # Vertical velocity component for damping
+			-y_basis * (centre_height - full_extension),  # Spring compression
+			contact_velocity.project(y_basis),            # Vertical velocity component for damping
 			wheel_properties[wheel][WheelProperty.SPRING_STIFFNESS],
 			wheel_properties[wheel][WheelProperty.SHOCK_DAMPING]
 		)
 
-		if not suspension_load.dot(y_basis) > 0.0: # Spring is in compression
-			_clear_wheel_contact(wheel)
+		if not suspension_load.dot(y_basis) > 0.0:
+			# The damper outpulls the spring (wheel dropping away fast): touching, unloaded
+			_set_unloaded_contact(wheel, collision_point - origin, centre_height, ground_body)
 			continue
 
 		wheel_states[wheel][WheelState.IN_CONTACT] = true
 
 		wheel_states[wheel][WheelState.LOAD] = suspension_load
 		wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT] = collision_point - origin
-
-		var wheel_steer_angle: float = get_steer_angle(wheel, steer)
-		var wheel_direction: Vector3 = -z_basis.rotated(y_basis, wheel_steer_angle)
+		wheel_states[wheel][WheelState.CENTER_HEIGHT] = centre_height
+		wheel_states[wheel][WheelState.GROUND_BODY] = ground_body
 
 		var wheel_speed: float = (
 			wheel_states[wheel][WheelState.ANGULAR_VELOCITY] *

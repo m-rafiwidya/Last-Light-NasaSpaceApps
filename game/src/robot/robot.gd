@@ -100,6 +100,12 @@ const STARTING_PARTS: Dictionary = {
 }
 # The reset puts the rover's origin this far above the ground under it (it rests at 0.10)
 const RESET_HEIGHT: float = 0.25
+# A wheel-sized collision cylinder per wheel on the rover body, centred this high (rover space
+# Y) above the wheel's attachment point: 7 cm clear of flat ground at rest, so normal driving
+# never touches it, but it keeps the wheel out of walls and kerb faces taller than the ground
+# check can climb, and its rounded front helps it up edges. Mass, centre of mass and inertia
+# are set explicitly, so the shapes don't change them.
+const BUMP_STOP_HEIGHT: float = 0.12
 
 var _reset_pending: bool = false
 
@@ -107,6 +113,7 @@ var _reset_pending: bool = false
 func _ready() -> void:
 	controller.robot = self
 	controller.reset_requested.connect(func() -> void: _reset_pending = true)
+	_add_wheel_bump_stops()
 	_snap_sockets_to_anchors()
 	_adopt_body_collision()
 	running_gear.update_wheel_properties()
@@ -182,6 +189,22 @@ func _update_ray_exceptions() -> void:
 			raycast.add_exception(trigger)
 		else:
 			raycast.remove_exception(trigger)
+
+
+func _add_wheel_bump_stops() -> void:
+	running_gear.update_wheel_properties()
+	for wheel in running_gear.wheel_properties:
+		var properties: Dictionary = running_gear.wheel_properties[wheel]
+		var cylinder := CylinderShape3D.new()
+		cylinder.radius = properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS]
+		cylinder.height = running_gear.wheel_width
+		var stop := CollisionShape3D.new()
+		stop.name = "WheelBumpStop%d" % wheel
+		stop.shape = cylinder
+		var position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
+		# Cylinder axis (Y) along the axle (X)
+		stop.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(position.x, BUMP_STOP_HEIGHT, position.z))
+		add_child(stop)
 
 
 ## True while this rover is the one being driven (or was the last one, while paused)
@@ -291,14 +314,12 @@ func _update_wheel_parts() -> void:
 		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
 		properties[RunningGear.WheelProperty.GRIP] = wheel_part.grip if wheel_part else 1.0
 
-		# Height of the ground under the wheel in robot space. Without contact the
-		# suspension is fully extended, i.e. at the end of the suspension ray.
-		var ground_height: float = -properties[RunningGear.WheelProperty.RIDE_HEIGHT]
-		if running_gear.wheel_states[wheel][RunningGear.WheelState.IN_CONTACT]:
-			ground_height = (inverse_basis * running_gear.wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT]).y
-
+		# Wheel centre height in robot space: where the ground check stopped, or fully
+		# extended without contact
 		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
-		wheel_position.y = ground_height + radius
+		wheel_position.y = running_gear.full_extension_height(wheel)
+		if running_gear.wheel_states[wheel][RunningGear.WheelState.IN_CONTACT]:
+			wheel_position.y = running_gear.wheel_states[wheel][RunningGear.WheelState.CENTER_HEIGHT]
 		wheel_centers[wheel] = wheel_position
 		if not wheel_part:
 			continue
@@ -339,7 +360,7 @@ func _integrate_forces(state) -> void:
 	if _reset_pending:
 		_reset_upright(state)
 		return
-	running_gear.simulate_suspensions(state, controller.steer, _get_wheel_inertias())
+	running_gear.simulate_suspensions(state, controller.steer, _get_wheel_inertias(), [get_rid()])
 	_step_drivetrain(state.step)
 	_apply_wheel_forces(state)
 
@@ -432,3 +453,11 @@ func _apply_wheel_forces(state) -> void:
 			running_gear.wheel_states[wheel][RunningGear.WheelState.FORCE],
 			running_gear.wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT]
 		)
+
+		# Push back on a movable body the wheel stands on (the see-saw plank, a crate)
+		var ground := running_gear.wheel_states[wheel][RunningGear.WheelState.GROUND_BODY] as RigidBody3D
+		if ground and not ground.freeze:
+			var contact: Vector3 = state.transform.origin + running_gear.wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT]
+			PhysicsServer3D.body_apply_force(ground.get_rid(),
+				-(running_gear.wheel_states[wheel][RunningGear.WheelState.LOAD] + running_gear.wheel_states[wheel][RunningGear.WheelState.FORCE]),
+				contact - ground.global_position)

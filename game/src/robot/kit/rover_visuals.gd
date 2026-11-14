@@ -431,8 +431,10 @@ func _pose_head(head: HotswapPart, pan: float, tilt: float) -> void:
 		camera_box.rotation = Vector3(tilt, 0.0, 0.0)
 
 
-# Moves each mounted wheel part onto its hub socket on the linkage (the bracket or bogie
-# carries the steering and tilt) and spins its model with the wheel speed.
+# Moves each mounted wheel part to its physics wheel centre (so it sits on the ground the
+# physics found), turned like its hub socket on the linkage (the bracket or bogie carries the
+# steering and tilt), and spins its model with the wheel speed. The rigid linkage can't match
+# six independent wheels exactly, so any mismatch shows at the hub, not at the ground.
 func _place_and_spin_wheels(delta: float) -> void:
 	for side in sides:
 		var wheels: Array = SIDE_WHEELS[side]
@@ -443,7 +445,8 @@ func _place_and_spin_wheels(delta: float) -> void:
 			_track_spun_part(wheel, part)
 			if part == null:
 				continue
-			part.global_transform = (sides[side]["hubs"][i] as Node3D).global_transform
+			part.global_transform = Transform3D((sides[side]["hubs"][i] as Node3D).global_basis,
+				robot.to_global(robot.wheel_centers[wheel]))
 			# Positive wheel speed rolls forward (-Z), which is a negative turn about +X
 			var speed: float = robot.running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY]
 			_spin[wheel] = wrapf(_spin.get(wheel, 0.0) - speed * delta, -PI, PI)

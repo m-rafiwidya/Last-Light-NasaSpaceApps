@@ -10,3 +10,6 @@
   because Blender can't find its bundled Python). Each run writes `tools/blender/parts/<part>.blend`,
   `game/res/models/rover_kit/<part>.glb` and previews in `tools/blender/previews/<part>/`
   (git-ignored). Check the previews from the side, front and inner face for every part.
+- Game tests are headless SceneTree scripts in `game/tests/`, e.g.
+  `/Users/fahd/Downloads/Godot-2.app/Contents/MacOS/Godot --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd`
+  (Godot 4.7; each prints `RESULT ... PASS / FAIL`).
