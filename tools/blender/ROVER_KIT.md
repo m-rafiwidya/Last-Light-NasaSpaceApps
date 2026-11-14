@@ -18,6 +18,8 @@ collider import script lives in the game project (7); measured visual wheel offs
 width may only grow outboard) and wheel variants that differ by tread, colour and stats (3.1, 4).
 Revised while building the mast: the mast head is two objects in one GLB, the panning yoke
 `mast_head` and the tilting `mast_head_camera`; pan / tilt range and camera view checks (3.3, 5).
+Revised with the wheel ground check: wheel parts sit at their physics positions, the linkage
+mismatch shows at the hub (5).
 Revised while building the arm: arm lengths scaled from Curiosity (about 0.95 m), a yaw
 turntable `arm_shoulder_yaw` inside the arm_shoulder GLB, new joint origins, joint ranges,
 stowed and reaching-down poses (3.3, 5); the mast's inward sensor boom turned outboard, out of
@@ -284,10 +286,12 @@ A script on the rover poses the linkage every physics frame from the physics whe
   wheel's steering angle.
 - **Wheels** spin about their axle from the physics angular velocity.
 
-The six physics wheels are independent springs and the linkage is rigid, so on rough ground a
-visual wheel may sit a few cm off its physics contact. Measured in the game: 1 mm on flat ground,
-up to 33 mm driving over an abrupt 8 cm step, up to 41 mm climbing a 15 cm ramp. The wheel parts
-follow the linkage (their hub sockets), not the physics contact.
+The six physics wheels are independent springs and the linkage is rigid, so on rough ground the
+linkage can't reach all six wheels exactly. The wheel parts sit at their physics positions (on
+the ground the physics found), turned like their hub sockets (steering and linkage tilt), so
+the mismatch shows at the hub, never as a wheel in the ground. Measured when the wheels still
+followed the linkage: 1 mm on flat ground, up to 33 mm over an abrupt 8 cm step, up to 41 mm
+up a 15 cm ramp.
 
 **Verified pose range.** The section 3.4 clearances were checked for every combination of:
 
