@@ -31,7 +31,7 @@ from the text below, this list wins:
     the reference's backpack rises well above the shoulders.
   - Helmet: an ellipsoid 0.34 x 0.34 x 0.33 m centred at (0, -0.045, 1.623), under a 12 mm
     ridge whose top is 1.80. The visor runs from z 1.535 to 1.715 and stands 8 mm proud.
-- **Triangles: 4,678** (cap 5,000; 3,958 before the glove pass for the first-person body, section 13):
+- **Triangles: 4,886** (cap 5,000; 3,958 before the glove pass and the ankle bellows for the first-person body, section 13):
 
   | Region | Triangles |
   |---|---|
@@ -45,11 +45,11 @@ from the text below, this list wins:
   | backpack | 168 |
   | arms | 640 |
   | gloves | 1,200 |
-  | legs | 736 |
-  | boots | 520 |
+  | legs | 784 |
+  | boots | 680 |
 
   The generator checks per-region budgets of 520 / 100 / 90 / 420 / 200 / 100 / 160 / 240 /
-  680 / 1240 / 760 / 540. Props: `ws_suit_stand` 122, `ws_stool` 172 (budget 200, was 150).
+  680 / 1240 / 810 / 700. Props: `ws_suit_stand` 122, `ws_stool` 172 (budget 200, was 150).
 - **Weights:**
   - 27 of the 42 parts are rigid.
   - Blended by design: the torso (Hips to UpperChest), elbows and knees.
@@ -479,14 +479,24 @@ the helmet is never drawn for the player's camera but still casts its shadow. Ap
 1.71 m rather than moving the camera, and the glove pass below.
 
 - **Gloves (as built).** Armoured gauntlets: rounded octagonal finger and thumb segments with
-  dark grip tips, a hard back plate and a dark knuckle guard. 600 triangles a glove (was 240);
-  the suit is 4,678 (cap 5,000). Every check of sections 10 and the as-built list passes again
-  (seated hands 21 mm from the console), and the T-pose, seated and rack previews were re-checked.
+  dark grip tips, a hard back plate and a dark knuckle guard. 600 triangles a glove (was 240).
+- **Ankles (as built).** The boot shaft used to be one rigid tube on `Foot` up to 0.31 m, and the
+  shin ended at 0.28 m: as soon as a clip bent the ankle (the first clips reached 41 degrees
+  walking, 52 sprinting) the shin's open end and the shaft moved apart by up to 15 cm, and the
+  foot looked detached. Now: a low rigid boot cuff (to 0.215 m), a dark **ankle bellows** above it
+  (five rings, 10 sides, blended from `Foot` to `LowerLeg` in steps like the knee convolute, up to
+  0.315 m under the shin plate) and the shin continuing down inside it as a sleeve to 0.20 m. The
+  pull tab moved onto the cuff. Legs 784 and boots 680 triangles; the suit is **4,886** (cap
+  5,000). Every check of section 10 and the as-built list passes again (seated, rack, T-pose),
+  previews re-checked.
 - **Generator.** `tools/blender/scripts/astronaut/make_astronaut_anims.py` builds the mesh and rig
   with `make_astronaut.py`, keys the clips, checks them and exports
   `game/res/models/astronaut_kit/astronaut_fp.glb`: the Skeleton3D with two skinned meshes,
-  `astronaut_body` and `astronaut_helmet` (helmet, visor, ridge, lamp pods and the neck ring), and
-  the clips. Source `tools/blender/parts/astronaut/astronaut_fp.blend`; previews (side and
+  `astronaut_body` (4,202 triangles) and `astronaut_helmet` (684: helmet, visor, ridge, lamp pods,
+  the neck ring and the torso's top above 1.435 m, the shoulder yoke, which right under the
+  player's camera filled the view looking down), and the clips. The eyes are taken 12 cm ahead
+  of the neck (`EYE`), where they are in the helmet: the camera then sits over the front of the
+  chest. Source `tools/blender/parts/astronaut/astronaut_fp.blend`; previews (side and
   three-quarter strips of every clip) in `tools/blender/previews/astronaut_fp/<clip>/`.
 - **Scale.** The game scales the suit to 0.95 (1.71 m), so its eyes are at the player's 1.5 m
   camera. The clips are authored full size; a clip made at speed v plays at 0.95 v.
@@ -497,6 +507,7 @@ the helmet is never drawn for the player's camera but still casts its shadow. Ap
   |---|---|---|
   | `idle` | 4 s loop | weight shift and two breaths; arms 17 degrees out (the rack pose's clearance) |
   | `walk` | 0.67 s loop | 2.0 m/s, 0.67 m steps, 56% planted, hips up to 12 mm below standing, 3 degree lean |
+  | `walk_back` | 0.67 s loop | walking backwards, 2.0 m/s, 58% planted: its own gait, not the walk reversed (below) |
   | `sprint` | 0.6 s loop | 3.0 m/s, 0.9 m steps, 40% planted (a flight phase), 6 degree lean |
   | `crouch_idle` | 2 s loop | deep squat, eye 0.77 m (the crouched camera is 0.75 m: section 13.1) |
   | `crouch_walk` | 0.9 s loop | 1.0 m/s, 0.45 m steps, 60% planted, boots flat |
@@ -504,15 +515,23 @@ the helmet is never drawn for the player's camera but still casts its shadow. Ap
   | `air_rise`, `air_apex`, `air_fall` | poses | blended by vertical speed over take-off speed |
   | `land` | pose | the deepest moment of a heavy landing; the game scales it by impact speed |
 
-  Every gait starts with the left heel strike. A gait's legs come from foot paths: in stance a boot
-  rolls over its heel edge, lies flat, then rolls over its toe edge while travelling back at
-  exactly the clip's speed; the swing is a Hermite curve that leaves and lands at that speed. The
+  Every gait starts with the left boot landing. A gait's legs come from foot paths: in stance a
+  boot rolls over its heel edge, lies flat, then rolls over its toe edge while travelling back at
+  exactly the clip's speed; the swing is a Hermite curve that leaves and lands at that speed.
+  `walk_back` mirrors the rolls: the boot lands on its toe edge and leaves over its heel (toe up),
+  so the edge it pivots on is the one on the ground (the walk played in reverse rolled the wrong
+  way: its heel and toe slipped 0.22 m/s in the game, `walk_back` 0.02).
+  **Ankle limits:** a boot off the ground stays within 20 degrees of its shin's pitch and is lifted
+  clear of the ground; a planted boot whose shin leans more than 30 degrees over it lifts its heel,
+  rolling over its toe edge, which stays put. The
   hips sit as high as the planted legs allow (98.5% of full reach), which gives the walk its bob.
   The upper body is posed from tables like sections 6.2 and 7: arms swing from the shoulder
   bearings with the elbows nearly fixed, the chest stays square (the spine takes back the
   pelvis's yaw), little spine bend.
-- **Checks** (every run; all pass): a planted sole point moves at most 1.9 mm between frames in
-  the world (body moving at the clip's speed), never goes into the ground; no part inside
+- **Checks** (every run; all pass): a planted sole point moves at most 1.8 mm between frames in
+  the world (body moving at the clip's speed), never goes into the ground; the ankle bends at
+  most 35 degrees (what the bellows covers) on every frame of every clip (worst: 34.6, crouch
+  walk); no part inside
   another on sampled frames of every clip (section 10's check); the crouch's eye within 5 cm of
   0.75 m. Each clip's average eye position ahead of the origin is printed for the game
   (`PlayerBody.CLIP_EYE`).
@@ -534,4 +553,7 @@ the helmet is never drawn for the player's camera but still casts its shadow. Ap
    bearing (a real rotating joint on a hard suit) up to 90 degrees; walking backwards plays the
    walk in reverse.
 5. **Feet on slopes:** no foot IK yet; on steep Moon ground the boots sit a little into or above it.
+6. **Ankle bellows** bend in steps (five rings) and can look a little faceted at the 30-35 degree
+   extremes (toe-off, the deep crouch); crouch walking backwards still plays `crouch_walk` in
+   reverse (flat-footed, so its rolls are small).
 

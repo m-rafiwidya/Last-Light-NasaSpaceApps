@@ -18,7 +18,7 @@ frame is keyed. All clips use full-size character space (1.80 m); the game scale
 Every clip is keyed at 60 frames a second (at 30 the planted boots wobbled about 1 mm between keys).
 
 Clips (loops are a whole number of cycles; locomotion clips start with the left heel strike):
-  idle, walk, sprint, crouch_idle, crouch_walk, turn_step (loops)
+  idle, walk, walk_back, sprint, crouch_idle, crouch_walk, turn_step (loops)
   air_rise, air_apex, air_fall, land (single poses, blended by the game)
 """
 
@@ -40,8 +40,17 @@ WORLD_WALK, WORLD_SPRINT, WORLD_CROUCH = 2.0, 3.0, 1.0   # Player.SPEED_WALK / S
 # shrinking 2.0 -> 1.0 m round a fixed centre, lets the player sink 0.5 m (Player.set_crouch).
 # A 1.71 m suit only gets its eyes that low in a deep squat, leaning well forward.
 CROUCH_EYE = 0.75 / FP_SCALE
-EYE = Vector((0.0, -0.06, 1.58))       # between the eyes, inside the helmet (rides UpperChest)
+EYE = Vector((0.0, -0.12, 1.58))       # between the eyes, inside the helmet (rides UpperChest)
+# The torso's top above this (the shoulder yoke round the neck ring) goes with the helmet: right
+# under the player's camera it would fill the view looking down
+YOKE_Z = 1.435
 
+# The ankle (ASTRONAUT_KIT.md 13): the bellows covers the joint up to ANKLE_LIMIT; a boot off the
+# ground stays within SWING_ANKLE of its shin (pitch); every frame of every clip is checked
+ANKLE_LIMIT = 35.0
+STANCE_ANKLE = 30.0
+SWING_ANKLE = 20.0
+SWING_CLEARANCE = 0.01
 THIGH = (ak.HIP - ak.KNEE).length
 SHIN = (ak.KNEE - ak.ANKLE).length
 LEG = THIGH + SHIN
@@ -80,6 +89,7 @@ class Pose:
         # Per side arm: swing forward (degrees), out from the side, elbow bend, finger curl
         self.arm = {"Left": (0.0, 17.0, 12.0, 18.0), "Right": (0.0, 17.0, 12.0, 18.0)}
         self.knee_out = 0.12                       # how far out the knees point (pole x)
+        self.planted = {"Left": True, "Right": True}   # a boot off the ground keeps near its shin
 
     def copy(self) -> "Pose":
         p = Pose()
@@ -90,6 +100,7 @@ class Pose:
         p.foot_pitch = dict(self.foot_pitch)
         p.arm = dict(self.arm)
         p.knee_out = self.knee_out
+        p.planted = dict(self.planted)
         return p
 
 
@@ -102,10 +113,7 @@ def apply_pose(arm, p: Pose) -> None:
         acc = acc @ rot(*r)
         ma.set_world(arm, name, acc)
     for side, s in (("Left", 1.0), ("Right", -1.0)):
-        # Knees bend forward and a little out; legs keep their "up" (bone Z) forward
-        ma.two_bone(arm, side + "UpperLeg", side + "LowerLeg", p.ankle[side], (s * p.knee_out, -1.0, 0.25),
-                    (0.0, -1.0, 0.0), hips @ Vector((0.0, -1.0, 0.0)))
-        ma.set_world(arm, side + "Foot", Matrix.Rotation(math.radians(p.foot_pitch[side]), 3, "X"))
+        place_leg(arm, side, s, p, hips)
         swing, out, elbow, curl = p.arm[side]
         down = Vector((0.0, 0.0, -1.0))
         upper = acc @ rot(pitch=-swing) @ Matrix.Rotation(math.radians(-s * out), 3, "Y") @ down
@@ -115,6 +123,55 @@ def apply_pose(arm, p: Pose) -> None:
         ma.aim(arm, side + "LowerArm", fore, (0.0, 0.0, 1.0), outward)
         ma.aim(arm, side + "Hand", fore, (0.0, 0.0, 1.0), outward)
         ma.curl(arm, side, curl, curl * 0.5)
+
+
+def place_leg(arm, side: str, s: float, p: "Pose", hips: Matrix) -> None:
+    """Solves the leg to the pose's ankle and turns the boot, keeping the ankle within what the
+    boot and its bellows allow: a planted boot whose shin leans more than STANCE_ANKLE over it
+    lifts its heel (rolling over its toe edge, which stays put); a boot off the ground stays within
+    SWING_ANKLE of its shin and is lifted if its sole would touch the ground."""
+    ankle = p.ankle[side].copy()
+    pitch = p.foot_pitch[side]
+
+    def solve() -> None:
+        ma.two_bone(arm, side + "UpperLeg", side + "LowerLeg", ankle, (s * p.knee_out, -1.0, 0.25),
+                    (0.0, -1.0, 0.0), hips @ Vector((0.0, -1.0, 0.0)))
+    for _ in range(6):
+        solve()
+        a = shin_pitch(arm, side)
+        if p.planted[side]:
+            wanted = min(max(pitch, a - STANCE_ANKLE), a + STANCE_ANKLE)
+            if abs(wanted - pitch) < 0.05:
+                break
+            # Re-roll the planted boot to the new pitch over the same edge of the sole
+            edge = HEEL if pitch < 0.0 else TOE
+            pivot = ankle - Matrix.Rotation(math.radians(pitch), 3, "X") @ (-edge)
+            pitch = wanted
+            ankle = pivot + Matrix.Rotation(math.radians(pitch), 3, "X") @ (-edge)
+            ankle.x = p.ankle[side].x
+        else:
+            pitch = min(max(pitch, a - SWING_ANKLE), a + SWING_ANKLE)
+            turn = Matrix.Rotation(math.radians(pitch), 3, "X")
+            low = min((ankle + turn @ e).z for e in (HEEL, TOE))
+            if low >= SWING_CLEARANCE - 1e-4:
+                break
+            ankle.z += SWING_CLEARANCE - low
+    # The leg reaches the ankle as it finally is
+    solve()
+    ma.set_world(arm, side + "Foot", Matrix.Rotation(math.radians(pitch), 3, "X"))
+
+
+def shin_pitch(arm, side: str) -> float:
+    """The shin's pitch (degrees, the boots' sense: the same pitch on the boot = no ankle bend)."""
+    d = arm.pose.bones[side + "LowerLeg"].matrix.to_3x3() @ arm.data.bones[side + "LowerLeg"].matrix_local.to_3x3().inverted() @ Vector((0.0, 0.0, -1.0))
+    return math.degrees(math.atan2(d.y, -d.z))
+
+
+def ankle_bend(arm, side: str) -> float:
+    """How far the boot is turned against the shin from their rest (degrees, any axis)."""
+    def rel(name):
+        return arm.pose.bones[name].matrix.to_3x3() @ arm.data.bones[name].matrix_local.to_3x3().inverted()
+    return math.degrees((rel(side + "LowerLeg").inverted() @ rel(side + "Foot")).to_quaternion().angle)
 
 
 # --- Legs from foot paths ---------------------------------------------------------------------
@@ -129,39 +186,49 @@ def boot_on_ground(flat: Vector, pitch: float) -> Vector:
 
 class Gait:
     """One leg cycle, the same for both legs half a cycle apart. `speed` in character units/s,
-    `period` in frames. Forward is -Y; a planted boot travels back (+Y) at `speed`."""
+    `period` in frames. Forward is -Y; a planted boot travels back (+Y) at `speed`.
+
+    Walking backwards (`backward`) is its own gait, not the walk reversed: the body moves +Y, a
+    planted boot travels forward (-Y), and the boot lands on its toe edge, lies flat, then leaves
+    over its heel edge (toe up), so each roll pivots on the edge that is really on the ground."""
 
     def __init__(self, speed: float, frames: int, duty: float, lift: float, heel: float, toe: float, hip: float,
-                 width: float = ak.ANKLE.x, sway: float = 0.012, pelvis_yaw: float = 4.0, pelvis_roll: float = 2.0):
+                 width: float = ak.ANKLE.x, sway: float = 0.012, pelvis_yaw: float = 4.0, pelvis_roll: float = 2.0,
+                 backward: bool = False):
         self.speed, self.frames, self.duty, self.lift = speed, frames, duty, lift
         self.heel, self.toe, self.hip, self.width = heel, toe, hip, width
         self.sway, self.pelvis_yaw, self.pelvis_roll = sway, pelvis_yaw, pelvis_roll
         self.stance = speed * frames / FPS * duty      # how far a planted boot travels
+        self.backward = backward
+        # The way a planted boot travels relative to the body: back (+Y), or forward walking backwards
+        self.sign = -1.0 if backward else 1.0
+        # Boot pitch as it lands and as it leaves: heel strike / toe-off, or toe strike / heel-off
+        self.land, self.leave = (self.toe, -self.heel) if backward else (-self.heel, self.toe)
 
     def leg(self, phase: float) -> tuple:
-        """(ankle y and z, boot pitch, planted) at a leg's own phase (0 = heel strike)."""
+        """(ankle y and z, boot pitch, planted) at a leg's own phase (0 = the boot lands)."""
         if phase < self.duty:
             u = phase / self.duty
-            flat = Vector((0.0, -self.stance / 2.0 + self.stance * u, ak.ANKLE.z))
+            flat = Vector((0.0, self.sign * (-self.stance / 2.0 + self.stance * u), ak.ANKLE.z))
             if u < 0.18:
-                pitch = -self.heel * (1.0 - smooth(u / 0.18))
+                pitch = self.land * (1.0 - smooth(u / 0.18))
             elif u > 0.72:
-                pitch = self.toe * smooth((u - 0.72) / 0.28)
+                pitch = self.leave * smooth((u - 0.72) / 0.28)
             else:
                 pitch = 0.0
             a = boot_on_ground(flat, pitch)
             return a.y, a.z, pitch, True
         w = (phase - self.duty) / (1.0 - self.duty)
-        start = boot_on_ground(Vector((0.0, self.stance / 2.0, ak.ANKLE.z)), self.toe)
-        end = boot_on_ground(Vector((0.0, -self.stance / 2.0, ak.ANKLE.z)), -self.heel)
-        # Forward along a Hermite curve that leaves and arrives at the stance's own speed (back,
-        # +Y): a boot leaving or meeting the ground is still in the world, not dragged forward
-        tangent = self.speed * self.frames * (1.0 - self.duty) / FPS
+        start = boot_on_ground(Vector((0.0, self.sign * self.stance / 2.0, ak.ANKLE.z)), self.leave)
+        end = boot_on_ground(Vector((0.0, -self.sign * self.stance / 2.0, ak.ANKLE.z)), self.land)
+        # Along a Hermite curve that leaves and arrives at the stance's own speed: a boot leaving or
+        # meeting the ground is still in the world, not dragged along
+        tangent = self.sign * self.speed * self.frames * (1.0 - self.duty) / FPS
         w2, w3 = w * w, w * w * w
         y = ((2 * w3 - 3 * w2 + 1) * start.y + (w3 - 2 * w2 + w) * tangent + (-2 * w3 + 3 * w2) * end.y
              + (w3 - w2) * tangent)
         z = lerp(start.z, end.z, smooth(w)) + self.lift * math.sin(math.pi * w)
-        pitch = lerp(self.toe, -self.heel, smooth(w * 1.3))
+        pitch = lerp(self.leave, self.land, smooth(w * 1.3))
         return y, z, pitch, False
 
     def pose(self, frame: int, base: Pose) -> Pose:
@@ -188,9 +255,10 @@ class Gait:
         sp[0] = (sp[0][0], sp[0][1] - roll, sp[0][2] - yaw)
         p.spine = sp
         for side, s in (("Left", 1.0), ("Right", -1.0)):
-            y, z, pitch, _ = legs[side]
+            y, z, pitch, planted = legs[side]
             p.ankle[side] = Vector((s * self.width, y, z))
             p.foot_pitch[side] = pitch
+            p.planted[side] = planted
         return p, legs
 
 
@@ -256,6 +324,8 @@ def locomotion(gait: Gait, base: Pose, arm_swing: float, elbow: float, elbow_swi
 WALK = Gait(WORLD_WALK / FP_SCALE, 80, duty=0.56, lift=0.075, heel=12.0, toe=14.0, hip=ak.HIP.z - 0.012)
 SPRINT = Gait(WORLD_SPRINT / FP_SCALE, 72, duty=0.40, lift=0.15, heel=10.0, toe=18.0, hip=ak.HIP.z - 0.02,
               sway=0.008, pelvis_yaw=6.0)
+WALK_BACK = Gait(WORLD_WALK / FP_SCALE, 80, duty=0.58, lift=0.06, heel=10.0, toe=10.0, hip=ak.HIP.z - 0.015,
+                 sway=0.012, pelvis_yaw=3.0, backward=True)
 CROUCH_HIP = 0.38
 CROUCH_WIDTH = 0.28
 # The deep squat folds the hips past what the hard suit allows: these touches are accepted there
@@ -268,6 +338,14 @@ def clip_walk() -> list:
     base = standing()
     base.spine = [(1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0)]
     return locomotion(WALK, base, arm_swing=13.0, elbow=18.0, elbow_swing=6.0, out=16.0, curl=24.0, lean=3.0)
+
+
+def clip_walk_back() -> list:
+    """Walking backwards at the walk's speed: upright, a touch back, shorter arm swing. The arm
+    opposite a leg swings with it as in the walk: back with the leg landing behind."""
+    base = standing()
+    base.spine = [(-1.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)]
+    return locomotion(WALK_BACK, base, arm_swing=-9.0, elbow=18.0, elbow_swing=-4.0, out=16.0, curl=24.0, lean=0.0)
 
 
 def clip_sprint() -> list:
@@ -378,6 +456,7 @@ def pose_land() -> Pose:
 CLIPS = {
     "idle": (clip_idle, True),
     "walk": (clip_walk, True),
+    "walk_back": (clip_walk_back, True),
     "sprint": (clip_sprint, True),
     "crouch_idle": (clip_crouch_idle, True),
     "crouch_walk": (clip_crouch_walk, True),
@@ -387,7 +466,7 @@ CLIPS = {
     "air_fall": (lambda: [pose_air_fall()], False),
     "land": (lambda: [pose_land()], False),
 }
-GAITS = {"walk": WALK, "sprint": SPRINT, "crouch_walk": CROUCH_WALK}
+GAITS = {"walk": WALK, "walk_back": WALK_BACK, "sprint": SPRINT, "crouch_walk": CROUCH_WALK}
 
 
 # --- Keying -----------------------------------------------------------------------------------
@@ -437,7 +516,7 @@ def check_gait(arm, name: str, poses: list, gait: Gait, rows: list) -> int:
     for f, p in enumerate(poses):
         apply_pose(arm, p)
         for side in sole:
-            sole[side].append([q + Vector((0.0, -gait.speed * f / FPS, 0.0)) for q in sole_points(arm, side)])
+            sole[side].append([q + Vector((0.0, -gait.sign * gait.speed * f / FPS, 0.0)) for q in sole_points(arm, side)])
     for side, offset in (("Left", 0.0), ("Right", 0.5)):
         for f in range(len(poses)):
             pts = sole[side][f]
@@ -482,10 +561,12 @@ def check_clip_parts(obj, arm, name: str, poses: list, face_parts: list, parts: 
 
 def split_skinned(obj, face_parts: list, parts: list) -> tuple:
     """Two skinned copies of the T-pose mesh: the body, and the helmet (helmet, visor, ridge, lamp
-    pods and the neck ring) that the player's camera never draws."""
+    pods, the neck ring and the torso's top above YOKE_Z) that the player's camera never draws."""
     import bmesh
     helmet_parts = ma.HELMET_PARTS | {"neck ring"}
     idx = {i for i, p in enumerate(parts) if p[0] in helmet_parts}
+    torso = {i for i, p in enumerate(parts) if p[0] == "torso"}
+    yoke = {poly.index for poly in obj.data.polygons if face_parts[poly.index] in torso and poly.center.z > YOKE_Z}
     out = []
     for name, keep_helmet in (("astronaut_body", False), ("astronaut_helmet", True)):
         mesh = obj.data.copy()
@@ -493,7 +574,7 @@ def split_skinned(obj, face_parts: list, parts: list) -> tuple:
         bm = bmesh.new()
         bm.from_mesh(mesh)
         bm.faces.ensure_lookup_table()
-        doomed = [f for f in bm.faces if (face_parts[f.index] in idx) != keep_helmet]
+        doomed = [f for f in bm.faces if (face_parts[f.index] in idx or f.index in yoke) != keep_helmet]
         bmesh.ops.delete(bm, geom=doomed, context="FACES")
         bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
         bm.to_mesh(mesh)
@@ -577,6 +658,15 @@ def main() -> None:
                 g.duty * 100))
             failures += check_gait(arm, name, poses, g, rows)
         failures += check_clip_parts(obj, arm, name, poses, face_parts, parts, rows)
+        worst = (0.0, 0, "")
+        for f, p in enumerate(poses):
+            apply_pose(arm, p)
+            for side in ("Left", "Right"):
+                worst = max(worst, (ankle_bend(arm, side), f, side))
+        ok = worst[0] <= ANKLE_LIMIT
+        failures += 0 if ok else 1
+        rows.append("%s: ankle bends at most %.1f degrees (%s, frame %d; the bellows covers %.0f)%s" % (
+            name, worst[0], worst[2], worst[1], ANKLE_LIMIT, "" if ok else "  FAIL"))
         apply_pose(arm, poses[0])
         eye = ma.posed_point(arm, "UpperChest", EYE)
         # The game keeps the eyes under the camera with each clip's average (PlayerBody.CLIP_EYE)
@@ -605,9 +695,6 @@ def main() -> None:
         helmet.hide_render = True
         for name, poses in clips.items():
             render_clip(arm, body, name, poses, previews)
-        for pitch in (30, 60, 80):
-            render_eye(arm, body, "walk", clips["walk"][0], previews, pitch)
-            render_eye(arm, body, "idle", clips["idle"][0], previews, pitch)
         helmet.hide_render = False
         ak.set_preview_colors(False)
         ma.reset_pose(arm)

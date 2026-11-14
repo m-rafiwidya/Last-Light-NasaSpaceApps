@@ -33,7 +33,7 @@ SPAN = 1.90
 # Regions and their triangle budgets (ASTRONAUT_KIT.md 8)
 BUDGETS = {
     "helmet": 520, "visor": 100, "neck_ring": 90, "torso": 420, "shoulders": 200, "waist": 100,
-    "chest_box": 160, "backpack": 240, "arms": 680, "gloves": 1240, "legs": 760, "boots": 540,
+    "chest_box": 160, "backpack": 240, "arms": 680, "gloves": 1240, "legs": 810, "boots": 700,
 }
 REGIONS = list(BUDGETS)
 TOTAL_BUDGET = 5000
@@ -315,7 +315,8 @@ def build_leg(b: ak.Builder, side: str) -> None:
     b.tube([leg_point(z) for z in zs], [0.072, 0.081, 0.073, 0.081, 0.073], 12, DARK,
            [ak.blend("UpperLeg", "LowerLeg", t) for t in (0.0, 0.25, 0.5, 0.75, 1.0)], caps=(False, False), up=up)
     b.begin("shin", "LowerLeg")
-    b.tube([leg_point(z) for z in (0.52, 0.40, 0.28)], [0.072, 0.074, 0.064], 12, FABRIC, "LowerLeg",
+    # Down into the boot as an inner sleeve, so a bent ankle never shows an opening
+    b.tube([leg_point(z) for z in (0.52, 0.40, 0.30, 0.20)], [0.072, 0.074, 0.066, 0.058], 12, FABRIC, "LowerLeg",
            caps=(False, False), up=up, aspect=1.08)
     b.begin("knee cap", "LowerLeg")
     b.cbox(leg_point(0.50) + Vector((0.0, -0.078, 0.0)), (0.125, 0.06, 0.13), 0.022, SHELL, "LowerLeg", axis="y")
@@ -358,7 +359,8 @@ def build_boot(b: ak.Builder, side: str) -> None:
     w = "Foot"
     b.begin("boot", w)
     x = ak.ANKLE.x
-    b.tube([(x, 0.0, z) for z in (0.31, 0.22, 0.13)], [0.077, 0.08, 0.084], 12, SHELL, w, caps=(False, False),
+    # A low rigid cuff; above it the ankle bellows (below) carries the joint up to the shin
+    b.tube([(x, 0.0, z) for z in (0.215, 0.17, 0.13)], [0.082, 0.084, 0.084], 12, SHELL, w, caps=(False, False),
            up=(0.0, -1.0, 0.0))
     sole = 0.035
     rows = [(0.10, 0.052, 0.07), (0.085, 0.065, 0.105), (0.0, 0.07, 0.11), (-0.12, 0.072, 0.085), (-0.19, 0.066, 0.065),
@@ -367,7 +369,16 @@ def build_boot(b: ak.Builder, side: str) -> None:
                 for y, a, h in rows]
     b.loft(sections, SHELL)
     b.cbox((x, -0.062, sole / 2.0), (0.15, 0.33, sole), 0.01, DARK, w)
-    b.box((x - 0.012, 0.074, 0.255), (x + 0.012, 0.088, 0.315), ACCENT, w)
+    b.box((x - 0.012, 0.080, 0.14), (x + 0.012, 0.094, 0.20), ACCENT, w)
+    # Ankle bellows: dark rings from the boot cuff (Foot) up under the shin plate (LowerLeg),
+    # blended in steps like the knee convolute, so the boot can pitch against the shin and the
+    # joint stays covered (ASTRONAUT_KIT.md 13: up to 35 degrees)
+    b.begin("ankle", w)
+    zs = (0.205, 0.235, 0.26, 0.285, 0.315)
+    radii = (0.083, 0.089, 0.080, 0.086, 0.075)
+    ts = (0.0, 0.3, 0.55, 0.8, 1.0)
+    b.tube([leg_point(z) for z in zs], list(radii), 10, DARK, [ak.blend("Foot", "LowerLeg", t) for t in ts],
+           caps=(False, False), up=(0.0, -1.0, 0.0))
 
 
 def build_mesh() -> tuple:
@@ -478,13 +489,13 @@ def check_weights(obj, parts: list, face_parts: list, rows: list) -> int:
             part_bones[face_parts[poly.index]] |= vertex_bones[vi]
     blended = [parts[i][0] for i, bones in enumerate(part_bones) if len(bones) > 1]
     wrong = [parts[i][0] for i, bones in enumerate(part_bones) if len(bones) == 1 and bones != {parts[i][1]}]
-    expected = {"torso", "Left elbow", "Right elbow", "Left knee", "Right knee", "Left index finger",
+    expected = {"torso", "Left elbow", "Right elbow", "Left knee", "Right knee", "Left ankle", "Right ankle", "Left index finger",
                 "Left middle finger", "Left ring finger", "Left little finger", "Left thumb", "Right index finger",
                 "Right middle finger", "Right ring finger", "Right little finger", "Right thumb"}
     unexpected = sorted(set(blended) - expected)
     ok = not unexpected and not wrong
     failures += 0 if ok else 1
-    rows.append("rigid parts: %d of %d on one bone; blended by design: torso, elbows, knees; two-bone: fingers, thumbs%s" % (
+    rows.append("rigid parts: %d of %d on one bone; blended by design: torso, elbows, knees, ankles; two-bone: fingers, thumbs%s" % (
         len(parts) - len(blended), len(parts), "" if ok else "  FAIL (blended: %s, wrong bone: %s)" % (unexpected, wrong)))
     return failures
 
