@@ -37,6 +37,12 @@ func get_display_name() -> String:
 	return display_name
 
 
+## Why this part can't be mounted ("" if it can). Parts with limits, like the wheel envelope,
+## override it; a socket refuses the part and shows the reason to the player.
+func get_mount_problem() -> String:
+	return ""
+
+
 func is_mounted() -> bool:
 	return socket != null
 

@@ -4,7 +4,9 @@ extends Node3D
 
 ## A slot on the robot that a HotswapPart can be plugged into. A loose part that overlaps
 ## `PartCapture` is mounted automatically; the player takes it out again by using
-## the `InteractTrigger` (E), which puts the part in their hands.
+## the `InteractTrigger` (E), which puts the part in their hands. A part of the right type
+## that doesn't fit (HotswapPart.get_mount_problem(), e.g. a wheel outside the kit envelope)
+## is refused: the socket blinks red and a subtitle says why.
 ## The robot keeps references to its sockets and reads `part` to adjust its variables.
 
 signal part_mounted(part: HotswapPart)
@@ -25,15 +27,29 @@ signal part_unmounted(part: HotswapPart)
 var part: HotswapPart = null
 
 var _world: Node = null
+# Parts refused while they overlap PartCapture, so each entry is reported once
+var _refused: Dictionary = {}
+var _blink_tween: Tween = null
+var _base_material: Material = null
+# Shared by every socket: one subtitle at a time when a part overlaps several sockets.
+# Physics frame of the last refusal subtitle (game time, so it follows pauses and time scale).
+static var _last_refusal_message_frame: int = -100000
+
+const REFUSAL_MESSAGE_INTERVAL: float = 1.0
+const REFUSAL_BLINKS: int = 3
+const REFUSAL_BLINK_TIME: float = 0.15
 
 @onready var _capture: Area3D = $PartCapture
 @onready var _trigger: InteractTrigger = $InteractTrigger
 @onready var _trigger_shape: CollisionShape3D = $InteractTrigger/CollisionShape3D
 @onready var _mount_point: Marker3D = $MountPoint
+@onready var _base: MeshInstance3D = $Base
 
 
 func _ready() -> void:
 	_mount_point.position = mount_offset
+	_base_material = _base.material_override
+	_capture.body_exited.connect(func(body: Node3D) -> void: _refused.erase(body))
 	_trigger.interacted.connect(_on_interact_trigger_interacted)
 	_set_trigger_enabled(false)
 
@@ -43,8 +59,12 @@ func is_occupied() -> bool:
 
 
 func can_accept(candidate: HotswapPart) -> bool:
-	if part or candidate.is_mounted():
+	if part or candidate.is_mounted() or not accepts_type(candidate):
 		return false
+	return candidate.get_mount_problem().is_empty()
+
+
+func accepts_type(candidate: HotswapPart) -> bool:
 	return accepts_any_type or candidate.part_type == accepted_type
 
 
@@ -81,9 +101,46 @@ func _physics_process(_delta: float) -> void:
 	if part:
 		return
 	for body in _capture.get_overlapping_bodies():
-		if body is HotswapPart and can_accept(body):
-			mount(body)
+		var candidate := body as HotswapPart
+		if candidate == null or candidate.is_mounted() or not accepts_type(candidate):
+			continue
+		var problem: String = candidate.get_mount_problem()
+		if problem.is_empty():
+			mount(candidate)
 			return
+		if not _refused.has(candidate):
+			_refused[candidate] = true
+			_show_refusal(candidate, problem)
+
+
+# Blinks the socket's base plate red and shows the reason as a subtitle (at most one
+# subtitle per REFUSAL_MESSAGE_INTERVAL seconds across all sockets).
+func _show_refusal(candidate: HotswapPart, problem: String) -> void:
+	Debug.add_log("%s refused %s: %s" % [socket_name, candidate.get_display_name(), problem])
+	var now: int = Engine.get_physics_frames()
+	var interval_frames: int = roundi(REFUSAL_MESSAGE_INTERVAL * Engine.physics_ticks_per_second)
+	if now - _last_refusal_message_frame >= interval_frames:
+		_last_refusal_message_frame = now
+		var dialog := Dialog.new()
+		dialog.speaker = "Rover"
+		dialog.subtitle = "Can't mount this %s: %s" % [candidate.get_display_name().to_lower(), problem]
+		dialog.min_duration = 3.0
+		DialogServer.play_dialog(dialog)
+
+	if _blink_tween:
+		_blink_tween.kill()
+	var red := StandardMaterial3D.new()
+	red.albedo_color = Color(1.0, 0.2, 0.15)
+	red.emission_enabled = true
+	red.emission = Color(1.0, 0.1, 0.05)
+	_base.material_override = red
+	_blink_tween = create_tween()
+	for i in REFUSAL_BLINKS:
+		_blink_tween.tween_callback(_base.show)
+		_blink_tween.tween_interval(REFUSAL_BLINK_TIME)
+		_blink_tween.tween_callback(_base.hide)
+		_blink_tween.tween_interval(REFUSAL_BLINK_TIME)
+	_blink_tween.tween_callback(func() -> void: _base.material_override = _base_material)
 
 
 func _set_trigger_enabled(enabled: bool) -> void:
