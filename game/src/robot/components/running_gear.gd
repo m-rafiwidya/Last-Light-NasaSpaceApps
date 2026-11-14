@@ -166,6 +166,14 @@ func calculate_suspension_load(spring_compression_delta, suspension_velocity, sp
 	)
 	return spring_force + shock_force
 
+## Steering angle (rad, about the chassis' up axis) of a wheel. `steer` is -1 (full left) .. 1 (full right).
+func get_steer_angle(wheel: Wheel, steer: float) -> float:
+	return (
+		-steer *
+		wheel_properties[wheel][WheelProperty.MAX_STEER_ANGLE] *
+		wheel_properties[wheel][WheelProperty.STEER_BIAS]
+	)
+
 ## `steer` is -1 (full left) .. 1 (full right).
 func simulate_suspensions(state, steer: float) -> void:
 	var origin = state.transform.origin
@@ -221,11 +229,7 @@ func simulate_suspensions(state, steer: float) -> void:
 		wheel_states[wheel][WheelState.LOAD] = suspension_load
 		wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT] = collision_point - origin
 
-		var wheel_steer_angle: float = (
-			-steer *
-			wheel_properties[wheel][WheelProperty.MAX_STEER_ANGLE] *
-			wheel_properties[wheel][WheelProperty.STEER_BIAS]
-		)
+		var wheel_steer_angle: float = get_steer_angle(wheel, steer)
 		var wheel_direction: Vector3 = -z_basis.rotated(y_basis, wheel_steer_angle)
 
 		var wheel_speed: float = (

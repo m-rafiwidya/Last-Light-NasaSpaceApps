@@ -115,7 +115,8 @@ func _physics_process(delta: float) -> void:
 
 
 # Reads the radius of each mounted WheelPart into the running gear and moves the
-# part to where the running gear says its wheel is (hanging from the suspension).
+# part to where the running gear says its wheel is (hanging from the suspension),
+# turned by the wheel's steering angle.
 # An empty socket falls back to the running gear's default wheel_radius.
 func _update_wheel_parts() -> void:
 	var inverse_basis: Basis = global_transform.basis.inverse()
@@ -139,6 +140,12 @@ func _update_wheel_parts() -> void:
 		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
 		wheel_position.y = ground_height + radius
 		wheel_part.global_position = to_global(wheel_position)
+
+		# Steer about the chassis' up axis, starting from the mount point's orientation
+		# (the part's own basis is identity, so the parent is the unsteered pose).
+		var mount_basis: Basis = (wheel_part.get_parent() as Node3D).global_basis
+		var steer_angle: float = running_gear.get_steer_angle(wheel, controller.steer)
+		wheel_part.global_basis = Basis(global_transform.basis.y.normalized(), steer_angle) * mount_basis
 
 
 func _integrate_forces(state) -> void:
