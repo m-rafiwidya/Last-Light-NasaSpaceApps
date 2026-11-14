@@ -14,7 +14,7 @@ clearance-checked pose range that the visuals must clamp to (5). Revised while b
 chassis: socket_motor moves to the hatch floor (0.12, 0.33, 0.30) so the drive unit can sit flush
 and still mate at its origin; chassis wheel sockets are named socket_wheel_<front|middle|rear>_L/R;
 the hazcams set the lowest chassis point (3.3, 3.4). Revised while integrating the kit: the
-collider import script lives in the game project (7).
+collider import script lives in the game project (7); measured visual wheel offsets (5).
 
 ---
 
@@ -230,7 +230,9 @@ A script on the rover poses the linkage every physics frame from the physics whe
 - **Wheels** spin about their axle from the physics angular velocity.
 
 The six physics wheels are independent springs and the linkage is rigid, so on rough ground a
-visual wheel may sit up to about 2 cm off its physics contact. On flat ground the offset is zero.
+visual wheel may sit a few cm off its physics contact. Measured in the game: 1 mm on flat ground,
+up to 33 mm driving over an abrupt 8 cm step, up to 41 mm climbing a 15 cm ramp. The wheel parts
+follow the linkage (their hub sockets), not the physics contact.
 
 **Verified pose range.** The section 3.4 clearances were checked for every combination of:
 
