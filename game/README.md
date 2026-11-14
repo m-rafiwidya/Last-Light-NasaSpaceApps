@@ -86,7 +86,7 @@ game/
         ├── loading_screen/
         ├── console/
         ├── dialog_box/               # one subtitle line widget
-        ├── sub_screens/settings_sub_menu.tscn   # shared by main + pause menu
+        ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
 ```
 
@@ -250,7 +250,7 @@ Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect
 
 ### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
 
-Shared by main and pause menus. It currently contains only placeholder tab buttons (General / Audio / Video / Controls) with **no logic**, and a Back button whose handler is connected by the parent menu.
+Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting.
 
 ### 6.6 HUD (`ui/hud/`)
 
@@ -543,8 +543,11 @@ Grounded in the current code; useful to know before changing things.
 - `_setup_main_menu` sets state before creating the camera; the trailing comment is misleading.
 
 **UI**
-- Settings tabs are placeholders. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.
+- The settings menu widgets (sliders, toggles, dropdowns, key-binding buttons) are dummies: they hold local state only and are not saved or applied. The selected settings tab persists while the menu stays alive (it is not reset to General on re-open), and the active tab button has no highlight yet. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.
 - Sub-screen positions assume a 1920 px wide viewport (hard-coded `+-1920`).
+- **Planned / consider for the final build (settings menu):**
+  - Replace the manual `Tab` enum + show/hide loop with a `ButtonGroup` (`toggle_mode = true` on the four tab buttons) so the engine guarantees exactly one tab is selected and highlights the active one. Optionally swap the `Pages` container for a `TabContainer` (`tabs_visible = false`, set `current_tab` from the buttons). Check that `ButtonResizeComponent` and the pressed style in `res://res/theme.tres` look right on toggled buttons.
+  - Replace the code-built dummy rows with a reusable row scene (label + widget bound to a setting key) once real settings exist, and persist them (e.g. `ConfigFile`).
 - `HUD.fade_out()` makes the HUD transparent but doesn't hide it (the `hide` callback is commented out).
 - `dialog_server.gd` still has a comment above `SEQUENCE_GAP` claiming the gap must exceed the DialogBox hold + fade-out. That is no longer true (hold is 3.0s, fade-out 0.5s); boxes are meant to stack now.
 - `DialogServer` has no queue: a second sequence started while one is playing is ignored, and individual lines can overlap (`play_dialog` only rejects the same `Dialog` instance twice). See the overlap table in section 10.
