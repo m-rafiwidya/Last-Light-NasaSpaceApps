@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://b4pifos02jsqh"]
+
+[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="1_hrk27"]
+[ext_resource type="Script" uid="uid://bfe3d6lsdburg" path="res://src/ui/dialog_box/dialog_box.gd" id="1_tx2l6"]
+
+[node name="DialogBox" type="PanelContainer" unique_id=731751869]
+offset_right = 724.0
+offset_bottom = 72.0
+theme = ExtResource("1_hrk27")
+script = ExtResource("1_tx2l6")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1327507438]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="RichTextLabel" type="RichTextLabel" parent="MarginContainer" unique_id=560067576]
+layout_mode = 2
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/normal_font_size = 32
+theme_override_font_sizes/bold_font_size = 32
+theme_override_font_sizes/bold_italics_font_size = 32
+theme_override_font_sizes/italics_font_size = 32
+theme_override_font_sizes/mono_font_size = 32
+text = "Lorem ipsum dolor sit amet. "
+fit_content = true
+vertical_alignment = 1
