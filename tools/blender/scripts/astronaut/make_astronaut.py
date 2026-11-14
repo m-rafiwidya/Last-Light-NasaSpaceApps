@@ -33,7 +33,7 @@ SPAN = 1.90
 # Regions and their triangle budgets (ASTRONAUT_KIT.md 8)
 BUDGETS = {
     "helmet": 520, "visor": 100, "neck_ring": 90, "torso": 420, "shoulders": 200, "waist": 100,
-    "chest_box": 160, "backpack": 240, "arms": 680, "gloves": 480, "legs": 760, "boots": 540,
+    "chest_box": 160, "backpack": 240, "arms": 680, "gloves": 1240, "legs": 760, "boots": 540,
 }
 REGIONS = list(BUDGETS)
 TOTAL_BUDGET = 5000
@@ -233,35 +233,65 @@ def build_arm(b: ak.Builder, side: str) -> None:
            caps=(False, False))
 
 
+def octagon(hu: float, hv: float, ch: float) -> list:
+    """A rectangle with its corners cut by `ch` (8 points, counter-clockwise)."""
+    ch = min(ch, hu * 0.9, hv * 0.9)
+    return [(hu, -hv + ch), (hu, hv - ch), (hu - ch, hv), (-hu + ch, hv), (-hu, hv - ch), (-hu, -hv + ch),
+            (-hu + ch, -hv), (hu - ch, -hv)]
+
+
+def segment(b: ak.Builder, rows: list, mats, w, up=(0.0, 0.0, 1.0)) -> list:
+    """A glove segment: octagonal sections (point, half width, half height, chamfer) lofted along
+    the line from the first to the last point, capped at both ends."""
+    u, v = ak.frame(Vector(rows[-1][0]) - Vector(rows[0][0]), up)
+    return b.loft([(p, u, v, octagon(hw, hh, ch), w) for p, hw, hh, ch in rows], mats)
+
+
+def finger(b: ak.Builder, base: Vector, joint: Vector, tip: Vector, width: float, height: float, bones: tuple,
+           up=(0.0, 0.0, 1.0)) -> list:
+    """Two rounded segments, the far one tapering to a dark, rounded tip (the glove's grip pad)."""
+    d0 = (joint - base).normalized()
+    d1 = (tip - joint).normalized()
+    hw, hh = width / 2.0, height / 2.0
+    faces = segment(b, [(base, hw, hh, 0.007), (joint - d0 * 0.001, hw, hh, 0.007)], FABRIC, bones[0], up)
+    faces += segment(b, [(joint + d1 * 0.001, hw * 0.96, hh * 0.92, 0.007),
+                         (tip - d1 * 0.009, hw * 0.92, hh * 0.86, 0.007),
+                         (tip, hw * 0.62, hh * 0.6, 0.005)], [FABRIC, DARK], bones[1], up)
+    return faces
+
+
 def build_glove(b: ak.Builder, side: str) -> None:
-    """Gauntlet cuff, a boxy hand with a dark palm, four two-segment fingers and a thumb."""
+    """Armoured gauntlet: a flared cuff, a boxy hand with a dark palm under a hard back plate and a
+    dark knuckle guard, four two-segment fingers and a thumb, rounded, with dark grip tips."""
     b.set_side(side)
     b.set_region("gloves")
     b.begin("glove", "Hand")
     b.tube([along(x) for x in (0.75, 0.765, 0.80, 0.81)], [0.06, 0.071, 0.067, 0.055], 10, SHELL, "Hand",
            caps=(False, False))
-    b.cbox((0.84, 0.0, 1.418), (0.09, 0.118, 0.062), 0.014, lambda nrm: DARK if nrm.z < -0.5 else FABRIC, "Hand",
+    b.cbox((0.84, 0.0, 1.418), (0.09, 0.118, 0.062), 0.016, lambda nrm: DARK if nrm.z < -0.5 else FABRIC, "Hand",
            axis="x")
-    for finger, y in ak.FINGER_Y.items():
+    # Back plate (hard shell) and the knuckle guard across the finger roots
+    b.cbox((0.833, 0.0, 1.452), (0.068, 0.098, 0.014), 0.006, SHELL, "Hand", axis="z")
+    b.cbox((0.871, 0.0, 1.436), (0.024, 0.124, 0.030), 0.008, DARK, "Hand", axis="y")
+    for name, y in ak.FINGER_Y.items():
         z = ak.WRIST.z + 0.003
-        b.begin(finger.lower() + " finger", finger + "Proximal")
-        faces = b.beam((ak.KNUCKLE_X - 0.004, y, z), (ak.FINGER_JOINT_X, y, z), 0.026, 0.038, FABRIC, finger + "Proximal")
-        faces += b.beam((ak.FINGER_JOINT_X + 0.001, y, z - 0.002), (ak.FINGERTIP_X, y, z - 0.002), 0.025, 0.034,
-                        FABRIC, finger + "Intermediate")
+        b.begin(name.lower() + " finger", name + "Proximal")
+        faces = finger(b, Vector((ak.KNUCKLE_X - 0.004, y, z)), Vector((ak.FINGER_JOINT_X, y, z)),
+                       Vector((ak.FINGERTIP_X - 0.001, y, z - 0.002)), 0.027, 0.036,
+                       (name + "Proximal", name + "Intermediate"))
         palm_side(b, faces)
     b.begin("thumb", "ThumbProximal")
     p1 = ak.THUMB_BASE + ak.THUMB_DIR * ak.THUMB_LENGTHS[0]
     p2 = p1 + ak.THUMB_DIR * ak.THUMB_LENGTHS[1]
-    faces = b.beam(ak.THUMB_BASE, p1, 0.030, 0.030, FABRIC, "ThumbProximal")
-    faces += b.beam(p1 + ak.THUMB_DIR * 0.001, p2, 0.028, 0.028, FABRIC, "ThumbDistal")
+    faces = finger(b, ak.THUMB_BASE, p1, p2, 0.031, 0.031, ("ThumbProximal", "ThumbDistal"))
     palm_side(b, faces)
 
 
 def palm_side(b: ak.Builder, faces: list) -> None:
-    """Dark palm-side faces on a glove piece."""
+    """Dark palm-side faces on a glove piece (FABRIC faces only: the tips are dark already)."""
     b.bm.normal_update()
     for f in faces:
-        if f.normal.z < -0.5:
+        if f.normal.z < -0.5 and f.material_index == FABRIC:
             f.material_index = DARK
 
 

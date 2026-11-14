@@ -30,7 +30,7 @@ from the text below, this list wins:
     the reference's backpack rises well above the shoulders.
   - Helmet: an ellipsoid 0.34 x 0.34 x 0.33 m centred at (0, -0.045, 1.623), under a 12 mm
     ridge whose top is 1.80. The visor runs from z 1.535 to 1.715 and stands 8 mm proud.
-- **Triangles: 3,958** (cap 5,000):
+- **Triangles: 4,678** (cap 5,000; 3,958 before the glove pass for the first-person body, section 13):
 
   | Region | Triangles |
   |---|---|
@@ -43,12 +43,12 @@ from the text below, this list wins:
   | chest box | 140 |
   | backpack | 168 |
   | arms | 640 |
-  | gloves | 480 |
+  | gloves | 1,200 |
   | legs | 736 |
   | boots | 520 |
 
   The generator checks per-region budgets of 520 / 100 / 90 / 420 / 200 / 100 / 160 / 240 /
-  680 / 480 / 760 / 540. Props: `ws_suit_stand` 122, `ws_stool` 172 (budget 200, was 150).
+  680 / 1240 / 760 / 540. Props: `ws_suit_stand` 122, `ws_stool` 172 (budget 200, was 150).
 - **Weights:**
   - 27 of the 42 parts are rigid.
   - Blended by design: the torso (Hips to UpperChest), elbows and knees.
@@ -339,7 +339,7 @@ object in `astronaut_rack.glb` only. The rigged mesh and the FBX keep one combin
 | Backpack | 320 |
 | Waist and hip section | 260 |
 | Arms (upper, elbow convolute, forearm, wrist) | 2 x 340 |
-| Gloves (cuff, hand, 4 fingers, thumb) | 2 x 240 |
+| Gloves (cuff, hand, 4 fingers, thumb) | 2 x 240 (as built after the glove pass: 2 x 600, section 13) |
 | Legs (thigh, knee convolute, knee cap, shin plate) | 2 x 340 |
 | Boots | 2 x 200 |
 | **Astronaut** | **4,080** (cap 5,000) |
