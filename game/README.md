@@ -11,7 +11,7 @@ Follow the code in this order and the whole game will make sense:
 3. `src/ui/main_menu/` - the first screen the player sees.
 4. `src/autoloads/scene_loader.gd` - loads levels, spawns the player.
 5. `src/player/` - the physics-based first-person player.
-6. `src/car/` - the drivable car (currently what `SceneLoader` spawns instead of the player, see [section 15](#15-car)).
+6. `src/robot/` - the drivable robot (currently what `SceneLoader` spawns instead of the player, see [section 15](#15-robot)).
 
 Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD, pause menu, console.
 
@@ -33,7 +33,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 12. [Input map & physics layers](#12-input-map--physics-layers)
 13. [Known issues / gotchas / TODOs](#13-known-issues--gotchas--todos)
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
-15. [Car](#15-car)
+15. [Robot](#15-robot)
 
 ---
 
@@ -46,7 +46,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Main scene | `res://src/main.tscn` |
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
-| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable car (currently spawned instead of the player) |
+| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (currently spawned instead of the player) |
 | Content | One level only: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) |
 | Theme | `res/theme.tres` (shared by all UI) |
 
@@ -62,8 +62,6 @@ game/
 ├── res/                     # raw assets
 │   ├── theme.tres           # global UI theme
 │   └── textures/{dev,ui}/   # dev grid textures, crosshair.svg, interaction.svg
-├── classic_muscle_car/      # car glTF model (copied from the openwheel project)
-├── engine_sound.gd          # procedural engine sound (AudioStreamGenerator), used by car.tscn
 └── src/
     ├── main.tscn / main.gd           # entry point (root "Main" node)
     ├── autoloads/
@@ -71,10 +69,10 @@ game/
     │   ├── game_state.gd             # state machine, pause, mouse mode
     │   ├── debug.gd                  # console log + command parser
     │   └── dialog_server.gd          # subtitle timing + signals
-    ├── car/
-    │   ├── car.tscn / car.gd                 # RigidBody3D vehicle sim (class Car)
-    │   ├── car_controller.gd                 # keyboard input -> desired_speed/steer vars + camera signal (class CarController)
-    │   └── components/                       # engine.gd/.tscn (CarEngine), running_gear.gd/.tscn (RunningGear)
+    ├── robot/
+    │   ├── robot.tscn / robot.gd                 # RigidBody3D vehicle sim (class Robot)
+    │   ├── robot_controller.gd                 # keyboard input -> desired_speed/steer vars + camera signal (class RobotController)
+    │   └── components/                       # engine.gd/.tscn (RobotEngine), running_gear.gd/.tscn (RunningGear), engine_sound.gd (motor whir)
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
     │   └── dialog_sequence.gd        # Resource: ordered array of Dialog
@@ -333,7 +331,7 @@ flowchart TD
 
 Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It then spawns one of two things and finally calls `GameState.change_state_to(IN_GAME)` -> HUD appears, mouse captured.
 
-> **TEMPORARY:** `_setup_level()` currently calls `_setup_car(spawn_point)`. The `_setup_player(spawn_point)` call is commented out right below it. Swap the two lines to get the first-person player back.
+> **TEMPORARY:** `_setup_level()` currently calls `_setup_robot(spawn_point)`. The `_setup_player(spawn_point)` call is commented out right below it. Swap the two lines to get the first-person player back.
 
 **`_setup_player(spawn_point)`**
 1. Creates a `PlayerController` (plain `Node`) and adds it to the level.
@@ -341,11 +339,11 @@ Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It then spawns
 
 The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals.
 
-**`_setup_car(spawn_point)`**
-1. Creates a `CarController` and adds it to the level.
-2. Instantiates `car.tscn` (`CAR_PACKED_SCENE`), sets `GameState.player = null`, copies the spawn point's `transform`, assigns `car.controller`, adds it to the level.
+**`_setup_robot(spawn_point)`**
+1. Creates a `RobotController` and adds it to the level.
+2. Instantiates `robot.tscn` (`ROBOT_PACKED_SCENE`), sets `GameState.player = null`, copies the spawn point's `transform`, assigns `robot.controller`, adds it to the level.
 
-Again the controller must be assigned **before** `add_child(car)`: `Car._ready()` connects to its signals and would crash on a null controller. See [section 15](#15-car).
+Again the controller must be assigned **before** `add_child(robot)`: `Robot._ready()` connects to its signals and would crash on a null controller. See [section 15](#15-robot).
 
 ### `_setup_main_menu()`
 
@@ -531,9 +529,9 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
-| `camera` | C (car: toggle follow / bumper camera) |
+| `camera` | C (robot: toggle follow / bumper camera) |
 
-The car shares the player's movement actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering. The only car-only action is `camera`.
+The robot shares the player's movement actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering. The only robot-only action is `camera`.
 
 ### Collision layers (bit value in parentheses)
 
@@ -583,16 +581,15 @@ Grounded in the current code; useful to know before changing things.
 - Known TODO in code: crouch transitions can capture a transient camera transform; "friction doesn't work when walking then crouching".
 - `LEAP_SPEED`, `STEP_SIZE_*`, `JUMP_SPEED_PENALTY`, `PICKUP_TRANSLATE_KP/KD`, `PICKUP_ROTATE_KP/KD` constants are declared but unused (gains are computed inline instead).
 
-**Car** (see [section 15](#15-car) for details)
-- The car was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Debug.current_car`, the car input actions, `classic_muscle_car/` and `engine_sound.gd` (all referenced by `car.tscn` by `res://` path), and any code that spawns it.
-- Physics settings were **not** ported: `openwheel` runs 360 physics ticks/s and gravity 20; this project uses Godot defaults (60 ticks/s, gravity 9.8). The tyre model has its own comments about "spazzing" at low speed, so expect a twitchy/floaty car until these are copied over.
-- `Engines` audio bus (used by `EngineSound`) does not exist here (no `default_bus_layout.tres`); Godot falls back to `Master`, so the engine sound loses its distortion/reverb chain.
-- `Car._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). This **ignores `GameState`'s mouse handling**, e.g. the mouse can become captured/visible incorrectly while paused or in the mission console.
-- `Car._input` and `Car._process` (camera orbit) run regardless of `GameState`, so camera orbit still works while paused/in menus. (The camera toggle now goes through the controller signal and respects `GameState`.)
+**Robot** (see [section 15](#15-robot) for details)
+- The robot was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Debug.current_robot`, the robot input actions, and any code that spawns it. The original glTF car model was dropped; the robot is currently a placeholder box mesh.
+- Physics settings were **not** ported: `openwheel` runs 360 physics ticks/s and gravity 20; this project runs 240 ticks/s (`project.godot`) with Godot's default gravity (9.8, not lunar). The tyre model has its own comments about "spazzing" at low speed, so expect some twitchiness. The robot's mass, springs, tyre stiffness and motor were tuned for 9.8 gravity; if you change gravity, they need retuning.
+- `Robot._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). This **ignores `GameState`'s mouse handling**, e.g. the mouse can become captured/visible incorrectly while paused or in the mission console.
+- `Robot._input` and `Robot._process` (camera orbit) run regardless of `GameState`, so camera orbit still works while paused/in menus. (The camera toggle now goes through the controller signal and respects `GameState`.)
 - With `GameState.player = null` the HUD skips its crosshair logic, and both crosshair `TextureRect`s are visible by default, so **both crosshairs draw on top of each other** while driving. Hide them in `hud.tscn` or make `hud.gd` handle the no-player case.
 - `InteractTrigger`s and the mission console trigger can't be used while driving (they rely on the `Player` raycast).
-- `car.tscn` quirks inherited from `openwheel`: the `Model` node is `visible = false` (the car is invisible, only the collision/camera exist); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Car.controller` is typed `CarController` but is not set in the scene, so it **must** be assigned from code.
-- The car's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
+- `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` but is not set in the scene, so it **must** be assigned from code.
+- The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
 
 
 **Repo hygiene**
@@ -632,54 +629,57 @@ Add a new `match` case in `Debug.parse_command` (`autoloads/debug.gd`); use `add
 ### Add a new game state
 Add it to `GameState.State`, handle enter/exit side effects in `_on_state_enter` / `_on_state_exit`, then decide which UI screens it shows in `UIManager._on_game_state_changed`.
 
-### Switch between player and car
-In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_setup_car(spawn_point)`.
+### Switch between player and robot
+In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_setup_robot(spawn_point)`.
 
 ---
 
-## 15. Car
+## 15. Robot
 
-Files: `src/car/car.tscn`, `car.gd` (`class_name Car`), `car_controller.gd` (`class_name CarController`), `components/engine.gd` (`CarEngine`), `components/running_gear.gd` (`RunningGear`). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
+Files: `src/robot/robot.tscn`, `robot.gd` (`class_name Robot`), `robot_controller.gd` (`class_name RobotController`), `components/engine.gd` (`RobotEngine`, a brushed DC motor model), `components/running_gear.gd` (`RunningGear`), `components/engine_sound.gd` (procedural motor sound). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
 
-**Status:** `SceneLoader._setup_level()` temporarily spawns the car instead of the player (see [section 7](#7-scene-loading)). Everything else (HUD, pause, state machine) works as before.
+**Status:** `SceneLoader._setup_level()` temporarily spawns the robot instead of the player (see [section 7](#7-scene-loading)). Everything else (HUD, pause, state machine) works as before.
 
 ### 15.1 Design split
-Same idea as the player: the **controller** is *intent*, the **car** is *body*.
+Same idea as the player: the **controller** is *intent*, the **robot** is *body*.
 
-- **`CarController`** (`car_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (fraction of the car's max speed: -1 full speed backward .. 1 full speed forward, 0 = stop) and `steer` (-1 left .. 1 right), plus the `toggle_camera` signal (emitted with `true` on press, `false` on release). The `Car` reads the variables directly and connects to the signal in `_ready()`.
-- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the car slows down) and steering re-centres.
-- `Car` only uses `desired_speed`, `steer` and the signal, so an AI or replay controller exposing the same interface could be swapped in.
+- **`RobotController`** (`robot_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (-1 full reverse .. 1 full forward, 0 = no input; used by the robot as the motor voltage, so it maps to a fraction of top speed) and `steer` (-1 left .. 1 right), plus the `toggle_camera` signal (emitted with `true` on press, `false` on release). The `Robot` reads the variables directly and connects to the signal in `_ready()`.
+- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the robot slows down) and steering re-centres.
+- `Robot` only uses `desired_speed`, `steer` and the signal, so an AI or replay controller exposing the same interface could be swapped in.
 
-### 15.2 Scene structure (`car.tscn`, root `Car`)
+### 15.2 Scene structure (`robot.tscn`, root `Robot`)
 ```
-Car (RigidBody3D, car.gd)  mass 80 (moon rover, ~1x1 m), layer 2, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
-├── Model            glTF car model (currently visible = false; not rescaled to the rover size)
-├── Engine           CarEngine: torque curve, peak 9 Nm, idle ~500 rpm, redline 3800-4000 rpm
+Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layer 2, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
+├── MeshInstance3D   placeholder box mesh (1 x 0.33 x 1 m)
+├── Engine           RobotEngine: brushed DC motor (stall torque 10.7 Nm, no-load speed 345 rad/s)
 ├── RunningGear      RunningGear: tyre + suspension params (wheelbase/track 1 m, wheel radius 0.15, spring 4000, damping 400, ride height 0.15)
 ├── BodyCollision / CockpitCollision   CollisionPolygon3D
 ├── BumperCamera     Camera3D
 ├── FollowCamera     Camera3D (top_level, smoothed toward the pivot marker)
 ├── FollowCameraPivot/FollowCamera   Marker3D target for the follow camera
-├── FollowCameraReset  Timer (re-aligns the follow camera behind the car after right-mouse orbit)
-└── EngineSound      AudioStreamPlayer3D + engine_sound.gd, bus "Engines"
+├── FollowCameraReset  Timer (re-aligns the follow camera behind the robot after right-mouse orbit)
+└── EngineSound      AudioStreamPlayer3D + components/engine_sound.gd (procedural motor whir)
 ```
 
-### 15.3 Simulation (`Car._integrate_forces`)
+### 15.3 Simulation (`Robot._integrate_forces`)
 Every physics step:
 1. `_sync_driven_wheels`: forces the driven wheels (rear-left, rear-right) to the differential speed.
 2. `RunningGear.simulate_suspensions(state, steer)`: per wheel, ray-casts down (mask layer 1) from the wheel position. Computes spring + damper load, then slip ratio / slip angle and a Pacejka magic-formula tyre force (longitudinal + lateral), plus wheel torque that spins the wheel.
-3. `_step_drivetrain`: the engine is rigidly coupled to the driven wheels through one fixed ratio (`gear_ratio * final_drive`), so engine speed follows wheel speed (clamped between idle and redline). The controller input is a **desired speed** (`desired_speed * Car.max_speed`, 10 units/s). A proportional controller turns the error against the car's current forward speed into a -1..1 throttle (full torque at `speed_control_band` = 2 units/s of error). Torque comes from `CarEngine` (torque curve, rev limiter) scaled by `abs(throttle)`, and its sign drives the wheels forward or backward, so a negative error (including no input) slows the car down by driving against its motion. Only the differential speed is integrated.
+3. `_step_drivetrain`: the engine is rigidly coupled to the driven wheels through one fixed ratio (`gear_ratio * final_drive`), so motor speed is wheel speed times that ratio. The controller input (`desired_speed`, -1..1) is used as the **motor voltage**, and `RobotEngine.get_motor_torque` is a brushed DC motor: `torque = stall_torque * (voltage - speed / no_load_speed)`, limited to +-stall_torque. Top speed is therefore set by the motor (about `voltage * no_load_speed`, less rolling resistance: ~10 units/s at full input), half input gives about half speed, and no input brakes the robot with back-EMF (strong at speed, fading to nothing near standstill; `Robot.rolling_resistance_force` finishes the stop). Launch acceleration is about 3.5 m/s^2 and tapers as speed builds. Only the differential speed is integrated. To retune: `no_load_speed ~ top speed / wheel radius * total ratio`, `stall_torque ~ (effective mass * launch accel + rolling resistance) * wheel radius / total ratio`.
 4. `_apply_wheel_forces`: applies suspension load at the wheel offset and tyre force at the contact point.
 
 There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward and `S` drives backward.
 
+### 15.3b Motor sound (`components/engine_sound.gd`)
+A procedural electric-motor whir through an `AudioStreamGenerator` (22.05 kHz), generated per frame from `Robot.motor_angular_velocity` and `Robot.motor_torque`. Pitch follows motor speed (70 to 650 Hz across 0 to no-load speed), loudness follows speed plus load (silent when parked), and load adds upper harmonics and controller (PWM) whine. It also adds an inharmonic gear whine and a little noise. All of it is tunable through exports on the node (the scene sets `volume = 0.2`).
+
 ### 15.4 Cameras
-`Car._process` handles both: **follow** camera (6 m behind, height depends on pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME`. The player's camera isn't used, so the car cameras must be `current`; the follow camera is `current` by default.
+`Robot._process` handles both: **follow** camera (`follow_camera_distance` = 2.5 m behind, height `follow_camera_height` = 0.8 m scaled by pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME`. The player's camera isn't used, so the robot cameras must be `current`; the follow camera is `current` by default.
 
 ### 15.5 Collision layers
-The car is on layer 2 (same layer as the player) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
+The robot is on layer 2 (same layer as the player) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
 
-### 15.6 Recipe: spawn the car in a new place
-A level needs a `SpawnPoint`. The car spawns at its `transform` with the origin at the car's centre, and `RunningGear` ride height is 0.15 m, so give the marker a bit of height above the ground to avoid spawning inside it.
+### 15.6 Recipe: spawn the robot in a new place
+A level needs a `SpawnPoint`. The robot spawns at its `transform` with the origin at the robot's centre, and `RunningGear` ride height is 0.15 m, so give the marker a bit of height above the ground to avoid spawning inside it.
 
-See [section 13](#13-known-issues--gotchas--todos) ("Car") for the issues found while integrating it.
+See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues found while integrating it.

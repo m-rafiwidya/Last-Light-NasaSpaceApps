@@ -1,26 +1,21 @@
 [gd_scene format=3 uid="uid://dvqu81j65chtr"]
 
-[ext_resource type="Script" uid="uid://bbqam5tp6wery" path="res://src/car/car.gd" id="1_caus5"]
-[ext_resource type="Script" uid="uid://cq1fv7irf222e" path="res://engine_sound.gd" id="2_460mh"]
-[ext_resource type="PackedScene" uid="uid://4arryn46ujiy" path="res://src/car/components/engine.tscn" id="2_y3xmu"]
-[ext_resource type="PackedScene" uid="uid://c5pjveyc6065i" path="res://src/car/components/running_gear.tscn" id="4_6b27f"]
+[ext_resource type="Script" uid="uid://bbqam5tp6wery" path="res://src/robot/robot.gd" id="1_caus5"]
+[ext_resource type="Script" uid="uid://cq1fv7irf222e" path="res://src/robot/components/engine_sound.gd" id="2_460mh"]
+[ext_resource type="PackedScene" uid="uid://4arryn46ujiy" path="res://src/robot/components/engine.tscn" id="2_y3xmu"]
+[ext_resource type="PackedScene" uid="uid://c5pjveyc6065i" path="res://src/robot/components/running_gear.tscn" id="4_6b27f"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 bounce = 0.5
 
-[sub_resource type="Curve" id="Curve_gkkdu"]
-_data = [Vector2(0, 0.8956521), 0.0, 0.170761, 0, 0, Vector2(0.693333, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.914138), -0.649141, 0.0, 0, 0]
-point_count = 3
-
 [sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_2vce4"]
-buffer_length = 0.05
+mix_rate = 22050.0
+buffer_length = 0.1
 
-[sub_resource type="Curve" id="Curve_grmg8"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.2, 1), 0.0, 0.0, 0, 0, Vector2(0.6, 0.2), -0.99947, -0.99947, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
-point_count = 4
-metadata/_snap_enabled = true
+[sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
+size = Vector3(1, 0.32641602, 1)
 
-[node name="Car" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("running_gear", "engine")]
+[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("running_gear", "engine")]
 collision_layer = 2
 collision_mask = 7
 mass = 80.0
@@ -37,7 +32,6 @@ running_gear = NodePath("RunningGear")
 engine = NodePath("Engine")
 
 [node name="Engine" parent="." unique_id=1105020877 instance=ExtResource("2_y3xmu")]
-torque_curve = SubResource("Curve_gkkdu")
 
 [node name="RunningGear" parent="." unique_id=1604477408 instance=ExtResource("4_6b27f")]
 
@@ -75,6 +69,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.5)
 stream = SubResource("AudioStreamGenerator_2vce4")
 autoplay = true
 script = ExtResource("2_460mh")
-wave_shape = SubResource("Curve_grmg8")
+volume = 0.2
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2071253017]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17224121, 0)
+mesh = SubResource("BoxMesh_xa74p")
 
 [connection signal="timeout" from="FollowCameraReset" to="." method="_on_follow_camera_reset_timeout"]

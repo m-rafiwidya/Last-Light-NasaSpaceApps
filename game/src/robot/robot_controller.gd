@@ -1,20 +1,20 @@
-class_name CarController
+class_name RobotController
 
 extends Node
 
-## Car intent. Reads input and exposes smoothed values the Car reads directly,
+## Robot intent. Reads input and exposes smoothed values the Robot reads directly,
 ## like PlayerController. One-shot events are signals (emitted with `true` on
 ## press, `false` on release).
 ## Shares the player's movement actions: move_forward / move_backward = desired
-## speed forward / backward (as a fraction of the car's max speed; no input = 0,
-## so the car slows down), move_left / move_right = steering.
+## speed forward / backward (as a fraction of the robot's top speed; no input = 0,
+## so the robot slows down), move_left / move_right = steering.
 ## Like PlayerController, input is only accepted while GameState is IN_GAME.
 
 signal toggle_camera(value: bool)
 
 
-## Desired speed as a fraction of the car's max speed:
-## -1 (full speed backward) .. 1 (full speed forward), 0 = stop.
+## Desired speed as a fraction of the robot's top speed. The robot uses it as the
+## motor voltage: -1 (full reverse) .. 1 (full forward), 0 = no input.
 var desired_speed: float = 0.0
 ## -1 (full left) .. 1 (full right)
 var steer: float = 0.0

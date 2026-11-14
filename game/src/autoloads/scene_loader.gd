@@ -5,7 +5,7 @@ signal level_loaded(level_name)
 signal level_unloaded(level_name)
 
 const PLAYER_PACKED_SCENE: PackedScene = preload("res://src/player/player.tscn")
-const CAR_PACKED_SCENE: PackedScene = preload("res://src/car/car.tscn")
+const ROBOT_PACKED_SCENE: PackedScene = preload("res://src/robot/robot.tscn")
 const MAIN_MENU_ID = "main_menu"
 # TODO: Kinda dangerous if someone forgot to change these to a valid path
 # is there a built in godot way for file paths?
@@ -104,9 +104,9 @@ func _setup_level():
 		push_error('No "SpawnPoint" marker node found in level.')
 		return
 
-	# TEMPORARY: spawn the car instead of the player.
+	# TEMPORARY: spawn the robot instead of the player.
 	# Swap back to _setup_player(spawn_point) to restore the first-person player.
-	_setup_car(spawn_point)
+	_setup_robot(spawn_point)
 	#_setup_player(spawn_point)
 
 	# Hey GameState, I finished loading, please start transition to IN_GAME
@@ -125,18 +125,18 @@ func _setup_player(spawn_point: Marker3D) -> void:
 	current_scene.add_child(player)
 
 
-# Spawn the drivable car at the designated spawn point
-func _setup_car(spawn_point: Marker3D) -> void:
-	var car_controller = CarController.new()
-	current_scene.add_child(car_controller)
+# Spawn the drivable robot at the designated spawn point
+func _setup_robot(spawn_point: Marker3D) -> void:
+	var robot_controller = RobotController.new()
+	current_scene.add_child(robot_controller)
 
-	var car: Car = CAR_PACKED_SCENE.instantiate()
-	# The HUD only reads GameState.player for the crosshair; there is no player in a car
+	var robot: Robot = ROBOT_PACKED_SCENE.instantiate()
+	# The HUD only reads GameState.player for the crosshair; there is no player in a robot
 	GameState.player = null
-	car.transform = spawn_point.transform
-	# Must be assigned before add_child(): Car._ready() connects to its signals
-	car.controller = car_controller
-	current_scene.add_child(car)
+	robot.transform = spawn_point.transform
+	# Must be assigned before add_child(): Robot._ready() connects to its signals
+	robot.controller = robot_controller
+	current_scene.add_child(robot)
 
 
 func _setup_main_menu():

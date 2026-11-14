@@ -1,7 +1,7 @@
 extends Node
 
-# Set by Car._ready()
-var current_car: Car
+# Set by Robot._ready()
+var current_robot: Robot
 
 var debug_console_output: PackedStringArray = [
 	'Debug console for "%s"' % ProjectSettings.get_setting("application/config/name", "Unnamed Project"),

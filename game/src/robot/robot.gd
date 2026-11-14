@@ -1,33 +1,37 @@
-class_name Car
+class_name Robot
 
 extends RigidBody3D
 
-@export var controller: CarController
+@export var controller: RobotController
 @export var running_gear: RunningGear
-@export var engine: CarEngine
+@export var engine: RobotEngine
 
 # Single fixed gear, used for both forward and reverse. The engine is rigidly
 # coupled to the driven wheels (no clutch).
 @export var gear_ratio: float = 1.0
 @export var final_drive: float = 5.0
-# Top speed in both directions, in units per second. The controller's input is a
-# fraction of this (1 = full speed forward, -1 = full speed backward, 0 = stop).
-@export var max_speed: float = 10.0
-# Speed error (units/s) at which the drivetrain applies full torque. Smaller
-# values chase the target speed harder; larger values are gentler.
-@export var speed_control_band: float = 2.0
+# Rolling resistance at the ground (N), applied through the driven wheels. It is
+# what finally stops the robot once the motor's back-EMF braking has faded out, and
+# it pulls the loaded top speed a little below the motor's no-load speed.
+@export var rolling_resistance_force: float = 12.0
 # Rotational inertias (kg m^2) of the transmission output shaft and differential
 @export var transmission_inertia: float = 0.004
 @export var differential_inertia: float = 0.01
 
-# Follow camera offset behind the car, scaled to the car's size
+# Follow camera offset behind the robot, scaled to the robot's size
 @export var follow_camera_distance: float = 2.5
 @export var follow_camera_height: float = 0.8
 
 const DRIVEN_WHEELS: Array = [RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT]
+# Rolling resistance fades in over 1 / this rad/s of wheel speed so it can't
+# flip the wheel's direction at near-zero speed.
+const ROLLING_RESISTANCE_SLIP_GAIN: float = 0.5
 
 # Drivetrain state
-var engine_angular_velocity: float = 0.0
+# Signed motor shaft speed (rad/s), positive = forward. Read by engine_sound.gd
+var motor_angular_velocity: float = 0.0
+# Torque at the motor shaft (Nm) this step. Read by engine_sound.gd
+var motor_torque: float = 0.0
 var differential_angular_velocity: float = 0.0
 
 var camera_mode: CameraMode = CameraMode.FOLLOW
@@ -46,7 +50,7 @@ enum CameraMode{
 
 func _ready() -> void:
 	$FollowCamera.set_as_top_level(true)
-	Debug.current_car = self
+	Debug.current_robot = self
 	running_gear.update_wheel_properties()
 	controller.toggle_camera.connect(_on_controller_toggle_camera)
 
@@ -93,7 +97,7 @@ func _process(delta) -> void:
 func _integrate_forces(state) -> void:
 	_sync_driven_wheels()
 	running_gear.simulate_suspensions(state, controller.steer)
-	_step_drivetrain(state)
+	_step_drivetrain(state.step)
 	_apply_wheel_forces(state)
 
 # Forces driven wheels to the differential speed (can be unstable at low speeds)
@@ -101,31 +105,22 @@ func _sync_driven_wheels() -> void:
 	for wheel in DRIVEN_WHEELS:
 		running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] = differential_angular_velocity
 
-# Integrates the differential speed. The engine is rigidly coupled to the driven
-# wheels through the single gear, so its speed follows the wheels (never below
-# idle). The controller input is a desired speed: the drivetrain applies torque
-# proportional to the error between it and the current forward speed, so it
-# accelerates toward the target, and brakes (engine braking) when the target is
-# lower, including when there is no input.
-func _step_drivetrain(state) -> void:
-	var step: float = state.step
+# Integrates the differential speed. The DC motor is rigidly coupled to the driven
+# wheels through the single gear, so its speed follows the wheels. The controller
+# input is the motor voltage: full input drives the motor towards its no-load
+# speed, which sets the robot's top speed, and no input lets back-EMF slow it down.
+func _step_drivetrain(step: float) -> void:
 	var combined_gear_ratio: float = gear_ratio * final_drive
 
-	var forward_speed: float = state.linear_velocity.dot(-state.transform.basis.z)
-	var target_speed: float = controller.desired_speed * max_speed
-	# -1..1: how hard to push, and in which direction
-	var throttle: float = clamp((target_speed - forward_speed) / speed_control_band, -1.0, 1.0)
+	motor_angular_velocity = differential_angular_velocity * combined_gear_ratio
+	motor_torque = engine.get_motor_torque(motor_angular_velocity, controller.desired_speed)
+	var drive_torque: float = motor_torque * combined_gear_ratio
 
-	engine_angular_velocity = clamp(
-		abs(differential_angular_velocity) * combined_gear_ratio,
-		engine.idle_speed,
-		engine.upper_redline
+	# Resistance on the driven wheels: rolling resistance plus tyre reaction torque
+	var driven_wheel_resistance_torque: float = (
+		rolling_resistance_force * running_gear.wheel_radius *
+		clamp(differential_angular_velocity * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0)
 	)
-	var engine_output_torque: float = engine.get_engine_torque(engine_angular_velocity, abs(throttle))
-	var drive_torque: float = engine_output_torque * combined_gear_ratio * sign(throttle)
-
-	# Resistance from the tyres on the driven wheels
-	var driven_wheel_resistance_torque: float = 0.0
 
 	# Inertia seen at the differential/wheel speed. The transmission output shaft
 	# spins at final_drive times wheel speed, so its inertia is reflected by
