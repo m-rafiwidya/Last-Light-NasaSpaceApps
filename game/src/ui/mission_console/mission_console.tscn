@@ -1,0 +1,170 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/mission_console/mission_console.gd" id="1_mcscr"]
+[ext_resource type="Theme" uid="uid://be3ngjxfbjuew" path="res://res/computer_theme/computer_theme.tres" id="2_mcthm"]
+[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="3_mcfnt"]
+[ext_resource type="Script" path="res://src/ui/button_style_components/button_sound_component.gd" id="4_mcsnd"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
+bg_color = Color(0.674814, 0.674815, 0.674814, 1)
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.278431, 0.278431, 0.278431, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.0576, 0.09696, 0.32, 1)
+border_width_top = 32
+border_color = Color(0.1974, 0.25192, 0.47, 1)
+border_blend = true
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_title"]
+
+[node name="MissionConsole" type="CanvasLayer"]
+script = ExtResource("1_mcscr")
+
+[node name="Window" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -684.0
+offset_top = -506.0
+offset_right = 685.0
+offset_bottom = 507.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_mcthm")
+theme_override_styles/panel = SubResource("StyleBoxFlat_window")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Window"]
+layout_mode = 2
+
+[node name="TitleBar" type="PanelContainer" parent="Window/VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_title")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Window/VBoxContainer/TitleBar"]
+layout_mode = 2
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Window/VBoxContainer/TitleBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_title")
+bbcode_enabled = true
+text = "[b][wave amp=16 freq=8]Macrohard Inhear 9000[/wave][/b]"
+fit_content = true
+vertical_alignment = 1
+
+[node name="Close" type="Button" parent="Window/VBoxContainer/TitleBar/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.196143, 0.196143, 0.196143, 1)
+theme_override_fonts/font = ExtResource("3_mcfnt")
+text = "X"
+
+[node name="MarginContainer" type="MarginContainer" parent="Window/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HSplitContainer" type="HSplitContainer" parent="Window/VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 405
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
+layout_mode = 2
+text = "You've got mail!"
+
+[node name="ItemList" type="ItemList" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 0
+fixed_icon_size = Vector2i(64, 64)
+
+[node name="VSplitContainer" type="VSplitContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer"]
+layout_mode = 2
+split_offset = 495
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
+custom_minimum_size = Vector2(0, 256)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
+layout_mode = 2
+text = "Attachments"
+
+[node name="PanelContainer" type="PanelContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 16
+
+[node name="Attachments" type="HBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
+layout_mode = 2
+
+[node name="Title" type="RichTextLabel" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/bold_italics_font_size = 32
+theme_override_font_sizes/italics_font_size = 32
+theme_override_font_sizes/mono_font_size = 32
+theme_override_font_sizes/normal_font_size = 32
+theme_override_font_sizes/bold_font_size = 32
+bbcode_enabled = true
+text = "[b][i]Title[/i][/b]"
+fit_content = true
+scroll_active = false
+
+[node name="Description" type="RichTextLabel" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 32
+text = "Start This Job"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button"]
+script = ExtResource("4_mcsnd")
