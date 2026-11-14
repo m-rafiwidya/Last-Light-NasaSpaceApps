@@ -427,3 +427,28 @@ Swappable variants keep to their slot's budget.
 3. Linkage and wheel-spin animation script; rover camera follows the mast head's `pivot_camera`.
 4. Collider import post-script; chassis collision replaces `BodyCollision`.
 5. Friction circles from a 2 x 2 to a 2 x 3 layout.
+
+---
+
+## 9. Cargo mount (KITE_KIT.md, approved 2026-10-09)
+
+- **Chassis:** a new empty **`socket_cargo` (-0.125, 0.20, 0.44)** on the deck, under the stowed
+  arm's turret.
+- **`cargo_mount`** (fixed part, `rover_metal`, 120 triangles, no collision):
+  - origin `socket_cargo`;
+  - a 0.29 x 0.19 m frame on four short legs with 20 mm corner lips;
+  - `socket_cargo_item` (-0.125, 0.20, 0.505), where a cargo part's origin goes: the cartridge's
+    bottom face, 65 mm above the deck.
+  - Built by `RoverVisuals` like `mast_base`.
+- **Cargo socket:** a `HotswapSocket` `CargoSocket` in `robot.tscn`, accepting the new
+  `PartType.CARGO`, anchored on `socket_cargo_item`, zero mount offset.
+- **Stowed arm pose:** (0, 90, 80, 100, 0) instead of (0, 90, 90, 90, 0). The turret's hub end
+  rises from z 0.585 to 0.642, 57 mm above a loaded cartridge's top. The old stowed pose becomes
+  the **latch pose**, where the hub end meets the cartridge's top face. Both are inside the
+  checked ranges (section 5). The stowed pose's camera-view and ground figures are re-measured.
+- **`arm_tool`:** a new empty **`pivot_latch`** on the hub's end face (the end along the wrist, at
+  the hub axis). A carried cargo part's `anchor_latch` goes there. No mesh change.
+- **Arm with cargo:** manual arm control is off while the cargo mount holds something. The empty
+  mount joins `make_arm.py`'s full-range clearance check as an obstacle.
+- **Budget:** cargo_mount 120 triangles (the kit total goes from 6,308 to 6,428, under 8,000).
+- **`rover_gold`:** also used for the cartridge's stripe (KITE_KIT.md 4), if approved.
