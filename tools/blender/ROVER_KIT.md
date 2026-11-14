@@ -18,6 +18,10 @@ collider import script lives in the game project (7); measured visual wheel offs
 width may only grow outboard) and wheel variants that differ by tread, colour and stats (3.1, 4).
 Revised while building the mast: the mast head is two objects in one GLB, the panning yoke
 `mast_head` and the tilting `mast_head_camera`; pan / tilt range and camera view checks (3.3, 5).
+Revised while building the arm: arm lengths scaled from Curiosity (about 0.95 m), a yaw
+turntable `arm_shoulder_yaw` inside the arm_shoulder GLB, new joint origins, joint ranges,
+stowed and reaching-down poses (3.3, 5); the mast's inward sensor boom turned outboard, out of
+the arm's reach (3.3); arm budgets rebalanced (6.2).
 
 ---
 
@@ -153,11 +157,12 @@ All linkage rotation is about the X axis, so x bands never change.
 | `mast_base` | (0.15, 0.35, 0.44) on the deck | `socket_mast_head` (0.15, 0.35, 0.95) |
 | `mast_head` (yoke, pans) | (0.15, 0.35, 0.95), the connector on the mast top; pans about the vertical axis through it | child object `mast_head_camera`; collider `mast_head-convcolonly` |
 | `mast_head_camera` (camera box, tilts) | (0.15, 0.35, 1.05), on the horizontal tilt axis (along X); child of `mast_head` | `pivot_camera` (0.15, 0.42, 1.05), the game camera position, 22 mm in front of the lens |
-| `arm_shoulder` | (-0.12, 0.45, 0.32) on the front face | `pivot_shoulder_yaw` at the origin, `socket_arm_upper` (-0.12, 0.53, 0.32) |
-| `arm_upper` | (-0.12, 0.53, 0.32) | `socket_arm_forearm` (-0.12, 0.83, 0.32) |
-| `arm_forearm` | (-0.12, 0.83, 0.32) | `socket_arm_wrist` (-0.12, 1.11, 0.32) |
-| `arm_wrist` | (-0.12, 1.11, 0.32) | `socket_arm_tool` (-0.12, 1.19, 0.32) |
-| `arm_tool` | (-0.12, 1.19, 0.32) | none |
+| `arm_shoulder` (fixed mount) | (-0.12, 0.45, 0.32) on the front face | child object `arm_shoulder_yaw` |
+| `arm_shoulder_yaw` (J1, yaws about Z) | (-0.12, 0.53, 0.265), its vertical connector on the mount; child of `arm_shoulder` | `socket_arm_upper` (-0.09, 0.53, 0.345) |
+| `arm_upper` (J2, pitches about X) | (-0.09, 0.53, 0.345) | `socket_arm_forearm` (-0.09, 0.89, 0.345) |
+| `arm_forearm` (J3, pitches about X) | (-0.09, 0.89, 0.345) | `socket_arm_wrist` (-0.09, 1.22, 0.345) |
+| `arm_wrist` (J4, pitches about X) | (-0.09, 1.22, 0.345) | `socket_arm_tool` (-0.125, 1.29, 0.345) |
+| `arm_tool` (J5, turns about Y) | (-0.125, 1.29, 0.345) | collider `arm_tool-convcolonly` |
 | `motor` (drive unit) | (0.12, 0.33, 0.30), its back face on the hatch floor | none |
 | `power_unit` | (0.00, -0.45, 0.36) on the rear face | none |
 | `antenna` | (-0.15, -0.25, 0.44) on the deck | none |
@@ -174,15 +179,27 @@ Shape notes:
   An arm runs inboard over the wheel top (z 0.22 to 0.25), then a leg goes down the wheel's inner
   side (x 0.33 to 0.36) to an axle stub (x 0.36 to 0.38). Arm and leg are 36 mm deep, so the
   leg's outer corners stay within 0.171 m of the steer axis (sweep to x = 0.329).
-- **Arm:** rest pose stretched straight forward (+Y). Lengths: shoulder 0.08, upper 0.30, forearm
-  0.28, wrist 0.08, tool about 0.12. The shoulder yaws about Z; the shoulder, elbow and wrist pitch
-  about X. Godot poses it stowed by default.
+- **Arm:** Curiosity's 2.1 m arm at about 0.45 scale, about 0.95 m. Rest pose stretched straight
+  forward (+Y). Lengths: front face to the shoulder pitch axis 0.08, upper arm 0.36, forearm
+  0.33, wrist 0.07, tool hub 0.05 with tools reaching 0.095 out from its axis. Tube segments
+  (diameter 36 mm) with round joint housings (diameter 70 mm), all rover_metal. Every joint turns
+  about its own connector axis (2.5, moving joints):
+  - J1 yaw: `arm_shoulder_yaw`, a turntable on a vertical connector of the fixed mount.
+  - J2 shoulder pitch, J3 elbow, J4 wrist: about X. The upper arm and wrist sit on the -X side of
+    their joints and the forearm on the +X side (tubes at x -0.13 and -0.05), so the arm can
+    fold its segments side by side.
+  - J5 turret: `arm_tool` turns about its axis to choose the tool that points down.
+  - In Godot: J1 = `arm_shoulder_yaw` about Y, J2-J4 = about X (same sign as in Blender),
+    J5 = `arm_tool` about -Z (Blender +Y).
+- **Arm tool:** turret of five simple tools around a hub, 72 degrees apart: drill (pointing
+  down at J5 = 0), scoop, brush, small camera (rover_dark lens) and sensor (rover_dark face).
 - **Power unit:** finned dark cylinder (diameter about 0.14, length about 0.35), angled up and back
   from its rear-face connector. The angle is modelled into the mesh.
 - **Antenna:** flat hexagonal high-gain dish (about 0.22 across) on a small gimbal, gold accent.
 - **Mast base:** keyed plug into the deck, a 60 mm foot, a 40 mm pole and a 60 mm top collar
-  with the keyed recess at z 0.95; two small sensor booms, toward the rover's centre (-X) at
-  z 0.78 and to the rear (-Y) at z 0.72, out of the camera's forward view. All rover_metal.
+  with the keyed recess at z 0.95; two small sensor booms, outboard (+X) at z 0.78 and to the
+  rear (-Y) at z 0.72, out of the camera's forward view and out of the arm's reach (a boom
+  toward the rover's centre came within 5 mm of the folded arm). All rover_metal.
 - **Mast head:** two objects in one GLB so Godot can pan and tilt it. `mast_head` is the yoke
   (rover_metal): keyed plug, base and crossbar resting on the mast's top collar (the pan joint),
   and two arms at 0.080 to 0.092 m either side of the mast axis. `mast_head_camera` is a
@@ -268,11 +285,35 @@ follow the linkage (their hub sockets), not the physics contact.
 | Steering (front, rear counter-steers) | +-30 degrees |
 | Mast head pan (`mast_head`, about the vertical) | any angle (checked every 15 degrees) |
 | Mast head tilt (`mast_head_camera`, about X) | +-30 degrees |
+| Arm J1 yaw (positive = toward the rover's left) | -20 to +15 degrees |
+| Arm J2 shoulder pitch (positive = raise) | -30 to +90 degrees |
+| Arm J3 elbow (positive = raise the forearm) | -90 to +90 degrees |
+| Arm J4 wrist | -110 to +110 degrees |
+| Arm J5 tool turret | any angle |
+
+The arm was checked over the whole product of these ranges (J1 every 5, J2 and J3 every 15,
+J4 every 22, J5 every 18 degrees; 41,184 poses) at steering -30, 0 and +30: it keeps 20 mm from
+the chassis, the mast and its head, the front wheels, brackets and rockers, and its own
+non-adjacent segments. Closest: forearm to the mast head 22 mm, at full left yaw with the arm
+folded back. The left yaw is limited by the mast: at +20 degrees the folded arm comes within
+2 mm of the mast head. The ground is not part of this check: over the full ranges the tool
+can reach 0.20 m below flat ground, so whatever drives the arm must keep it above the terrain.
+
+**Arm poses** (J1, J2, J3, J4, J5 in degrees):
+- **Stowed** (0, 90, 90, 90, 0): the upper arm stands up at the front-left corner, the forearm
+  folds back over the deck and the turret hangs above it (lowest point 357 mm above the
+  ground). Clear of the motor hatch (no arm geometry in front of it) and outside the game
+  camera's view with the mast head at rest (21.8 degrees clear); the camera sees it when tilted
+  30 degrees down. Godot poses the arm stowed by default.
+- **Reaching down** (0, -10, -41, 51, 0): the drill points down 31 mm above flat ground,
+  about 0.75 m in front of the front face.
+- **Rest** (all 0): straight forward, the modelling pose.
 
 `rover_visuals.gd` must clamp the rocker and bogie angles to this range (steering is already
 limited to +-30 degrees by the physics), so the visuals never reach a pose that was not
 clearance-checked. Widening a range means re-running the check in
-`tools/blender/scripts/make_rocker_bogie.py` first (`make_mast.py` for the mast head). The mast head
+`tools/blender/scripts/make_rocker_bogie.py` first (`make_mast.py` for the mast head,
+`make_arm.py` for the arm). The mast head
 check also confirms that no head geometry is ever inside the game camera's view from
 `pivot_camera` (90 degree vertical field of view, checked for a 21:9 screen).
 
@@ -290,19 +331,23 @@ check also confirms that no head geometry is ever inside the game camera's view 
 
 | Part | Triangles |
 |---|---|
-| chassis | 1,300 |
+| chassis | 1,200 |
 | rockers | 2 x 230 |
 | bogies | 2 x 230 |
 | steer brackets | 4 x 150 |
 | wheels | 6 x 400 |
 | mast_base | 300 |
 | mast_head | 500 |
-| arm_shoulder / upper / forearm / wrist | 150 / 150 / 150 / 120 |
-| arm_tool | 300 |
+| arm_shoulder (with the yaw turntable) / upper / forearm / wrist | 280 / 150 / 150 / 150 |
+| arm_tool | 240 |
 | motor | 200 |
 | power_unit | 400 |
 | antenna | 250 |
 | **Total** | **7,740** (260 spare) |
+
+The arm budgets were rebalanced when it was built (shoulder +130 for the yaw turntable and
+its two connectors, wrist +30, tool -60); the chassis gave up 100 (it uses 556), so the
+total is unchanged.
 
 Swappable variants keep to their slot's budget.
 
