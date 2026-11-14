@@ -94,7 +94,7 @@ func play_slider_tick() -> void:
 	play_ui(&"slider_tick")
 
 
-## Volume of one AudioSettings key ("master", "music", "interface"), applied and saved
+## Volume of one AudioSettings key ("master", "music", "effects", "interface"), applied and saved
 func set_volume(key: String, percent: float) -> void:
 	AudioSettings.set_volume(key, percent)
 	volume_changed.emit(key, AudioSettings.get_volume(key))

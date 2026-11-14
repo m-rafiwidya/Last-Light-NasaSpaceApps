@@ -9,9 +9,10 @@ extends RefCounted
 const PATH: String = GraphicsSettings.PATH
 const SECTION: String = "audio"
 ## Setting key -> bus it controls
-const BUSES: Dictionary = {"master": &"Master", "music": &"Music", "interface": &"UI"}
+## (effects: the gameplay sounds; the Ambience bus sends to SFX, so it follows too)
+const BUSES: Dictionary = {"master": &"Master", "music": &"Music", "effects": &"SFX", "interface": &"UI"}
 ## Setting key -> default percent (the settings menu's original defaults)
-const DEFAULTS: Dictionary = {"master": 80.0, "music": 70.0, "interface": 50.0}
+const DEFAULTS: Dictionary = {"master": 80.0, "music": 70.0, "effects": 80.0, "interface": 50.0}
 
 static var _percent: Dictionary = {}
 static var _loaded: bool = false

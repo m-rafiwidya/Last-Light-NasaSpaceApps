@@ -71,6 +71,7 @@ game/
     │   ├── game_state.gd             # state machine, pause, mouse mode
     │   ├── debug.gd                  # console log + command parser
     │   └── dialog_server.gd          # subtitle timing + signals
+    ├── audio/                        # gameplay sound observers Sfx attaches: player_sounds.gd, rover_sounds.gd, workshop_sounds.gd
     ├── object_holder/
     │   └── object_holder.gd                  # shared pick up / hold / throw logic for the player and the robot (class ObjectHolder)
     ├── robot/
@@ -130,6 +131,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 | `Debug` | `autoloads/debug.gd` | Stores console log lines and parses console commands. |
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
 | `AudioManager` | `autoloads/audio_manager.gd` | Background music and UI sounds by name (`play_ui`), audio volumes; runs while paused. See [section 16](#16-audio). |
+| `Sfx` | `autoloads/sfx.gd` | Gameplay sounds: one-shots (`play`), loops with a limit and ducking, ambience beds; attaches the sound observers in `src/audio/`. Pauses with the game. See [section 16](#16-audio). |
 
 `SceneLoader`, `GameState` are set to `PROCESS_MODE_ALWAYS` so they keep running while the tree is paused. `UIManager` is also `process_mode = 3` (ALWAYS) in its scene.
 
@@ -964,7 +966,7 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 `AudioManager` (autoload, `PROCESS_MODE_ALWAYS`) plays the music and the UI sounds. The audio itself is made in `game/music/` (see its `CLAUDE.md`); `game/music/` has a `.gdignore`, so Godot only imports the finals copied into `res/audio/` by `game/music/export_to_game.py` (re-render, re-run the script, done).
 
-**Buses** (`default_bus_layout.tres`): `Master`, plus `Music` and `UI`, both sending to `Master`. Dialog and the rover's motor still use `Master`.
+**Buses** (`default_bus_layout.tres`): `Master`, plus `Music`, `UI` and `SFX` sending to `Master`, and `Ambience` sending to `SFX` (so the Effects volume covers it). Dialog still uses `Master`.
 
 **Music:** `res/audio/music/deep_space_memory.ogg` (60 s, imported with `loop=true`, `loop_offset=0`; the end flows into the start, so the loop is seamless) on the `Music` bus. It starts at boot, fades in over 6 s (a tween that ignores `Engine.time_scale`), and as an autoload keeps playing across level changes and while paused.
 
@@ -982,7 +984,32 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 | `notification` | The boundary hint appearing on the HUD that is showing (`BoundaryHint`) |
 | `error` | The robot HUD's "No zoom on the ..." refusal |
 
-**Volumes:** Settings > Audio > Master, Music and Interface Volume are real (0-100 %, linear gain; 0 mutes): `AudioManager.set_volume(key, percent)` applies them to the `Master`, `Music` and `UI` buses and saves them in `user://settings.cfg` (section `audio`, next to `GraphicsSettings`) through `AudioSettings` (`src/settings/audio_settings.gd`); the main and pause menus' sliders follow each other via `AudioManager.volume_changed`. Effects and Voice Volume stay dummies until those buses exist.
+**Volumes:** Settings > Audio > Master, Music, Effects and Interface Volume are real (0-100 %, linear gain; 0 mutes): `AudioManager.set_volume(key, percent)` applies them to the `Master`, `Music`, `SFX` and `UI` buses and saves them in `user://settings.cfg` (section `audio`, next to `GraphicsSettings`) through `AudioSettings` (`src/settings/audio_settings.gd`); the main and pause menus' sliders follow each other via `AudioManager.volume_changed`. Voice Volume stays a dummy until a voice bus exists.
 
-**Test:** `tests/test_audio.gd`. Headless Godot uses the Dummy audio driver, which plays in real time while `--fixed-fps` runs game time as fast as it can, so the test waits in real time for audio and in game time for tweens.
+**Gameplay sounds:** the `Sfx` autoload (`src/autoloads/sfx.gd`) plays `res/audio/sfx/` (made by `game/music/sfx_sounds.py`, Deep Space style: soft, muffled, nothing rings). It pauses with the game, plays nothing on the main menu or loading screen, nor for 1.5 s after a level starts (parts mounting, props settling).
+
+- `Sfx.play(&"name", at, volume_db, main, duck)`: a one-shot, 3D (mono, `AudioStreamPlayer3D`) at a `Vector3` or `Node3D`, 2D without one; variations `<name>_1.._N` never repeat back to back. Non-tonal sounds (`step_`, `land_`, `impact_`, `bump`, `throw`, `rolling`) get a random pitch of ±5 %; the tonal ones are tuned to the music's key and keep their pitch.
+- Loops (`make_loop`, `adopt_loop`): the owner sets `gain` and `main` every frame. At most `MAX_LOOPS` (4) are heard at once; the driven rover's main layer first, then by loudness and distance.
+- Ducking: while a rover is driven, its motor and wheels (and bumps) are the main layer; everything else and the ambience duck 4 dB, up to 10 dB as the motor gets loud. Alerts (link, battery low, power, fully charged) don't duck.
+- Ambience (`Ambience` bus): `amb_workshop` while the camera is inside a `Workshop`, `amb_moon` outside on a level with `MoonTerrain`, crossfading over 2 s; none outside on the test level.
+- Observers, attached as nodes enter the tree (no edits to those scenes): `PlayerSounds` on the `Player`, `RoverSounds` on each `Robot`, `WorkshopSounds` on each `Workshop`. `Sfx` itself watches every `HotswapSocket` except the cargo socket (`part_mounted` / `part_unmounted` / `part_refused`) and every loose `RigidBody3D` prop (impacts).
+- Hooks in gameplay code: `ObjectHolder` emits `picked_up`, `dropped` and `thrown`; `HotswapSocket` emits `part_refused`. The rover's motor whir stays `engine_sound.gd` (procedural, now darker, on the `SFX` bus), adopted by `Sfx` as a loop.
+
+| Sound | When |
+|---|---|
+| `step_regolith`, `step_floor` (5 each, 2D) | One per stride on foot (0.5 m crouching, 0.6 m walking up to 1.0 m sprinting); regolith on the Moon's terrain and rocks, floor anywhere else |
+| `land_regolith`, `land_floor` (3 each, 2D) | Landing after more than 0.3 s in the air at 1 m/s or more; louder with the fall speed |
+| `grab`, `drop`, `throw` (3D) | `ObjectHolder` signals (player and rover); no grab when a socket just handed the part out |
+| `impact_<regolith\|hard>_<light\|medium\|heavy>` (3 each, 3D) | A loose prop's velocity changes by 0.6 m/s or more in a step while touching something; weight by mass (under 4 kg, under 15 kg, heavier) |
+| `part_seat` (3), `part_release`, `part_refused` (3D) | Socket mounts, gives a part out, refuses a part |
+| `power_up`, `power_down` (3D) | A battery-powered rover gains / loses power (charged battery mounted; removed or empty) |
+| `link_open`, `link_close` (2D) | Taking control of a rover from on foot / leaving it |
+| `rolling_loop` (3D loop) | Wheels on the ground: level and pitch from the wheels' ground speed (full at 2.5 m/s) |
+| `bump` (3, 3D) | A wheel touches down while the chassis comes down at 0.5 m/s or more |
+| `battery_low` (2D) | The driven rover's charge falls through `sag_threshold` (once, re-armed 2 % above it) |
+| `door_start`, `door_loop`, `door_stop` (3D) | The bay door starts moving, moves, stops (at the doorway) |
+| `charger_connect`, `charger_full`, `charger_fault` (3D) | The pad starts charging (or is already full), finishes, faults (at most every 2 s) |
+| `amb_workshop`, `amb_moon` (2D beds) | See Ambience above |
+
+**Tests:** `tests/test_audio.gd` (music, UI, volumes) and `tests/test_sfx.gd` (gameplay sounds on the Moon level). Headless Godot uses the Dummy audio driver, which plays in real time while `--fixed-fps` runs game time as fast as it can, so the test waits in real time for audio and in game time for tweens.
 

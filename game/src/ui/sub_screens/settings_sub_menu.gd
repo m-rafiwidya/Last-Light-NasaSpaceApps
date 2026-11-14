@@ -3,7 +3,7 @@ extends MarginContainer
 ## that tab's list of dummy settings under the tab row. Exactly one tab is always shown
 ## (General by default); pressing the active tab again does nothing.
 ## Most widgets are placeholders; the real ones are Video > Terrain Detail (GraphicsSettings) and
-## Audio > Master / Music / Interface Volume (AudioSettings through AudioManager).
+## Audio > Master / Music / Effects / Interface Volume (AudioSettings through AudioManager).
 ## Every button, toggle and slider plays its UI sound (ButtonSoundComponent, AudioManager).
 
 const LABEL_MIN_WIDTH := 260.0
@@ -58,8 +58,8 @@ func _build_general(rows: VBoxContainer) -> void:
 func _build_audio(rows: VBoxContainer) -> void:
 	_add_volume(rows, "Master Volume", "master")
 	_add_volume(rows, "Music Volume", "music")
-	# Dummies until the game has effects and voice buses
-	_add_slider(rows, "Effects Volume", 0.0, 100.0, 80.0, "%")
+	_add_volume(rows, "Effects Volume", "effects")
+	# Dummy until the game has a voice bus
 	_add_slider(rows, "Voice Volume", 0.0, 100.0, 90.0, "%")
 	_add_volume(rows, "Interface Volume", "interface")
 	_add_check(rows, "Mute When Unfocused", true)
@@ -141,7 +141,7 @@ func _add_slider(rows: VBoxContainer, label_text: String, min_value: float, max_
 	return slider
 
 
-## A real volume slider (AudioSettings key "master", "music" or "interface"): applied and saved as
+## A real volume slider (AudioSettings key "master", "music", "effects" or "interface"): applied and saved as
 ## it moves, and kept in step (silently) when the other menu's settings (main / pause) change it
 func _add_volume(rows: VBoxContainer, label_text: String, key: String) -> void:
 	var slider := _add_slider(rows, label_text, 0.0, 100.0, AudioSettings.get_volume(key), "%")

@@ -176,15 +176,46 @@ gaps; the order and times print in the terminal).
 - Variations: `hover` and `click` have three each (`_1` to `_3`, different scale notes); the game
   should pick one at random per play.
 
+## Gameplay sound effects
+
+`sfx_sounds.py` builds the gameplay sounds: `.venv/bin/python sfx_sounds.py [names...]` writes
+`output/sfx/<name>.wav` (one-shots) and `<name>.ogg` (loops: `*_loop`, `amb_*`), 48 kHz, and
+`output/sfx/_preview.wav` (every sound in order with gaps, loops twice round, the ambience beds
+15 s across their seam, and the bay door as the game plays it; the order and times print in the
+terminal). A base name (`step_regolith`) renders all its variations. The game side is `Sfx` (the
+game README's Audio section).
+
+- Style: Deep Space, like the UI sounds but further away: soft, muffled, calm. On the Moon
+  everything outside is heard through the suit or the rover's structure (steep lowpass about
+  0.5–1.6 kHz, no air whooshes, almost no room); the workshop is a small, dead room.
+- Never: bells, chimes, FM, metallic hits or anything that rings (the Kenney metal, bell, glass,
+  tin and plate hits are not used), nothing harsh, nothing much above about 2–3 kHz.
+- Tonal sounds (grab, drop, latches, power, link, battery, charger, the door's hum, the workshop
+  hum) are scale degrees of `ui_sounds.KEY_ROOT` in `SCALE` and the game keeps their pitch.
+  Non-tonal ones (steps, landings, impacts, bumps, throw, rolling) get ±5 % random pitch in the
+  game; keep any pitched element out of them.
+- Direction as in the UI: positive events rise (part_seat, power_up, link_open, charger_full),
+  releases and losses fall (part_release, power_down, link_close, battery_low).
+- 3D sounds are mono; `STEREO` (link_*, battery_low, the ambience beds) are stereo.
+- Levels: each sound is peak-normalised to its entry in `LEVELS` (steps −30 dBFS, alerts about
+  −20, the Moon's bed −36). The game adds its own volume per play (impacts and landings by speed).
+- Loops are built periodic so they loop sample-exactly (noise from random phases over exactly
+  the loop length, grains wrapped round the end, rates snapped to whole cycles, filters run
+  circularly); the render prints a seam report per loop.
+- Samples: only CC0, kept in `samples/<pack>/` with the pack's license, and every source listed
+  in `samples/SOURCES.md` (where from, license, date, which sounds use it). A sample is always
+  processed (slowed, lowpassed, damped) to fit the style, never used raw.
+
 ## Into the game
 
 `.venv/bin/python export_to_game.py` copies the finals into the Godot project and imports them:
 the main mix of each track in its `MUSIC` list (now `deep_space_memory`, never a loop test) to
-`game/res/audio/music/` with `loop=true, loop_offset=0` in its `.import`, and the `ui_soft` WAVs
-(not `_preview`) to `game/res/audio/ui/`, removing UI files that no longer exist. Re-render, re-run
+`game/res/audio/music/` with `loop=true, loop_offset=0` in its `.import`, the `ui_soft` WAVs
+(not `_preview`) to `game/res/audio/ui/`, and `output/sfx/` (WAVs, and the loop OGGs with
+`loop=true, loop_offset=0`) to `game/res/audio/sfx/`, removing files that no longer exist. Re-render, re-run
 it, and the game picks up the new version. In the game, `AudioManager` (`src/autoloads/`) plays
-them; see the game README's Audio section. New UI sound names also need adding to
-`AudioManager.SOUNDS`.
+them (gameplay sounds: `Sfx`); see the game README's Audio section. New UI sound names also need
+adding to `AudioManager.SOUNDS`; `Sfx` finds gameplay sounds by name.
 
 ## Seamless loops (required for every track)
 

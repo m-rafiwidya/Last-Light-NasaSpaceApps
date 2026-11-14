@@ -11,6 +11,8 @@ extends Node3D
 
 signal part_mounted(part: HotswapPart)
 signal part_unmounted(part: HotswapPart)
+## A part of the right type that doesn't fit was refused (the socket blinks red)
+signal part_refused(part: HotswapPart)
 
 @export var socket_name: String = "Socket"
 ## When false only parts of `accepted_type` are mounted
@@ -148,6 +150,7 @@ func _physics_process(_delta: float) -> void:
 # Blinks the socket's base plate red and shows the reason as a subtitle (at most one
 # subtitle per REFUSAL_MESSAGE_INTERVAL seconds across all sockets).
 func _show_refusal(candidate: HotswapPart, problem: String) -> void:
+	part_refused.emit(candidate)
 	Debug.add_log("%s refused %s: %s" % [socket_name, candidate.get_display_name(), problem])
 	var now: int = Engine.get_physics_frames()
 	var interval_frames: int = roundi(REFUSAL_MESSAGE_INTERVAL * Engine.physics_ticks_per_second)

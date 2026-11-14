@@ -10,6 +10,11 @@ extends RefCounted
 ## its holder around. While held it is pulled by a PID-style controller to a point
 ## PICKUP_DISTANCE in front of the camera.
 
+## A prop was picked up / let go of / thrown (for sounds, see Sfx)
+signal picked_up(object: RigidBody3D)
+signal dropped(object: RigidBody3D)
+signal thrown(object: RigidBody3D)
+
 const PICKUP_DISTANCE: float = 2.0
 const PICKUP_TRANSLATE_KI: float = 0.0
 const PICKUP_ROTATE_KI: float = 0.0
@@ -59,9 +64,17 @@ func pickup(object: RigidBody3D) -> void:
 
 	_translation_integral = Vector3.ZERO
 	_angular_integral = Vector3.ZERO
+	picked_up.emit(object)
 
 
 func release() -> void:
+	var object: RigidBody3D = held_object
+	_let_go()
+	if object:
+		dropped.emit(object)
+
+
+func _let_go() -> void:
 	if not held_object:
 		return
 	held_object.collision_layer = _original_layer
@@ -78,11 +91,12 @@ func throw() -> void:
 	if not held_object:
 		return
 	var thrown_object: RigidBody3D = held_object
-	release()
+	_let_go()
 	# TODO: Properly tune this
 	var throw_force: float = 10.0 * log(thrown_object.mass / 10.0 + 1.0) * 20.0
 	var throw_direction: Vector3 = -camera.global_transform.basis.z
 	thrown_object.apply_central_impulse(throw_direction * throw_force)
+	thrown.emit(thrown_object)
 
 
 ## Call every physics step.
