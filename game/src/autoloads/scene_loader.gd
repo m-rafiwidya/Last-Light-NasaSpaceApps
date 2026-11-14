@@ -127,14 +127,14 @@ func _setup_player(spawn_point: Marker3D) -> void:
 
 # Spawn the drivable car at the designated spawn point
 func _setup_car(spawn_point: Marker3D) -> void:
-	var car_controller = PlayerCarController.new()
+	var car_controller = CarController.new()
 	current_scene.add_child(car_controller)
 
 	var car: Car = CAR_PACKED_SCENE.instantiate()
 	# The HUD only reads GameState.player for the crosshair; there is no player in a car
 	GameState.player = null
 	car.transform = spawn_point.transform
-	# Must be assigned before add_child(): Car._ready() registers shift callbacks on it
+	# Must be assigned before add_child(): Car._ready() connects to its signals
 	car.controller = car_controller
 	current_scene.add_child(car)
 

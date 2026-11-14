@@ -2,7 +2,7 @@ class_name Car
 
 extends RigidBody3D
 
-@export var controller: Controller
+@export var controller: CarController
 @export var running_gear: RunningGear
 @export var engine: CarEngine
 
@@ -48,15 +48,36 @@ func _ready() -> void:
 	$FollowCamera.set_as_top_level(true)
 	Debug.current_car = self
 	running_gear.update_wheel_properties()
-	controller.discrete_callbacks["shift_up"] = func() -> void:
-		if current_gear < gear_ratios.size() - 1:
-			current_gear += 1
-			running_gear.update_wheel_properties()
+	controller.shift_up.connect(_on_controller_shift_up)
+	controller.shift_down.connect(_on_controller_shift_down)
+	controller.toggle_camera.connect(_on_controller_toggle_camera)
 
-	controller.discrete_callbacks["shift_down"] = func() -> void:
-		if current_gear > 0:
-			current_gear -= 1
-			running_gear.update_wheel_properties()
+
+# Controller signals
+func _on_controller_shift_up(value: bool) -> void:
+	if value and current_gear < gear_ratios.size() - 1:
+		current_gear += 1
+		running_gear.update_wheel_properties()
+
+
+func _on_controller_shift_down(value: bool) -> void:
+	if value and current_gear > 0:
+		current_gear -= 1
+		running_gear.update_wheel_properties()
+
+
+func _on_controller_toggle_camera(value: bool) -> void:
+	if not value:
+		return
+	camera_mode = CameraMode.values()[(int(camera_mode) + 1) % CameraMode.size()]
+	match camera_mode:
+		CameraMode.FOLLOW:
+			$BumperCamera.current = false
+			$FollowCamera.current = true
+		CameraMode.BUMPER:
+			$FollowCamera.current = false
+			$BumperCamera.current = true
+
 
 func _input(event) -> void:
 	if event is InputEventMouseMotion:
@@ -79,18 +100,7 @@ func _process(delta) -> void:
 	$FollowCameraPivot/FollowCamera.transform.origin = Vector3.ZERO
 	$FollowCameraPivot/FollowCamera.transform.origin.z = 6.0
 	$FollowCameraPivot/FollowCamera.transform.origin.y = 2.0 * (1.0 + sin(camera_rotation.x))
-	var just_changed_camera: bool = false
-	if Input.is_action_just_pressed("camera"):
-		just_changed_camera = true
-		camera_mode = CameraMode.values()[(int(camera_mode) + 1) % CameraMode.size()]
-	if just_changed_camera:
-		match camera_mode:
-			CameraMode.FOLLOW:
-				$BumperCamera.current = false
-				$FollowCamera.current = true
-			CameraMode.BUMPER:
-				$FollowCamera.current = false
-				$BumperCamera.current = true
+
 	$FollowCamera.global_transform = $FollowCamera.global_transform.interpolate_with($FollowCameraPivot/FollowCamera.global_transform, delta * 20.0)
 
 
@@ -103,7 +113,7 @@ func _integrate_forces(state) -> void:
 # Brake torque for a single wheel, scaled by brake input and a speed-based ramp
 # so the brake doesn't flip the wheel's direction at near-zero speed.
 func _wheel_brake_torque(wheel: RunningGear.Wheel, step: float) -> float:
-	return brake_capacity * controller.control_value[Controller.ControlValue.BRAKE] * \
+	return brake_capacity * controller.control_value[CarController.ControlValue.BRAKE] * \
 			clamp(running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] * step * BRAKE_SLIP_GAIN, -1.0, 1.0)
 
 # Forces driven wheels to the differential speed (can be unstable at low speeds)
@@ -136,7 +146,7 @@ func _step_drivetrain(step: float, brake_torque: float) -> void:
 	# Clutch simulation parameters and calculations
 	var combined_gear_ratio = gear_ratios[current_gear] * final_drive
 	var clutch_speed_difference: float = engine_angular_velocity - differential_angular_velocity * combined_gear_ratio
-	var clutch_engagement_factor: float = 1.0 - controller.control_value[Controller.ControlValue.CLUTCH]
+	var clutch_engagement_factor: float = 1.0 - controller.control_value[CarController.ControlValue.CLUTCH]
 
 	# Calculate clutch torque based on engagement and speed difference
 	var max_clutch_torque: float = clutch_torque_capacity * clutch_engagement_factor * \

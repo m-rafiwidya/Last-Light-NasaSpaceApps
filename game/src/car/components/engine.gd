@@ -20,7 +20,7 @@ func get_engine_torque(engine_angular_velocity, controller, delta) -> float:
 		is_disabled = false
 	var target_engine_angular_velocity: float = 0.0
 	if not is_disabled:
-		target_engine_angular_velocity = idle_speed + (upper_redline - idle_speed) * controller.control_value[Controller.ControlValue.ACCELERATE]
+		target_engine_angular_velocity = idle_speed + (upper_redline - idle_speed) * controller.control_value[CarController.ControlValue.ACCELERATE]
 	# else:
 	# 	disable_timer -= delta
 	var engine_torque: float = peak_torque * torque_curve.sample(engine_angular_velocity / upper_redline) * sign(target_engine_angular_velocity - engine_angular_velocity)

@@ -217,7 +217,7 @@ func simulate_suspensions(state, controller) -> void:
 		wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT] = collision_point - origin
 
 		var wheel_steer_angle: float = (
-			-controller.control_value[Controller.ControlValue.STEER] *
+			-controller.control_value[CarController.ControlValue.STEER] *
 			wheel_properties[wheel][WheelProperty.MAX_STEER_ANGLE] *
 			wheel_properties[wheel][WheelProperty.STEER_BIAS]
 		)
