@@ -3,6 +3,17 @@ extends Node
 signal request_transition(no_fade_in)
 signal level_loaded(level_name)
 signal level_unloaded(level_name)
+## The player pressed CONTINUE on the loading screen (continue_loading)
+signal continue_requested
+
+## Where a load is, for the loading screen (stage text and bar)
+enum Stage {
+	IDLE, ## no load in progress
+	LOADING_ASSETS, ## the level's scene and everything it references, on a thread
+	BUILDING_CONTENT, ## content built after the scene entered the tree (MoonTerrain's meshes)
+	STARTING, ## spawning the player and entering the level
+	AWAITING_CONTINUE, ## a gameplay level is ready, waiting for the player to press CONTINUE
+}
 
 const PLAYER_PACKED_SCENE: PackedScene = preload("res://src/player/player.tscn")
 
@@ -26,6 +37,15 @@ const PLAYABLE_LEVELS: Dictionary = {
 ## Longest wait (s) for a level's content (MoonTerrain's meshes) before starting it anyway
 const CONTENT_TIMEOUT: float = 120.0
 
+## Share of overall_progress() the threaded load of the scene takes; the rest is the content
+## built after it (levels without any jump straight to the end)
+const ASSET_SHARE: float = 0.35
+
+## A gameplay level waits on the loading screen for CONTINUE once it is ready, so the player can
+## finish reading. The main menu never waits. A script driving the game (tests, tools: Godot's
+## `-s`) has nobody to press it, so it defaults to off there; set it to override.
+var wait_for_continue: bool = not _is_script_run()
+
 ## The main menu plays its opening sequence the first time it opens and clears this
 var is_first_main_menu_load: bool = true
 
@@ -35,8 +55,13 @@ var main_node: Node = null
 var current_scene: Node = null
 ## Id (LEVEL_PATHS key) of the level in current_scene, "" while none is loaded
 var current_level_id: String = ""
+## Progress of the threaded load of the scene (progress[0], 0 to 1), filled in by ResourceLoader
 var progress: Array = [0.0]
 var loading_scene_id: String = ""
+var stage: Stage = Stage.IDLE
+
+# The loading_content nodes the level is waiting for, for content_progress
+var _content_nodes: Array[Node] = []
 
 
 func _ready() -> void:
@@ -61,6 +86,7 @@ func load_scene(level_name: String, no_fade_in: bool = false) -> void:
 	loading_scene_id = level_name
 
 	progress = [0.0]
+	stage = Stage.LOADING_ASSETS
 	# Hey, I need to load the level, set the state to loading
 	GameState.change_state_to(GameState.State.LOADING)
 	# If it's the first time I'm loading main menu though, set it to intro
@@ -129,8 +155,22 @@ func _setup_scene() -> void:
 	# Content still being built (MoonTerrain's meshes, on worker threads): the loading screen
 	# stays up and the player spawns once it's there
 	for node in get_tree().get_nodes_in_group(&"loading_content"):
-		if current_scene.is_ancestor_of(node) and not node.is_ready_to_play():
+		if current_scene.is_ancestor_of(node):
+			_content_nodes.append(node)
+	if not _content_nodes.is_empty():
+		stage = Stage.BUILDING_CONTENT
+	for node in _content_nodes.duplicate():
+		if not node.is_ready_to_play():
 			await _content_ready_or_timeout(node)
+	_content_nodes.clear()
+
+	stage = Stage.STARTING
+	# A gameplay level is ready: the loading screen offers CONTINUE and the player stays out of it
+	# until it is pressed. The state is still LOADING, so the loading screen stays up.
+	if wait_for_continue and loading_scene_id != MAIN_MENU_ID:
+		stage = Stage.AWAITING_CONTINUE
+		await continue_requested
+		stage = Stage.STARTING
 
 	# Can accomodate gamemodes for future projects
 	if loading_scene_id == MAIN_MENU_ID:
@@ -138,8 +178,47 @@ func _setup_scene() -> void:
 	else:
 		_setup_level()
 	loading_scene_id = ""
+	stage = Stage.IDLE
 
 	level_loaded.emit(current_scene.name)
+
+
+## 0 to 1 over the whole load: the threaded load of the scene (ASSET_SHARE of it), then the content
+## built after it, then done while the level starts or waits for CONTINUE. 0 when no load is on.
+func overall_progress() -> float:
+	match stage:
+		Stage.LOADING_ASSETS:
+			return clampf(progress[0], 0.0, 1.0) * ASSET_SHARE
+		Stage.BUILDING_CONTENT:
+			return ASSET_SHARE + (1.0 - ASSET_SHARE) * _content_progress()
+		Stage.STARTING, Stage.AWAITING_CONTINUE:
+			return 1.0
+	return 0.0
+
+
+## Called by the loading screen's CONTINUE: lets a level that is waiting start
+func continue_loading() -> void:
+	if stage == Stage.AWAITING_CONTINUE:
+		continue_requested.emit()
+
+
+## Average over the nodes still being built: their content_progress() (0 to 1) if they have one,
+## else 0 until ready
+func _content_progress() -> float:
+	if _content_nodes.is_empty():
+		return 1.0
+	var total: float = 0.0
+	for node in _content_nodes:
+		if not is_instance_valid(node) or node.is_ready_to_play():
+			total += 1.0
+		elif node.has_method(&"content_progress"):
+			total += clampf(node.content_progress(), 0.0, 1.0)
+	return total / _content_nodes.size()
+
+
+static func _is_script_run() -> bool:
+	var args: PackedStringArray = OS.get_cmdline_args()
+	return args.has("-s") or args.has("--script")
 
 
 ## Sets the world's gravity for `level` before it enters the tree: the root's `gravity`

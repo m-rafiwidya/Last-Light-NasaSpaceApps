@@ -100,6 +100,14 @@ spacing_glyph = 19
 base_font = ExtResource("4_i66ul")
 spacing_glyph = 5
 
+[sub_resource type="FontVariation" id="FontVariation_ldstg"]
+base_font = ExtResource("4_i66ul")
+spacing_glyph = 6
+
+[sub_resource type="FontVariation" id="FontVariation_ldpct"]
+base_font = ExtResource("4_i66ul")
+spacing_glyph = 4
+
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yadui"]
 content_margin_left = 14.4
 content_margin_top = 12.0
@@ -311,6 +319,14 @@ LabelLoadingFact/colors/font_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
 LabelLoadingFact/constants/line_spacing = 20
 LabelLoadingFact/font_sizes/font_size = 36
 LabelLoadingFact/fonts/font = SubResource("FontVariation_4loqo")
+LabelLoadingPercent/base_type = &"Label"
+LabelLoadingPercent/colors/font_color = Color(0.5411765, 0.5294118, 0.5137255, 1)
+LabelLoadingPercent/font_sizes/font_size = 14
+LabelLoadingPercent/fonts/font = SubResource("FontVariation_ldpct")
+LabelLoadingStage/base_type = &"Label"
+LabelLoadingStage/colors/font_color = Color(0.70980394, 0.69803923, 0.6745098, 1)
+LabelLoadingStage/font_sizes/font_size = 14
+LabelLoadingStage/fonts/font = SubResource("FontVariation_ldstg")
 LabelMissionTitle/base_type = &"Label"
 LabelMissionTitle/colors/font_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
 LabelMissionTitle/font_sizes/font_size = 53

@@ -136,7 +136,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 
 | Autoload | File | Responsibility |
 |---|---|---|
-| `SceneLoader` | `autoloads/scene_loader.gd` | Loads levels on a thread, instantiates them under `Main`, spawns the player / menu camera. Emits `request_transition`, `level_loaded`, `level_unloaded`. |
+| `SceneLoader` | `autoloads/scene_loader.gd` | Loads levels on a thread, instantiates them under `Main`, spawns the player / menu camera. Emits `request_transition`, `level_loaded`, `level_unloaded`; reports its `stage` and `overall_progress()` and holds gameplay levels for CONTINUE (see Loading stages and CONTINUE). |
 | `GameState` | `autoloads/game_state.gd` | Holds the current `State`, emits `state_changed`, controls pause + mouse mode. Holds the reference to the current `player`. |
 | `Debug` | `autoloads/debug.gd` | Stores console log lines and parses console commands. |
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
@@ -337,11 +337,15 @@ The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`, with its 
 
 ### 6.7 Loading screen (`ui/loading_screen/`)
 
-- Black full-screen `ColorRect` + `ProgressBar` (bottom-left) on `layer = 256`.
+Restyled to `docs/ui/UI_SPEC.md` "Loading" (design x 1.2, `res/ui_theme_v2.tres`, `ui/components/`): `Starfield` background; "Did you know?" (Exo 2), one fact (Michroma, `LabelLoadingFact`) with its source caption and 8 dots; the floating astronaut on the right; at the bottom the stage text (IBM Plex Mono, pulsing), the percentage and the 2 px bar. Stage and percentage labels have theme variations `LabelLoadingStage` / `LabelLoadingPercent`.
+
+- **Facts**: `FACTS` (the board's `facts()`), the first one random on every load (`_begin_load`, run by `reset()` / `fade_in()`), then the next every `FACT_PERIOD` (7 s) with a 0.8 s fade and 9.6 px rise. `fact_index` is the one showing.
+- **Astronaut**: `res/ui/astronaut_logo.svg`, the main menu's float loop (`MainMenu.FLOAT_KEYS` / `FLOAT_PERIOD`, read from its script, not copied). The float and the stage pulse run only while the screen is visible.
+- **Bar and stage text** follow `SceneLoader` (`stage`, `overall_progress()`, `progress[0]`), polled every frame; the bar moves toward the target at most 1.5 /s so a jump is a quick fill. Stage text: `LOADING_ASSETS` (threaded load of the scene) is PREPARING THE WORKSHOP below 50 % of `progress[0]`, WAKING UP KITE above it; `BUILDING_CONTENT` (MoonTerrain building its meshes after the scene loaded) is LOADING TERRAIN; `STARTING` / `AWAITING_CONTINUE` is ALMOST THERE. At `IDLE` (the fade-out) it keeps what it shows.
+- **CONTINUE** (`UnderlineButtonPrimary`, underline at 25 %, grows on hover): once `SceneLoader.stage == AWAITING_CONTINUE` and the bar is full, the stage text gives way to it, it takes focus, and Enter / Space (`ui_accept`) or a click calls `SceneLoader.continue_loading()`. A captured mouse is freed meanwhile.
 - `AnimationPlayer` with `RESET` (alpha 1, i.e. opaque), `fade_in` (0 -> 1 in 0.5s), `fade_out` (1 -> 0 in 0.5s).
   Note the naming: "fade_in" means *the black screen fades in* (hiding the game).
 - Emits `finished_fade_in` (wired to `SceneLoader._on_finished_fade_in` by `UIManager`) and `finished_fade_out` (then hides itself).
-- Progress bar is driven every frame from `SceneLoader.progress[0] * 100`.
 
 ### 6.8 Button components (`ui/button_style_components/`)
 
@@ -387,7 +391,11 @@ flowchart TD
     I --> J[ResourceLoader.load_threaded_request]
     J --> K[_process polls status every frame]
     K -- LOADED --> L[_setup_scene: instantiate and add under Main]
-    L --> M{loading_scene_id == main_menu?}
+    L --> L2[wait for loading_content nodes<br/>stage BUILDING_CONTENT]
+    L2 --> L3{gameplay level and<br/>wait_for_continue?}
+    L3 -- yes --> L4[stage AWAITING_CONTINUE<br/>loading screen shows CONTINUE<br/>wait for continue_loading]
+    L3 -- no --> M
+    L4 --> M{loading_scene_id == main_menu?}
     M -- yes --> N[_setup_main_menu]
     M -- no --> O[_setup_level]
     N --> P[loading_scene_id = empty<br/>emit level_loaded]
@@ -416,7 +424,9 @@ If the backdrop level has a **`CameraMarker`** (`Marker3D`), creates a `Camera3D
 | `SpawnPoint` | `Marker3D` | any gameplay level |
 | `CameraMarker` | `Marker3D` | optional, a level used as a 3D main-menu backdrop |
 
-Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()` and a `content_ready` signal: `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
+Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()`, a `content_ready` signal and, optionally, `content_progress()` (0 to 1): `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
+
+**Loading stages and CONTINUE.** `SceneLoader.stage` (`Stage`: `IDLE`, `LOADING_ASSETS`, `BUILDING_CONTENT`, `STARTING`, `AWAITING_CONTINUE`) and `overall_progress()` (0 to 1: the threaded load is the first `ASSET_SHARE`, 35 %, the content built after it the rest; levels without such content jump to the end) are what the loading screen shows. Once a *gameplay* level is in the tree and its content is ready, the loader stays in `AWAITING_CONTINUE` (`GameState` still `LOADING`, the player not spawned, the loading screen still up, `loading_scene_id` still set so no other load can start) until `continue_loading()` emits `continue_requested`; then it spawns the player, enters `IN_GAME_PLAYER` and emits `level_loaded` as before, which fades the screen out. The main menu (Quit To Menu, the launch, the fallback after a failed load) never waits. `SceneLoader.wait_for_continue` switches the wait; it defaults to off when Godot runs a script (`-s`, which is how every test and tool in `tests/` and `tools/` runs, so none of them needs to press CONTINUE) and on otherwise. `tests/test_loading_screen.gd` sets it to check the flow.
 
 Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoader._ready()`, so a typo is reported at startup. If a threaded load fails, `SceneLoader` clears its loading state and falls back to the main menu (unless the main menu itself failed). On unload it also clears `GameState.player`, `GameState.robot` and `Debug.current_robot` (the robot HUD's rover), so nothing points into the old level; its player, rovers, cameras and held props are freed with it, `DialogServer` stops any dialog (`level_unloaded`), leaving `PAUSED` unpauses the tree, and the new level's player camera is made current. `tests/test_level_switch.gd` checks all of this switching Test level -> Moon -> Test level -> main menu through the real menus (with a prop held on foot and by the driven rover).
 
