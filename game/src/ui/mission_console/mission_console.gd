@@ -70,7 +70,7 @@ func _show_item(index: int) -> void:
 func _on_close_pressed():
 	# The screen stays clickable while fading out, so only react in this state.
 	if GameState.state == GameState.State.MISSION_CONSOLE:
-		GameState.change_state_to(GameState.State.IN_GAME)
+		GameState.return_to_game()
 
 
 func fade_in():

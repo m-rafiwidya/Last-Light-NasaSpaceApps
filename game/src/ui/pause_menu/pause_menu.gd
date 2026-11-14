@@ -30,7 +30,7 @@ func _ready() -> void:
 
 
 func _on_resume_pressed():
-	GameState.change_state_to(GameState.State.IN_GAME)
+	GameState.return_to_game()
 
 
 func _on_settings_pressed():

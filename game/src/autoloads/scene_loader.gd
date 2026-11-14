@@ -5,7 +5,7 @@ signal level_loaded(level_name)
 signal level_unloaded(level_name)
 
 const PLAYER_PACKED_SCENE: PackedScene = preload("res://src/player/player.tscn")
-const ROBOT_PACKED_SCENE: PackedScene = preload("res://src/robot/robot.tscn")
+
 const MAIN_MENU_ID = "main_menu"
 # TODO: Kinda dangerous if someone forgot to change these to a valid path
 # is there a built in godot way for file paths?
@@ -104,13 +104,11 @@ func _setup_level():
 		push_error('No "SpawnPoint" marker node found in level.')
 		return
 
-	# TEMPORARY: spawn the robot instead of the player.
-	# Swap back to _setup_player(spawn_point) to restore the first-person player.
-	_setup_robot(spawn_point)
-	#_setup_player(spawn_point)
+	_setup_player(spawn_point)
 
-	# Hey GameState, I finished loading, please start transition to IN_GAME
-	GameState.change_state_to(GameState.State.IN_GAME)
+	# Hey GameState, I finished loading, please start transition to IN_GAME_PLAYER
+	# (the robot, if the level has one, is placed manually in the level)
+	GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
 
 
 # Spawn the first-person player at the designated spawn point
@@ -123,20 +121,8 @@ func _setup_player(spawn_point: Marker3D) -> void:
 	player.transform = spawn_point.transform
 	player.controller = player_controller
 	current_scene.add_child(player)
-
-
-# Spawn the drivable robot at the designated spawn point
-func _setup_robot(spawn_point: Marker3D) -> void:
-	var robot_controller = RobotController.new()
-	current_scene.add_child(robot_controller)
-
-	var robot: Robot = ROBOT_PACKED_SCENE.instantiate()
-	# The HUD only reads GameState.player for the crosshair; there is no player in a robot
-	GameState.player = null
-	robot.transform = spawn_point.transform
-	# Must be assigned before add_child(): Robot._ready() connects to its signals
-	robot.controller = robot_controller
-	current_scene.add_child(robot)
+	# The robot's cameras are not current by default; make sure the player's is
+	player.camera.make_current()
 
 
 func _setup_main_menu():
@@ -151,4 +137,6 @@ func _setup_main_menu():
 
 	camera.transform = camera_marker.transform
 	current_scene.add_child(camera)
+	# The level may contain a robot with its own cameras; make sure the menu camera wins
+	camera.make_current()
 	# Hey GameState, I finished loading, please start transition to MAIN_MENU

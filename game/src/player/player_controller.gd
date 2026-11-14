@@ -38,10 +38,10 @@ func px_to_rad(pixels: float) -> float:
 
 
 
-## Player input is only accepted while the game is in the IN_GAME state
-## (not in menus, the mission console, loading screens, etc.).
+## Player input is only accepted while the game is in the IN_GAME_PLAYER state
+## (not while driving the robot, in menus, the mission console, loading screens, etc.).
 func is_input_enabled() -> bool:
-	return GameState.state == GameState.State.IN_GAME
+	return GameState.state == GameState.State.IN_GAME_PLAYER
 
 
 func _unhandled_input(event: InputEvent) -> void:

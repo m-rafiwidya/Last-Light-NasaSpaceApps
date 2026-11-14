@@ -8,12 +8,15 @@
 [ext_resource type="PackedScene" uid="uid://dhqyoeojs2xo3" path="res://src/ui/hud/hud.tscn" id="5_eg4bn"]
 
 [ext_resource type="PackedScene" path="res://src/ui/mission_console/mission_console.tscn" id="6_mcscr"]
+[ext_resource type="PackedScene" path="res://src/ui/robot_hud/robot_hud.tscn" id="7_rhud"]
 
 [node name="UIManager" type="Node" unique_id=908995993]
 process_mode = 3
 script = ExtResource("1_1xrw1")
 
 [node name="HUD" parent="." unique_id=24543509 instance=ExtResource("5_eg4bn")]
+
+[node name="RobotHUD" parent="." instance=ExtResource("7_rhud")]
 
 [node name="MainMenu" parent="." unique_id=809060339 instance=ExtResource("2_06kls")]
 

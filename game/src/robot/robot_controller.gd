@@ -8,7 +8,7 @@ extends Node
 ## Shares the player's movement actions: move_forward / move_backward = desired
 ## speed forward / backward (as a fraction of the robot's top speed; no input = 0,
 ## so the robot slows down), move_left / move_right = steering.
-## Like PlayerController, input is only accepted while GameState is IN_GAME.
+## Unlike PlayerController, input is only accepted while GameState is IN_GAME_ROBOT.
 
 signal toggle_camera(value: bool)
 
@@ -26,7 +26,7 @@ var was_input_enabled: bool = false
 
 
 func is_input_enabled() -> bool:
-	return GameState.state == GameState.State.IN_GAME
+	return GameState.state == GameState.State.IN_GAME_ROBOT
 
 
 func _physics_process(delta: float) -> void:

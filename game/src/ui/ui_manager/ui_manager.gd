@@ -18,12 +18,14 @@ func _process(_delta: float) -> void:
 		else:
 			$Console.popup()
 	if Input.is_action_just_pressed("ui_cancel"):
-		if GameState.state == GameState.State.IN_GAME:
-			GameState.change_state_to(GameState.State.PAUSED)
-		elif GameState.state == GameState.State.PAUSED:
-			GameState.change_state_to(GameState.State.IN_GAME)
-		elif GameState.state == GameState.State.MISSION_CONSOLE:
-			GameState.change_state_to(GameState.State.IN_GAME)
+		match GameState.state:
+			GameState.State.IN_GAME_PLAYER:
+				GameState.change_state_to(GameState.State.PAUSED)
+			GameState.State.IN_GAME_ROBOT:
+				# Esc leaves the robot and gives control back to the player
+				GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
+			GameState.State.PAUSED, GameState.State.MISSION_CONSOLE:
+				GameState.return_to_game()
 
 func _on_game_state_changed(old_state, new_state):
 	if new_state == GameState.State.MAIN_MENU:
@@ -36,10 +38,15 @@ func _on_game_state_changed(old_state, new_state):
 	else:
 		$PauseMenu.fade_out()
 	
-	if new_state == GameState.State.IN_GAME:
+	if new_state == GameState.State.IN_GAME_PLAYER:
 		$HUD.fade_in()
 	else:
 		$HUD.fade_out()
+	
+	if new_state == GameState.State.IN_GAME_ROBOT:
+		$RobotHUD.fade_in()
+	else:
+		$RobotHUD.fade_out()
 	
 	if new_state == GameState.State.MISSION_CONSOLE:
 		$MissionConsole.fade_in()

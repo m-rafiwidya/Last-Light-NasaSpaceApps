@@ -5,6 +5,8 @@
 [ext_resource type="Texture2D" uid="uid://dt4imig118lxf" path="res://res/textures/dev/orange.png" id="2_7hvae"]
 [ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
 [ext_resource type="Resource" uid="uid://caanilnhaye2v" path="res://res/dialogs/test_sequence.tres" id="5_dlgseq"]
+[ext_resource type="PackedScene" uid="uid://dvqu81j65chtr" path="res://src/robot/robot.tscn" id="6_robot"]
+[ext_resource type="Script" uid="uid://dejcbl7savjo6" path="res://src/robot/robot_controller.gd" id="7_robotctl"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -375,3 +377,25 @@ mesh = SubResource("BoxMesh_xa74p")
 [node name="Label3D" type="Label3D" parent="MissionConsoleTrigger" unique_id=1215746776]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
 text = "Mission Console"
+
+[node name="RobotTrigger" type="Area3D" parent="." unique_id=251062919]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1, -3)
+script = ExtResource("4_t1chq")
+metadata/_custom_type_script = "uid://b3epixqjbcndx"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RobotTrigger" unique_id=2091237796]
+shape = SubResource("BoxShape3D_strxf")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RobotTrigger" unique_id=1330654056]
+mesh = SubResource("BoxMesh_xa74p")
+
+[node name="Label3D" type="Label3D" parent="RobotTrigger" unique_id=1711732088]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
+text = "Drive Robot"
+
+[node name="RobotController" type="Node" parent="." unique_id=144958007]
+script = ExtResource("7_robotctl")
+
+[node name="Robot" parent="." unique_id=1373955819 node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.5, -1.2)
+controller = NodePath("../RobotController")

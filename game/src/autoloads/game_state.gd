@@ -2,9 +2,13 @@ extends Node
 
 signal state_changed(old_state, new_state)
 
-enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}
+## IN_GAME_PLAYER: the first-person player is controlled (default in-game state).
+## IN_GAME_ROBOT: the robot is driven instead.
+enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}
 
 var state: State = State.LOADING
+## The in-game state we were last in; PAUSED / MISSION_CONSOLE return to it.
+var last_in_game_state: State = State.IN_GAME_PLAYER
 
 var player: Node = null:
 	set(value):
@@ -13,11 +17,20 @@ var player: Node = null:
 var camera: Camera3D = null
 
 var pause_tween: Tween = null
-var in_game_mouse_state = Input.MOUSE_MODE_CAPTURED
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func is_in_game(s: State = state) -> bool:
+	return s == State.IN_GAME_PLAYER or s == State.IN_GAME_ROBOT
+
+
+## Leave a menu-like state (pause, mission console) and go back to whichever
+## in-game state (player or robot) was active before it.
+func return_to_game() -> void:
+	change_state_to(last_in_game_state)
 
 
 func change_state_to(new_state: State):
@@ -35,8 +48,10 @@ func _on_state_exit(_state: State):
 			pass
 		State.LOADING:
 			pass
-		State.IN_GAME:
-			in_game_mouse_state = Input.mouse_mode
+		State.IN_GAME_PLAYER:
+			pass
+		State.IN_GAME_ROBOT:
+			pass
 		State.PAUSED:
 			unpause_game()
 		State.MISSION_CONSOLE:
@@ -49,8 +64,13 @@ func _on_state_enter(_state: State):
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		State.LOADING:
 			pass
-		State.IN_GAME:
-			Input.mouse_mode = in_game_mouse_state
+		State.IN_GAME_PLAYER:
+			last_in_game_state = _state
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		State.IN_GAME_ROBOT:
+			last_in_game_state = _state
+			# Robot._input captures the mouse only while the right button orbits the camera
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		State.PAUSED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			pause_game()

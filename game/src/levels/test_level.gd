@@ -7,11 +7,18 @@ extends Node3D
 func _ready() -> void:
 	$DialogTrigger.interacted.connect(_on_dialog_trigger_interacted)
 	$MissionConsoleTrigger.interacted.connect(_on_mission_console_trigger_interacted)
+	$RobotTrigger.interacted.connect(_on_robot_trigger_interacted)
 
 
 func _on_mission_console_trigger_interacted(_player: Player):
-	if GameState.state == GameState.State.IN_GAME:
+	if GameState.state == GameState.State.IN_GAME_PLAYER:
 		GameState.change_state_to(GameState.State.MISSION_CONSOLE)
+
+
+## Take control of the robot. Esc (ui_cancel, handled by UIManager) hands control back to the player.
+func _on_robot_trigger_interacted(_player: Player):
+	if GameState.state == GameState.State.IN_GAME_PLAYER:
+		GameState.change_state_to(GameState.State.IN_GAME_ROBOT)
 
 
 func _on_dialog_trigger_interacted(_player: Player):

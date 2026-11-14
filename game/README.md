@@ -46,7 +46,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Main scene | `res://src/main.tscn` |
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
-| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (currently spawned instead of the player) |
+| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
 | Content | One level only: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) |
 | Theme | `res/theme.tres` (shared by all UI) |
 
@@ -88,7 +88,8 @@ game/
         ├── ui_manager/               # orchestrates all screens
         ├── main_menu/
         ├── pause_menu/
-        ├── hud/
+        ├── hud/                      # player HUD (crosshair, subtitles)
+        ├── robot_hud/                # robot HUD (speed readout, controls hint)
         ├── loading_screen/
         ├── console/
         ├── dialog_box/               # one subtitle line widget
@@ -174,16 +175,25 @@ Key points:
 
 ## 5. Game state machine
 
-Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet. `MISSION_CONSOLE` is entered from `IN_GAME` by the `MissionConsoleTrigger` in the test level and left with Esc (`ui_cancel`, handled in `UIManager._process`) or the window's X button, both going back to `IN_GAME`.
+Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
+
+- `IN_GAME_PLAYER` is the default in-game state (first-person player active). A gameplay level always loads into it.
+- `IN_GAME_ROBOT` means the robot is being driven. It is entered from `IN_GAME_PLAYER` by the `RobotTrigger` in the test level and left with Esc (`ui_cancel`), which goes back to `IN_GAME_PLAYER` (not to pause).
+- `GameState.last_in_game_state` remembers which of the two was active. `PAUSED` and `MISSION_CONSOLE` leave through `GameState.return_to_game()` (Esc, Resume, the console's X button), which returns to it. `GameState.is_in_game()` is true for both.
+- `MISSION_CONSOLE` is entered from `IN_GAME_PLAYER` by the `MissionConsoleTrigger` in the test level.
 
 ```mermaid
 stateDiagram-v2
     [*] --> LOADING
     LOADING --> MAIN_MENU: main menu level ready
-    LOADING --> IN_GAME: gameplay level ready (player spawned)
+    LOADING --> IN_GAME_PLAYER: gameplay level ready (player spawned)
     MAIN_MENU --> LOADING: Start pressed
-    IN_GAME --> PAUSED: Esc
-    PAUSED --> IN_GAME: Esc or Resume
+    IN_GAME_PLAYER --> PAUSED: Esc
+    IN_GAME_PLAYER --> IN_GAME_ROBOT: RobotTrigger interacted
+    IN_GAME_ROBOT --> IN_GAME_PLAYER: Esc
+    IN_GAME_PLAYER --> MISSION_CONSOLE: MissionConsoleTrigger interacted
+    MISSION_CONSOLE --> IN_GAME_PLAYER: Esc or X
+    PAUSED --> IN_GAME_PLAYER: Esc or Resume
     PAUSED --> LOADING: Quit To Menu
 ```
 
@@ -195,13 +205,16 @@ stateDiagram-v2
 |---|---|---|---|
 | `MAIN_MENU` | Mouse mode `VISIBLE` | - | `MainMenu` |
 | `LOADING` | - | - | `LoadingScreen` visible |
-| `IN_GAME` | Restore saved mouse mode (default `CAPTURED`) | Save current mouse mode into `in_game_mouse_state` | `HUD` |
+| `IN_GAME_PLAYER` | Mouse `CAPTURED`; remembered as `last_in_game_state` | - | `HUD` |
+| `IN_GAME_ROBOT` | Mouse `VISIBLE` (the robot captures it only while the right button orbits the camera); remembered as `last_in_game_state`; robot camera becomes current | - | `RobotHUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
 | `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (computer-theme window with hardcoded dummy mission list, X button closes, opacity fade) |
 
-### Player input lock
+### Input lock
 
-`PlayerController` (the only place gameplay input is read) only accepts input while `GameState.state == IN_GAME` (`is_input_enabled()`). In any other state it zeroes `move_direction`, `is_sprinting` and `request_jump`, ignores mouse look and all presses, but still forwards key/button **releases** so crouch/interact/primary/secondary can't get stuck. The first physics tick after re-entering `IN_GAME` is also treated as locked, so a click used to close a UI screen isn't read as a throw. New states automatically lock the player; to allow input in a new state, change `is_input_enabled()`.
+`PlayerController` only accepts input while `GameState.state == IN_GAME_PLAYER` (`is_input_enabled()`); `RobotController` only while `IN_GAME_ROBOT`. Only one of them is ever active, so the player stands still while the robot is driven and vice versa. The description below is for `PlayerController`; `RobotController` works the same way.
+
+`PlayerController` In any other state it zeroes `move_direction`, `is_sprinting` and `request_jump`, ignores mouse look and all presses, but still forwards key/button **releases** so crouch/interact/primary/secondary can't get stuck. The first physics tick after re-entering `IN_GAME_PLAYER` is also treated as locked, so a click used to close a UI screen isn't read as a throw. New states automatically lock both; to allow input in a new state, change `is_input_enabled()`.
 
 ### Pausing
 
@@ -221,7 +234,8 @@ A `Node` (process mode ALWAYS) whose children are all UI screens:
 
 ```
 UIManager
-├── HUD            (CanvasLayer)
+├── HUD            (CanvasLayer, player HUD)
+├── RobotHUD       (CanvasLayer, robot HUD)
 ├── MainMenu       (CanvasLayer)
 ├── PauseMenu      (CanvasLayer)
 ├── MissionConsole (CanvasLayer, computer-theme window, hardcoded dummy items)
@@ -234,13 +248,14 @@ UIManager
 1. **Reacts to `GameState.state_changed`** - the single place that maps state -> visible screens:
    - `new == MAIN_MENU` -> `MainMenu.fade_in()` else `fade_out()`
    - `new == PAUSED` -> `PauseMenu.fade_in()` else `fade_out()`
-   - `new == IN_GAME` -> `HUD.fade_in()` else `fade_out()`
+   - `new == IN_GAME_PLAYER` -> `HUD.fade_in()` else `fade_out()`
+   - `new == IN_GAME_ROBOT` -> `RobotHUD.fade_in()` else `fade_out()`
    - `new == MISSION_CONSOLE` -> `MissionConsole.fade_in()` else `fade_out()`
    - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out).
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
 3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc).
    - Backtick: shows/hides the `Console` popup. It does **not** change game state (the game keeps running while it is open). See [section 11](#11-debug-console).
-   - Esc: `IN_GAME -> PAUSED`, `PAUSED -> IN_GAME`.
+   - Esc: `IN_GAME_PLAYER -> PAUSED`, `IN_GAME_ROBOT -> IN_GAME_PLAYER`, `PAUSED`/`MISSION_CONSOLE -> last in-game state`.
 
 ### 6.2 UIScreen base class (`ui/ui_screen.gd`)
 
@@ -259,13 +274,15 @@ UIManager
 
 ### 6.4 Pause menu (`ui/pause_menu/`)
 
-Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState -> IN_GAME`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
+Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState.return_to_game()`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
 
 ### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
 
 Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting.
 
-### 6.6 HUD (`ui/hud/`)
+### 6.6 HUD (`ui/hud/`) and Robot HUD (`ui/robot_hud/`)
+
+The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`. `RobotHUD` (`robot_hud.tscn/.gd`, extends `UIScreen`) is shown only in `IN_GAME_ROBOT`: a speed readout (`Debug.current_robot.linear_velocity`) bottom-left and a controls hint bottom-right, faded with a `CanvasModulate` like the player HUD.
 
 - `CanvasModulate` is tweened to fade the whole HUD (alpha 0/1); the HUD is `show()`n on first `fade_in()` and starts hidden.
 - **Crosshair swap** (every frame): shows `crosshair.svg` normally, `interaction.svg` when `GameState.player.looking_at_object` is an `InteractTrigger` or a `RigidBody3D` (something you can use/pick up). Both hidden while `player.hide_crosshair` is true.
@@ -329,9 +346,7 @@ flowchart TD
 
 ### `_setup_level()` (gameplay level)
 
-Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It then spawns one of two things and finally calls `GameState.change_state_to(IN_GAME)` -> HUD appears, mouse captured.
-
-> **TEMPORARY:** `_setup_level()` currently calls `_setup_robot(spawn_point)`. The `_setup_player(spawn_point)` call is commented out right below it. Swap the two lines to get the first-person player back.
+Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It spawns the player and then calls `GameState.change_state_to(IN_GAME_PLAYER)` -> HUD appears, mouse captured. The robot is **not** spawned by code any more; levels that want one place it manually (see the test level).
 
 **`_setup_player(spawn_point)`**
 1. Creates a `PlayerController` (plain `Node`) and adds it to the level.
@@ -339,15 +354,11 @@ Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It then spawns
 
 The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals.
 
-**`_setup_robot(spawn_point)`**
-1. Creates a `RobotController` and adds it to the level.
-2. Instantiates `robot.tscn` (`ROBOT_PACKED_SCENE`), sets `GameState.player = null`, copies the spawn point's `transform`, assigns `robot.controller`, adds it to the level.
-
-Again the controller must be assigned **before** `add_child(robot)`: `Robot._ready()` connects to its signals and would crash on a null controller. See [section 15](#15-robot).
+The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals. `_setup_player` also makes the player's camera current, since the robot's cameras live in the level too.
 
 ### `_setup_main_menu()`
 
-Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then creates a `Camera3D` (FOV 90) at that marker's transform. No player is spawned.
+Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then creates a `Camera3D` (FOV 90) at that marker's transform and makes it current (the level contains a robot with its own cameras). No player is spawned.
 
 ### Level requirements checklist
 
@@ -358,7 +369,7 @@ Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then crea
 
 ### The test level (`levels/test_level.tscn`)
 
-A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). It also contains a `DialogTrigger` (`InteractTrigger`) that plays a demo dialog sequence, and a `MissionConsoleTrigger` (copy of that cube) that switches `GameState` to `MISSION_CONSOLE`.
+A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). It also contains a `DialogTrigger` (`InteractTrigger`) that plays a demo dialog sequence, a `MissionConsoleTrigger` (copy of that cube) that switches `GameState` to `MISSION_CONSOLE`, and a `RobotTrigger` (another copy, labelled "Drive Robot") that switches to `IN_GAME_ROBOT`. The robot is placed in the scene manually: a `RobotController` node plus a `Robot` instance (`robot.tscn`) whose `controller` export points at it (next to the `RobotTrigger`, around `(10.5, 0.5, -1.2)`). Esc leaves the robot.
 
 ---
 
@@ -560,7 +571,7 @@ Grounded in the current code; useful to know before changing things.
 - `LEVEL_PATHS["main_menu"]` points at `test_level.tscn` (same file as the playable level) - fine for now, but a dedicated menu level is the intended direction (`is_first_main_menu_load` is reserved for an intro).
 - **Load failures are not recovered from.** Failure paths only `push_error` and return:
   - `load_threaded_request` error or `THREAD_LOAD_FAILED`: `loading_scene_id` is never cleared (every later `load_scene` call is silently ignored), state stays `LOADING`, and the loading screen stays black. The old level has already been `queue_free`d by then.
-  - Missing `SpawnPoint`: the scene is added and `level_loaded` fires (loading screen fades out), but `_setup_level` returns before `IN_GAME`, so the state stays `LOADING` with no player and no HUD.
+  - Missing `SpawnPoint`: the scene is added and `level_loaded` fires (loading screen fades out), but `_setup_level` returns before `IN_GAME_PLAYER`, so the state stays `LOADING` with no player and no HUD.
   - Missing `CameraMarker`: menu state is set but there is no camera.
   - Level paths in `LEVEL_PATHS` are not validated (see TODO in the file). A fix has been proposed but is **not implemented yet**.
 - `GameState.player` is not cleared when a level unloads (line commented out); it can be a stale/freed reference after returning to the menu. The HUD guards with `if GameState.player` but anything else should check `is_instance_valid`.
@@ -582,13 +593,13 @@ Grounded in the current code; useful to know before changing things.
 - `LEAP_SPEED`, `STEP_SIZE_*`, `JUMP_SPEED_PENALTY`, `PICKUP_TRANSLATE_KP/KD`, `PICKUP_ROTATE_KP/KD` constants are declared but unused (gains are computed inline instead).
 
 **Robot** (see [section 15](#15-robot) for details)
-- The robot was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Debug.current_robot`, the robot input actions, and any code that spawns it. The original glTF car model was dropped; the robot is currently a placeholder box mesh.
+- The robot was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Debug.current_robot`, the robot input actions, and level placement. The original glTF car model was dropped; the robot is currently a placeholder box mesh.
 - Physics settings were **not** ported: `openwheel` runs 360 physics ticks/s and gravity 20; this project runs 240 ticks/s (`project.godot`) with Godot's default gravity (9.8, not lunar). The tyre model has its own comments about "spazzing" at low speed, so expect some twitchiness. The robot's mass, springs, tyre stiffness and motor were tuned for 9.8 gravity; if you change gravity, they need retuning.
-- `Robot._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). This **ignores `GameState`'s mouse handling**, e.g. the mouse can become captured/visible incorrectly while paused or in the mission console.
-- `Robot._input` and `Robot._process` (camera orbit) run regardless of `GameState`, so camera orbit still works while paused/in menus. (The camera toggle now goes through the controller signal and respects `GameState`.)
-- With `GameState.player = null` the HUD skips its crosshair logic, and both crosshair `TextureRect`s are visible by default, so **both crosshairs draw on top of each other** while driving. Hide them in `hud.tscn` or make `hud.gd` handle the no-player case.
-- `InteractTrigger`s and the mission console trigger can't be used while driving (they rely on the `Player` raycast).
-- `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` but is not set in the scene, so it **must** be assigned from code.
+- While in `IN_GAME_ROBOT`, `Robot._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). It is now gated by the state, but pausing while the right button is held can still leave the mouse captured.
+- `Robot._process` (camera orbit smoothing) still runs regardless of `GameState`; only the input side is gated.
+- The player is still alive (frozen, input locked) while the robot is driven, and the robot is also in the world while the player walks around (it just coasts to a stop).
+- `InteractTrigger`s can't be used while driving (they rely on the `Player` raycast); Esc is the only way out.
+- `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
 
 
@@ -627,10 +638,11 @@ Add a new `match` case in `Debug.parse_command` (`autoloads/debug.gd`); use `add
 4. Use `ButtonResizeComponent` / `ButtonSoundComponent` children and `res/theme.tres` for consistent styling. Remember `process_mode = ALWAYS` for anything that must work while paused.
 
 ### Add a new game state
+If it is a new in-game mode, also set `last_in_game_state` in `_on_state_enter` and extend `is_in_game()`.
 Add it to `GameState.State`, handle enter/exit side effects in `_on_state_enter` / `_on_state_exit`, then decide which UI screens it shows in `UIManager._on_game_state_changed`.
 
 ### Switch between player and robot
-In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_setup_robot(spawn_point)`.
+Place a `RobotController` node and a `robot.tscn` instance in the level (assign its `controller`), add an `InteractTrigger` and, in the level script, call `GameState.change_state_to(GameState.State.IN_GAME_ROBOT)` from its `interacted` signal when `GameState.state == IN_GAME_PLAYER`. `UIManager` sends Esc back to `IN_GAME_PLAYER`.
 
 ---
 
@@ -638,18 +650,18 @@ In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_s
 
 Files: `src/robot/robot.tscn`, `robot.gd` (`class_name Robot`), `robot_controller.gd` (`class_name RobotController`), `components/engine.gd` (`RobotEngine`, a brushed DC motor model), `components/running_gear.gd` (`RunningGear`), `components/engine_sound.gd` (procedural motor sound). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
 
-**Status:** `SceneLoader._setup_level()` temporarily spawns the robot instead of the player (see [section 7](#7-scene-loading)). Everything else (HUD, pause, state machine) works as before.
+**Status:** the robot is placed manually in `test_level.tscn` and driven only while `GameState.state == IN_GAME_ROBOT` (entered through the level's `RobotTrigger`, left with Esc). While parked it ignores input and rolls to a stop (the controller eases to zero). `GameState.player` is untouched by the robot.
 
 ### 15.1 Design split
 Same idea as the player: the **controller** is *intent*, the **robot** is *body*.
 
 - **`RobotController`** (`robot_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (-1 full reverse .. 1 full forward, 0 = no input; used by the robot as the motor voltage, so it maps to a fraction of top speed) and `steer` (-1 left .. 1 right), plus the `toggle_camera` signal (emitted with `true` on press, `false` on release). The `Robot` reads the variables directly and connects to the signal in `_ready()`.
-- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the robot slows down) and steering re-centres.
+- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Input only counts while `GameState.state == IN_GAME_ROBOT`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the robot slows down) and steering re-centres.
 - `Robot` only uses `desired_speed`, `steer` and the signal, so an AI or replay controller exposing the same interface could be swapped in.
 
 ### 15.2 Scene structure (`robot.tscn`, root `Robot`)
 ```
-Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layer 2, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
+Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
 ├── MeshInstance3D   placeholder box mesh (1 x 0.33 x 1 m)
 ├── Engine           RobotEngine: brushed DC motor (stall torque 10.7 Nm, no-load speed 345 rad/s)
 ├── RunningGear      RunningGear: tyre + suspension params (wheelbase/track 1 m, wheel radius 0.15, spring 4000, damping 400, ride height 0.15)
@@ -674,12 +686,12 @@ There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward
 A procedural electric-motor whir through an `AudioStreamGenerator` (22.05 kHz), generated per frame from `Robot.motor_angular_velocity` and `Robot.motor_torque`. Pitch follows motor speed (70 to 650 Hz across 0 to no-load speed), loudness follows speed plus load (silent when parked), and load adds upper harmonics and controller (PWM) whine. It also adds an inharmonic gear whine and a little noise. All of it is tunable through exports on the node (the scene sets `volume = 0.2`).
 
 ### 15.4 Cameras
-`Robot._process` handles both: **follow** camera (`follow_camera_distance` = 2.5 m behind, height `follow_camera_height` = 0.8 m scaled by pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME`. The player's camera isn't used, so the robot cameras must be `current`; the follow camera is `current` by default.
+`Robot._process` handles both (the `camera` dictionary was removed; it was unused): **follow** camera (`follow_camera_distance` = 2.5 m behind, height `follow_camera_height` = 0.8 m scaled by pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME_ROBOT`. The robot's cameras are **not** `current` in the scene any more: `Robot` listens to `GameState.state_changed`, makes the active robot camera current on entering `IN_GAME_ROBOT`, and gives the camera back to `GameState.player` when going `IN_GAME_ROBOT -> IN_GAME_PLAYER`. `Robot._input` (mouse orbit / mouse mode) is ignored outside `IN_GAME_ROBOT`.
 
 ### 15.5 Collision layers
-The robot is on layer 2 (same layer as the player) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
+The robot is on layers 2 and 3 (collision_layer 6) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
 
 ### 15.6 Recipe: spawn the robot in a new place
-A level needs a `SpawnPoint`. The robot spawns at its `transform` with the origin at the robot's centre, and `RunningGear` ride height is 0.15 m, so give the marker a bit of height above the ground to avoid spawning inside it.
+Instance `robot.tscn` in the level and set its `transform`. The origin is the robot's centre and `RunningGear` ride height is 0.15 m, so leave a bit of height above the ground. Add a `RobotController` node and assign it to the robot's `controller` export in the scene (it must be set before `Robot._ready()`, which scene instancing does).
 
 See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues found while integrating it.

@@ -43,16 +43,25 @@ enum CameraMode{
 	FOLLOW,
 	BUMPER
 }
-@onready var camera: Dictionary = {
-	CameraMode.FOLLOW : $FollowCameraPivot/FollowCamera,
-	CameraMode.BUMPER : $BumperCamera
-}
+
 
 func _ready() -> void:
 	$FollowCamera.set_as_top_level(true)
 	Debug.current_robot = self
 	running_gear.update_wheel_properties()
 	controller.toggle_camera.connect(_on_controller_toggle_camera)
+	GameState.state_changed.connect(_on_game_state_changed)
+
+
+# The robot's cameras only take over while it is being driven; otherwise the
+# player's (or the main menu's) camera is the current one.
+func _on_game_state_changed(old_state, new_state) -> void:
+	if new_state == GameState.State.IN_GAME_ROBOT:
+		var active_camera: Camera3D = $FollowCamera if camera_mode == CameraMode.FOLLOW else $BumperCamera
+		active_camera.make_current()
+	elif old_state == GameState.State.IN_GAME_ROBOT and new_state == GameState.State.IN_GAME_PLAYER:
+		if is_instance_valid(GameState.player):
+			GameState.player.camera.make_current()
 
 
 # Controller signals
@@ -70,6 +79,8 @@ func _on_controller_toggle_camera(value: bool) -> void:
 
 
 func _input(event) -> void:
+	if GameState.state != GameState.State.IN_GAME_ROBOT:
+		return
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
