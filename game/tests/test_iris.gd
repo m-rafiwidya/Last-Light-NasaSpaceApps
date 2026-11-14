@@ -13,6 +13,8 @@ extends SceneTree
 ##   7. Insert: E again. The cartridge ends on IRIS's seat (within 5 mm), cargo_inserted and then
 ##      Iris.cartridge_inserted fire once, IRIS's light goes green, the arm stows. Throughout: the
 ##      arm stays 20 mm or more above the terrain and never inside IRIS.
+##   7b. IRIS offline (indicator dark, antenna parked), then set_online: lit, antenna tracking; its
+##      plate labels exist.
 ##   8. Test level: the player can still lift a rover, and the rover's mast camera can still pick
 ##      a part up.
 ## Prints one line per check and PASS / FAIL.
@@ -365,6 +367,21 @@ func _run() -> void:
 	_check("arm: 20 mm or more above the terrain throughout", arm_lowest >= 0.02, "lowest %.0f mm" % (arm_lowest * 1000.0))
 	_check("arm: never inside IRIS", arm_in_iris == 0, "%d sampled points inside %s" % [arm_in_iris, inside_where])
 	_check("the rover never touched IRIS and stayed upright", not touched_iris and tilted < 15.0, "touched %s, tilt up to %.1f deg" % [touched_iris, tilted])
+
+	# 7b. IRIS's two states: offline (indicator dark, antenna parked) until set_online, then lit and tracking
+	var pan: Node3D = iris.find_child("iris_antenna_pan", true, false)
+	var dish: Node3D = iris.find_child("iris_antenna", true, false)
+	var lamp: GeometryInstance3D = iris.find_child("iris_indicator", true, false)
+	var parked: bool = not iris.is_online and iris.antenna_pose() == iris.ANTENNA_PARKED and lamp.material_override.emission_energy_multiplier == 0.0
+	iris.set_online(true)
+	await _ticks(iris.ANTENNA_TIME + 0.2)
+	var tracked: bool = iris.is_online and absf(rad_to_deg(pan.rotation.y) - iris.ANTENNA_TRACKED.x) < 0.1 \
+		and absf(rad_to_deg(dish.rotation.x) - iris.ANTENNA_TRACKED.y) < 0.1 and lamp.material_override.emission_energy_multiplier > 0.0
+	var detail: String = "parked %s, tracked %s (pan %.1f, tilt %.1f)" % [parked, tracked, rad_to_deg(pan.rotation.y), rad_to_deg(dish.rotation.x)]
+	iris.set_online(false, true)
+	_check("IRIS: offline (dark, parked), then online (lit, antenna tracking)", parked and tracked, detail)
+	var labels: int = iris.find_children("Text", "Label3D", true, false).size()
+	_check("IRIS: the service panel's and connectors' labels are there", labels == iris.TEXTS.size(), "%d labels" % labels)
 
 	# 8. The test level keeps its sandbox rules
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)

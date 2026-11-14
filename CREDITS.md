@@ -17,7 +17,7 @@ third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
 ## IRIS kit
 
 `game/res/models/iris_kit/` and the rover kit's cartridge and cargo mount: original, made by
-this project's scripts (the IRIS placeholder, its port, the rover kit parts); nothing third-party
+this project's scripts (IRIS, its port and module socket, the rover kit parts); nothing third-party
 (`game/res/models/iris_kit/PROVENANCE.md`).
 
 ## Astronaut kit

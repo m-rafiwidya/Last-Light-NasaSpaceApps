@@ -4,9 +4,11 @@ extends SceneTree
 ##
 ##     Godot --path game -s res://tools/render_iris_previews.gd --resolution 1920x1080
 ##
-## Shots: IRIS from the approach gate; the mast view scanning it (HUD on); the rover parked in the
+## Shots: IRIS from the approach gate (offline); its service panel close; the module socket on its
+## left side; the mast view scanning it (HUD on); the rover parked in the
 ## delivery window, chase camera (HUD on, the "In position" hint); the arm carrying the cartridge
-## over, and the stroke into the port, from beside them; IRIS afterwards, its light green. Prints a
+## over, and the stroke into the port, from beside them; IRIS afterwards, its light green; IRIS
+## online (indicator lit, antenna tracking). Prints a
 ## MEASURE line per shot: the mean brightness (0-1) of the middle of the screen and the share of
 ## nearly black pixels in it.
 
@@ -121,6 +123,17 @@ func _run() -> void:
 	_side_view(gate.x + back.x * 4.0, gate.z + back.z * 4.0, 1.6, iris.global_position + Vector3.UP * 0.3)
 	await _frames(60)
 	await _shot("iris_from_gate")
+	# The service panel (M1's photo target) close, and the module socket on IRIS's left side
+	var front: Vector3 = iris.global_basis.z * -1.0
+	var left: Vector3 = iris.global_basis.x * -1.0
+	var panel: Vector3 = iris.find_child("scan_point", true, false).global_position
+	_side_view(panel.x + front.x * 1.5, panel.z + front.z * 1.5, 0.95, panel)
+	await _frames(30)
+	await _shot("iris_service_panel")
+	var module: Vector3 = iris.module_socket.global_position
+	_side_view(module.x + left.x * 1.8 + front.x * 0.9, module.z + left.z * 1.8 + front.z * 0.9, 1.3, module)
+	await _frames(30)
+	await _shot("iris_module_socket")
 
 	# Scanning: 12 m out, mast view, HUD on
 	_place_rover(11.5)
@@ -177,8 +190,13 @@ func _run() -> void:
 	await _frames(30)
 	_side_view(mid.x + across.x * 2.2, mid.z + across.z * 2.2, 0.9, mid + Vector3.UP * 0.45)
 	await _shot("delivered_side")
-	_side_view(port.x + APPROACH.x * 1.2 + across.x * 0.8, port.z + APPROACH.y * 1.2 + across.z * 0.8, 1.2, port)
+	_side_view(port.x - APPROACH.x * 0.6 + across.x * 1.3, port.z - APPROACH.y * 0.6 + across.z * 1.3, 1.2, port)
 	await _shot("iris_green_light")
+	# Online: the indicator lit, the antenna tracking (from the gate)
+	iris.set_online(true)
+	_side_view(gate.x + back.x * 4.0, gate.z + back.z * 4.0, 1.6, iris.global_position + Vector3.UP * 1.2)
+	await create_timer(iris.ANTENNA_TIME + 0.3).timeout
+	await _shot("iris_online")
 	print("RESULT iris previews: scanned %s, cartridge in %s" % [iris.is_scanned, iris.has_cartridge])
 	quit()
 
