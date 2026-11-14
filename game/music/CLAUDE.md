@@ -144,6 +144,27 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 - Use only the mood's instruments unless the user asks for others.
 - Every track loops seamlessly and ships as an OGG mix plus stems (below).
 
+## UI sound effects
+
+`ui_sounds.py` builds the game's UI sounds from the synth engine:
+`.venv/bin/python ui_sounds.py [names...]` writes `output/ui/<name>.wav` (48 kHz, 24-bit,
+stereo, no loops) and `output/ui/_preview.wav` (every sound in order with gaps; the order and
+times print in the terminal).
+
+- Tuning: every pitched sound is a scale degree of `KEY_ROOT` in `SCALE` (currently C Lydian,
+  matching the memory/liminal loops). If the main music settles in another key, change those two
+  lines and re-render.
+- Character: soft and gentle, a little clearer than the music (lowpass ~4.5–5.5 kHz instead of
+  ~1–2 kHz), the same synthetic hall with short decays (0.3–2 s), nothing above ~6 kHz to speak of.
+- Direction: positive actions rise (confirm, toggle_on, notification), back and cancel fall
+  (back, toggle_off). Error is a low, muffled thud falling to the root, never buzzy.
+- Response: clicks, hovers, toggles and confirm start within ~2 ms; only swells (menus,
+  game_start) fade in.
+- Levels: each sound is peak-normalised to its entry in `LEVELS` (hover −32 and slider_tick
+  −36 dBFS, up to game_start −15). Keep new sounds in that ladder: frequent sounds quietest.
+- Variations: `hover` and `click` have three each (`_1` to `_3`, different scale notes); the game
+  should pick one at random per play.
+
 ## Seamless loops (required for every track)
 
 - Compose the loop as a whole number of bars and end the track with `song.loop(bars)`, which
