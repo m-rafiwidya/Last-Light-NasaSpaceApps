@@ -509,3 +509,14 @@ def thick_polyline(points: list, half_width: float) -> list:
         left.append(p + n * scale)
         right.append(p - n * scale)
     return [tuple(v) for v in left + right[::-1]]
+
+
+def box(bm, x: tuple, y: tuple, z: tuple, material: int = 0) -> list:
+    """Closed axis-aligned box from (min, max) ranges, normals outward."""
+    verts = [bm.verts.new((xx, yy, zz)) for zz in z for yy in y for xx in x]
+    quads = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
+    faces = [bm.faces.new([verts[i] for i in q]) for q in quads]
+    for f in faces:
+        f.material_index = material
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces

@@ -161,25 +161,15 @@ def build_body(bm) -> None:
     fill(bm, [[b[0], b[1], m[1], m[0]]] + rear_holes, (0, -1, 0), BODY)
 
 
-def box(bm, x: tuple, y: tuple, z: tuple, material: int) -> list:
-    verts = [bm.verts.new((xx, yy, zz)) for zz in z for yy in y for xx in x]
-    quads = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
-    faces = [bm.faces.new([verts[i] for i in q]) for q in quads]
-    for f in faces:
-        f.material_index = material
-    bmesh.ops.recalc_face_normals(bm, faces=faces)
-    return faces
-
-
 def build_hazcams(bm, front: bool) -> None:
     """A camera pair on a bar under the front (or rear) edge, lenses facing out."""
     s = 1.0 if front else -1.0
     y_bar = tuple(sorted((s * (HALF_L - 0.04), s * (HALF_L - 0.01))))
-    box(bm, (-0.07, 0.07), y_bar, (BOTTOM_Z - 0.01, BOTTOM_Z), METAL)
+    kit.box(bm, (-0.07, 0.07), y_bar, (BOTTOM_Z - 0.01, BOTTOM_Z), METAL)
     y_cam = tuple(sorted((s * (HALF_L - 0.035), s * (HALF_L - 0.005))))
     lens_y = s * (HALF_L - 0.005 + 0.001)
     for x in (-0.0475, 0.0475):
-        box(bm, (x - 0.0175, x + 0.0175), y_cam, (BOTTOM_Z - 0.04, BOTTOM_Z - 0.01), METAL)
+        kit.box(bm, (x - 0.0175, x + 0.0175), y_cam, (BOTTOM_Z - 0.04, BOTTOM_Z - 0.01), METAL)
         lens = [bm.verts.new((x + u, lens_y, BOTTOM_Z - 0.025 + v))
                 for u, v in kit.circle_outline(0.01, 6)]
         face = bm.faces.new(lens)
@@ -213,7 +203,7 @@ def build_chassis():
 
 def collision_box():
     bm = bmesh.new()
-    box(bm, (-HALF_W, HALF_W), (-HALF_L, HALF_L), (BOTTOM_Z, DECK_Z), 0)
+    kit.box(bm, (-HALF_W, HALF_W), (-HALF_L, HALF_L), (BOTTOM_Z, DECK_Z), 0)
     return bm
 
 
