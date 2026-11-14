@@ -13,7 +13,8 @@ about 228 per part (6.2). Added: keys on moving joints only mark the rest pose (
 clearance-checked pose range that the visuals must clamp to (5). Revised while building the
 chassis: socket_motor moves to the hatch floor (0.12, 0.33, 0.30) so the drive unit can sit flush
 and still mate at its origin; chassis wheel sockets are named socket_wheel_<front|middle|rear>_L/R;
-the hazcams set the lowest chassis point (3.3, 3.4).
+the hazcams set the lowest chassis point (3.3, 3.4). Revised while integrating the kit: the
+collider import script lives in the game project (7).
 
 ---
 
@@ -294,8 +295,11 @@ Swappable variants keep to their slot's budget.
 - Swappable parts and the chassis carry one simple convex child mesh named `<part>-convcolonly`.
 - Suspension parts, the mast base and arm segments have no collision.
 - Godot imports `-convcolonly` as a `StaticBody3D`, which cannot live inside the rover's
-  `RigidBody3D`. An import post-script (`tools/blender/rover_kit_import.gd`) converts it to a plain
-  `CollisionShape3D`. The chassis collider replaces the current `BodyCollision`.
+  `RigidBody3D` (it collides with the rover itself and throws it around). The post-import script
+  `game/src/robot/kit/rover_kit_import.gd` replaces it with a plain `CollisionShape3D` named
+  `Collision` (Godot only runs import scripts from inside the project). The exporter sets
+  `import_script/path` in each GLB's `.import` file. The physics body that uses a part copies
+  that shape onto itself; the chassis collider replaces the current `BodyCollision`.
 
 ---
 
