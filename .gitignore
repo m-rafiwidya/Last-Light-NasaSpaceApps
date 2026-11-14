@@ -9,3 +9,14 @@ tools/blender/reference/private/
 
 # Source rasters converted to .jpg for Godot (Moon colour map: see CREDITS.md)
 game/res/textures/moon/*.tif
+
+# Godot cache and exports
+game/.godot/
+game/android/
+build/
+exports/
+*.tmp
+
+# Local tool and editor settings
+.claude/settings.local.json
+.vscode/
