@@ -7,6 +7,7 @@ Previews go to tools/blender/previews/<part>/ unless `-- --previews <dir>` or `-
 
 import math
 import os
+import re
 import sys
 
 import bmesh
@@ -135,12 +136,52 @@ def make_collision_child(parent: bpy.types.Object, bm: bmesh.types.BMesh) -> bpy
     return obj
 
 
+# Godot turns nodes whose names end in these words (after "-", "_" or "$") into special
+# nodes on import, e.g. "socket_wheel" becomes a VehicleWheel3D. Only the intended collision
+# suffix "-convcolonly" may appear in the kit (ROVER_KIT.md 2.2).
+GODOT_IMPORT_HINT = re.compile(
+    r"[-_$](noimp|col|convcol|colonly|convcolonly|navmesh|occ|occonly|rigid|rigidonly|vehicle|wheel|loop|cycle)$",
+    re.IGNORECASE,
+)
+
+
+def check_export_name(name: str) -> None:
+    if name.endswith("-convcolonly"):
+        return
+    if GODOT_IMPORT_HINT.search(name):
+        raise ValueError('"%s" ends in a Godot import hint and would change node type on import' % name)
+    if re.search(r"\.\d{3}$", name):
+        raise ValueError('"%s" has a Blender duplicate suffix' % name)
+
+
+def side_of(root: bpy.types.Object):
+    """'L' / 'R' for a mirrored part root (wheel_L, rocker_R, ...), else None."""
+    match = re.search(r"_([LR])$", root.name)
+    return match.group(1) if match else None
+
+
 def export_part(root: bpy.types.Object, path: str) -> None:
     """Exports the part root and its children as GLB with the root at the origin, as
-    swappable parts are instanced on their own (ROVER_KIT.md 8)."""
+    parts are instanced on their own (ROVER_KIT.md 8).
+
+    In an _L / _R file the two roots' empties need unique Blender names, so they carry the
+    side suffix (socket_wheel_hub_R). It is stripped while exporting, so both GLBs get the
+    same socket names."""
     saved_location = root.location.copy()
     root.location = (0.0, 0.0, 0.0)
     bpy.context.view_layer.update()
+
+    side = side_of(root)
+    renamed = {}
+    if side:
+        for child in root.children_recursive:
+            if child.type == "EMPTY" and child.name.endswith("_" + side):
+                renamed[child] = child.name
+                child.name = child.name[:-2]
+                if child.name != renamed[child][:-2]:
+                    raise ValueError("Could not strip the side from %s (name taken)" % renamed[child])
+    for obj in [root] + list(root.children_recursive):
+        check_export_name(obj.name)
 
     bpy.ops.object.select_all(action="DESELECT")
     root.select_set(True)
@@ -158,6 +199,8 @@ def export_part(root: bpy.types.Object, path: str) -> None:
         export_animations=False,
         export_materials="EXPORT",
     )
+    for child, name in renamed.items():
+        child.name = name
     root.location = saved_location
     bpy.context.view_layer.update()
 
@@ -233,3 +276,131 @@ def render_view(target: bpy.types.Object, path: str, direction: tuple, ortho_sca
 def polar(r: float, phi: float) -> tuple:
     """(y, z) on a circle around the X axis. phi = 90 degrees is the top (+Z)."""
     return (r * math.cos(phi), r * math.sin(phi))
+
+
+# --- Standard connector (ROVER_KIT.md 2.5) ---------------------------------------------------
+# Child: plug of PLUG_RADIUS sticking CONNECTOR_DEPTH out of its mating face. Parent: collar of
+# COLLAR_RADIUS with a recess the plug fills; the recess opening is flush with the mating plane.
+COLLAR_RADIUS = 0.030
+PLUG_RADIUS = 0.022
+CONNECTOR_DEPTH = 0.008
+KEY_HALF_WIDTH = 0.004
+KEY_DEPTH = 0.004
+
+
+def plug_outline() -> list:
+    """(u, v) outline of the keyed plug: 8 points on a circle with the key notch cut at +v.
+    The parent's recess uses the same outline, so the notch becomes the key tab there."""
+    top_angle = math.asin(KEY_HALF_WIDTH / PLUG_RADIUS)
+    top_v = PLUG_RADIUS * math.cos(top_angle)
+    start = math.pi / 2.0 + top_angle
+    arc = 2.0 * math.pi - 2.0 * top_angle
+    outline = [polar(PLUG_RADIUS, start + arc * k / 7.0) for k in range(8)]
+    outline += [(KEY_HALF_WIDTH, top_v - KEY_DEPTH), (-KEY_HALF_WIDTH, top_v - KEY_DEPTH)]
+    return outline
+
+
+def circle_outline(radius: float, sides: int, phase: float = 0.0) -> list:
+    return [polar(radius, phase + k * 2.0 * math.pi / sides) for k in range(sides)]
+
+
+def prism(bm, outline: list, place, w0: float, w1: float, cap0: bool = True, cap1: bool = True) -> list:
+    """Extrudes a 2D outline between w0 and w1. `place(u, v, w)` maps to 3D. Returns the
+    faces; their winding is not fixed (see `orient` / recalc_face_normals)."""
+    a = [bm.verts.new(place(u, v, w0)) for u, v in outline]
+    b = [bm.verts.new(place(u, v, w1)) for u, v in outline]
+    faces = []
+    if cap0:
+        faces.append(bm.faces.new(a))
+    if cap1:
+        faces.append(bm.faces.new(b))
+    for k in range(len(outline)):
+        n = (k + 1) % len(outline)
+        faces.append(bm.faces.new((a[k], a[n], b[n], b[k])))
+    return faces
+
+
+def orient(bm, faces: list, outward) -> int:
+    """Flips faces whose normal disagrees with `outward(face)` (a vector pointing away from
+    the inside of the part). Returns how many were flipped."""
+    bm.normal_update()
+    flipped = [f for f in faces if f.normal.dot(outward(f)) < 0.0]
+    bmesh.ops.reverse_faces(bm, faces=flipped)
+    return len(flipped)
+
+
+def axis_outward(axis: int, w_min: float, w_max: float, center_uv=(0.0, 0.0)):
+    """`outward` for a prism along a world axis (0 = X, 1 = Y, 2 = Z) spanning w_min..w_max:
+    caps point along the axis away from the middle, sides point away from the axis line."""
+    others = [i for i in range(3) if i != axis]
+
+    def out(f):
+        c = f.calc_center_median()
+        if abs(f.normal[axis]) > 0.9:
+            v = Vector((0.0, 0.0, 0.0))
+            v[axis] = c[axis] - (w_min + w_max) / 2.0
+            return v
+        v = Vector(c)
+        v[axis] = 0.0
+        v[others[0]] -= center_uv[0]
+        v[others[1]] -= center_uv[1]
+        return v
+    return out
+
+
+def add_socket(parent: bpy.types.Object, name: str, world_location) -> bpy.types.Object:
+    """Adds a zero-rotation `socket_*` / `pivot_*` empty under a part root (ROVER_KIT.md 2.3).
+    Under an _L / _R root the side suffix is added to keep Blender names unique; export_part
+    strips it again."""
+    side = side_of(parent)
+    if side:
+        name += "_" + side
+    empty = bpy.data.objects.new(name, None)
+    if empty.name != name:
+        raise ValueError("Empty name %s is already taken (got %s)" % (name, empty.name))
+    empty.empty_display_type = "PLAIN_AXES"
+    empty.empty_display_size = 0.05
+    bpy.context.scene.collection.objects.link(empty)
+    empty.parent = parent
+    empty.location = Vector(world_location) - parent.location
+    return empty
+
+
+def append_objects(blend_path: str, names: list) -> list:
+    """Appends objects (with their children) from another part's .blend, e.g. to preview a
+    part assembled with its neighbours."""
+    with bpy.data.libraries.load(blend_path, link=False) as (source, target):
+        target.objects = [n for n in source.objects]
+    wanted = []
+    for obj in target.objects:
+        if obj is None:
+            continue
+        root = obj
+        while root.parent:
+            root = root.parent
+        if root.name.split(".")[0] in names:
+            bpy.context.scene.collection.objects.link(obj)
+            # Use this file's kit materials instead of appended ".001" copies
+            for slot in obj.material_slots:
+                if slot.material and "." in slot.material.name:
+                    existing = bpy.data.materials.get(slot.material.name.split(".")[0])
+                    if existing:
+                        slot.material = existing
+            if obj.parent is None:
+                wanted.append(obj)
+        else:
+            bpy.data.objects.remove(obj)
+    return wanted
+
+
+def parent_keep_transform(child: bpy.types.Object, parent: bpy.types.Object) -> None:
+    world = child.matrix_world.copy()
+    child.parent = parent
+    child.matrix_parent_inverse = parent.matrix_world.inverted()
+    child.matrix_world = world
+
+
+def world_vertices(obj: bpy.types.Object) -> list:
+    bpy.context.view_layer.update()
+    m = obj.matrix_world
+    return [m @ v.co for v in obj.data.vertices]

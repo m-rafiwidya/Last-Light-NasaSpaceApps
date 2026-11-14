@@ -47,12 +47,8 @@ SPOKE_PATH = ((0.028, 0.0), (0.085, math.radians(14.0)), (0.134, math.radians(36
 HUB_RADIUS = 0.04
 HUB_X = (-HALF_WIDTH, 0.09)
 
-# Standard connector plug (ROVER_KIT.md 2.5): diameter 44 mm, 8 mm proud of the inner face,
-# 8 mm key notch at +Z, 4 mm deep
-PLUG_RADIUS = 0.022
-PLUG_DEPTH = 0.008
-KEY_HALF_WIDTH = 0.004
-KEY_DEPTH = 0.004
+# Standard connector plug (ROVER_KIT.md 2.5) on the inner face, key notch at +Z
+PLUG_DEPTH = kit.CONNECTOR_DEPTH
 
 DARK = 0
 METAL = 1
@@ -131,19 +127,8 @@ def build_hub(bm) -> list:
     return faces
 
 
-def plug_profile() -> list:
-    """(y, z) outline of the keyed plug: circle of 8 points with a notch cut at the top."""
-    top_angle = math.asin(KEY_HALF_WIDTH / PLUG_RADIUS)
-    top_z = PLUG_RADIUS * math.cos(top_angle)
-    start = math.pi / 2.0 + top_angle
-    arc = 2.0 * math.pi - 2.0 * top_angle
-    outline = [kit.polar(PLUG_RADIUS, start + arc * k / 7.0) for k in range(8)]
-    outline += [(KEY_HALF_WIDTH, top_z - KEY_DEPTH), (-KEY_HALF_WIDTH, top_z - KEY_DEPTH)]
-    return outline
-
-
 def build_plug(bm) -> list:
-    outline = plug_profile()
+    outline = kit.plug_outline()
     base = [bm.verts.new((-HALF_WIDTH, y, z)) for y, z in outline]
     tip = [bm.verts.new((-HALF_WIDTH - PLUG_DEPTH, y, z)) for y, z in outline]
     faces = [bm.faces.new(tip)]
@@ -151,14 +136,6 @@ def build_plug(bm) -> list:
         n = (k + 1) % len(outline)
         faces.append(bm.faces.new((base[k], base[n], tip[n], tip[k])))
     return faces
-
-
-def orient(bm, faces: list, outward) -> int:
-    """Points every face away from its island's inside, using `outward(face)` (a vector
-    that should agree with the normal). Returns how many faces had to be flipped."""
-    flipped = [f for f in faces if f.normal.dot(outward(f)) < 0.0]
-    bmesh.ops.reverse_faces(bm, faces=flipped)
-    return len(flipped)
 
 
 def radial(f) -> Vector:
@@ -190,9 +167,9 @@ def build_wheel_r_bmesh():
             return radial(f)
         return out
 
-    flips = orient(bm, tyre, tyre_out)
-    flips += orient(bm, hub, cylinder_out(*HUB_X))
-    flips += orient(bm, plug, cylinder_out(-HALF_WIDTH - PLUG_DEPTH, -HALF_WIDTH))
+    flips = kit.orient(bm, tyre, tyre_out)
+    flips += kit.orient(bm, hub, cylinder_out(*HUB_X))
+    flips += kit.orient(bm, plug, cylinder_out(-HALF_WIDTH - PLUG_DEPTH, -HALF_WIDTH))
     # Spokes: recalculating per island is reliable for these simple open tubes
     bmesh.ops.recalc_face_normals(bm, faces=spokes)
 
