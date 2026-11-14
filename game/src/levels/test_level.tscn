@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://b6i0nsumhm8x4" path="res://res/textures/dev/grey.png" id="1_br53r"]
 [ext_resource type="Texture2D" uid="uid://dt4imig118lxf" path="res://res/textures/dev/orange.png" id="2_7hvae"]
 [ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
+[ext_resource type="Resource" path="res://res/dialogs/test_sequence.tres" id="5_dlgseq"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -162,6 +163,7 @@ size = Vector3(3, 1, 3)
 
 [node name="TestLevel" type="Node3D" unique_id=225028321]
 script = ExtResource("1_7hvae")
+intro_dialog = ExtResource("5_dlgseq")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1459703161]
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)

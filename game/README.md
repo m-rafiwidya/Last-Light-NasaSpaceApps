@@ -337,7 +337,7 @@ Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then crea
 
 ### The test level (`levels/test_level.tscn`)
 
-A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). The level currently contains no `InteractTrigger` nodes or dialog content.
+A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). It also contains a `DialogTrigger` (`InteractTrigger`) that plays a demo dialog sequence.
 
 ---
 
@@ -447,18 +447,29 @@ The raycast has `collide_with_areas = true`, mask `53` = layers 1, 3, 5, 6 (worl
 
 Data (`Resource`s, editable in the inspector):
 
-- `Dialog`: `audio_stream: AudioStream` (not yet used) and `subtitle: String` (multiline).
+- `Dialog`: `audio_stream: AudioStream` (voice line, played by `DialogServer`; its length extends the on-screen time), `speaker: String` (empty = narration), `subtitle: String` (multiline) and `min_duration` (seconds, default 1.0). `get_display_text()` returns `"Speaker: subtitle"` (or just the subtitle with no speaker); the HUD shows this until a dedicated speaker UI exists.
 - `DialogSequence`: `dialogs: Array[Dialog]`.
 
 `DialogServer` (autoload):
 
-- `play_dialog(dialog)`: if the dialog isn't already playing, creates a `Timer` with `wait_time = subtitle.length / (1000/60)` (i.e. 1000 characters per minute reading speed), adds it to `get_tree().current_scene` (which is `Main`), emits `dialog_played`. When the timer fires it emits `dialog_ended`, frees the timer. Timers are keyed by the dialog's instance id.
-- `play_dialog_sequence(seq)`: coroutine; plays each dialog, `await`s `dialog_ended`, waits 0.2s, continues.
-- On `SceneLoader.level_unloaded` all running timers are stopped and `dialog_ended` is emitted for each, so subtitles don't leak across levels.
+- `play_dialog(dialog) -> bool`: awaitable. Emits `dialog_played`, waits `get_dialog_duration()` (1000 chars/min reading speed, at least the audio length and `min_duration`) on a pausable `SceneTreeTimer`, then emits `dialog_ended`. Returns `true` if it finished, `false` if cancelled or if that same `Dialog` is already playing.
+- `play_dialog_sequence(seq) -> bool`: awaitable. Plays each dialog in order with a 0.35s gap (longer than the DialogBox fade-out so boxes never overlap). Ignored while another sequence is playing, so re-triggering a trigger can't start overlapping copies. Emits `sequence_finished(seq, completed)`.
+- Audio: if a `Dialog` has an `audio_stream`, `DialogServer` plays it on an `AudioStreamPlayer` child (bus `AUDIO_BUS`, currently `Master`) for the life of the line; it is stopped and freed when the line ends or is cancelled.
+- `stop_all()`: cancels everything. It bumps an internal generation counter, so any waiting coroutine exits when it wakes, and emits `dialog_ended` for active dialogs so the HUD clears. It is called automatically on `SceneLoader.level_unloaded`, so a sequence can no longer continue into the next level or menu.
+
+**What happens when dialogs overlap** (there is no queue or priority system yet):
+
+| Situation | Result |
+|---|---|
+| Two different `Dialog`s via `play_dialog` | Both start immediately. Two boxes stack in the HUD and both `audio_stream`s play at once. Each ends on its own timer. |
+| Same `Dialog` instance while it is playing | Second call returns `false` immediately, no signals. |
+| A sequence while another sequence plays | Returns `false` immediately; the running sequence is unaffected. `sequence_finished` is **not** emitted for the rejected one. |
+| A single line during a sequence (or vice versa) | No coordination; they overlap as in the first row. |
+| `stop_all()` / level unload | Everything is cut off, audio stopped, HUD cleared. A running sequence only notices when its current timer wakes, so `sequence_finished(seq, false)` (and the caller's `await`) can arrive late, up to that line's remaining duration. |
 
 Display: `HUD` listens to the two signals and creates/fades a `DialogBox` (`ui/dialog_box/`) inside `DialogBoxContainer` (fade in 0.1s; on end, 0.2s hold, fade out 0.1s, `queue_free`).
 
-Way to trigger today: the `say <text>` console command (see below). No level currently plays dialog sequences; wire an `InteractTrigger.interacted` signal to `DialogServer.play_dialog_sequence()` to add some (see recipes).
+Ways to trigger today: the `say <text>` console command (see below), and the `DialogTrigger` in `test_level.tscn`, whose `interacted` signal plays the `intro_dialog` export of `test_level.gd`, a `DialogSequence` authored in `res/dialogs/test_sequence.tres`. Author new sequences the same way: create a `DialogSequence` resource in the inspector, add `Dialog` entries, and export it on the level or NPC script.
 
 ---
 
@@ -515,7 +526,7 @@ Player `collision_mask = 5` (world + props). Interaction raycast mask `53` (worl
 Grounded in the current code; useful to know before changing things.
 
 **Gameplay / wiring**
-- No level uses `InteractTrigger` or plays dialog sequences right now (the old test NPCs were removed).
+- Only `test_level.tscn` uses an `InteractTrigger` (the `DialogTrigger` demo).
 - `InteractTrigger.tooltip` and the HUD `Tooltip` label are not connected.
 - `GameState.State.IN_GAME_MENU`, `Player.inventory`/`active_item_index`, `viewmodel_controller`, `AudioStreamPlayer3D`, `is_rotating_held_object` are placeholders with no behaviour.
 
@@ -533,7 +544,8 @@ Grounded in the current code; useful to know before changing things.
 - Settings tabs are placeholders. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.
 - Sub-screen positions assume a 1920 px wide viewport (hard-coded `+-1920`).
 - `HUD.fade_out()` makes the HUD transparent but doesn't hide it (the `hide` callback is commented out).
-- `DialogServer.play_dialog_sequence` awaits *any* `dialog_ended`, not specifically the one it started; overlapping dialogs could advance a sequence early.
+- `DialogServer` has no queue: a second sequence started while one is playing is ignored, and individual lines can overlap (`play_dialog` only rejects the same `Dialog` instance twice). See the overlap table in section 10.
+- `play_dialog` returns `false` for both "cancelled" and "ignored because already playing", and `play_dialog_sequence` treats any `false` as a cancel. If a line of a sequence is already playing standalone (e.g. via `say`), the sequence aborts early with `completed = false`.
 
 **Player**
 - Known TODO in code: crouch transitions can capture a transient camera transform; "friction doesn't work when walking then crouching".
@@ -562,7 +574,7 @@ Grounded in the current code; useful to know before changing things.
 2. Connect its `interacted(player)` signal to your logic, e.g. `DialogServer.play_dialog_sequence(my_sequence)`.
 
 ### Add dialog
-Create a `Dialog` resource (set `subtitle`), group them in a `DialogSequence` resource, then call `DialogServer.play_dialog_sequence(seq)` (or `play_dialog(dialog)` for one line).
+Create a `DialogSequence` `.tres` under `res/dialogs/` with `Dialog` entries (set `speaker`, `subtitle`, optionally `audio_stream`), `@export` it on the script that triggers it, then call `DialogServer.play_dialog_sequence(seq)` (or `play_dialog(dialog)` for one line).
 
 ### Add a console command
 Add a new `match` case in `Debug.parse_command` (`autoloads/debug.gd`); use `add_log()` to print feedback.

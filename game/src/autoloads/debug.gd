@@ -27,7 +27,7 @@ func parse_command(input: String):
 			"quit":
 				get_tree().quit()
 			"say":
-				if argc >= 1:
+				if argc >= 2:
 					var test_dialog: Dialog = Dialog.new()
 					# TODO: implement audio stream to support dialogs
 					#test_dialog.audio_stream = ResourceLoader.load("res://res/sounds/test_narration.wav")

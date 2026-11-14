@@ -2,7 +2,6 @@ extends UIScreen
 
 var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
 var dialog_boxes: Dictionary
-var dialog_queue: Array
 
 
 func _ready() -> void:
@@ -20,7 +19,7 @@ func _process(_delta: float) -> void:
 
 func _on_dialog_played(dialog: Dialog):
 	var dialog_box: Control = dialog_box_scene.instantiate()
-	dialog_box.set_text(dialog.subtitle)
+	dialog_box.set_text(dialog.get_display_text())
 	$DialogBoxContainer.add_child(dialog_box)
 	dialog_box.fade_in()
 	dialog_boxes[dialog.get_instance_id()] = dialog_box
@@ -30,10 +29,9 @@ func _on_dialog_ended(dialog: Dialog):
 	if not dialog_boxes.has(dialog.get_instance_id()):
 		return
 	var dialog_box = dialog_boxes[dialog.get_instance_id()]
-
-	print(dialog.subtitle)
-	print(dialog_boxes.erase(dialog.get_instance_id()))
-	dialog_box.fade_out()
+	dialog_boxes.erase(dialog.get_instance_id())
+	if is_instance_valid(dialog_box):
+		dialog_box.fade_out()
 
 
 func fade_in():

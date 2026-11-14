@@ -1,9 +1,6 @@
 extends Control
 
 
-func _ready() -> void:
-	print("spawned")
-
 
 func set_text(text: String):
 	$MarginContainer/RichTextLabel.text = text
