@@ -41,7 +41,6 @@ func parse_command(input: String):
 					viewport.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
 				else:
 					viewport.debug_draw = Viewport.DEBUG_DRAW_DISABLED
-			"offcam":
-				GameState.player.detach_cam()
+
 			_:
 				add_log("Unknown command \"%s\"" % argv[0])

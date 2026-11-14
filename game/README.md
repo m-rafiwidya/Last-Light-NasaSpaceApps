@@ -44,7 +44,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Main scene | `res://src/main.tscn` |
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
-| Game type | First-person 3D, rigidbody character, physics prop pickup, NPC dialog |
+| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system |
 | Content | One level only: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) |
 | Theme | `res/theme.tres` (shared by all UI) |
 
@@ -176,7 +176,7 @@ stateDiagram-v2
     LOADING --> MAIN_MENU: main menu level ready
     LOADING --> IN_GAME: gameplay level ready (player spawned)
     MAIN_MENU --> LOADING: Start pressed
-    IN_GAME --> PAUSED: Esc or backtick console
+    IN_GAME --> PAUSED: Esc
     PAUSED --> IN_GAME: Esc or Resume
     PAUSED --> LOADING: Quit To Menu
 ```
@@ -225,7 +225,8 @@ UIManager
    - `new == IN_GAME` -> `HUD.fade_in()` else `fade_out()`
    - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out).
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
-3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc). See [section 11](#11-debug-console) for the console quirk.
+3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc).
+   - Backtick: shows/hides the `Console` popup. It does **not** change game state (the game keeps running while it is open). See [section 11](#11-debug-console).
    - Esc: `IN_GAME -> PAUSED`, `PAUSED -> IN_GAME`.
 
 ### 6.2 UIScreen base class (`ui/ui_screen.gd`)
@@ -336,9 +337,7 @@ Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then crea
 
 ### The test level (`levels/test_level.tscn`)
 
-A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), a decorative `CharacterBody3D` box, and three NPC stand-ins (`Character`, `Character2`, `Character3`).
-
-Each NPC is a `StaticBody3D` with an inline script exposing `@export var dialog_sequence: DialogSequence`, a billboard `Sprite3D`, and a child `InteractTrigger` (`Area3D`, layer 5). All three share one `DialogSequence` of two lines. **The trigger is currently not connected to the NPC script** (see known issues).
+A sandbox with: directional light + procedural sky, a 128x128 CSG floor and CSG walls/arches (`use_collision = true`, inside a `NavigationRegion3D` with a baked navmesh), three pickup props (`Box`, `Text`, `Sphere` - `RigidBody3D` on collision layer 3), a see-saw (`StaticBody3D` + `HingeJoint3D` + `RigidBody3D`), and a `CharacterBody3D` box that is moved by the level's `AnimationPlayer` (`new_animation`, 10s loop). The level currently contains no `InteractTrigger` nodes or dialog content.
 
 ---
 
@@ -413,7 +412,7 @@ This is a **custom force-based character controller** on top of a rigidbody:
 
 ### 8.7 Camera detach helpers (unused today)
 
-`release_camera(new_transform, fov)` / `bind_camera()` detach the camera (`top_level = true`), lock look/move/crosshair, and tween it to a target transform and back. Nothing in the current game calls them (they were meant for things like a map view). The console command `offcam` references a `detach_cam()` that does not exist.
+`release_camera(new_transform, fov)` / `bind_camera()` detach the camera (`top_level = true`), lock look/move/crosshair, and tween it to a target transform and back. Nothing in the current game calls them (they were meant for things like a map view).
 
 ---
 
@@ -459,14 +458,14 @@ Data (`Resource`s, editable in the inspector):
 
 Display: `HUD` listens to the two signals and creates/fades a `DialogBox` (`ui/dialog_box/`) inside `DialogBoxContainer` (fade in 0.1s; on end, 0.2s hold, fade out 0.1s, `queue_free`).
 
-Way to trigger today: the `say <text>` console command (see below).
+Way to trigger today: the `say <text>` console command (see below). No level currently plays dialog sequences; wire an `InteractTrigger.interacted` signal to `DialogServer.play_dialog_sequence()` to add some (see recipes).
 
 ---
 
 ## 11. Debug console
 
 - Toggle: backtick (`` ` ``, action `console`). `Console` is a `PopupPanel` (title still says "Open Wheel Debug Console", a leftover name). It shows `Debug.debug_console_output` (refreshed every frame) and a `LineEdit` + Submit button.
-- **Pausing side effect**: pressing the console key while `IN_GAME` switches state to `PAUSED` (so the pause menu appears too). Closing the console does *not* resume; press Esc or Resume.
+- **Does not pause the game.** Toggling the console only shows/hides the popup; `GameState` is untouched. Likely consequences (inferred from the code, not tested): while in game the mouse stays captured, and `PlayerController` polls `Input` globally, so typing W/A/S/D/Space in the console may also move the player.
 - Logging: `Debug.add_log(message)` appends a timestamped line.
 - Commands (`Debug.parse_command`, case-insensitive first word):
 
@@ -476,7 +475,7 @@ Way to trigger today: the `say <text>` console command (see below).
 | `quit` | quit the game |
 | `say <text...>` | creates a temporary `Dialog` with that subtitle and plays it via `DialogServer` |
 | `fullbright` | toggles `Viewport.DEBUG_DRAW_UNSHADED` |
-| `offcam` | calls `GameState.player.detach_cam()` - **broken**, method doesn't exist |
+
 | anything else | logs `Unknown command "..."` |
 
 ---
@@ -516,20 +515,22 @@ Player `collision_mask = 5` (world + props). Interaction raycast mask `53` (worl
 Grounded in the current code; useful to know before changing things.
 
 **Gameplay / wiring**
-- **NPC dialog is not hooked up.** In `test_level.tscn`, the NPC script's `_ready` that connects `InteractTrigger.interacted` is commented out and there are no `[connection]` entries, so pressing E on an NPC does nothing. Also the NPC `Sprite3D` texture is an empty `CompressedTexture2D` sub-resource, so they likely render nothing.
-- `Console` command `offcam` calls the non-existent `Player.detach_cam()`.
+- No level uses `InteractTrigger` or plays dialog sequences right now (the old test NPCs were removed).
 - `InteractTrigger.tooltip` and the HUD `Tooltip` label are not connected.
 - `GameState.State.IN_GAME_MENU`, `Player.inventory`/`active_item_index`, `viewmodel_controller`, `AudioStreamPlayer3D`, `is_rotating_held_object` are placeholders with no behaviour.
 
 **Scene loading**
 - `LEVEL_PATHS["main_menu"]` points at `test_level.tscn` (same file as the playable level) - fine for now, but a dedicated menu level is the intended direction (`is_first_main_menu_load` is reserved for an intro).
-- `load_scene` early-returns/`push_error`s on failure paths **without resetting `loading_scene_id` or leaving `LOADING`**, which would leave the game stuck on the loading screen (e.g. missing `SpawnPoint`, threaded request error). Level paths aren't validated (see TODO in the file).
+- **Load failures are not recovered from.** Failure paths only `push_error` and return:
+  - `load_threaded_request` error or `THREAD_LOAD_FAILED`: `loading_scene_id` is never cleared (every later `load_scene` call is silently ignored), state stays `LOADING`, and the loading screen stays black. The old level has already been `queue_free`d by then.
+  - Missing `SpawnPoint`: the scene is added and `level_loaded` fires (loading screen fades out), but `_setup_level` returns before `IN_GAME`, so the state stays `LOADING` with no player and no HUD.
+  - Missing `CameraMarker`: menu state is set but there is no camera.
+  - Level paths in `LEVEL_PATHS` are not validated (see TODO in the file). A fix has been proposed but is **not implemented yet**.
 - `GameState.player` is not cleared when a level unloads (line commented out); it can be a stale/freed reference after returning to the menu. The HUD guards with `if GameState.player` but anything else should check `is_instance_valid`.
 - `_setup_main_menu` sets state before creating the camera; the trailing comment is misleading.
 
 **UI**
-- Console close doesn't undo the pause it caused (see section 11).
-- Settings tabs are placeholders; the `"UI"` audio bus used by `ButtonSoundComponent` is not defined in the project (no custom bus layout), so Godot will fall back to `Master`.
+- Settings tabs are placeholders. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.
 - Sub-screen positions assume a 1920 px wide viewport (hard-coded `+-1920`).
 - `HUD.fade_out()` makes the HUD transparent but doesn't hide it (the `hide` callback is commented out).
 - `DialogServer.play_dialog_sequence` awaits *any* `dialog_ended`, not specifically the one it started; overlapping dialogs could advance a sequence early.
@@ -556,6 +557,7 @@ Grounded in the current code; useful to know before changing things.
 `RigidBody3D` with `collision_layer = 4` (layer 3), a collision shape, and a mesh. No script needed; the player's raycast finds it and the HUD shows the interaction crosshair.
 
 ### Add an interactable (door, button, NPC...)
+(No example exists in the current level; this is the intended pattern.)
 1. Add an `Area3D` using the `InteractTrigger` script, `collision_layer = 16` (layer 5), `collision_mask = 0`, with a `CollisionShape3D`.
 2. Connect its `interacted(player)` signal to your logic, e.g. `DialogServer.play_dialog_sequence(my_sequence)`.
 
