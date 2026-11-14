@@ -3,6 +3,11 @@
 Third-party assets in this repository and where they come from. NASA imagery is used under
 NASA's media usage guidelines; no endorsement by NASA or ESA is implied.
 
+## Workshop kit
+
+`game/res/models/workshop_kit/`: original, made by this project's scripts; nothing
+third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
+
 ## Star map
 
 `game/res/textures/sky/starmap_2020_4k.exr`: the Moon level's sky.

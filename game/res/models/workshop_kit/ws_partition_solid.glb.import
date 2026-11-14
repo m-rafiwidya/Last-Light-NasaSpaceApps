@@ -1,0 +1,8 @@
+[remap]
+
+importer="scene"
+importer_version=1
+
+[params]
+
+import_script/path="res://src/workshop/workshop_kit_import.gd"
