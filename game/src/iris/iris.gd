@@ -30,19 +30,19 @@ const INDICATOR_OFF := Color(0.07, 0.075, 0.07)
 # Words on the plates (text_* anchors): [words, plate size (m), cap height (m), handwritten]
 const INK := Color(0.11, 0.115, 0.125)
 const PEN := Color(0.10, 0.14, 0.32)
-const HAND_FONT: Font = preload("res://res/fonts/IBMPlexMono-Italic.ttf")
+const HAND_FONT: Font = preload("res://res/fonts/caveat-latin-500-normal.woff2")
 const FONT_SIZE: int = 64
 const CAP_RATIO: float = 0.714
 const TEXTS: Dictionary = {
 	"text_name": ["IRIS", Vector2(0.50, 0.11), 0.07, false],
 	"text_panel_title": ["SERVICE PANEL S-1", Vector2(0.38, 0.045), 0.022, false],
-	"text_service_label": ["Radio pwr: J1\nSeals checked\n- Evan", Vector2(0.34, 0.13), 0.026, true],
-	"text_conn_j1_a": ["J1 RADIO PWR", Vector2(0.18, 0.024), 0.012, true],
-	"text_conn_j1_b": ["J1 RADIO PWR", Vector2(0.18, 0.024), 0.012, true],
-	"text_conn_j2_a": ["J2 DATA", Vector2(0.18, 0.024), 0.012, true],
-	"text_conn_j2_b": ["J2 DATA", Vector2(0.18, 0.024), 0.012, true],
-	"text_conn_j3_a": ["J3 HEATER", Vector2(0.18, 0.024), 0.012, true],
-	"text_conn_j3_b": ["J3 HEATER", Vector2(0.18, 0.024), 0.012, true],
+	"text_service_label": ["Radio pwr: J1\nSeals checked\n- Evan", Vector2(0.34, 0.13), 0.06, true],
+	"text_conn_j1_a": ["J1 RADIO PWR", Vector2(0.18, 0.024), 0.024, true],
+	"text_conn_j1_b": ["J1 RADIO PWR", Vector2(0.18, 0.024), 0.024, true],
+	"text_conn_j2_a": ["J2 DATA", Vector2(0.18, 0.024), 0.024, true],
+	"text_conn_j2_b": ["J2 DATA", Vector2(0.18, 0.024), 0.024, true],
+	"text_conn_j3_a": ["J3 HEATER", Vector2(0.18, 0.024), 0.024, true],
+	"text_conn_j3_b": ["J3 HEATER", Vector2(0.18, 0.024), 0.024, true],
 }
 
 ## Starts online (indicator lit, antenna tracking), e.g. after M2

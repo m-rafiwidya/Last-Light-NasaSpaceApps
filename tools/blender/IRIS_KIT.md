@@ -271,13 +271,21 @@ grown up), not a copy of any real station. Its diagnostic port keeps the placeho
 |---|---|---|
 | `text_name` | IRIS | stencil (default font, ink) |
 | `text_panel_title` | SERVICE PANEL S-1 | stencil |
-| `text_service_label` | Radio pwr: J1 / Seals checked / - Evan | handwritten: IBM Plex Mono Italic, blue-black pen, 2 degrees crooked |
+| `text_service_label` | Radio pwr: J1 / Seals checked / - Evan | handwritten: Caveat (OFL), blue-black pen, 2 degrees crooked |
 | `text_conn_j1_a`, `_b` | J1 RADIO PWR (both) | handwritten |
 | `text_conn_j2_a`, `_b` | J2 DATA | handwritten |
 | `text_conn_j3_a`, `_b` | J3 HEATER | handwritten |
 
-There's no handwriting font in the repo; the italic mono is the stand-in. Each label is sized to
-its plate.
+The handwriting is Caveat 500 (`game/res/fonts/caveat-latin-500-normal.woff2`, from
+`@fontsource/caveat` 5.3.0; licence in `LICENSE-caveat.txt`). Each label is sized to its plate.
+
+### 6.7 Light on the panel (M1 relies on Kite's headlights)
+
+IRIS's front faces south-west and the sun is in the east, so **the service panel is in IRIS's own
+shadow** (7). IRIS stays where it is. M1's photo of the panel, and Evan's labels on it, need Kite's
+headlights (**L**). So the M1 objective/hint must prompt **"L  Lights"** once Kite is near IRIS
+(within about 15 m, or when the panel is the scan/photo target), and the mission system should
+not count a photo of a dark panel as readable if that is ever checked.
 
 ---
 

@@ -4,7 +4,7 @@ IRIS (body, service panel, diagnostic port, module socket, mast, indicator, ante
 `tools/blender/scripts/iris/make_iris.py` and posed on the Apollo 12 terrain
 (`game/res/terrain/moon_apollo12/play.f32`). Its service port bracket is an original design made by
 the same script with the workshop kit's materials (plus its own `ir_dust`). Its labels are
-`Label3D` text in Godot, using the repo's IBM Plex Mono (OFL) for the handwritten ones. No borrowed or AI-generated meshes, no textures,
+`Label3D` text in Godot, using Caveat (SIL OFL 1.1, from `@fontsource/caveat`, `game/res/fonts/LICENSE-caveat.txt`) for the handwritten ones. No borrowed or AI-generated meshes, no textures,
 no third-party assets. Source: `tools/blender/parts/iris/iris.blend`.
 
 The diagnostic cartridge and the cargo mount are rover kit parts (`game/res/models/rover_kit/`),

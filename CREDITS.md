@@ -18,7 +18,7 @@ third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
 
 `game/res/models/iris_kit/` and the rover kit's cartridge and cargo mount: original, made by
 this project's scripts (IRIS, its port and module socket, the rover kit parts); nothing third-party
-(`game/res/models/iris_kit/PROVENANCE.md`).
+(`game/res/models/iris_kit/PROVENANCE.md`). Evan's handwriting on IRIS is **Caveat**, Copyright 2014 The Caveat Project Authors, SIL Open Font License 1.1 (`game/res/fonts/LICENSE-caveat.txt`).
 
 ## Astronaut kit
 
