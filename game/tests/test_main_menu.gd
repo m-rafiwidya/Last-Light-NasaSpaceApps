@@ -166,6 +166,31 @@ func _run() -> void:
 	await process_frame
 	_check("dragging turns the Moon, without a click", moon.lon < lon_before - 0.1 and clicked[0] == 1,
 		"%.3f -> %.3f" % [lon_before, moon.lon])
+	# The Moon is anchored to the bottom-right corner and sized from the screen's height, at any
+	# aspect ratio, and its SubViewport still renders at the real on-screen pixel size
+	var original_size: Vector2i = root.size
+	for window_size: Vector2i in [Vector2i(1920, 1080), Vector2i(1920, 1200), Vector2i(2560, 1080), Vector2i(1080, 1920)]:
+		root.size = window_size
+		await process_frame
+		await process_frame
+		var visible_size: Vector2 = root.get_visible_rect().size
+		var corner: Vector2 = visible_size + moon.intro_offset
+		var rect: Rect2 = moon.get_global_rect()
+		var label: String = "%dx%d" % [window_size.x, window_size.y]
+		_check("%s: the Moon reaches the bottom-right corner" % label, rect.end.distance_to(corner) < 1.0,
+			"%s vs %s (screen %s)" % [rect.end, corner, visible_size])
+		_check("%s: it is sized from the screen's height" % label, absf(moon.size.y - visible_size.y) < 1.0
+			and absf(moon.size.x - MenuMoon.BASE_SIZE.x * visible_size.y / MenuMoon.DESIGN_HEIGHT) < 1.0, str(moon.size))
+		var container: Control = moon.get_node("Container")
+		_check("%s: its container fills it to the right edge" % label, container.get_global_rect().end.distance_to(corner) < 1.5)
+		var pixels: Vector2 = moon.size * root.get_final_transform().get_scale().y
+		_check("%s: the SubViewport renders at the on-screen pixel size" % label,
+			Vector2(moon.get_node("Container/Viewport").size).distance_to(pixels) <= 1.5,
+			"%s for %s" % [moon.get_node("Container/Viewport").size, pixels])
+	root.size = original_size
+	await process_frame
+	await process_frame
+
 	if not shot_dir.is_empty():
 		var hover := InputEventMouseMotion.new()
 		hover.position = centre

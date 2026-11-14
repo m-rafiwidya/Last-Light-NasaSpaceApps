@@ -10,10 +10,17 @@ extends Control
 ## Call set_active(false) while the menu is hidden: the SubViewport then stops rendering.
 ## The SubViewport renders at the Moon's real size on screen (the window's pixels, not the
 ## 1920 x 1080 base): its container is that many pixels big and scaled back down (_fit_viewport).
+## The control is anchored to the screen's bottom-right corner and sized from the screen's height
+## (BASE_SIZE x height / 1080, see height_unit()), so at any aspect ratio (16:9, ultrawide, tall)
+## the Moon is the same fraction of the screen's height, reaches the right edge and keeps its place
+## relative to the bottom-right corner. Layout is recomputed whenever the window changes.
 
 signal moon_clicked
 
-## Disc centre and radius in this control's coordinates (it is 1248 x 1080, anchored bottom-right)
+## The control's size on a 1080 px tall screen, and the disc's centre and radius in it (multiply by
+## height_unit() for the real ones)
+const BASE_SIZE: Vector2 = Vector2(1248.0, 1080.0)
+const DESIGN_HEIGHT: float = 1080.0
 const DISC_CENTRE: Vector2 = Vector2(1200.0, 1200.0)
 const DISC_RADIUS: float = 1176.0
 ## The point of the Moon facing the camera at the start (the design's view: lat -0.32, lon 0.38)
@@ -34,8 +41,8 @@ const HOVER_SCALE: float = 1.02
 const HOVER_BRIGHTNESS: float = 1.08
 const HOVER_TIME: float = 0.5
 
-## Opening sequence: offset from the resting position, scale (about the bottom-right corner)
-## and brightness factor
+## Opening sequence: offset from the resting position (in design pixels, not scaled with the
+## screen's height), scale (about the bottom-right corner) and brightness factor
 var intro_offset: Vector2 = Vector2.ZERO:
 	set(value):
 		intro_offset = value
@@ -52,7 +59,6 @@ var intro_brightness: float = 1.0:
 var lat: float = START_LAT
 var lon: float = START_LON
 
-var _home: Vector2
 var _hovered: bool = false
 var _hover_amount: float = 0.0
 var _hover_tween: Tween
@@ -70,17 +76,43 @@ var _idle: float = 0.0
 
 
 func _ready() -> void:
-	_home = position
 	pivot_offset = size
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	mouse_entered.connect(_set_hovered.bind(true))
 	mouse_exited.connect(_set_hovered.bind(false))
 	resized.connect(func() -> void: pivot_offset = size)
 	resized.connect(_fit_viewport)
+	get_tree().root.size_changed.connect(_apply_layout)
 	get_tree().root.size_changed.connect(_fit_viewport)
+	_apply_layout()
 	_fit_viewport()
 	_apply_rotation()
 	_apply_brightness()
+
+
+## The screen's height in design units over 1080: 1 on 16:9 and wider windows (the stretch follows
+## the height), more on taller ones (the stretch follows the width)
+func height_unit() -> float:
+	return get_viewport_rect().size.y / DESIGN_HEIGHT
+
+
+## Disc centre and radius in this control's coordinates now
+func disc_centre() -> Vector2:
+	return DISC_CENTRE * height_unit()
+
+
+func disc_radius() -> float:
+	return DISC_RADIUS * height_unit()
+
+
+## Anchored to the bottom-right corner (anchors in the scene), BASE_SIZE x height_unit() big, moved
+## by the opening sequence's offset. Nothing absolute is remembered, so a resize can't leave it behind.
+func _apply_layout() -> void:
+	var base: Vector2 = BASE_SIZE * height_unit()
+	offset_left = -base.x + intro_offset.x
+	offset_top = -base.y + intro_offset.y
+	offset_right = intro_offset.x
+	offset_bottom = intro_offset.y
 
 
 ## Screen pixels per design pixel (the window's stretch); the SubViewport renders that much larger
@@ -90,8 +122,9 @@ func screen_scale() -> float:
 
 func _fit_viewport() -> void:
 	var pixels: float = maxf(screen_scale(), 0.25)
-	_container.scale = Vector2.ONE / pixels
 	_container.size = (size * pixels).round()
+	# Scaled back so it covers the control exactly (the rounding above would leave up to half a pixel)
+	_container.scale = size / _container.size
 
 
 ## Renders and turns only while active; the menu turns it off when it hides
@@ -110,7 +143,7 @@ func is_active() -> bool:
 
 
 func _has_point(point: Vector2) -> bool:
-	return Rect2(Vector2.ZERO, size).has_point(point) and point.distance_to(DISC_CENTRE) < DISC_RADIUS
+	return Rect2(Vector2.ZERO, size).has_point(point) and point.distance_to(disc_centre()) < disc_radius()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -131,7 +164,7 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _dragging:
 		var motion := event as InputEventMouseMotion
 		_moved += absf(motion.relative.x) + absf(motion.relative.y)
-		var k: float = DRAG_RATE / (DISC_RADIUS * scale.x)
+		var k: float = DRAG_RATE / (disc_radius() * scale.x)
 		var turn := Vector2(-motion.relative.x * k, motion.relative.y * k)
 		lon += turn.x
 		lat = clampf(lat + turn.y, -MAX_LAT, MAX_LAT)
@@ -184,7 +217,7 @@ func _set_hover_amount(value: float) -> void:
 func _apply_transform() -> void:
 	if not is_node_ready():
 		return
-	position = _home + intro_offset
+	_apply_layout()
 	scale = Vector2.ONE * intro_scale * lerpf(1.0, HOVER_SCALE, _hover_amount)
 
 
