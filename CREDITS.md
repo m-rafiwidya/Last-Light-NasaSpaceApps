@@ -8,6 +8,12 @@ NASA's media usage guidelines; no endorsement by NASA or ESA is implied.
 `game/res/models/workshop_kit/`: original, made by this project's scripts; nothing
 third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
 
+## Kite kit
+
+`game/res/models/kite_kit/` and the rover kit's cartridge and cargo mount: original, made by
+this project's scripts from its own rover kit; nothing third-party
+(`game/res/models/kite_kit/PROVENANCE.md`).
+
 ## Star map
 
 `game/res/textures/sky/starmap_2020_4k.exr`: the Moon level's sky.
