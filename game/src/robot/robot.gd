@@ -11,8 +11,9 @@ extends RigidBody3D
 @export var running_gear: RunningGear
 @export var engine: RobotEngine
 
-# First-person view, same setup as the player: yaw on the pivot, pitch on the camera,
-# and a ray from the camera that finds props to pick up.
+# First-person view from the mast head: RoverVisuals pans and tilts the head from the mouse
+# look and puts the pivot on its pivot_camera every frame; the camera sits at the pivot. A ray
+# from the camera finds props to pick up.
 @export var pivot: Node3D
 @export var camera: Camera3D
 @export var raycast: RayCast3D
@@ -107,6 +108,8 @@ func _ready() -> void:
 	controller.primary.connect(_on_controller_primary)
 
 	GameState.state_changed.connect(_on_game_state_changed)
+	controller.altitude_limit = RoverVisuals.MAST_TILT_LIMIT
+	camera.transform = Transform3D.IDENTITY
 
 
 # Moves every HotswapSocket child that names an `anchor` onto that socket_* node, with zero
@@ -182,9 +185,6 @@ func _physics_process(delta: float) -> void:
 	holder.update(delta)
 	_update_wheel_parts()
 	_update_power_parts()
-
-	camera.rotation.x = controller.camera_altitude
-	pivot.rotation.y = controller.camera_azimuth
 
 
 # Picks up the mounted motor and battery. The motor's values are copied into the

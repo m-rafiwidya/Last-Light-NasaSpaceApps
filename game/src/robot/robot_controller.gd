@@ -25,6 +25,8 @@ var steer: float = 0.0
 ## relative to the robot body.
 var camera_azimuth: float = 0.0
 var camera_altitude: float = 0.0
+## Limit (radians) of camera_altitude either way. The Robot sets it to the mast head's tilt range.
+var altitude_limit: float = PI / 2.0
 
 var steer_speed: float = 2.0
 var desired_speed_rate: float = 2.0
@@ -41,7 +43,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y), -PI / 2, PI / 2)
+		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y), -altitude_limit, altitude_limit)
 		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x), 2.0 * PI)
 
 

@@ -13,7 +13,8 @@ extends Node3D
 ## - the steer brackets turned by each wheel's steering angle.
 ## Mounted wheel parts are moved onto their hub sockets on the linkage, and their models spin
 ## with the wheel speed. It also builds the fixed mast base and arm segments on their chassis
-## sockets and poses the arm (stowed by default). Nothing here affects the physics.
+## sockets and poses the arm (stowed by default), and pans / tilts the mast head from the mouse
+## look with the rover camera riding on its pivot_camera. Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
 # re-running tools/blender/scripts/make_rocker_bogie.py with the new range.
@@ -37,6 +38,12 @@ const MODELS: Dictionary = {
 # ROVER_KIT.md 5: arm joint ranges (degrees) and the stowed pose
 const ARM_RANGES: Dictionary = {"J1": Vector2(-20.0, 15.0), "J2": Vector2(-30.0, 90.0),
 	"J3": Vector2(-90.0, 90.0), "J4": Vector2(-110.0, 110.0)}
+# ROVER_KIT.md 3.3 / 5: mast head tilt range, and its rig when no head is mounted (the
+# camera falls back to where the head's pivot_camera would be)
+const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
+const MAST_TILT_AXIS_HEIGHT: float = 0.10
+const PIVOT_CAMERA_FORWARD: float = 0.07
+
 const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 
 const SIDE_WHEELS: Dictionary = {
@@ -59,6 +66,12 @@ var arm_joints: Dictionary = ARM_STOWED.duplicate()
 # Joint name -> the arm model node it turns
 var _arm_nodes: Dictionary = {}
 
+## Current mast head pan / tilt (radians), from the mouse look
+var mast_pan: float = 0.0
+var mast_tilt: float = 0.0
+var _mast_top: Node3D = null
+var _posed_head: HotswapPart = null
+
 var _spin: Dictionary = {}           # Wheel -> spin angle (rad)
 var _spun_parts: Dictionary = {}     # Wheel -> WheelPart whose model is spun
 var _model_rest: Dictionary = {}     # WheelPart -> its model's unspun rotation
@@ -71,6 +84,7 @@ func _ready() -> void:
 		_build_side(side)
 	_build_mast_and_arm()
 	apply_arm_pose()
+	_mast_top = find_child("socket_mast_head", true, false) as Node3D
 
 
 func _build_side(side: String) -> void:
@@ -137,6 +151,7 @@ func _physics_process(delta: float) -> void:
 	for side in sides:
 		_pose_side(side)
 	_place_and_spin_wheels(delta)
+	_update_mast_head()
 
 
 # Angle of the vector a -> b in the robot's side (z, y) plane. Rotating about +X by t changes
@@ -177,6 +192,36 @@ func _pose_side(side: String) -> void:
 	var steer: float = robot.controller.steer
 	(data["front_bracket"] as Node3D).rotation = Vector3(0.0, robot.running_gear.get_steer_angle(wheels[0], steer), 0.0)
 	(data["rear_bracket"] as Node3D).rotation = Vector3(0.0, robot.running_gear.get_steer_angle(wheels[2], steer), 0.0)
+
+
+# Pans (yoke about Y) and tilts (camera box about X) the mounted mast head from the mouse
+# look, then puts the rover camera's pivot on its pivot_camera. Without a head the pivot
+# goes where pivot_camera would be on the mast top.
+func _update_mast_head() -> void:
+	mast_pan = robot.controller.camera_azimuth
+	mast_tilt = clampf(robot.controller.camera_altitude, -MAST_TILT_LIMIT, MAST_TILT_LIMIT)
+	var socket := robot.get_node_or_null("MastHeadSocket") as HotswapSocket
+	var head: HotswapPart = socket.part if socket else null
+	if head != _posed_head:
+		# A head that left the socket goes back to its unpanned pose
+		if is_instance_valid(_posed_head):
+			_pose_head(_posed_head, 0.0, 0.0)
+		_posed_head = head
+	if head:
+		_pose_head(head, mast_pan, mast_tilt)
+		robot.pivot.global_transform = (head.find_child("pivot_camera", true, false) as Node3D).global_transform
+	elif _mast_top:
+		robot.pivot.global_transform = _mast_top.global_transform * Transform3D(
+			Basis(Vector3.UP, mast_pan) * Basis(Vector3.RIGHT, mast_tilt),
+			Vector3(0.0, MAST_TILT_AXIS_HEIGHT, 0.0)) * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -PIVOT_CAMERA_FORWARD))
+
+
+func _pose_head(head: HotswapPart, pan: float, tilt: float) -> void:
+	var yoke := head.find_child("mast_head", true, false) as Node3D
+	var camera_box := head.find_child("mast_head_camera", true, false) as Node3D
+	if yoke and camera_box:
+		yoke.rotation = Vector3(0.0, pan, 0.0)
+		camera_box.rotation = Vector3(tilt, 0.0, 0.0)
 
 
 # Moves each mounted wheel part onto its hub socket on the linkage (the bracket or bogie
