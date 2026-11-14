@@ -315,9 +315,9 @@ func _run() -> void:
 		_check("Moon full throttle: traction control keeps 85% of Earth's top speed",
 			r["100%% throttle: top forward speed@%s" % MOON] > 0.85 * r["100%% throttle: top forward speed@%s" % EARTH],
 			"%.2f m/s" % r["100%% throttle: top forward speed@%s" % MOON])
-		_check("Moon full throttle: no spin-out (drift under 1.5x Earth's)",
-			r["100%% throttle: heading drift, no steering@%s" % MOON] < 1.5 * r["100%% throttle: heading drift, no steering@%s" % EARTH],
-			"%.0f deg vs %.0f" % [r["100%% throttle: heading drift, no steering@%s" % MOON], r["100%% throttle: heading drift, no steering@%s" % EARTH]])
+		_check("Moon full throttle: goes straight (drift under 1 deg, as test_straight_line.gd)",
+			r["100%% throttle: heading drift, no steering@%s" % MOON] < 1.0,
+			"%.2f deg" % r["100%% throttle: heading drift, no steering@%s" % MOON])
 		_check("Moon rover climbs the ramp with a run-up", r["ramp, 3 m run-up: highest (top 3.0)@%s" % MOON] > 3.0)
 	_check("Moon rover climbs the ramp from a standstill",
 		r["ramp from standstill 1 m up: highest (top 3.0)@%s" % MOON] > 3.0)

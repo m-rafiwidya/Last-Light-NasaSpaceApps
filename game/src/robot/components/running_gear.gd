@@ -63,6 +63,14 @@ const WALL_NORMAL_LIMIT: float = 0.3
 # The check reaches this far past full extension, so a wheel resting on the ground at full
 # extension still counts as touching it (with no load)
 const CONTACT_TOLERANCE: float = 0.01
+# Where across the tread the tyre forces act (see _tread_contact): this many samples, one in
+# the middle of each equal strip of the tread's width, and how far below the contact the
+# ground may be for a sample to still hold the tyre up (about the tyre's give: a tread tilted
+# up to about 5 degrees to the ground still counts as fully supported)
+const TREAD_SAMPLES: int = 5
+const TREAD_SUPPORT_TOLERANCE: float = 0.02
+# The samples start this far above the contact, so a contact a hair inside the ground is found
+const TREAD_SAMPLE_ABOVE: float = 0.02
 @export_subgroup("Steering")
 @export var max_steer_angle_degrees: float = 30.0
 # Rear wheels counter-steer (Curiosity style), which halves the turning radius
@@ -217,13 +225,15 @@ func get_lateral_friction(wheel: Wheel) -> float:
 ## rover itself).
 var _ground_shape := CylinderShape3D.new()
 var _ground_query := PhysicsShapeQueryParameters3D.new()
+var _tread_query := PhysicsRayQueryParameters3D.new()
 
 
 ## The wheel's ground check for the rover at `rover_transform`: a cylinder the size of the
 ## wheel (axle along the steered axle) cast down the rover's -Y from its centre at
 ## suspension_top above the wheel's attachment point to CONTACT_TOLERANCE past full extension.
-## Returns {hit, centre_height (robot space Y where it first touches), point, normal, velocity,
-## body, started_inside (already touching at the top)}. Used by the physics every step and by
+## Returns {hit, centre_height (robot space Y where it first touches), point (where the tyre
+## forces act: the centre of the supported part of the tread, see _tread_contact), normal,
+## velocity, body, started_inside (already touching at the top)}. Used by the physics every step and by
 ## the Robot to place the visible wheels where the rover is after the step.
 func find_ground(wheel: Wheel, rover_transform: Transform3D, steer: float,
 		space_state: PhysicsDirectSpaceState3D, exclude: Array[RID]) -> Dictionary:
@@ -257,15 +267,46 @@ func find_ground(wheel: Wheel, rover_transform: Transform3D, steer: float,
 	_ground_query.motion = Vector3.ZERO
 	var info: Dictionary = space_state.get_rest_info(_ground_query)
 	var centre: Vector3 = attach + y_basis * centre_height
+	var point: Vector3 = info.get("point", centre - y_basis * radius)
 	return {
 		"hit": true,
 		"centre_height": centre_height,
-		"point": info.get("point", centre - y_basis * radius),
+		"point": _tread_contact(point, centre, axle, y_basis, space_state, exclude),
 		"normal": info.get("normal", y_basis),
 		"velocity": info.get("linear_velocity", Vector3.ZERO),
 		"body": instance_from_id(info["collider_id"]) if info.has("collider_id") else null,
 		"started_inside": fractions[0] <= 0.0,
 	}
+
+
+# The cylinder touches flat ground along a whole line across the tread, but the physics engine
+# reports a single point on it, often at one end. Forces applied there act up to half the
+# tread width off-centre, and the drive force then yaws the rover (38 degrees in 12 s at full
+# throttle, from e97bd34 on). Instead, the contact's height and fore-aft position are kept and
+# its place across the tread is the middle of the part of the tread that is held up: one ray
+# per strip of the tread, cast down the rover's -Y at the contact's height, counts if it finds
+# ground within TREAD_SUPPORT_TOLERANCE below it. Flat ground (or a kerb top across the whole
+# tread) holds all of them up, so the forces act mid-tread; riding along a ramp edge only the
+# strips over the ramp count, and the contact moves to their middle. If no sample is held up
+# (the cylinder rests on a sharp corner) the engine's point stays.
+func _tread_contact(point: Vector3, centre: Vector3, axle: Vector3, y_basis: Vector3,
+		space_state: PhysicsDirectSpaceState3D, exclude: Array[RID]) -> Vector3:
+	var mid: Vector3 = point - axle * axle.dot(point - centre)
+	_tread_query.collision_mask = ground_mask
+	_tread_query.exclude = exclude
+	var supported: int = 0
+	var across: float = 0.0
+	for i in TREAD_SAMPLES:
+		var offset: float = ((i + 0.5) / TREAD_SAMPLES - 0.5) * wheel_width
+		var sample: Vector3 = mid + axle * offset
+		_tread_query.from = sample + y_basis * TREAD_SAMPLE_ABOVE
+		_tread_query.to = sample - y_basis * TREAD_SUPPORT_TOLERANCE
+		if not space_state.intersect_ray(_tread_query).is_empty():
+			supported += 1
+			across += offset
+	if supported == 0:
+		return point
+	return mid + axle * (across / supported)
 
 
 func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, exclude: Array[RID] = []) -> void:
