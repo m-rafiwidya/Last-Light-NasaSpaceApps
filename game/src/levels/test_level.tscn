@@ -422,31 +422,31 @@ accepts_any_type = false
 accepted_type = 2
 
 [node name="WheelPart" parent="." unique_id=483669891 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0.5, -4.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1, 0.5, -4.5)
 
 [node name="WheelPart2" parent="." unique_id=836262940 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.5, -4.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -2, 0.5, -4.5)
 
 [node name="WheelPart3" parent="." unique_id=732545009 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0.5, -3.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1, 0.5, -3.5)
 
 [node name="WheelPart4" parent="." unique_id=62990532 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.5, -3.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -2, 0.5, -3.5)
 
 [node name="WheelPart5" parent="." unique_id=896151358 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, -4.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -3, 0.5, -4.5)
 radius = 0.3
 
 [node name="WheelPart6" parent="." unique_id=1784414197 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -4.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4, 0.5, -4.5)
 radius = 0.3
 
 [node name="WheelPart7" parent="." unique_id=1706634199 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, -3.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -3, 0.5, -3.5)
 radius = 0.3
 
 [node name="WheelPart8" parent="." unique_id=785140708 instance=ExtResource("21_wheel")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, -3.5)
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4, 0.5, -3.5)
 radius = 0.3
 
 [node name="MotorPart" parent="." unique_id=664850556 instance=ExtResource("22_motor")]

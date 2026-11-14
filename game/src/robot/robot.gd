@@ -3,6 +3,8 @@ class_name Robot
 extends RigidBody3D
 
 @export var controller: RobotController
+# The rover kit chassis model. HotswapSockets with an `anchor` are moved onto its socket_* nodes.
+@export var body_model: Node3D
 @export var running_gear: RunningGear
 @export var engine: RobotEngine
 
@@ -81,6 +83,7 @@ var looking_at_object: Node3D = null
 
 func _ready() -> void:
 	Debug.current_robot = self
+	_snap_sockets_to_anchors()
 	running_gear.update_wheel_properties()
 	wheel_sockets = {
 		RunningGear.Wheel.FRONT_LEFT: front_left_socket,
@@ -98,6 +101,23 @@ func _ready() -> void:
 	controller.primary.connect(_on_controller_primary)
 
 	GameState.state_changed.connect(_on_game_state_changed)
+
+
+# Moves every HotswapSocket child that names an `anchor` onto that socket_* node of the
+# body model, with zero rotation (ROVER_KIT.md 2.3). Runs before anything reads the sockets.
+func _snap_sockets_to_anchors() -> void:
+	if body_model == null:
+		return
+	for child in get_children():
+		var socket := child as HotswapSocket
+		if socket == null or socket.anchor.is_empty():
+			continue
+		var anchor_node := body_model.find_child(socket.anchor, true, false) as Node3D
+		if anchor_node == null:
+			push_error('Robot: no "%s" in the body model for %s' % [socket.anchor, socket.name])
+			continue
+		var local: Transform3D = global_transform.affine_inverse() * anchor_node.global_transform
+		socket.transform = Transform3D(Basis.IDENTITY, local.origin)
 
 
 # The robot's camera only takes over while it is being driven; otherwise the

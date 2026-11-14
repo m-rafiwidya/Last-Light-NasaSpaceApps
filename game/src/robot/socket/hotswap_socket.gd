@@ -14,6 +14,12 @@ signal part_unmounted(part: HotswapPart)
 ## When false only parts of `accepted_type` are mounted
 @export var accepts_any_type: bool = true
 @export var accepted_type: HotswapPart.PartType = HotswapPart.PartType.WHEEL
+## Where a mounted part's origin goes, relative to the socket. Kit parts have their origin
+## at their connector, so their sockets use zero (ROVER_KIT.md 4).
+@export var mount_offset: Vector3 = Vector3(0.0, 0.1, 0.0)
+## Name of a socket_* node in the robot's body model (e.g. "socket_wheel_front_L"). The
+## robot moves this socket onto it, with zero rotation, when it is ready. Empty = stays put.
+@export var anchor: StringName = &""
 
 ## The mounted part, null while the socket is empty
 var part: HotswapPart = null
@@ -27,6 +33,7 @@ var _world: Node = null
 
 
 func _ready() -> void:
+	_mount_point.position = mount_offset
 	_trigger.interacted.connect(_on_interact_trigger_interacted)
 	_set_trigger_enabled(false)
 
