@@ -18,11 +18,17 @@ extends SceneTree
 var GS: Node
 var SL: Node
 var failures: int = 0
+var _had_settings: bool = false
+var _saved_settings: String = ""
 var shot_dir: String = ""
 var measure: bool = false
 
 
 func _initialize() -> void:
+	# [ui] last_planet is written to the real settings file: put it back when done
+	_had_settings = FileAccess.file_exists(SettingsSection.PATH)
+	if _had_settings:
+		_saved_settings = FileAccess.get_file_as_string(SettingsSection.PATH)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_dir = arg.trim_prefix("--shot=")
@@ -88,6 +94,7 @@ func _run() -> void:
 		await process_frame
 	if GS.state != GS.State.MAIN_MENU:
 		_check("the main menu comes up", false)
+		_restore_settings()
 		quit(1)
 		return
 	for i in 30:
@@ -270,6 +277,7 @@ func _run() -> void:
 	_check("back on the menu: PLAY has focus", play.has_focus())
 
 	print("DONE %d failures" % failures)
+	_restore_settings()
 	quit(1 if failures else 0)
 
 
@@ -356,3 +364,12 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 	event.position = at
 	event.global_position = at
 	Input.parse_input_event(event)
+
+
+func _restore_settings() -> void:
+	if _had_settings:
+		var file := FileAccess.open(SettingsSection.PATH, FileAccess.WRITE)
+		file.store_string(_saved_settings)
+		file.close()
+	elif FileAccess.file_exists(SettingsSection.PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SettingsSection.PATH))

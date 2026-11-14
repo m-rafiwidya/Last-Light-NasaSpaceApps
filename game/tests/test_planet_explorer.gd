@@ -11,9 +11,15 @@ extends SceneTree
 
 var GS: Node
 var failures: int = 0
+var _had_settings: bool = false
+var _saved_settings: String = ""
 
 
 func _initialize() -> void:
+	# [ui] last_planet is written to the real settings file: put it back when done
+	_had_settings = FileAccess.file_exists(SettingsSection.PATH)
+	if _had_settings:
+		_saved_settings = FileAccess.get_file_as_string(SettingsSection.PATH)
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -68,6 +74,7 @@ func _run() -> void:
 		await process_frame
 	if GS.state != GS.State.MAIN_MENU:
 		_check("the main menu comes up", false)
+		_restore_settings()
 		quit(1)
 		return
 	var menu: Node = root.get_node("Main/UIManager/MainMenu")
@@ -255,6 +262,9 @@ func _run() -> void:
 		and is_equal_approx(sub.modulate.a, 1.0) and not menu.is_popup_open())
 	# The menu globe now shows the planet last viewed (Earth), saved for the next launch
 	_check("the menu globe shows Earth", moon.planet_id == &"earth" and UiSettings.last_planet() == "earth")
+	_check("the menu globe has Earth's blue rim glow, the Moon none", moon._glow.visible
+		and (moon._glow.texture.gradient.colors[2] as Color).is_equal_approx(PlanetData.PLANETS[2].atmosphere)
+		and (moon._glow.texture.gradient.colors[2] as Color).b > (moon._glow.texture.gradient.colors[2] as Color).r)
 	_check("the menu globe's texture is Earth's", (moon._material.get_shader_parameter(&"albedo_map") as Texture2D).resource_path
 		== PlanetData.PLANETS[2].map)
 	# Clicking it opens the explorer on that planet; the back button closes it too
@@ -265,6 +275,7 @@ func _run() -> void:
 	await process_frame
 	explorer.find_child("Back", true, false).pressed.emit()
 	await _seconds(0.6)
+	_check("the Moon has no glow", not moon._glow.visible)
 	_check("the back button returns to the menu, showing the Moon again", not explorer.is_open and play.has_focus()
 		and moon.planet_id == &"moon" and UiSettings.last_planet() == "moon")
 	# Mars viewed, then the planets lock again: the menu falls back to the Moon
@@ -279,8 +290,17 @@ func _run() -> void:
 	_check("Mars locked again: the menu falls back to the Moon", PlanetData.menu_planet() == &"moon")
 	menu.fade_in()
 	_check("fade_in applies the fallback", moon.planet_id == &"moon")
-	UiSettings.set_last_planet(&"moon")
 
 	PlanetData.unlock_all = false
 	print("DONE %d failures" % failures)
+	_restore_settings()
 	quit(1 if failures else 0)
+
+
+func _restore_settings() -> void:
+	if _had_settings:
+		var file := FileAccess.open(SettingsSection.PATH, FileAccess.WRITE)
+		file.store_string(_saved_settings)
+		file.close()
+	elif FileAccess.file_exists(SettingsSection.PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SettingsSection.PATH))

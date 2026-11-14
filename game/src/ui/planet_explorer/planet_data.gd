@@ -34,7 +34,7 @@ const PLANETS: Array[Dictionary] = [
 			"note": "The last crewed landing so far. Schmitt was the first geologist to walk on the Moon." },
 	] },
 	{ "id": &"mars", "title": "MARS", "tab": "MARS", "color": &"mars",
-		"map": "res://res/textures/planets/mars_viking_color_4k.jpg", "atmosphere": Color(0.902, 0.588, 0.431, 0.35),
+		"map": "res://res/textures/planets/mars_viking_color_4k.jpg", "atmosphere": Color(0.902, 0.588, 0.431, 0.25),
 		"view": Vector2(0.2, 1.2), "lock_hint": "COMPLETE THE MOON MISSIONS", "sites": [
 		{ "id": &"v1", "name": "VIKING 1", "lat": 22.27, "lon": -47.95,
 			"rows": [["LANDED", "20 Jul 1976"], ["AGENCY", "NASA"], ["REGION", "Chryse Planitia"]],
