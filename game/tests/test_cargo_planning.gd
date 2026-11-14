@@ -157,8 +157,8 @@ func _run() -> void:
 	_check("[delivery] a second delivery is refused", not CargoPlan.deliver("courier", ["radio_module"]))
 	await physics_frame
 	stock = _stock(workshop)
-	_check("[stock] the order fills the bench and the module's fallback slot", stock.get("thermal_cover") == 1
-		and stock.get("thermal_heater") == 1 and stock.get("sample_scoop") == 1 and stock.get("radio_module") == 1
+	_check("[stock] the order fills the bench; the module goes to the crate, not the rack", stock.get("thermal_cover") == 1
+		and stock.get("thermal_heater") == 1 and stock.get("sample_scoop") == 1 and not stock.has("radio_module")
 		and not stock.has("wheel_high_grip") and not stock.has("arm_tool_thermal"), str(stock))
 	_check("[crate] crate_parts lists the module", CargoPlan.crate_parts() == PackedStringArray(["res://src/robot/socket/radio_module_part.tscn"]))
 	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(SI.slot_path("slot_1")))

@@ -87,8 +87,19 @@ func step_text() -> String:
 	if step.is_empty():
 		var mission := CampaignState.current_mission()
 		return _complete_text.get(mission, "") if CampaignState.is_mission_completed(mission) else ""
+	var hint := target_hint()
+	if not hint.is_empty():
+		return hint
 	var key: String = step.get("key", "")
 	return ("[%s]  %s" % [InputBindings.action_text(StringName(key)), step["text"]]) if key else step["text"]
+
+
+## While driving, the current target's own words (its get_hint(rover)), or "" for none
+func target_hint() -> String:
+	if GameState.state != GameState.State.IN_GAME_ROBOT or not is_instance_valid(target) or not target.has_method("get_hint"):
+		return ""
+	var rover: Robot = GameState.robot if is_instance_valid(GameState.robot) else _rover()
+	return str(target.call("get_hint", rover)) if rover else ""
 
 
 func stuck_text() -> String:
@@ -152,6 +163,15 @@ func is_met(condition: Dictionary) -> bool:
 				var socket := resolve(condition["mounted"]) as HotswapSocket
 				if socket == null or socket.part == null:
 					return false
+			"player_near":
+				var player: Node3D = GameState.player
+				var node := resolve(condition["player_near"])
+				if not is_instance_valid(player) or node == null:
+					return false
+				var offset: Vector3 = node.global_position - player.global_position
+				offset.y = 0.0
+				if offset.length() > float(condition.get("distance", 10.0)):
+					return false
 			"near":
 				var rover := _rover()
 				var node := resolve(condition["near"])
@@ -184,6 +204,14 @@ func resolve(spec: String) -> Node3D:
 			return get_parent().get_node_or_null(rest) as Node3D
 		"group":
 			return get_tree().get_first_node_in_group(StringName(rest)) as Node3D
+		"part":
+			if is_instance_valid(target) and target is HotswapPart and target.is_inside_tree() \
+					and not target.is_queued_for_deletion() and target.get_catalog_id() == rest:
+				return target
+			for node in get_parent().find_children("*", "HotswapPart", true, false):
+				var part := node as HotswapPart
+				if part.get_catalog_id() == rest and not part.is_queued_for_deletion():
+					return part
 		"scan":
 			for node in get_tree().get_nodes_in_group(&"scan_target"):
 				if str(node.get("target_id")) == rest:

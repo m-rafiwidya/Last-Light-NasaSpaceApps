@@ -3,7 +3,7 @@ extends SceneTree
 ##   1. The radio module in the cargo socket completes m2.module_loaded, but not before m2.cargo_ordered.
 ##   2. The far logger completes m3.logger_recovered in m3 only; other parts complete nothing.
 ##   3. A save restored with the part already mounted completes nothing; a new mount afterwards still does.
-##   4. The guidance steps resolve their targets.
+##   4. The guidance steps resolve their targets (the crate, the module, the IRIS cradle, the logger).
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_field_objectives.gd
 
@@ -148,9 +148,20 @@ func _run() -> void:
 	await physics_frame
 	var guidance: Node = level.get_node("Guidance")
 	var module_steps: Array = guidance.steps("m2.module_loaded")
-	_check("[guidance] module: pick up, then the cargo socket", module_steps.size() == 2
-		and module_steps[0]["done_when"] == {"holding_part": "cargo"} and not module_steps[0].has("placeholder")
-		and guidance.resolve(module_steps[1]["target"]) == socket.get_node("PartCapture"), str(module_steps))
+	var crate: Node = level.get_node("Workshop").cargo_crate
+	_check("[guidance] module: the crate, the module itself, then the cargo socket", module_steps.size() == 3
+		and module_steps[0]["target"] == "group:cargo_crate" and guidance.resolve("group:cargo_crate") == crate
+		and module_steps[1]["target"] == "part:radio_module" and module_steps[1]["done_when"] == {"holding_part": "cargo"}
+		and guidance.resolve(module_steps[2]["target"]) == socket.get_node("PartCapture")
+		and not str(module_steps).contains("placeholder"), str(module_steps))
+	var cradle_steps: Array = guidance.steps("m2.module_installed")
+	_check("[guidance] install: the IRIS module cradle", not cradle_steps.is_empty() and cradle_steps[-1]["target"] == "group:iris_module_cradle"
+		and guidance.resolve("group:iris_module_cradle") == level.get_node("Iris/ModuleCradle") and not str(cradle_steps).contains("placeholder"),
+		str(cradle_steps))
+	var module_part: Node = load(MODULE).instantiate()
+	level.add_child(module_part)
+	_check("[guidance] part:radio_module finds the module wherever it is", guidance.resolve("part:radio_module") == module_part)
+	module_part.free()
 	var logger_steps: Array = guidance.steps("m3.logger_recovered")
 	_check("[guidance] logger: the FarLogger part", logger_steps.size() == 1 and not logger_steps[0].has("placeholder")
 		and guidance.resolve(logger_steps[0]["target"]) == far_logger, str(logger_steps))

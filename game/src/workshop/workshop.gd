@@ -20,6 +20,7 @@ extends Node3D
 ##   level turns it off.
 ## - Personnel door: slides open for the player; locked (red) while the bay door is open and the
 ##   curtain is on.
+## - Cargo crate (CargoCrate): the M2 delivery, beside the charging pad. Hidden until cargo_delivered.
 ## - Rack: the rover parts on their slots, labelled; "Restock rack" lays them out again.
 ## - Astronaut (tools/blender/ASTRONAUT_KIT.md): an empty suit on its stand in the operator area,
 ##   and the operator seated at the console on a stool, shown only while the console drives the
@@ -31,6 +32,10 @@ extends Node3D
 const KIT_DIR: String = "res://res/models/workshop_kit/"
 const ASTRONAUT_DIR: String = "res://res/models/astronaut_kit/"
 const PLAYER_BARRIER_LAYER: int = 8
+## The cargo crate: on the bay floor between the pad and the operator area's window, its label
+## (+Z) toward the personnel door the player comes in by
+const CRATE_SCENE: String = "res://src/field/cargo_crate.tscn"
+const CRATE_AT := Vector3(0.7, 0.0, 0.0)
 ## Footprint half sizes (m) and interior clear height
 const HALF_X: float = 5.0
 const HALF_Z: float = 4.0
@@ -53,6 +58,7 @@ const DOOR_OPEN_ANGLE: float = -90.0
 var door_open: float = 0.0
 var personnel_open: float = 0.0
 var pad: ChargingPad = null
+var cargo_crate: Node3D = null
 var rack_stock: Node3D = null
 ## The sample bench's tray stock (the scoop and the two sample containers), null without stock_rack
 var bench_stock: Node3D = null
@@ -112,9 +118,6 @@ const SLOTS: Dictionary = {
 	16: ["res://src/robot/socket/battery_light_part.tscn", {}, "side"],
 	# The diagnostic cartridge (IRIS_KIT.md 4), lying flat on the top shelf
 	17: ["res://src/robot/socket/cartridge_part.tscn", {}, ""],
-	# The replacement radio-power module (IRIS_KIT.md 4.1), lying flat beside it: 0.134 m deep on the
-	# 0.14 m usable shelf
-	18: ["res://src/robot/socket/radio_module_part.tscn", {}, ""],
 	# The thermal sensor turret (M3), beside the standard turret under TOOL TURRETS
 	19: ["res://src/robot/socket/arm_tool_thermal_part.tscn", {}, ""],
 }
@@ -135,7 +138,7 @@ const PART_LIFT: float = 0.005
 const LABELS: Dictionary = {
 	1: ["WHEELS", 2.23], 2: ["HIGH-GRIP WHEELS", 1.36], 3: ["MOTOR", 0.44], 4: ["BATTERY", 0.54],
 	5: ["MAST CAMERA", 0.66], 6: ["TOOL TURRETS", 0.55], 7: ["ANTENNA", 0.56], 8: ["SPARE", 0.55],
-	9: ["CARTRIDGES AND MODULE", 2.38],
+	9: ["CARTRIDGES", 2.38],
 }
 ## Label text cap height (m) and the least it may shrink to while fitting its plate
 const LABEL_CAP: float = 0.065
@@ -150,6 +153,7 @@ func _ready() -> void:
 	_build_parts()
 	_build_lights()
 	_build_pad()
+	_build_cargo_crate()
 	_build_doors()
 	_build_triggers()
 	_build_labels()
@@ -264,6 +268,13 @@ func _build_pad() -> void:
 							  _part("ws_charger_01").get_node("ws_charger/charger_status_light")])
 	pad.charger_trigger = _make_trigger("ChargerTrigger", anchors["trigger_charger"], Vector3(0.6, 1.2, 1.0), "Charger")
 	add_child(pad)
+
+
+func _build_cargo_crate() -> void:
+	cargo_crate = (load(CRATE_SCENE) as PackedScene).instantiate()
+	cargo_crate.name = "CargoCrate"
+	cargo_crate.position = CRATE_AT
+	add_child(cargo_crate)
 
 
 func _build_doors() -> void:
@@ -646,12 +657,11 @@ func account_rack() -> void:
 	if not _pool_ready:
 		return
 	var mounted: Array = _mounted_parts()
-	var has_crate: bool = is_inside_tree() and not get_tree().get_nodes_in_group(CargoPlan.CRATE_GROUP).is_empty()
 	for pair in [[rack_stock, _stock, "rack"], [bench_stock, _bench_parts, "bench"]]:
 		if pair[0] == null:
 			continue
 		var stock: PartsStock = pair[1]
-		var hidden: Array = CargoPlan.hidden_slots(pair[2], has_crate)
+		var hidden: Array = CargoPlan.hidden_slots(pair[2])
 		var changed: bool = hidden != stock.hidden
 		stock.hidden = hidden
 		if changed or stock.differs(mounted):

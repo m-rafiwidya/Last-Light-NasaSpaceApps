@@ -411,8 +411,7 @@ func _ledger_lines() -> PackedStringArray:
 		names.append(CargoPlan.item(item_id)["name"])
 	var lines: PackedStringArray = ["Delivered by the %s on story day %d." % [entry.get("name", "lander"), int(entry.get("arrival_day", 0))],
 		"Manifest: %s (%.1f kg)." % [", ".join(names), CargoPlan.order_mass(Array(CargoPlan.delivered_items()))],
-		"Parts are on the rack and the sample bench; the radio-power module is %s." % ("in the cargo crate"
-			if is_inside_tree() and get_tree().has_group(CargoPlan.CRATE_GROUP) else "on the rack"), ""]
+		"Parts are on the rack and the sample bench; the radio-power module is in the cargo crate by the pad.", ""]
 	lines.append_array(route_forecast())
 	return lines
 

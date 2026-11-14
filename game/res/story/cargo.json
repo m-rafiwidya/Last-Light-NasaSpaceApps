@@ -3,7 +3,7 @@
 		"The M2 cargo order (CargoPlan, src/levels/cargo_plan.gd; the console's Planning tab). Owned by Fahd.",
 		"Every number here is a game assumption unless game/docs/SCIENCE_AND_DATA.md gives a source for it. Item masses are not listed: CargoPlan reads them from the part scenes.",
 		"services: limit_kg is the delivered payload limit (items plus packaging_kg); arrival_day is story days after the order; phases are [label, story day] for the flight panel.",
-		"items: parts are the part scenes it delivers. stock names the workshop slots (rack: RackStock child names, bench: BenchStock child names) that stay empty until it is delivered. crate: its parts go to Rafi's cargo crate (CargoPlan.crate_parts()). fallback_stock: TEMPORARY, the slots used instead while no node is in group cargo_crate; remove once the crate exists.",
+		"items: parts are the part scenes it delivers. stock names the workshop slots (rack: RackStock child names, bench: BenchStock child names) that stay empty until it is delivered. crate: its parts go to Rafi's cargo crate (CargoPlan.crate_parts()), not to the rack.",
 		"lunar_day: local days since sunrise. order_day matches the Moon level's sun (16.7 degrees up in the east); M3 happens m3_after_delivery_days after arrival and is near nightfall when it falls within nightfall_margin_days of sunset; then night_required items must be ordered."
 	],
 	"objective": "m2.cargo_ordered",
@@ -42,8 +42,7 @@
 			"required": true,
 			"description": "IRIS's replacement radio-power unit. Required.",
 			"parts": [{"scene": "res://src/robot/socket/radio_module_part.tscn", "count": 1}],
-			"crate": true,
-			"fallback_stock": {"rack": ["Slot18"]}
+			"crate": true
 		},
 		{
 			"id": "grip_wheels",
