@@ -602,6 +602,20 @@ Grounded in the current code; useful to know before changing things.
 - `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
 
+**Camera ownership** (for future consideration)
+- Several places decide which `Camera3D` is `current`, with no single owner:
+  - `SceneLoader._setup_player` makes the player's camera current, and `_setup_main_menu` does the same for the menu camera.
+  - `Robot._on_game_state_changed` makes the robot's active camera current on entering `IN_GAME_ROBOT`.
+  - `Robot._on_controller_toggle_camera` swaps follow/bumper.
+- The robot reaches into `GameState.player.camera` to hand the view back when going `IN_GAME_ROBOT -> IN_GAME_PLAYER`, so the robot has to know about the player. If `GameState.player` is gone or stale it silently does nothing and no camera is current. Any new camera user (cutscene, map view, spectator) would need the same ad-hoc handover.
+- Correctness depends on ordering: Godot allows one current camera per viewport and `make_current()` just steals it. This is why the robot's cameras are no longer `current` in `robot.tscn` (otherwise they won the view on load), and why `_setup_main_menu` calls `make_current()` explicitly (the level contains a robot with its own cameras). Anything that adds a camera with `current = true` can break this.
+- The player's `release_camera()` / `bind_camera()` helpers (see 8.7) are an unused, player-only version of the same idea. `GameState.camera` is declared but unused.
+- **Possible fix, if it starts to hurt:** a small `CameraManager` autoload with a stack of cameras.
+  - `push(camera)` makes it current and remembers the previous one; `pop(camera)` returns to the one below, skipping freed cameras; `set_active(camera)` replaces the top entry (for the robot's follow/bumper toggle).
+  - The player pushes its camera on entering `IN_GAME_PLAYER`, the robot pushes on `IN_GAME_ROBOT` and pops on exit, and `SceneLoader` pushes the menu camera. The robot and `SceneLoader` would no longer touch each other's cameras.
+  - It would also be the one place to add blends between views (tween a transition `Camera3D`), replacing `release_camera` / `bind_camera` and `GameState.camera`.
+  - **Do not reparent cameras** to switch views: the robot's follow camera is `top_level` and smoothed toward a pivot marker, and the player's camera is driven by `Pivot` and the crouch tweens, so reparenting would break both for no gain over `make_current()` or a transition camera.
+- Not worth doing while the game only switches between the player and the robot; worth doing once a third camera user or view blending appears.
 
 **Repo hygiene**
 - `project.godot` `config/name` is still `"Game"` and the main menu title label reads `"New Game Project"`.
