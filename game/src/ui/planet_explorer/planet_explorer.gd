@@ -11,6 +11,8 @@ extends Control
 ## its hint, and has no markers. Drawn over the main menu's starfield; the menu hides its own items.
 ## The back button and Esc emit back_requested; the main menu closes this and shows itself again.
 ## Keyboard / gamepad: the tabs, prev / next, back and the visible markers all take focus.
+## The stage (everything but the back button) is laid out at 1920 x 1080 and scaled with the
+## screen's height about the screen's centre, never wider than the screen (stage_scale()).
 
 signal back_requested
 
@@ -22,8 +24,13 @@ const SLIDE_OFFSET: float = 144.0
 ## The globe's resting x on the stage (the board's 480, x 1.2)
 const HOLDER_X: float = 576.0
 const SLIDE_SCALE: float = 0.92
-## Markers this close to the limb (depth towards the viewer) are hidden, as is their tooltip
-const MIN_DEPTH: float = 0.08
+## Markers on the far side (facing away from the camera, see PlanetGlobe.project) are hidden, as is
+## their tooltip; towards the limb they fade out, fully shown from EDGE_FADE in
+const MIN_DEPTH: float = 0.02
+const EDGE_FADE: float = 0.3
+## Design size of the stage, and the width its content needs (prev to next button, with margins)
+const DESIGN_SIZE: Vector2 = Vector2(1920.0, 1080.0)
+const CONTENT_WIDTH: float = 1200.0
 ## Tooltip: right of the marker and a little up, flipped to the left when it would pass the
 ## right edge (the board's x + 28 / x - 328, y - 40, limit 980, x 1.2)
 const TIP_OFFSET: Vector2 = Vector2(34.0, -48.0)
@@ -84,6 +91,9 @@ func _ready() -> void:
 		%Tabs.add_child(tab)
 		_tabs.append(tab)
 	_tip.modulate.a = 0.0
+	_stage.pivot_offset = DESIGN_SIZE / 2.0
+	get_tree().root.size_changed.connect(_apply_scale)
+	_apply_scale()
 	_set_interactive(false)
 	set_process(false)
 	hide()
@@ -112,10 +122,12 @@ func open(planet_id: StringName = &"moon") -> void:
 	if _tween:
 		_tween.kill()
 	modulate.a = 0.0
-	_stage.position.y = 10.0
+	# Rises 10 px into its anchored place (centred on the screen)
+	var rest_y: float = _stage.position.y
+	_stage.position.y = rest_y + 10.0
 	_tween = _ui_tween()
 	_tween.tween_property(self, "modulate:a", 1.0, OPEN_TIME)
-	_tween.parallel().tween_property(_stage, "position:y", 0.0, OPEN_TIME)
+	_tween.parallel().tween_property(_stage, "position:y", rest_y, OPEN_TIME)
 	_tabs[planet_index].grab_focus()
 
 
@@ -140,6 +152,18 @@ func _finish_close() -> void:
 	set_process(false)
 	_globe.set_active(false)
 	select_site(&"")
+
+
+## The stage's scale: the screen's height over 1080, but no wider than the screen
+func stage_scale() -> float:
+	var screen: Vector2 = get_viewport_rect().size
+	return minf(screen.y / DESIGN_SIZE.y, screen.x / CONTENT_WIDTH)
+
+
+func _apply_scale() -> void:
+	_stage.scale = Vector2.ONE * stage_scale()
+	# The globe's SubViewport renders at its real on-screen size
+	_globe._fit_viewport()
 
 
 func current_planet() -> Dictionary:
@@ -288,6 +312,7 @@ func _place_markers() -> void:
 			if not front and m.has_focus():
 				_tabs[planet_index].grab_focus()
 			m.visible = front
+		m.modulate.a = clampf((p.z - MIN_DEPTH) / (EDGE_FADE - MIN_DEPTH), 0.0, 1.0)
 		m.place(_globe.position + Vector2(p.x, p.y))
 	var selected: SiteMarker = marker(selected_id)
 	if selected == null:

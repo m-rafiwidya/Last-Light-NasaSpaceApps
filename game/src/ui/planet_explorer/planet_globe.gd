@@ -3,19 +3,22 @@ class_name PlanetGlobe
 extends Control
 
 ## The planet explorer's globe: the main menu Moon's idea (MenuMoon) for any planet, a real sphere
-## in its own SubViewport with the planet's colour map (menu_moon.gdshader), centred in a
-## SIZE x SIZE control (the board's 640 px canvas, x 1.2). Drag on the disc turns it; it turns
+## in its own SubViewport with the planet's colour map (menu_moon.gdshader), filling a SIZE x SIZE
+## control (the board's 640 px globe, x 1.2): the sphere's radius is SPHERE_RADIUS and the
+## orthographic camera's height is its diameter. Drag on the disc turns it; it turns
 ## slowly by itself after IDLE_DELAY unless `spin` is off, and turn_to() swings it to face a point.
 ## A press that doesn't move emits `clicked`; a locked globe doesn't turn, and a horizontal drag
 ## on it (or off the disc) of SWIPE_DISTANCE emits `swiped` (-1 previous, 1 next planet).
-## project() gives where a lat / lon is on screen, for the site markers drawn over it.
+## project() gives where a lat / lon is in this control, through the real Camera3D, for the site
+## markers drawn over it.
 
 signal clicked(at: Vector2)
 signal swiped(direction: int)
 
 const SIZE: float = 768.0
-## Disc radius: the board's canvas radius 266 of 580, shown at 640 px, x 1.2
-const DISC_RADIUS: float = 352.0
+## The disc fills the control; the sphere mesh's radius (the scene's SphereMesh and camera match)
+const DISC_RADIUS: float = 384.0
+const SPHERE_RADIUS: float = 1.0
 const MAX_LAT: float = 1.3
 const SPIN: float = 0.06
 const IDLE_DELAY: float = 1.2
@@ -53,6 +56,7 @@ var _idle: float = 0.0
 @onready var _container: SubViewportContainer = $Container
 @onready var _viewport: SubViewport = $Container/Viewport
 @onready var _pivot: Node3D = $Container/Viewport/Pivot
+@onready var _camera: Camera3D = $Container/Viewport/Camera
 @onready var _material: ShaderMaterial = ($Container/Viewport/Pivot/Sphere as MeshInstance3D).material_override
 @onready var _glow: TextureRect = $Glow
 
@@ -91,14 +95,17 @@ func stop_turning() -> void:
 	_has_target = false
 
 
-## Where (lat, lon) in degrees is: x, y in this control, z towards the viewer (1 = disc centre,
-## below 0 = far side)
+## Where (lat, lon) in degrees is: x, y in this control and z, how much the surface there faces
+## the camera (1 = disc centre, 0 = the limb, below 0 = far side). The point on the sphere's surface
+## goes through the Camera3D (unproject_position, SubViewport pixels), then the container's
+## transform (the viewport renders at screen pixels and is scaled back into this control).
 func project(lat_deg: float, lon_deg: float) -> Vector3:
 	var la: float = deg_to_rad(lat_deg)
 	var lo: float = deg_to_rad(lon_deg)
-	var w: Vector3 = _basis() * Vector3(cos(la) * sin(lo), sin(la), cos(la) * cos(lo))
-	var c: Vector2 = disc_centre()
-	return Vector3(c.x + w.x * DISC_RADIUS, c.y - w.y * DISC_RADIUS, w.z)
+	var normal: Vector3 = _pivot.global_basis * Vector3(cos(la) * sin(lo), sin(la), cos(la) * cos(lo))
+	var world: Vector3 = _pivot.global_position + normal * SPHERE_RADIUS
+	var local: Vector2 = _container.get_transform() * _camera.unproject_position(world)
+	return Vector3(local.x, local.y, normal.dot(_camera.global_basis.z))
 
 
 ## Renders and turns only while the explorer is open
@@ -114,8 +121,13 @@ func is_active() -> bool:
 	return _viewport.render_target_update_mode != SubViewport.UPDATE_DISABLED
 
 
+## Screen pixels per unit of this control (the window's stretch and the explorer's own scale)
+func screen_scale() -> float:
+	return (get_viewport().get_final_transform() * get_global_transform_with_canvas()).get_scale().y
+
+
 func _fit_viewport() -> void:
-	var pixels: float = maxf(get_viewport().get_final_transform().get_scale().y, 0.25)
+	var pixels: float = maxf(screen_scale(), 0.25)
 	_container.size = (size * pixels).round()
 	_container.scale = size / _container.size
 

@@ -14,6 +14,8 @@ shader_parameter/terminator_softness = 0.15
 shader_parameter/brightness = 1.0
 
 [sub_resource type="SphereMesh" id="SphereMesh_globe"]
+radius = 1.0
+height = 2.0
 radial_segments = 128
 rings = 64
 
@@ -55,7 +57,7 @@ render_target_update_mode = 0
 [node name="Camera" type="Camera3D" parent="Container/Viewport"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 projection = 1
-size = 2.1818
+size = 2.0
 near = 1.0
 far = 20.0
 
@@ -68,10 +70,10 @@ material_override = SubResource("ShaderMaterial_globe")
 [node name="Glow" type="TextureRect" parent="."]
 visible = false
 layout_mode = 0
-offset_left = 3.84
-offset_top = 3.84
-offset_right = 764.16
-offset_bottom = 764.16
+offset_left = -30.72
+offset_top = -30.72
+offset_right = 798.72
+offset_bottom = 798.72
 mouse_filter = 2
 texture = SubResource("GradientTexture2D_glow")
 expand_mode = 1

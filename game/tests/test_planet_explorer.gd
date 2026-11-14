@@ -79,7 +79,7 @@ func _run() -> void:
 	await _seconds(0.3)
 	var moon: MenuMoon = menu.find_child("Moon", true, false)
 	var play: Button = menu.find_child("Play", true, false)
-	var explorer: Control = menu.find_child("PlanetExplorer", true, false)
+	var explorer: Node = menu.find_child("PlanetExplorer", true, false)
 	var sub: Control = menu.get_node("MainMenuSubScreen")
 	var globe: PlanetGlobe = explorer.find_child("Globe", true, false)
 	var tip: Control = explorer.find_child("Tip", true, false)
@@ -115,23 +115,56 @@ func _run() -> void:
 	globe.lon = deg_to_rad(-23.0)
 	globe._apply_rotation()
 	await process_frame
+	# The rendered sphere fills the globe control: the mesh's radius and the camera's height match
 	var camera: Camera3D = globe.get_node("Container/Viewport/Camera")
-	var pivot: Node3D = globe.get_node("Container/Viewport/Pivot")
-	var worst: float = 0.0
-	for m: SiteMarker in explorer._markers:
-		var p: Vector3 = globe.project(m.site.lat, m.site.lon)
-		var la: float = deg_to_rad(m.site.lat)
-		var lo: float = deg_to_rad(m.site.lon)
-		var world: Vector3 = pivot.global_transform * Vector3(cos(la) * sin(lo), sin(la), cos(la) * cos(lo))
-		var container: Control = globe.get_node("Container")
-		var rendered: Vector2 = camera.unproject_position(world) * container.scale
-		worst = maxf(worst, rendered.distance_to(Vector2(p.x, p.y)))
-	_check("markers sit on the rendered sphere", worst < 1.5, "%.2f px off" % worst)
+	var sphere: SphereMesh = (globe.get_node("Container/Viewport/Pivot/Sphere") as MeshInstance3D).mesh
+	_check("sphere mesh radius 1, camera 2 units high", is_equal_approx(sphere.radius, PlanetGlobe.SPHERE_RADIUS)
+		and is_equal_approx(sphere.height, 2.0 * PlanetGlobe.SPHERE_RADIUS)
+		and is_equal_approx(camera.size, 2.0 * PlanetGlobe.SPHERE_RADIUS), "radius %s, camera %s" % [sphere.radius, camera.size])
+	var limb: Vector2 = globe.get_node("Container").get_transform() * camera.unproject_position(
+		Vector3(PlanetGlobe.SPHERE_RADIUS, 0.0, 0.0))
+	_check("the rendered limb is DISC_RADIUS from the centre", absf(limb.distance_to(globe.disc_centre())
+		- PlanetGlobe.DISC_RADIUS) < 1.0, str(limb))
+	# At any window size: the globe is 640 design px (768 at 1080) times the screen's height, centred
+	# like the board, and every shown marker's screen position lies on the globe's on-screen disc
+	var original_size: Vector2i = root.size
+	for window_size: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 720), Vector2i(1920, 1200), Vector2i(2560, 1080)]:
+		root.size = window_size
+		await process_frame
+		await process_frame
+		explorer._place_markers()
+		var label: String = "%dx%d" % [window_size.x, window_size.y]
+		var screen: Vector2 = root.get_visible_rect().size
+		var to_screen: Transform2D = globe.get_global_transform_with_canvas()
+		var centre: Vector2 = to_screen * globe.disc_centre()
+		var radius: float = PlanetGlobe.DISC_RADIUS * to_screen.get_scale().x
+		var expected: float = 384.0 * minf(screen.y / 1080.0, screen.x / explorer.CONTENT_WIDTH)
+		_check("%s: globe radius %.0f (768 px at 1080)" % [label, expected], absf(radius - expected) < 0.5, "%.1f" % radius)
+		_check("%s: globe centred like the board" % label, absf(centre.x - screen.x / 2.0) < 0.5
+			and absf(centre.y - (screen.y / 2.0 + 48.0 * radius / 384.0)) < 0.5, "%s in %s" % [centre, screen])
+		var shown: int = 0
+		var off: float = 0.0
+		for m: SiteMarker in explorer._markers:
+			if m.visible:
+				shown += 1
+				var at: Vector2 = m.get_global_transform_with_canvas() * (m.size / 2.0)
+				off = maxf(off, at.distance_to(centre) - radius)
+		_check("%s: every shown marker lies on the globe's disc" % label, shown > 0 and off <= 0.0,
+			"%d shown, worst %.1f px outside" % [shown, off])
+	root.size = original_size
+	await process_frame
+	await process_frame
+	explorer._place_markers()
 	_check("Apollo 12 faces us: its marker is shown", a12.visible)
 	globe.lon = deg_to_rad(-23.0 + 180.0)
 	globe._apply_rotation()
 	explorer._place_markers()
 	_check("round the back: its marker is hidden", not a12.visible)
+	globe.lon = deg_to_rad(-23.4 + 85.0)
+	globe._apply_rotation()
+	explorer._place_markers()
+	_check("near the limb: shown but faded", a12.visible and a12.modulate.a > 0.0 and a12.modulate.a < 1.0,
+		"alpha %.2f" % a12.modulate.a)
 
 	# Pressing a marker opens its tooltip and swings the globe to it
 	a12.pressed.emit()
