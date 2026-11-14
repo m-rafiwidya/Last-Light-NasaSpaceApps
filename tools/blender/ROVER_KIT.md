@@ -452,3 +452,17 @@ Swappable variants keep to their slot's budget.
   mount joins `make_arm.py`'s full-range clearance check as an obstacle.
 - **Budget:** cargo_mount 120 triangles (the kit total goes from 6,308 to 6,428, under 8,000).
 - **`rover_gold`:** also used for the cartridge's stripe (IRIS_KIT.md 4), if approved.
+
+---
+
+## 10. M3 parts (IRIS_KIT.md 4.2, 2026-10-14)
+
+- **`arm_tool_thermal`**: a variant of `arm_tool` (2.2 naming) for the same socket: the plain sensor
+  becomes an IR radiometer with `pivot_reading` / `pivot_reading_aim`, inside the standard turret's
+  envelope (so section 5's arm checks hold). 236 triangles (budget 240).
+- **`field_logger`**: cargo like the cartridge, at `socket_cargo_item`, in the module cradle.
+- **Thermal kit**: `thermal_cover` (origin (0.1225, -0.02, 0.44)) and `thermal_heater` ((0.12, 0.225,
+  0.44)) on the deck's right rear, between the mast, the antenna, the low-gain antenna and the cargo
+  mount. `PartType.THERMAL`; sockets `ThermalCoverSocket` and `HeaterSocket` in `robot.tscn` sit at
+  these origins (no chassis empties), each limited to its part by `accepted_catalog_id`. 174 + 98 triangles (budgets 250, 150), outside the
+  8,000 rover budget's fixed parts (they're optional add-ons). Clearances: ASSET_PLAN.md A17.

@@ -168,6 +168,19 @@ leaves between its back panel and label rail, 45 mm under the top rail. Its plat
 | Lab tray (A12) | `workshop_kit/ws_sample_bench.glb` | 0.70 x 0.40 m bench, tray top at 0.90 m, at `anchor_bench` (4.2, 2.6): the scoop and the two containers lie on the tray; `slot_sample_a`, `slot_sample_b`, `slot_sample_scoop`. `Workshop.sample_bench`, `bench_stock` |
 | Near site (A15) | `iris_kit/sample_site_near.glb` | 1.1 m dark patch built in IRIS's frame (instance it with the Iris node's transform) on the terrain, 2 cm proud in the middle and 4 mm at the edge; `anchor_sample` (IRIS frame (2.4, 2.6)), `anchor_marker_post`, `park_sample`. `moon_level.tscn`: `SampleSiteNear` and `SampleSitePost` (a `ws_marker_post`). Kite parks at `park_sample` heading +X (IRIS frame), 1.28 m from the centre: the scoop's tip reaches the ground 0.64 to 0.85 m ahead of the turret's yaw axis, so the patch's centre is at the middle of a 0.21 m window |
 
+### 4.2 M3: the far logger (A16), the far site (A15), the thermal sensor turret (A14), the thermal kit (A17) (2026-10-14)
+
+Generated and checked by `scripts/iris/make_m3_kit.py` (run it before `make_sample_kit.py`, whose bench
+preview shows the thermal kit); previews in `tools/blender/previews/m3_kit/`. No mission logic. Masses
+and power are estimates (ASSET_PLAN.md A14-A17).
+
+| | File | Notes |
+|---|---|---|
+| Far logger | `rover_kit/field_logger.glb`, 152 tris (budget 300), 1.6 kg | 0.21 x 0.12 x 0.07 m case on 3 mm feet, origin the middle of its feet at `socket_cargo_item`, long side along X; `anchor_latch` (0, 0, 0.07), `anchor_pickup`, `text_top`, `text_under`. Evan's two labels are `Label3D`s in `field_logger_part.tscn` (Caveat 500, pen blue, 2 degrees crooked, as 6.6). In the cradle: 20 mm to each rail, 14 mm to the corner lips; 56.7 mm from the stowed arm; latch pose J1 0 J2 94 J3 88 J4 100 J5 0 |
+| Far site | `iris_kit/sample_site_far.glb`, 176 tris | Head crater's east rim at world (2.0, -58.0); its own frame (origin on the ground at the patch's centre, +Y down the fall line, world bearing 172 degrees from +X). `anchor_sample`, `anchor_marker_post` (the far-rim marker, 6.0 m down the fall line, 0.5 m before the shade), `park_sample` (0.12, -1.27), `anchor_logger` (1.3, 0), `park_logger` (1.42, -1.06). `moon_level.tscn`: `SampleSiteFar`, `FarRimMarker`, `FarLogger` (asleep, tilted to the slope); the script prints their transforms |
+| Thermal sensor turret | `rover_kit/arm_tool_thermal.glb`, 236 tris (budget 240), 5.3 kg | `make_arm.build_tool(radiometer)`: the plain sensor at 198 degrees becomes a radiometer reaching 80.5 mm from the hub axis (the drill reaches 95). `pivot_reading` (aperture), `pivot_reading_aim`. J5 -72 points it down; reading pose from `park_sample`: J1 -0.5 J2 -25 J3 14 J4 11 J5 -72, aperture 150 mm over the patch, the arm 149 mm above the ground |
+| Thermal kit | `rover_kit/thermal_cover.glb` (174 tris, 0.9 kg), `thermal_heater.glb` (98 tris, 0.6 kg, 12 W) | Origins on the deck at (0.1225, -0.02, 0.44) and (0.12, 0.225, 0.44). Checked against the stowed arm, the arm's 12,870-pose grid, mast and head, antenna, power unit, cargo mount with the logger or module, the low-gain antenna and the camera's view (ASSET_PLAN.md A17) |
+
 ---
 
 ## 5. Cargo mount (rover kit part)

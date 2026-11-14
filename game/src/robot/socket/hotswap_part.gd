@@ -10,7 +10,7 @@ extends RigidBody3D
 ## arm tools and antennas are plain HotswapParts for now (no stats yet).
 
 # New types are appended so the stored values of existing scenes stay valid
-enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA, CARGO }
+enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA, CARGO, THERMAL }
 
 @export var part_type: PartType = PartType.WHEEL
 ## Entry in PartCatalog (name, description, where it mounts); empty = the default for part_type

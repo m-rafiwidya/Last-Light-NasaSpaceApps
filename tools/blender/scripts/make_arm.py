@@ -184,7 +184,9 @@ def lens(bm, place, w: float, radius: float, sides: int = 6):
         face.normal_flip()
 
 
-def build_tool():
+def build_tool(sensor=None):
+    """The turret. `sensor(bm, place)` replaces the plain sensor tool (a variant, e.g. make_m3_kit.py's
+    thermal turret); `place` is its radial() frame."""
     bm = bmesh.new()
     kit.keyed_plug(bm, along_y(TOOL.x, TOOL.z), TOOL.y, TOOL.y - kit.CONNECTOR_DEPTH)
     kit.cylinder(bm, along_y(TOOL.x, TOOL.z), TOOL.y, TOOL.y + HUB_LENGTH, HUB_RADIUS)
@@ -201,8 +203,11 @@ def build_tool():
     solid(bm, rect(0.016, 0.014), p, 0.025, 0.06)
     lens(bm, p, 0.0605, 0.008)
     p = radial(TOOL_ANGLES["sensor"])
-    solid(bm, kit.circle_outline(0.015, 8), p, 0.025, 0.065)
-    solid(bm, kit.circle_outline(0.011, 6), p, 0.065, 0.069, DARK)
+    if sensor:
+        sensor(bm, p)
+    else:
+        solid(bm, kit.circle_outline(0.015, 8), p, 0.025, 0.065)
+        solid(bm, kit.circle_outline(0.011, 6), p, 0.065, 0.069, DARK)
     return finish(bm, TOOL)
 
 

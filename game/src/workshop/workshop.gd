@@ -114,13 +114,18 @@ const SLOTS: Dictionary = {
 	# The replacement radio-power module (IRIS_KIT.md 4.1), lying flat beside it: 0.134 m deep on the
 	# 0.14 m usable shelf
 	18: ["res://src/robot/socket/radio_module_part.tscn", {}, ""],
+	# The thermal sensor turret (M3), beside the standard turret under TOOL TURRETS
+	19: ["res://src/robot/socket/arm_tool_thermal_part.tscn", {}, ""],
 }
-# The sample bench (anchor_bench) and what lies on its tray: slot empty -> [part scene, turn about up]
+# The sample bench (anchor_bench) and what lies on its tray, and on its low shelf the thermal kit (the
+# cover is too deep for any rack shelf): slot empty -> [part scene, turn about up]
 const SAMPLE_BENCH: String = "res://res/models/workshop_kit/ws_sample_bench.glb"
 const BENCH_STOCK: Dictionary = {
 	"slot_sample_a": ["res://src/robot/socket/sample_container_part.tscn", 0.0],
 	"slot_sample_b": ["res://src/robot/socket/sample_container_far_part.tscn", 0.0],
 	"slot_sample_scoop": ["res://src/robot/socket/sample_scoop_part.tscn", PI / 2.0],
+	"slot_thermal_cover": ["res://src/robot/socket/thermal_cover_part.tscn", PI / 2.0],
+	"slot_heater": ["res://src/robot/socket/thermal_heater_part.tscn", 0.0],
 }
 # Wheels rest on the cradle rails' inner edges (0.08 m off the wheel's centre, 0.04 m tall)
 const WHEEL_SEAT: float = 0.04 + 0.1269 - 0.15 + 0.003
@@ -128,7 +133,7 @@ const PART_LIFT: float = 0.005
 # Rack labels: label -> [text, plate width (m)]
 const LABELS: Dictionary = {
 	1: ["WHEELS", 2.23], 2: ["HIGH-GRIP WHEELS", 1.36], 3: ["MOTOR", 0.44], 4: ["BATTERY", 0.54],
-	5: ["MAST CAMERA", 0.66], 6: ["TOOL TURRET", 0.55], 7: ["ANTENNA", 0.56], 8: ["SPARE", 0.55],
+	5: ["MAST CAMERA", 0.66], 6: ["TOOL TURRETS", 0.55], 7: ["ANTENNA", 0.56], 8: ["SPARE", 0.55],
 	9: ["CARTRIDGES AND MODULE", 2.38],
 }
 ## Label text cap height (m) and the least it may shrink to while fitting its plate

@@ -11,6 +11,8 @@
 [ext_resource type="PackedScene" path="res://src/iris/iris.tscn" id="33_iris"]
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_route.glb" id="34_route_sign"]
 [ext_resource type="PackedScene" path="res://res/models/iris_kit/sample_site_near.glb" id="35_sample_site"]
+[ext_resource type="PackedScene" path="res://res/models/iris_kit/sample_site_far.glb" id="36_far_site"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/field_logger_part.tscn" id="37_far_logger"]
 [ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
@@ -118,6 +120,16 @@ transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513
 
 [node name="SampleSitePost" parent="." instance=ExtResource("31_post")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -207.89, -3.256, 135.76)
+
+[node name="SampleSiteFar" parent="." instance=ExtResource("36_far_site")]
+transform = Transform3D(-0.139173, 0, 0.990268, 0, 1, 0, -0.990268, 0, -0.139173, 2, -0.693115, -58)
+
+[node name="FarRimMarker" parent="." instance=ExtResource("31_post")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.942, -1.679, -57.165)
+
+[node name="FarLogger" parent="." instance=ExtResource("37_far_logger")]
+transform = Transform3D(-0.139205, -0.138575, 0.98052, 0.000463191, 0.990151, 0.140002, -0.990263, 0.0199433, -0.13777, 1.81907, -0.690507, -59.2873)
+sleeping = true
 
 [node name="IrisGate" type="Node3D" parent="."]
 

@@ -19,6 +19,11 @@ extends SceneTree
 ##      degrees about up, lies along the socket's long side and fits its opening, its bottom on the
 ##      seat; its connector marker is on the seat; its mass (12 kg) is more than the battery's; the
 ##      sample kit's catalog entries and masses; the near sample site by IRIS lies on the terrain.
+##   7d. M3 far site (make_m3_kit.py, ASSET_PLAN.md A15): the patch on Head crater's east rim lies on
+##      the terrain, over 400 m from the base, Kite's stop mark on the ground; the patch and the
+##      far-rim marker are in sunlight (a ray toward the Sun clears the terrain) and the ground 2 m
+##      past the marker, down the fall line, is in the rim's shade; Evan's logger rests on the ground
+##      beside the patch, still asleep.
 ##   8. Test level: the player can still lift a rover, and the rover's mast camera can still pick
 ##      a part up.
 ## Prints one line per check and PASS / FAIL.
@@ -444,6 +449,43 @@ func _run() -> void:
 	_check("sample site: its centre 5-40 mm over the terrain, 2-4 m from IRIS, Kite's stop mark on the ground",
 		m2_lift > 0.005 and m2_lift < 0.04 and m2_to_iris > 2.0 and m2_to_iris < 4.0 and absf(m2_park.global_position.y - iris.global_position.y) < 0.2,
 		"lift %.3f m, %.2f m from IRIS" % [m2_lift, m2_to_iris])
+
+	# 7d. M3 far site
+	var space: PhysicsDirectSpaceState3D = level.get_world_3d().direct_space_state
+	# The far-rim marker's post is solid: the rays that start at its foot leave it out
+	var post: Array[RID] = []
+	for body in level.get_node("FarRimMarker").find_children("*", "CollisionObject3D", true, false):
+		post.append((body as CollisionObject3D).get_rid())
+	var ground_below := func(p: Vector3, exclude: Array[RID] = []) -> float:
+		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 3.0, p + Vector3.DOWN * 3.0, 1, exclude))
+		return p.y - hit["position"].y if hit else INF
+	var to_sun: Vector3 = (level.get_node("Sun") as Node3D).global_basis.z.normalized()
+	var sunlit := func(p: Vector3, lift: float = 0.05, exclude: Array[RID] = []) -> bool:
+		return space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * lift, p + Vector3.UP * lift + to_sun * 450.0, 1, exclude)).is_empty()
+	var far_site: Node3D = level.get_node("SampleSiteFar")
+	var far_centre: Vector3 = (far_site.find_child("anchor_sample", true, false) as Node3D).global_position
+	var far_park: Vector3 = (far_site.find_child("park_sample", true, false) as Node3D).global_position
+	var far_lift: float = ground_below.call(far_centre)
+	var from_base: float = Vector2(far_centre.x - workshop.global_position.x, far_centre.z - workshop.global_position.z).length()
+	_check("far site: its centre 5-40 mm over the terrain, over 400 m from the base, Kite's stop mark on the ground",
+		far_lift > 0.005 and far_lift < 0.04 and from_base > 400.0 and absf(ground_below.call(far_park)) < 0.03,
+		"lift %.3f m, %.0f m from the base, stop mark %.3f m off the ground" % [far_lift, from_base, ground_below.call(far_park)])
+	var marker: Vector3 = (level.get_node("FarRimMarker") as Node3D).global_position
+	var downslope: Vector3 = -far_site.global_basis.z.normalized()      # the site frame's +Y (Kite's heading)
+	# The shade line grazes this slope (it faces away from a 16.7 degree sun): 2 m in, it's 0.2 m deep
+	var shaded_at: Vector3 = marker + downslope * 2.0
+	shaded_at.y -= ground_below.call(shaded_at)
+	_check("far site: the patch and the far-rim marker in sunlight, the ground 2 m past the marker in the rim's shade",
+		sunlit.call(far_centre) and sunlit.call(marker, 0.05, post) and not sunlit.call(shaded_at, 0.02) and absf(ground_below.call(marker, post)) < 0.03,
+		"lit: patch %s, marker %s, 2 m past it %s; the marker %.3f m over the ground" % [sunlit.call(far_centre), sunlit.call(marker, 0.05, post),
+		sunlit.call(shaded_at, 0.02), ground_below.call(marker, post)])
+	var far_logger: RigidBody3D = level.get_node("FarLogger")
+	var logger_gap: float = ground_below.call(far_logger.global_position)
+	var logger_off: float = Vector2(far_logger.global_position.x - far_centre.x, far_logger.global_position.z - far_centre.z).length()
+	_check("far logger: resting on the ground (asleep) 1-2 m beside the patch, upright with the slope",
+		logger_gap > -0.005 and logger_gap < 0.015 and logger_off > 1.0 and logger_off < 2.0 and far_logger.sleeping
+		and far_logger.global_basis.y.normalized().dot(Vector3.UP) > 0.97 and far_logger.get_catalog_id() == "field_logger",
+		"%.1f mm over the ground, %.2f m from the patch's centre, asleep %s" % [logger_gap * 1000.0, logger_off, far_logger.sleeping])
 
 	# 8. The test level keeps its sandbox rules
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
