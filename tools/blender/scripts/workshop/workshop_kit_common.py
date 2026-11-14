@@ -54,7 +54,10 @@ PARTITION_MODULES = [("ws_partition_solid", -3.2, 1.2), ("ws_partition_door", -2
                      ("ws_partition_window", -0.4, 2.0), ("ws_partition_window", 1.6, 2.0),
                      ("ws_partition_solid", 3.2, 1.2)]
 
-DOCK = Vector((-0.1, -0.3, 0.0))       # dock point on the floor; the rover's origin rides 0.10 above
+# Dock point on the floor (the rover's origin rides 0.10 above). 0.4 m west of the door's east
+# half, so a rover docked anywhere in the 0.4 m zone drives straight out with 0.47 m or more to
+# the east jamb (WORKSHOP_KIT.md 5.2)
+DOCK = Vector((-0.5, -0.3, 0.0))
 DOCK_ZONE = 0.40
 ROVER_RIDE = 0.10
 ROVER_BELLY = 0.30                     # chassis bottom above the floor at rest
@@ -78,6 +81,14 @@ ROVER_HALF_WIDTH = 0.628
 ROVER_FRONT, ROVER_REAR = 0.65, -0.896
 ROVER_HEIGHT = 1.22
 TURN_RADIUS = 1.07
+# Full-lock turning radius measured as speed over yaw rate (WORKSHOP_KIT.md as built): Moon
+# 1.02-1.30 m, Earth gravity 1.13-1.22 m, at 0.4-1.6 m/s. The bay's U-turn is checked over that range
+U_TURN_RADII = (1.0, 1.15, 1.3)
+# The way in: through the door on ENTRY_X, drifting west inside the bay to U_TURN_LANE, then the
+# U-turn round a centre on U_TURN_Y, then forwards onto the dock
+ENTRY_X = -2.2
+U_TURN_LANE = -2.8
+U_TURN_Y = -0.8
 # Player (2.2)
 PLAYER_RADIUS, PLAYER_HEIGHT, PLAYER_EYE, PLAYER_REACH = 0.25, 2.0, 1.5, 3.0
 

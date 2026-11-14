@@ -27,9 +27,10 @@ import workshop_kit_common as ws  # noqa: E402
 
 D = ws.DOCK
 HX, HY = ws.HALF_X, ws.HALF_Y
-U_TURN_CENTRE = Vector((D.x - ws.TURN_RADIUS, -1.0))
-ENTRY_X = D.x - 2.0 * ws.TURN_RADIUS
-SWEEP_RADIUS = math.hypot(ws.TURN_RADIUS + ws.ROVER_HALF_WIDTH, ws.ROVER_FRONT)
+ENTRY_X = ws.ENTRY_X
+KEEP_CLEAR_WEST = -3.6           # the keep-clear zone: x -3.6 to the door's east jamb, y -2.85 to the door
+U_TURN_CENTRE = Vector((ws.U_TURN_LANE + ws.U_TURN_RADII[1], ws.U_TURN_Y))
+SWEEP_RADIUS = math.hypot(ws.U_TURN_RADII[-1] + ws.ROVER_HALF_WIDTH, ws.ROVER_FRONT)
 
 
 def instances() -> list:
@@ -67,12 +68,12 @@ def instances() -> list:
             ("ws_rack", tuple(ws.RACK_ORIGIN), 0), ("ws_console", tuple(ws.CONSOLE_ORIGIN), 0)]
     # Markings: chevrons along the entry lane (into the bay) and the way out; stripes along the
     # keep-clear zone; the sign over the bay door
-    for y in (3.0, 2.0, 1.0):
-        out.append(("ws_floor_chevron", (ENTRY_X, y, 0.0), 180))
+    for x, y in ((ENTRY_X, 3.4), (-2.5, 1.6), (ws.U_TURN_LANE, 0.0)):
+        out.append(("ws_floor_chevron", (x, y, 0.0), 180))
     for y in (2.4, 3.2):
         out.append(("ws_floor_chevron", (D.x, y, 0.0), 0))
     for y in (-1.85, 0.15, 2.15):
-        out.append(("ws_floor_stripe", (ws.DOOR_X[0], y, 0.0), 90))
+        out.append(("ws_floor_stripe", (KEEP_CLEAR_WEST, y, 0.0), 90))
     out.append(("ws_floor_stripe", (ws.DOOR_X[1], 2.75, 0.0), 90))
     out.append(("ws_floor_stripe", (-2.6, -2.85, 0.0), 0))
     out.append(("ws_door_sign", ((ws.DOOR_X[0] + ws.DOOR_X[1]) / 2.0, HY, 2.95), 0))
@@ -197,22 +198,38 @@ def rover_gap(position: Vector, heading: float, boxes: list) -> tuple:
 
 
 def path_poses() -> dict:
-    """Rover poses (position, heading) along the drive in, the U-turn and the way out."""
-    poses = {"entry lane": [], "U-turn": [], "to the dock": [], "out from the dock": [],
-             "out from the dock zone's east edge": []}
+    """Rover poses (position, heading) along the way in (through the door, drifting west inside
+    the bay, a U-turn at each radius in U_TURN_RADII, onto the dock) and the ways out."""
+    poses = {"entry lane": [], "drift west in the bay": []}
     y = HY + 4.0
-    while y >= U_TURN_CENTRE.y:
+    while y >= 3.0:
         poses["entry lane"].append((Vector((ENTRY_X, y)), math.pi))
         y -= 0.05
-    for k in range(0, 181, 3):
-        a = math.radians(180 + k)
-        p = U_TURN_CENTRE + Vector((math.cos(a), math.sin(a))) * ws.TURN_RADIUS
-        poses["U-turn"].append((p, a))          # moving counter-clockwise: heading = position angle
-    y = U_TURN_CENTRE.y
-    while y <= D.y:
-        poses["to the dock"].append((Vector((D.x, y)), 0.0))
-        y += 0.05
-    for name, x in (("out from the dock", D.x), ("out from the dock zone's east edge", D.x + ws.DOCK_ZONE)):
+    a, b = Vector((ENTRY_X, 3.0)), Vector((ws.U_TURN_LANE, 0.2))
+    heading = math.atan2(-(b - a).x, (b - a).y)
+    for k in range(41):
+        poses["drift west in the bay"].append((a.lerp(b, k / 40.0), heading))
+    y = 0.2
+    while y >= ws.U_TURN_Y:
+        poses["drift west in the bay"].append((Vector((ws.U_TURN_LANE, y)), math.pi))
+        y -= 0.05
+    for r in ws.U_TURN_RADII:
+        name = "U-turn, radius %.2f m" % r
+        centre = Vector((ws.U_TURN_LANE + r, ws.U_TURN_Y))
+        poses[name] = []
+        for k in range(0, 181, 3):
+            a = math.radians(180 + k)
+            poses[name].append((centre + Vector((math.cos(a), math.sin(a))) * r, a))   # counter-clockwise: heading = angle
+        end_x = ws.U_TURN_LANE + 2.0 * r
+        name = "to the dock after radius %.2f m (ends %.2f m across from it)" % (r, abs(end_x - D.x))
+        poses[name] = []
+        y = ws.U_TURN_Y
+        while y <= D.y:
+            poses[name].append((Vector((end_x, y)), 0.0))
+            y += 0.05
+    for name, x in (("out from the dock", D.x), ("out from the dock zone's east edge", D.x + ws.DOCK_ZONE),
+                    ("out from the dock zone's west edge", D.x - ws.DOCK_ZONE)):
+        poses[name] = []
         y = D.y
         while y <= HY + 4.0:
             poses[name].append((Vector((x, y)), 0.0))
@@ -230,9 +247,12 @@ def run_checks(copies: list, rows: list) -> int:
             g, what = rover_gap(p, h, rover_boxes)
             if g < worst[0]:
                 worst = (g, what, p)
-        target = {"U-turn": 0.48, "out from the dock": 0.30, "entry lane": 0.10, "to the dock": 0.30}.get(name, 0.0)
+        target = 0.48 if name.startswith("U-turn") else 0.10 if name == "entry lane" else 0.30
         ok = worst[0] >= target - 1e-3
         failures += 0 if ok else 1
+        if worst[2] is None:
+            rows.append("rover %-36s nothing within 2.5 m" % (name + ":"))
+            continue
         rows.append("rover %-36s least gap %.2f m to %s at (%.2f, %.2f) (needs %.2f)%s" % (
             name + ":", worst[0], worst[1], worst[2].x, worst[2].y, target, "" if ok else "  FAIL"))
     # Docked anywhere in the zone, any heading
@@ -361,7 +381,7 @@ def plan_overlay() -> list:
             ((x0, y0), (x1, y0), (x1, y0 + w), (x0, y0 + w)), ((x0, y1 - w), (x1, y1 - w), (x1, y1), (x0, y1)),
             ((x0, y0), (x0 + w, y0), (x0 + w, y1), (x0, y1)), ((x1 - w, y0), (x1, y0), (x1, y1), (x1 - w, y1)))]
 
-    flat("preview_keep_clear", outline_rect(ws.DOOR_X[0], ws.DOOR_X[1], -2.85, ws.INNER_Y, 0.04), "30A0E0", 0.02)
+    flat("preview_keep_clear", outline_rect(KEEP_CLEAR_WEST, ws.DOOR_X[1], -2.85, ws.INNER_Y, 0.04), "30A0E0", 0.02)
     flat("preview_u_turn", ring(U_TURN_CENTRE, SWEEP_RADIUS - 0.03, SWEEP_RADIUS), "E04040", 0.02)
     flat("preview_dock_zone", ring(Vector((D.x, D.y)), ws.DOCK_ZONE - 0.02, ws.DOCK_ZONE), "40C040", 0.03)
     for p, h in ((Vector((D.x, D.y)), 0.0), (Vector((D.x + 0.4, D.y)), math.radians(30))):
@@ -370,7 +390,7 @@ def plan_overlay() -> list:
         flat("preview_rover", [[p + rot @ Vector(c) for c in ((-w, -f), (w, -f), (w, f), (-w, f))],
                                [p + rot @ Vector(c) for c in ((-0.11, -f), (0.11, -f), (0.11, r), (-0.11, r))]],
              "F0F0F0" if h == 0.0 else "B0B0B0", 0.025 if h == 0.0 else 0.022)
-    for p in (Vector((D.x + 1.33, -0.5)), Vector((D.x, -2.85)), Vector((3.2, -0.3)), Vector((1.75, -2.0)),
+    for p in (Vector((ws.PARTITION_X - 0.5, -0.5)), Vector((D.x, -2.85)), Vector((3.2, -0.3)), Vector((1.75, -2.0)),
               Vector((1.25, 3.1)), Vector((ws.SPAWN.x, ws.SPAWN.y))):
         flat("preview_player", ring(p, 0.0, ws.PLAYER_RADIUS, 16), "E0A030", 0.04)
     return objs

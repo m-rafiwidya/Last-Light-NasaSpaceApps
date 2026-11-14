@@ -47,13 +47,15 @@ wins:
   crouched; `test_workshop.gd` reaches every part from 0.45, 1.2 and 2.0 m). The battery lies on
   its side turned so its 0.355 m side runs across the shelf. The restock button is beside the
   east upright at shelf 1's step, (1.21, -3.41, 0.90). The rack's footprint is unchanged (0.48 m
-  deep at the floor), so the U-turn margin stays 0.48 m.
+  deep at the floor), so it doesn't change the U-turn's margin (5.2).
 - **Markers:** the stripes round the bay door's swing outside are left out (the regolith there
   isn't flat); the 0.30 m tall sign plate is 16 px tall at 10 m (22 px wide). The Moon level has a
   base sign on a post at the apron's end; route and heritage posts wait for the route work.
-- **Rover turning, measured** (full lock, at the speeds a driver uses in the bay): Moon 0.66 m at
-  0.36 m/s, 1.1-1.2 m at 0.8-0.9 m/s; Earth gravity 0.78 m at 0.42 m/s, 1.10 m at 0.72 m/s. The
-  layout's 1.07 m holds.
+- **Rover turning, measured** as speed over yaw rate in steady full-lock turns (an earlier note
+  here gave 0.66-0.78 m at a crawl: that came from averaging distances to the centroid of a part
+  circle, which reads too small, and is wrong): Moon 1.02-1.30 m at 0.55-0.90 m/s; Earth gravity
+  1.13 m at 0.42 m/s, 1.15 m at 0.72 m/s, 1.22 m at 1.63 m/s. Slower than about 0.4 m/s it
+  widens again (1.36 m at 0.19 m/s on Earth gravity). The bay is checked over 1.0-1.3 m.
 - **Spawn:** unrotated (the player moves along its pivot's own basis, so a turned spawn would walk
   off its view); the console turns the player to face the screen.
 - **Triangles:** 6,720 for the assembled workshop, 102 part instances (`make_layout.py`). Per
@@ -200,7 +202,7 @@ Godot. It sits on a 0.46 degree plane falling to azimuth 146 and has no rocks
 | Door threshold | ground -5.416, so the floor is 4.6 cm above the ground outside. The open ramp door bridges it (5.4). |
 | Apron (door to 12.5 m out) | ground -5.43 to -5.36, inside the base, lit by the sun |
 | Corners in Godot | NW (-304.3, 254.0), NE (-295.7, 259.0), SW (-308.3, 261.0), SE (-299.7, 266.0). All inside the base. |
-| `dock_point` / `spawn_player` in Godot | (-302.24, 260.21) / (-297.71, 260.17) |
+| `dock_point` / `spawn_player` in Godot | (-302.58, 260.01) / (-297.71, 260.17) |
 | Keep-out (75 m) | the nearest point of the building or apron is **510 m from the LM** (435 m margin), 516 m from the ALSEP (441 m) and 556 m from Surveyor 3 (481 m) |
 | Sun (EVA 2: 16.72 degrees up, azimuth 90.62) | lights the door facade at 60.6 degrees off its normal (cos 0.47, so it reads in sunlight). The east wall (operator side) is fully lit. The building's shadow (11.3 m, to the west) stays inside the base. Very little sun reaches the bay through the door. |
 
@@ -245,37 +247,40 @@ can't leave the workshop.
 
 ### 5.2 Rover service bay (x -4.8 to +2.05)
 
+Revised after the build: the dock point moved 0.4 m west (to x -0.5), so a rover docked anywhere
+in its zone drives straight out with at least 0.47 m to the door's east jamb (it was 0.07 m from
+the zone's east edge); the way in drifts west inside the bay before the U-turn.
+
 | Item | Position / extent | Notes |
 |---|---|---|
 | Bay door opening | x -3.0 to +1.0, z 0 to 2.5 | 4.0 m: 2.74 m wider than the rover |
-| Entry lane (nominal) | rover origin on x = -2.24, heading -Y | the rover spans x -2.87 to -1.61 (0.13 m from the west jamb). Any lane through the door works. |
-| U-turn centre (nominal) | (-1.17, -1.0) | swept envelope x -2.99 to +0.65, y -2.82 to +0.82 |
-| **Keep-clear zone** | x -3.0 to +1.0 (the door width), y -2.85 to +3.8 | no fixtures; floor chevrons mark it (A07) |
-| `dock_point` | **(-0.1, -0.3, 0.10)**, heading +Y | the rover spans x -0.73 to +0.53, y -1.20 to +0.35 |
+| The way in | through the door on x = -2.2 heading -Y, drifting west inside the bay to x = -2.8 by y 0.2, then a U-turn on full lock round a centre on y = -0.8, then forwards onto the pad | the rover spans x -2.83 to -1.57 in the door (0.17 m from the west jamb), 0.32 m from the door frame where the drift starts |
+| U-turn | full-lock radius 1.0-1.3 m (measured, below) about (-2.8 + radius, -0.8) | it ends 0.00-0.30 m across from the dock point, inside the zone, and a short creep forwards docks it |
+| **Keep-clear zone** | x -3.6 to +1.0, y -2.85 to +3.8 | no fixtures; floor chevrons mark the way in and out, stripes the zone's west edge (A07) |
+| `dock_point` | **(-0.5, -0.3, 0.10)**, heading +Y | the rover spans x -1.13 to +0.13, y -1.20 to +0.35 |
 | Dock zone | a circle of 0.4 m radius round the dock point (for the rover's origin) | any heading |
-| Pad (A02) | x -1.6 to +1.4, y -2.3 to +1.7 (3.0 x 4.0 m) | flush with the floor |
-| Rack (A04) | x -1.35 to +1.15, y -3.8 to -3.3, z 0 to 1.8 | back wall, behind the pad |
+| Pad (A02) | x -2.0 to +1.0, y -2.3 to +1.7 (3.0 x 4.0 m) | flush with the floor |
+| Rack (A04) | x -1.35 to +1.15, y -3.8 to -3.32 (stepped, 6.3), z 0 to 1.8 | back wall, behind the pad |
 | Charger cabinet (A02) | x 1.65 to 2.05, y 2.7 to 3.5, z 0 to 1.6 | on the partition's bay face, next to the door |
-| Bay door control panel | `ws_door_panel`, centre (-3.6, 3.76, 1.2) | north wall, west of the door, outside the lanes |
-| Bay key light | `light_bay_key` (-0.1, -0.8, 2.95) | over the pad, pointing down |
-| Work lamps | `light_rack` (-1.8, -3.75, 2.2), `light_door` (1.6, 3.75, 2.6) | amber |
+| Bay door control panel | `ws_door_panel`, centre (-3.6, 3.76, 1.2) | north wall, west of the door |
+| Bay key light | `light_bay_key` (-0.5, -0.8, 2.95) | over the pad, pointing down |
+| Work lamps | `light_rack` (-1.8, -3.45, 2.15), `light_door` (1.6, 3.45, 2.45) | amber |
 
-Clearance check (nominal, then worst with the rover at the edge of the 0.4 m dock zone):
+Clearance check (`make_layout.py`; nominal, then worst with the rover anywhere in the 0.4 m zone):
 
 | Pair | Gap | Rule |
 |---|---|---|
-| Docked rover right flank to partition (2.05) | **1.52 m**, worst 1.12 m | >= 1.0 |
-| Docked rover rear to rack front (-3.30) | **2.10 m**, worst 1.70 m (the player stands here to use the rack and the rear power socket) | >= 1.0 |
-| Docked rover left flank to west wall (-4.8) | 4.07 m, open floor | >= 1.0 |
+| Docked rover right flank to partition (2.05) | **1.92 m**, worst 1.52 m square to the pad, 1.25 m at any heading | >= 1.0 |
+| Docked rover rear to rack front (-3.32) | **2.12 m**, worst 1.70 m | >= 1.0 |
+| Docked rover left flank to west wall (-4.8) | 3.67 m, open floor | >= 1.0 |
 | Docked rover front to door wall (3.8) | 3.45 m, worst 3.05 m | |
-| Docked rover front-right corner to cabinet | 2.60 m, worst 2.08 m | >= 1.0 |
-| U-turn envelope to rack front | **0.48 m** | >= 0.48 |
-| U-turn envelope to west wall / partition | 1.81 m / 1.40 m | >= 0.48 |
-| Rover driving out straight from the dock point, to the east jamb (+1.0) / west jamb (-3.0) | 0.47 m / 2.27 m | >= 0.30 |
-| Same from the zone's east edge | 0.07 m: the player steers a little left; the pad's centre line shows the way out | |
-| Door control panel to the entry lane | 0.58 m | |
+| Docked rover front-right corner to cabinet | 2.80 m, worst 2.25 m | >= 1.0 |
+| U-turn envelope to the rack | 0.81 / 0.64 / **0.49 m** at radius 1.0 / 1.15 / 1.3 m | >= 0.48 |
+| Rover driving out straight from the dock point, to the east jamb (+1.0) / west jamb (-3.0) | 0.87 m / 1.87 m | >= 0.30 |
+| Same from the zone's east / west edge | **0.47 m** / 1.27 m | >= 0.30 |
+| Door control panel to the rover in the door | 0.62 m | |
 
-No route the player needs goes between a tyre and a fixture with less than 1.12 m.
+No route the player needs goes between a tyre and a fixture with less than 1.25 m.
 
 ### 5.3 Partition (x 2.05 to 2.15, y -3.8 to +3.8)
 
@@ -300,7 +305,7 @@ its bottom edge, on the partition's centre plane (x 2.10).
 |---|---|---|---|---|---|
 | `bay_door` | `ws_wall_bay_door.glb` (child) | `pivot_bay_door` (-1.0, 3.92, 0.0): hinge along X at the floor, on the leaf's inner bottom edge | rotates about X; open = **-90 degrees** (top swings out to +Y) | 0 to -90 | rotate about X by the same angle |
 | `personnel_door` | `ws_partition_door.glb` (child) | `pivot_personnel_door` (2.18, -2.0, 0.0) | slides along -Y on the operator face, 1.0 m | 0 to 1.0 m | +Z by the same distance |
-| `charge_probe` | `ws_pad.glb` (child) | `pivot_charge_probe` (-0.1, -0.3, 0.0) | moves in x and y up to 0.4 m (under the contact plate), then rises along +Z 0.28 m | 0.4 m radius, 0 to 0.28 | x, -z, +y |
+| `charge_probe` | `ws_pad.glb` (child) | `pivot_charge_probe` (-0.5, -0.3, 0.0) | moves in x and y up to 0.4 m (under the contact plate), then rises along +Z 0.28 m | 0.4 m radius, 0 to 0.28 | x, -z, +y |
 
 - **Bay door:** a 4.0 x 2.5 x 0.08 m leaf with ribs on its outer face. Open, it lies flat
   outside from y 3.92 to 6.42 with its ribbed (outer) face down, its smooth top flush with the
@@ -330,7 +335,7 @@ and 1.2 m to walk behind the operator.
 
 ### 6.1 A02 charging / service pad
 
-Origin of `ws_pad`: the dock point on the floor, (-0.1, -0.3, 0.0).
+Origin of `ws_pad`: the dock point on the floor, (-0.5, -0.3, 0.0).
 
 | Object | Shape | Material |
 |---|---|---|
@@ -341,7 +346,7 @@ Origin of `ws_pad`: the dock point on the floor, (-0.1, -0.3, 0.0).
 | `charger_status_light` (child) | the beacon dome plus a 0.30 x 0.06 strip on the cabinet front | `ws_status` |
 | `ws_cable_cover` | a flush floor strip, 0.12 wide and 5 mm high, from the cabinet (1.65, 3.1) to the contact plate's corner (0.4, 0.2), at an angle across the lane. Origin at the cabinet end. | `ws_frame` |
 
-Empties: `dock_point` (-0.1, -0.3, 0.10), `anchor_charge` (-0.1, -0.3, 0.30) (the belly contact
+Empties: `dock_point` (-0.5, -0.3, 0.10), `anchor_charge` (-0.5, -0.3, 0.30) (the belly contact
 point for a rover exactly docked), `pivot_charge_probe`, `trigger_dock`, `trigger_charger`.
 
 **Docking rule (Godot, `charging_pad.gd`):**
@@ -614,7 +619,7 @@ shadowed, cost about 1.4 ms together. Shadowed lights are the expensive part, so
 
 | Trigger | Centre | Size (x, y, z) | Layer / detects | Purpose |
 |---|---|---|---|---|
-| `trigger_dock` | (-0.1, -0.3, 0.75) | 3.0 x 4.0 x 1.5 | monitors layer 3 (rovers) | rover on the pad: amber, and the dock hint |
+| `trigger_dock` | (-0.5, -0.3, 0.75) | 3.0 x 4.0 x 1.5 | monitors layer 3 (rovers) | rover on the pad: amber, and the dock hint |
 | `trigger_charger` | (1.85, 3.1, 1.0) | 0.6 x 1.0 x 1.2 | layer 5 (`InteractTrigger`) | tooltip: charge state and percentage |
 | `trigger_console` | (2.55, -0.3, 1.1) | 0.6 x 1.2 x 0.6 | layer 5 | E: drive the rover |
 | `trigger_bay_door` | (-3.6, 3.70, 1.2) | 0.4 x 0.2 x 0.5 | layer 5 | E: open / close the bay door (not while a rover is in the doorway) |
