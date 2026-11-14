@@ -16,10 +16,11 @@ const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
 @export_subgroup("Friction and Stiffness")
 @export var longitudinal_friction_coefficient: float = 1.0
 @export var lateral_friction_coefficient: float = 1.0
-# Newtons per unit of slip. These are absolute, so they must scale with the
-# vehicle's weight (the tyre saturates when stiffness * slip > friction * load).
-@export var longitudinal_stiffness: float = 1250.0
-@export var cornering_stiffness: float = 1000.0
+# Newtons per unit of slip, per wheel. These are absolute, so they must scale with the
+# load on each wheel (the tyre saturates when stiffness * slip > friction * load). Tuned
+# for 4 wheels (1250 / 1000) and scaled by 4/6 for 6 wheels, so grip is unchanged.
+@export var longitudinal_stiffness: float = 833.3
+@export var cornering_stiffness: float = 666.7
 # Below this ground speed (m/s) the slip ratio and slip angle are computed as if the
 # wheel were moving at this speed. This removes the 1/speed singularity, so near a
 # standstill the tyre acts like smooth viscous friction instead of flipping its
@@ -34,19 +35,32 @@ const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
 @export var wheel_radius: float = 0.15
 @export var wheel_inertia: float = 0.03
 @export_subgroup("Suspension")
-@export var front_spring_stiffness: float = 4000
-@export var rear_spring_stiffness: float = 4000
+# Per wheel. Tuned for 4 wheels (4000 N/m, 400 Ns/m) and scaled by 4/6 for 6 wheels, so
+# the rest height (49 mm sag), frequency and damping ratio are unchanged.
+@export var front_spring_stiffness: float = 2666.7
+@export var middle_spring_stiffness: float = 2666.7
+@export var rear_spring_stiffness: float = 2666.7
 # TODO: Implement variable damping (rebound and bump stiffness)
-@export var front_shock_damping: float = 400
-@export var rear_shock_damping: float = 400
+@export var front_shock_damping: float = 266.7
+@export var middle_shock_damping: float = 266.7
+@export var rear_shock_damping: float = 266.7
 @export var front_ride_height: float = 0.15
+@export var middle_ride_height: float = 0.15
 @export var rear_ride_height: float = 0.15
+@export_subgroup("Steering")
+@export var max_steer_angle_degrees: float = 30.0
+# Rear wheels counter-steer (Curiosity style), which halves the turning radius
+@export var rear_steer_bias: float = -1.0
 
+# Six wheels: front and rear pairs steer, the middle pair is fixed. MIDDLE_* come last so
+# the original four keep their values.
 enum Wheel{
 	FRONT_LEFT,
 	FRONT_RIGHT,
 	REAR_LEFT,
-	REAR_RIGHT
+	REAR_RIGHT,
+	MIDDLE_LEFT,
+	MIDDLE_RIGHT,
 }
 
 enum WheelState{
@@ -59,44 +73,20 @@ enum WheelState{
 	IS_SLIPPING,
 }
 
-var wheel_states: Dictionary = {
-	Wheel.FRONT_LEFT: {
-		WheelState.ANGULAR_VELOCITY: 0.0,
-		WheelState.LOAD: Vector3.ZERO,
-		WheelState.FORCE: Vector3.ZERO,
-		WheelState.IN_CONTACT: false,
-		WheelState.CONTACT_POINT: Vector3.ZERO,
-		WheelState.TORQUE: 0.0,
-		WheelState.IS_SLIPPING: false,
-	},
-	Wheel.FRONT_RIGHT: {
-		WheelState.ANGULAR_VELOCITY: 0.0,
-		WheelState.LOAD: Vector3.ZERO,
-		WheelState.FORCE: Vector3.ZERO,
-		WheelState.IN_CONTACT: false,
-		WheelState.CONTACT_POINT: Vector3.ZERO,
-		WheelState.TORQUE: 0.0,
-		WheelState.IS_SLIPPING: false,
-	},
-	Wheel.REAR_LEFT: {
-		WheelState.ANGULAR_VELOCITY: 0.0,
-		WheelState.LOAD: Vector3.ZERO,
-		WheelState.FORCE: Vector3.ZERO,
-		WheelState.IN_CONTACT: false,
-		WheelState.CONTACT_POINT: Vector3.ZERO,
-		WheelState.TORQUE: 0.0,
-		WheelState.IS_SLIPPING: false,
-	},
-	Wheel.REAR_RIGHT: {
-		WheelState.ANGULAR_VELOCITY: 0.0,
-		WheelState.LOAD: Vector3.ZERO,
-		WheelState.FORCE: Vector3.ZERO,
-		WheelState.IN_CONTACT: false,
-		WheelState.CONTACT_POINT: Vector3.ZERO,
-		WheelState.TORQUE: 0.0,
-		WheelState.IS_SLIPPING: false,
-	}
-}
+var wheel_states: Dictionary = {}
+
+
+func _init() -> void:
+	for wheel in Wheel.values():
+		wheel_states[wheel] = {
+			WheelState.ANGULAR_VELOCITY: 0.0,
+			WheelState.LOAD: Vector3.ZERO,
+			WheelState.FORCE: Vector3.ZERO,
+			WheelState.IN_CONTACT: false,
+			WheelState.CONTACT_POINT: Vector3.ZERO,
+			WheelState.TORQUE: 0.0,
+			WheelState.IS_SLIPPING: false,
+		}
 
 enum WheelProperty{
 	POSITION,
@@ -114,53 +104,31 @@ enum WheelProperty{
 var wheel_properties: Dictionary
 
 func update_wheel_properties() -> void:
-	wheel_properties = {
-		Wheel.FRONT_LEFT: {
-			WheelProperty.POSITION: Vector3(-track_width / 2.0, 0, -wheel_base / 2.0),
-			WheelProperty.SPRING_STIFFNESS: front_spring_stiffness,
-			WheelProperty.SHOCK_DAMPING: front_shock_damping,
-			WheelProperty.RIDE_HEIGHT: front_ride_height,
+	# (side x, axle z, spring, damping, ride height, steer bias) per wheel
+	var half_track: float = track_width / 2.0
+	var half_base: float = wheel_base / 2.0
+	var layout: Dictionary = {
+		Wheel.FRONT_LEFT: [-half_track, -half_base, front_spring_stiffness, front_shock_damping, front_ride_height, 1.0],
+		Wheel.FRONT_RIGHT: [half_track, -half_base, front_spring_stiffness, front_shock_damping, front_ride_height, 1.0],
+		Wheel.MIDDLE_LEFT: [-half_track, 0.0, middle_spring_stiffness, middle_shock_damping, middle_ride_height, 0.0],
+		Wheel.MIDDLE_RIGHT: [half_track, 0.0, middle_spring_stiffness, middle_shock_damping, middle_ride_height, 0.0],
+		Wheel.REAR_LEFT: [-half_track, half_base, rear_spring_stiffness, rear_shock_damping, rear_ride_height, rear_steer_bias],
+		Wheel.REAR_RIGHT: [half_track, half_base, rear_spring_stiffness, rear_shock_damping, rear_ride_height, rear_steer_bias],
+	}
+	wheel_properties = {}
+	for wheel in layout:
+		var entry: Array = layout[wheel]
+		wheel_properties[wheel] = {
+			WheelProperty.POSITION: Vector3(entry[0], 0, entry[1]),
+			WheelProperty.SPRING_STIFFNESS: entry[2],
+			WheelProperty.SHOCK_DAMPING: entry[3],
+			WheelProperty.RIDE_HEIGHT: entry[4],
 			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
-			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
-			WheelProperty.STEER_BIAS: 1.0,
-			WheelProperty.INERTIA: wheel_inertia,
-			WheelProperty.GRIP: 1.0,
-		},
-		Wheel.FRONT_RIGHT: {
-			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, -wheel_base / 2.0),
-			WheelProperty.SPRING_STIFFNESS: front_spring_stiffness,
-			WheelProperty.SHOCK_DAMPING: front_shock_damping,
-			WheelProperty.RIDE_HEIGHT: front_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
-			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
-			WheelProperty.STEER_BIAS: 1.0,
-			WheelProperty.INERTIA: wheel_inertia,
-			WheelProperty.GRIP: 1.0,
-		},
-		Wheel.REAR_LEFT: {
-			WheelProperty.POSITION: Vector3(-track_width / 2.0, 0, wheel_base / 2.0),
-			WheelProperty.SPRING_STIFFNESS: rear_spring_stiffness,
-			WheelProperty.SHOCK_DAMPING: rear_shock_damping,
-			WheelProperty.RIDE_HEIGHT: rear_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
-			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
-			WheelProperty.STEER_BIAS: 0.0,
-			WheelProperty.INERTIA: wheel_inertia,
-			WheelProperty.GRIP: 1.0,
-		},
-		Wheel.REAR_RIGHT: {
-			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, wheel_base / 2.0),
-			WheelProperty.SPRING_STIFFNESS: rear_spring_stiffness,
-			WheelProperty.SHOCK_DAMPING: rear_shock_damping,
-			WheelProperty.RIDE_HEIGHT: rear_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
-			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
-			WheelProperty.STEER_BIAS: 0.0,
+			WheelProperty.MAX_STEER_ANGLE: deg_to_rad(max_steer_angle_degrees),
+			WheelProperty.STEER_BIAS: entry[5],
 			WheelProperty.INERTIA: wheel_inertia,
 			WheelProperty.GRIP: 1.0,
 		}
-	}
-	return
 
 # A wheel with no ground contact produces no load, force or ground torque.
 # Angular velocity is left alone so the wheel keeps spinning.
@@ -198,8 +166,9 @@ func get_lateral_friction(wheel: Wheel) -> float:
 
 ## `steer` is -1 (full left) .. 1 (full right).
 ## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque
-## really has to move (e.g. the share of the drivetrain for a driven wheel). Wheels
-## not in it use their own inertia.
+## really has to move (e.g. a driven wheel with its share of the drivetrain). Those wheels'
+## speeds are left to the caller's drivetrain; wheels not in it use their own inertia and
+## are spun up and down by the ground here.
 func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) -> void:
 	var origin = state.transform.origin
 	var x_basis = state.transform.basis.x
@@ -368,11 +337,13 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 
 		wheel_states[wheel][WheelState.TORQUE] = wheel_torque
 
-		wheel_states[wheel][WheelState.ANGULAR_VELOCITY] -= (
-			wheel_torque
-			/ wheel_properties[wheel][WheelProperty.INERTIA]
-			* state.step
-		)
+		# Wheels listed in wheel_inertias are driven; the robot's drivetrain integrates them
+		if not wheel_inertias.has(wheel):
+			wheel_states[wheel][WheelState.ANGULAR_VELOCITY] -= (
+				wheel_torque
+				/ wheel_properties[wheel][WheelProperty.INERTIA]
+				* state.step
+			)
 
 
 func multiplier(combined_normalized_slip: float, mu_zero: float) -> float:

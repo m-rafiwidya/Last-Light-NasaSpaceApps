@@ -43,7 +43,7 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 0
 mouse_filter = 2
-custom_minimum_size = Vector2(288, 330)
+custom_minimum_size = Vector2(288, 470)
 script = ExtResource("5_fric")
 
 [node name="Stats" type="VBoxContainer" parent="MarginContainer"]

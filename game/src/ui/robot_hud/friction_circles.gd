@@ -9,12 +9,15 @@ extends Control
 ## where the dot has been, the arc around each circle shows how much grip is in use,
 ## and the side bar shows the wheel's load relative to its static share of the weight.
 
-const WHEEL_NAMES: Array[String] = ["FL", "FR", "RL", "RR"]
+# Indexed by RunningGear.Wheel (FRONT_LEFT, FRONT_RIGHT, REAR_LEFT, REAR_RIGHT, MIDDLE_LEFT, MIDDLE_RIGHT)
+const WHEEL_NAMES: Array[String] = ["FL", "FR", "RL", "RR", "ML", "MR"]
+# Display row per wheel: front, middle, rear. Left wheels (even values) go in the left column.
+const WHEEL_ROWS: Array[int] = [0, 0, 2, 2, 1, 1]
 
 const RADIUS: float = 44.0
 const HEADER_HEIGHT: float = 26.0
 const COLUMN_X: Array[float] = [62.0, 226.0]
-const ROW_Y: Array[float] = [HEADER_HEIGHT + 40.0, HEADER_HEIGHT + 190.0]
+const ROW_Y: Array[float] = [HEADER_HEIGHT + 40.0, HEADER_HEIGHT + 180.0, HEADER_HEIGHT + 320.0]
 const TRAIL_LENGTH: int = 28
 # Dot is allowed to leave the circle a bit so over-the-limit slip is visible
 const MAX_DISPLAY_RATIO: float = 1.3
@@ -29,11 +32,11 @@ const COLOR_GUIDE := Color(1.0, 1.0, 1.0, 0.10)
 const COLOR_TEXT := Color(0.82, 0.88, 0.95, 0.9)
 const COLOR_TEXT_DIM := Color(0.82, 0.88, 0.95, 0.5)
 
-var _normalized_force: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
-var _trails: Array = [[], [], [], []]
-var _load: Array[float] = [0.0, 0.0, 0.0, 0.0]
-var _in_contact: Array[bool] = [false, false, false, false]
-var _steer_angle: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _normalized_force: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
+var _trails: Array = [[], [], [], [], [], []]
+var _load: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var _in_contact: Array[bool] = [false, false, false, false, false, false]
+var _steer_angle: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 var _local_velocity: Vector3 = Vector3.ZERO
 var _static_load: float = 1.0
 var _has_data: bool = false
@@ -80,7 +83,7 @@ func _update_data(delta: float) -> void:
 	var up: Vector3 = robot.global_basis.y.normalized()
 	var blend: float = 1.0 - exp(-SMOOTHING * delta)
 
-	_static_load = maxf(robot.mass * float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) / 4.0, 1.0)
+	_static_load = maxf(robot.mass * float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)) / float(RunningGear.Wheel.size()), 1.0)
 	_local_velocity = inverse_basis * robot.linear_velocity
 
 	for wheel in RunningGear.Wheel.values():
@@ -133,7 +136,7 @@ func _draw() -> void:
 
 func _draw_chassis(center_x: float) -> void:
 	var top: float = ROW_Y[0] - 14.0
-	var bottom: float = ROW_Y[1] + 14.0
+	var bottom: float = ROW_Y[2] + 14.0
 	var half_width: float = 26.0
 	draw_style_box(_chassis_style, Rect2(center_x - half_width, top, half_width * 2.0, bottom - top))
 
@@ -146,7 +149,7 @@ func _draw_chassis(center_x: float) -> void:
 
 	# Wheels at the chassis corners, rotated by their steering angle
 	for wheel in RunningGear.Wheel.values():
-		var pos := Vector2(center_x + (-half_width if wheel % 2 == 0 else half_width), ROW_Y[wheel / 2])
+		var pos := Vector2(center_x + (-half_width if wheel % 2 == 0 else half_width), ROW_Y[WHEEL_ROWS[wheel]])
 		var angle: float = -_steer_angle[wheel] if _has_data else 0.0
 		draw_set_transform(pos, angle, Vector2.ONE)
 		var tint: Color = _grip_color(_normalized_force[wheel].length()) if _has_data and _in_contact[wheel] else Color(1.0, 1.0, 1.0, 0.25)
@@ -165,7 +168,7 @@ func _draw_chassis(center_x: float) -> void:
 
 
 func _draw_wheel_circle(wheel: int, font: Font) -> void:
-	var center := Vector2(COLUMN_X[wheel % 2], ROW_Y[wheel / 2])
+	var center := Vector2(COLUMN_X[wheel % 2], ROW_Y[WHEEL_ROWS[wheel]])
 	var contact: bool = _in_contact[wheel]
 	var displayed: Vector2 = _normalized_force[wheel]
 	var utilisation: float = displayed.length()

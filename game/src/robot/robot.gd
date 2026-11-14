@@ -17,6 +17,8 @@ extends RigidBody3D
 @export_group("Wheel Sockets")
 @export var front_left_socket: HotswapSocket
 @export var front_right_socket: HotswapSocket
+@export var middle_left_socket: HotswapSocket
+@export var middle_right_socket: HotswapSocket
 @export var rear_left_socket: HotswapSocket
 @export var rear_right_socket: HotswapSocket
 @export_group("")
@@ -31,8 +33,8 @@ extends RigidBody3D
 @export var require_battery: bool = true
 @export_group("")
 
-# Single fixed gear, used for both forward and reverse. The engine is rigidly
-# coupled to the driven wheels (no clutch).
+# Single fixed gear between each wheel motor and its wheel, used for both forward and
+# reverse (no clutch).
 @export var gear_ratio: float = 1.0
 @export var final_drive: float = 5.0
 # Rolling resistance at the ground (N), applied through the driven wheels. It is
@@ -44,17 +46,21 @@ extends RigidBody3D
 @export var differential_inertia: float = 0.01
 
 
-const DRIVEN_WHEELS: Array = [RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT]
+# Six-wheel drive, Curiosity style
+const DRIVEN_WHEELS: Array = [
+	RunningGear.Wheel.FRONT_LEFT, RunningGear.Wheel.FRONT_RIGHT,
+	RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.MIDDLE_RIGHT,
+	RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT,
+]
 # Rolling resistance fades in over 1 / this rad/s of wheel speed so it can't
 # flip the wheel's direction at near-zero speed.
 const ROLLING_RESISTANCE_SLIP_GAIN: float = 0.5
 
-# Drivetrain state
-# Signed motor shaft speed (rad/s), positive = forward. Read by engine_sound.gd
+# Drivetrain state (one motor per driven wheel, see _step_drivetrain)
+# Average signed motor speed (rad/s) of the wheel motors, positive = forward. Read by engine_sound.gd
 var motor_angular_velocity: float = 0.0
-# Torque at the motor shaft (Nm) this step. Read by engine_sound.gd
+# Total torque (Nm) of the wheel motors this step. Read by engine_sound.gd
 var motor_torque: float = 0.0
-var differential_angular_velocity: float = 0.0
 
 var wheel_sockets: Dictionary = {}
 
@@ -79,6 +85,8 @@ func _ready() -> void:
 	wheel_sockets = {
 		RunningGear.Wheel.FRONT_LEFT: front_left_socket,
 		RunningGear.Wheel.FRONT_RIGHT: front_right_socket,
+		RunningGear.Wheel.MIDDLE_LEFT: middle_left_socket,
+		RunningGear.Wheel.MIDDLE_RIGHT: middle_right_socket,
 		RunningGear.Wheel.REAR_LEFT: rear_left_socket,
 		RunningGear.Wheel.REAR_RIGHT: rear_right_socket,
 	}
@@ -186,71 +194,72 @@ func _update_wheel_parts() -> void:
 
 
 func _integrate_forces(state) -> void:
-	_sync_driven_wheels()
 	running_gear.simulate_suspensions(state, controller.steer, _get_wheel_inertias())
 	_step_drivetrain(state.step)
 	_apply_wheel_forces(state)
 
-# Forces driven wheels to the differential speed (can be unstable at low speeds)
-func _sync_driven_wheels() -> void:
-	for wheel in DRIVEN_WHEELS:
-		running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] = differential_angular_velocity
-
-# Integrates the differential speed. The DC motor is rigidly coupled to the driven
-# wheels through the single gear, so its speed follows the wheels. The controller
-# input is the motor voltage: full input drives the motor towards its no-load
-# speed, which sets the robot's top speed, and no input lets back-EMF slow it down.
+# Six-wheel drive with a motor in every wheel, like Curiosity. Each driven wheel gets its
+# share (1 / DRIVEN_WHEELS.size()) of the RobotEngine motor behind the single gear, and
+# keeps its own speed. Driving straight the wheels turn together, which is the same as
+# one motor on a shared shaft; in a turn each wheel follows its own path instead of
+# scrubbing against the others. The controller input is the motor voltage: full input
+# drives the motors towards their no-load speed, which sets the robot's top speed, and
+# no input lets back-EMF slow them down.
 func _step_drivetrain(step: float) -> void:
 	var combined_gear_ratio: float = gear_ratio * final_drive
-
-	motor_angular_velocity = differential_angular_velocity * combined_gear_ratio
+	var share: float = 1.0 / DRIVEN_WHEELS.size()
 
 	# The battery limits the voltage: none (or empty) means no drive, a nearly empty
-	# one sags. The motor then draws energy from it in proportion to voltage * torque.
+	# one sags. The motors then draw energy from it in proportion to voltage * torque.
 	supply_voltage_factor = _get_supply_voltage_factor()
 	var voltage: float = controller.desired_speed * supply_voltage_factor
-	motor_torque = engine.get_motor_torque(motor_angular_velocity, voltage)
-	var drive_torque: float = motor_torque * combined_gear_ratio
 
-	electrical_power = engine.get_electrical_power(motor_torque, voltage)
+	motor_angular_velocity = 0.0
+	motor_torque = 0.0
+	electrical_power = 0.0
+	for wheel in DRIVEN_WHEELS:
+		var wheel_state: Dictionary = running_gear.wheel_states[wheel]
+		var wheel_speed: float = wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY]
+		var wheel_motor_speed: float = wheel_speed * combined_gear_ratio
+		var wheel_motor_torque: float = engine.get_motor_torque(wheel_motor_speed, voltage) * share
+		electrical_power += engine.get_electrical_power(wheel_motor_torque / share, voltage) * share
+		motor_angular_velocity += wheel_motor_speed * share
+		motor_torque += wheel_motor_torque
+
+		# This wheel's share of the rolling resistance, plus the tyre's reaction torque
+		var radius: float = running_gear.wheel_properties[wheel][RunningGear.WheelProperty.EFFECTIVE_RADIUS]
+		var resistance_torque: float = (
+			rolling_resistance_force * share * radius *
+			clamp(wheel_speed * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0) +
+			wheel_state[RunningGear.WheelState.TORQUE]
+		)
+		wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY] = wheel_speed + (
+			(wheel_motor_torque * combined_gear_ratio - resistance_torque)
+			/ _get_wheel_drivetrain_inertia(wheel) * step
+		)
+
 	if battery:
 		battery.drain(electrical_power * step / 3600.0)
 
-	# Resistance on the driven wheels: rolling resistance plus tyre reaction torque.
-	# The rolling resistance acts at the average radius of the mounted driven wheels.
-	var driven_wheel_resistance_torque: float = (
-		rolling_resistance_force * _get_driven_wheel_radius() *
-		clamp(differential_angular_velocity * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0)
-	)
-
-	for wheel in DRIVEN_WHEELS:
-		driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
-
-	differential_angular_velocity += (drive_torque - driven_wheel_resistance_torque) / _get_drivetrain_inertia() * step
-
-# Inertia seen at the differential/wheel speed. The transmission output shaft
-# spins at final_drive times wheel speed, so its inertia is reflected by
-# final_drive squared; the engine by the combined ratio squared. Only driven
-# wheels are coupled to the drivetrain.
-func _get_drivetrain_inertia() -> float:
+# Inertia (kg m^2) seen at one driven wheel: the wheel plus its share of the transmission,
+# differential and motor rotor. The transmission output shaft spins at final_drive times
+# wheel speed, so its inertia is reflected by final_drive squared; the rotor by the
+# combined ratio squared. Summed over the driven wheels this equals one shared drivetrain.
+func _get_wheel_drivetrain_inertia(wheel) -> float:
 	var combined_gear_ratio: float = gear_ratio * final_drive
-	var total: float = (
+	var shared: float = (
 		differential_inertia +
 		transmission_inertia * final_drive * final_drive +
 		engine.rotor_inertia * combined_gear_ratio * combined_gear_ratio
-	)
-	for wheel in DRIVEN_WHEELS:
-		total += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
-	return total
+	) / DRIVEN_WHEELS.size()
+	return shared + running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
 
-# Inertia each driven wheel's tyre torque really has to move: the whole drivetrain,
-# shared by the driven wheels. The running gear uses it to keep the tyre force
-# stable at low speed.
+# Inertia each driven wheel's tyre torque really has to move. The running gear uses it to
+# keep the tyre force stable at low speed, and leaves these wheels' speeds to the drivetrain.
 func _get_wheel_inertias() -> Dictionary:
 	var inertias: Dictionary = {}
-	var shared: float = _get_drivetrain_inertia() / DRIVEN_WHEELS.size()
 	for wheel in DRIVEN_WHEELS:
-		inertias[wheel] = shared
+		inertias[wheel] = _get_wheel_drivetrain_inertia(wheel)
 	return inertias
 
 # 0..1 multiplier on the motor voltage, from the mounted battery's charge
@@ -258,13 +267,6 @@ func _get_supply_voltage_factor() -> float:
 	if battery:
 		return battery.get_voltage_factor()
 	return 0.0 if require_battery else 1.0
-
-# Average effective radius (m) of the driven wheels, set from the mounted WheelParts
-func _get_driven_wheel_radius() -> float:
-	var total: float = 0.0
-	for wheel in DRIVEN_WHEELS:
-		total += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.EFFECTIVE_RADIUS]
-	return total / DRIVEN_WHEELS.size()
 
 # Applies suspension load and ground contact force for each wheel in contact
 func _apply_wheel_forces(state) -> void:

@@ -12,7 +12,8 @@ extends Node
 ## is mounted in the robot's motor socket, `use_motor_part()` swaps its values in;
 ## with the socket empty the built-in values are used again.
 ##
-## Sizing (for the 80 kg rover with a total ratio of 5 and 0.15 m wheels):
+## Sizing (for the 80 kg rover with a total ratio of 5, 0.15 m wheels and all six
+## wheels driven):
 ##   no_load_speed ~ (top speed / wheel radius) * total ratio, a few percent
 ##     higher because rolling resistance pulls the loaded top speed down to it.
 ##   stall_torque ~ ((mass + reflected drivetrain inertia / radius^2) * launch
