@@ -21,8 +21,12 @@ extends Node3D
 ## - Personnel door: slides open for the player; locked (red) while the bay door is open and the
 ##   curtain is on.
 ## - Rack: the rover parts on their slots, labelled; "Restock rack" lays them out again.
+## - Astronaut (tools/blender/ASTRONAUT_KIT.md): an empty suit on its stand in the operator area,
+##   and the operator seated at the console on a stool, shown only while the console drives the
+##   rover (the rover's camera can see them through the partition window). Both are static meshes.
 
 const KIT_DIR: String = "res://res/models/workshop_kit/"
+const ASTRONAUT_DIR: String = "res://res/models/astronaut_kit/"
 const PLAYER_BARRIER_LAYER: int = 8
 ## Footprint half sizes (m) and interior clear height
 const HALF_X: float = 5.0
@@ -48,6 +52,10 @@ var rack_stock: Node3D = null
 var console_trigger: InteractTrigger = null
 var door_panel_trigger: InteractTrigger = null
 var restock_trigger: InteractTrigger = null
+## The seated operator and the stool at the console, visible while the console drives the rover
+var operator: Node3D = null
+## The empty suit on its stand (its helmet on the stand's shelf)
+var suit_on_stand: Node3D = null
 var curtain: StaticBody3D = null
 ## Layout empties and part empties by name (positions in this node's frame)
 var anchors: Dictionary = {}
@@ -118,6 +126,7 @@ func _ready() -> void:
 	_build_triggers()
 	_build_labels()
 	_build_console_screen()
+	_build_astronauts()
 	if stock_rack:
 		_build_rack_stock()
 
@@ -442,6 +451,32 @@ func _build_rack_stock() -> void:
 	_stock.record(rack_stock)
 
 
+func _build_astronauts() -> void:
+	# The GLBs are modelled in the kit's frame, so they go at their anchors unrotated
+	suit_on_stand = load(ASTRONAUT_DIR + "astronaut_rack.glb").instantiate()
+	suit_on_stand.name = "SuitOnStand"
+	suit_on_stand.position = anchors["anchor_suit"]
+	add_child(suit_on_stand)
+	operator = Node3D.new()
+	operator.name = "Operator"
+	operator.position = anchors["anchor_seat"]
+	add_child(operator)
+	operator.add_child(load(KIT_DIR + "ws_stool.glb").instantiate())
+	operator.add_child(load(ASTRONAUT_DIR + "astronaut_seated.glb").instantiate())
+	# The player's camera (and helmet light) stays at the console while driving, inside the seated
+	# helmet: the operator mustn't shadow it
+	for mesh in operator.find_children("*", "GeometryInstance3D", true, false):
+		(mesh as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	operator.visible = false
+	GameState.state_changed.connect(_on_game_state_changed)
+
+
+func _on_game_state_changed(_old_state, new_state) -> void:
+	# The operator stays seated through a pause; leaving the rover (or the level) stands them up
+	if new_state != GameState.State.IN_GAME_ROBOT and new_state != GameState.State.PAUSED:
+		operator.visible = false
+
+
 # A part's mesh bounds with `basis` applied, relative to its origin (before it is in the tree)
 func _part_aabb(part: Node3D, basis: Basis) -> AABB:
 	var result := AABB()
@@ -492,6 +527,7 @@ func _on_console_interacted(player: Player) -> void:
 	if player.controller:
 		player.controller.camera_azimuth = world_yaw
 	GameState.drive(rover)
+	operator.visible = true
 
 
 func _on_door_panel_interacted(_player: Player) -> void:

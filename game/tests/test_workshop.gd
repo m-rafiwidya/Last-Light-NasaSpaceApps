@@ -10,7 +10,9 @@ extends SceneTree
 ##      docked at the zone's edge at an odd heading it still connects, under the rover's origin;
 ##      0.6 m off it doesn't, and the dock hint says where to go; with no battery it says so.
 ##   4. Console: E drives the rover and stands the player at the console; Esc brings the view back
-##      there.
+##      there. The seated operator (tools/blender/ASTRONAUT_KIT.md) shows only while the console
+##      drives the rover, through a pause too; the empty suit stands on its stand, which the player
+##      walks past and can't walk through.
 ##   5. The drive: out of the bay door (it opens; the rover touches nothing of the workshop), 12 m
 ##      out (the door closes behind it), back in along the entry lane, a U-turn and onto the pad
 ##      by steering for waypoints, stopped by braking like a driver; it must end in the dock zone,
@@ -114,6 +116,7 @@ func _run() -> void:
 		_reach_checks()
 		await _charging_checks()
 		await _console_checks()
+		await _astronaut_checks()
 		await _drive_checks()
 		await _door_checks()
 	print("RESULT %s" % ("ALL PASS" if failures == 0 else "%d CHECKS FAILED" % failures))
@@ -123,7 +126,7 @@ func _run() -> void:
 # 1 ---------------------------------------------------------------------------------------------
 func _layout_checks() -> void:
 	var parts: int = workshop.get_node("Parts").get_child_count()
-	_check("built from the kit layout", parts == 102, "%d part instances" % parts)
+	_check("built from the kit layout", parts == 103, "%d part instances" % parts)
 	var offset: Vector2 = workshop.pad.offset_of(rover)
 	_check("the rover starts in the dock zone", offset.length() <= workshop.pad.DOCK_ZONE, "%.2f m from the dock point" % offset.length())
 	var stock: Node3D = workshop.rack_stock
@@ -243,10 +246,37 @@ func _console_checks() -> void:
 	_check("console: E drives the rover", GS.state == GS.State.IN_GAME_ROBOT and GS.robot == rover and root.get_camera_3d() == rover.camera)
 	_check("console: the player stands at the console", Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length() < 0.15,
 		"%.2f m away" % Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length())
+	var seat: Vector3 = workshop.to_global(workshop.anchors["anchor_seat"])
+	_check("console: the seated operator shows while the console drives", workshop.operator.is_visible_in_tree()
+		and workshop.operator.global_position.distance_to(seat) < 0.001)
+	GS.change_state_to(GS.State.PAUSED)
+	await process_frame
+	var paused_visible: bool = workshop.operator.visible
+	GS.change_state_to(GS.State.IN_GAME_ROBOT)
+	await process_frame
+	_check("console: the operator stays seated through a pause", paused_visible and workshop.operator.visible)
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.5)
 	_check("leaving the rover: the view is back at the console", root.get_camera_3d() == player.camera
 		and Vector2(player.global_position.x - stand.x, player.global_position.z - stand.z).length() < 0.15)
+	_check("leaving the rover: the operator is gone", not workshop.operator.visible)
+
+
+func _astronaut_checks() -> void:
+	var suit: Node3D = workshop.suit_on_stand
+	var at: Vector3 = workshop.to_global(workshop.anchors["anchor_suit"])
+	_check("astronaut: the empty suit stands on its stand, the helmet on the shelf", suit.is_visible_in_tree()
+		and suit.global_position.distance_to(at) < 0.001 and suit.find_child("astronaut_helmet", true, false) != null,
+		"suit at kit %s" % _kit_of(suit.global_position).snapped(Vector3.ONE * 0.01))
+	_check("astronaut: no operator at the console while nobody drives", not workshop.operator.is_visible_in_tree())
+	# Walking along the operator area's south side, past the stand, to the east wall
+	var p: Vector3 = await _walk(Vector3(2.6, -2.6, 0.0), Vector2(1.0, 0.0), 2.0)
+	_check("astronaut: the player walks past the suit stand", p.x > 4.2 and absf(p.y + 2.6) < 0.1, "player at kit (%.2f, %.2f)" % [p.x, p.y])
+	# Straight at it: the stand stops the player in front of the suit
+	p = await _walk(Vector3(4.0, -2.2, 0.0), Vector2(0.0, -1.0), 2.0)
+	_check("astronaut: the player can't walk into the suit on its stand", p.y > -3.05 + 0.25 - 0.02, "player at kit y %.2f" % p.y)
+	GS.player.global_position = workshop.to_global(workshop.anchors["spawn_player"]) + Vector3(0.0, 0.05, 0.0)
+	await _ticks(0.5)
 
 
 # 5 ---------------------------------------------------------------------------------------------
