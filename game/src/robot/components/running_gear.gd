@@ -2,6 +2,10 @@ class_name RunningGear
 
 extends Node
 
+# Fraction of the slip one physics step may remove through the tyre force. Below 1
+# keeps the explicit wheel integration from overshooting the ground speed.
+const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
+
 @export_group("Tire Model")
 @export_subgroup("Pacejka Magic Formula")
 @export var pacejka_b: float = 0.714
@@ -16,6 +20,11 @@ extends Node
 # vehicle's weight (the tyre saturates when stiffness * slip > friction * load).
 @export var longitudinal_stiffness: float = 1250.0
 @export var cornering_stiffness: float = 1000.0
+# Below this ground speed (m/s) the slip ratio and slip angle are computed as if the
+# wheel were moving at this speed. This removes the 1/speed singularity, so near a
+# standstill the tyre acts like smooth viscous friction instead of flipping its
+# force every tick. Higher = calmer at low speed, but weaker grip there.
+@export var low_speed_threshold: float = 1.5
 
 @export_group("Chassis")
 @export var wheel_base: float = 1.0
@@ -175,7 +184,10 @@ func get_steer_angle(wheel: Wheel, steer: float) -> float:
 	)
 
 ## `steer` is -1 (full left) .. 1 (full right).
-func simulate_suspensions(state, steer: float) -> void:
+## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque
+## really has to move (e.g. the share of the drivetrain for a driven wheel). Wheels
+## not in it use their own inertia.
+func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) -> void:
 	var origin = state.transform.origin
 	var x_basis = state.transform.basis.x
 	var y_basis = state.transform.basis.y
@@ -238,25 +250,18 @@ func simulate_suspensions(state, steer: float) -> void:
 		)
 
 		var free_rolling_speed: float = contact_velocity.dot(wheel_direction)
-		var slip_ratio: float = 0.0
 
-		# Slip ratio
-		# TODO: Double check backwards logic
-		if !is_zero_approx(free_rolling_speed):
-			slip_ratio = (wheel_speed - free_rolling_speed) / abs(free_rolling_speed) # This spazzes out at low speeds
-		elif !is_zero_approx(wheel_speed):
-			slip_ratio = 2.0
-		else:
-			slip_ratio = 0.0
+		# Slip ratio. The denominator is floored so it stays finite (and smooth) at a
+		# standstill, where a spinning wheel on a stopped body used to give a hard 2.0.
+		var slip_velocity: float = wheel_speed - free_rolling_speed
+		var slip_ratio: float = slip_velocity / max(abs(free_rolling_speed), low_speed_threshold)
 
 		var velocity_longitudinal = contact_velocity.dot(wheel_direction)
 		var velocity_lateral = contact_velocity.dot(wheel_direction.rotated(y_basis, -PI/2.0))
 
-		var slip_angle_gradient: float = 2.0
-
-		# TODO: This might be a bug; I dont think this works going backwards
-		if !is_zero_approx(velocity_longitudinal):
-			slip_angle_gradient = velocity_lateral / velocity_longitudinal
+		# lateral / |longitudinal| (the same for forwards and backwards), with the
+		# denominator floored like the slip ratio. Zero speed gives zero slip angle.
+		var slip_angle_gradient: float = velocity_lateral / max(abs(velocity_longitudinal), low_speed_threshold)
 
 		var normalized_slip_ratio: float = (
 			longitudinal_stiffness *
@@ -302,21 +307,34 @@ func simulate_suspensions(state, steer: float) -> void:
 
 		var normalized_lateral_force: float = (
 			multiplier_value
-			* sign(velocity_longitudinal) #TODO: Band aid fix; figure out why this is
 			* slip_angle_gradient
 			* combined_slip_scaling_factor
 		)
-		var normalized_longitudinal_force: float = ( # This spazzes out at low speeds
+		var normalized_longitudinal_force: float = (
 			slip_ratio
 			* combined_slip_scaling_factor
 		)
 
-		var longitudinal_force: Vector3 = ( # This spazzes out at low speeds
-			wheel_direction *
+		var longitudinal_force_magnitude: float = (
 			suspension_load.dot(y_basis) *
 			longitudinal_friction_coefficient *
 			normalized_longitudinal_force
 		)
+
+		# The wheel is integrated explicitly (wheel speed -= torque / inertia * step), and
+		# the tyre force grows as 1/speed, so a light wheel overshoots the ground speed
+		# on every tick and the force flips sign (the jitter). Cap the force so a single
+		# step can at most close part of the slip, never cross it.
+		var wheel_radius_now: float = max(wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS], 0.01)
+		var wheel_inertia_now: float = wheel_inertias.get(wheel, wheel_properties[wheel][WheelProperty.INERTIA])
+		var max_longitudinal_force: float = (
+			LONGITUDINAL_STABILITY_FACTOR * wheel_inertia_now * abs(slip_velocity)
+			/ (wheel_radius_now * wheel_radius_now * max(state.step, 0.0001))
+		)
+		longitudinal_force_magnitude = clamp(
+			longitudinal_force_magnitude, -max_longitudinal_force, max_longitudinal_force
+		)
+		var longitudinal_force: Vector3 = wheel_direction * longitudinal_force_magnitude
 		var lateral_force: Vector3 = (
 			wheel_direction.rotated(y_basis, PI/2.0) *
 			suspension_load.dot(y_basis) *

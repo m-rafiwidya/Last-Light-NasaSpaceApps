@@ -186,7 +186,7 @@ func _update_wheel_parts() -> void:
 
 func _integrate_forces(state) -> void:
 	_sync_driven_wheels()
-	running_gear.simulate_suspensions(state, controller.steer)
+	running_gear.simulate_suspensions(state, controller.steer, _get_wheel_inertias())
 	_step_drivetrain(state.step)
 	_apply_wheel_forces(state)
 
@@ -222,20 +222,35 @@ func _step_drivetrain(step: float) -> void:
 		clamp(differential_angular_velocity * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0)
 	)
 
-	# Inertia seen at the differential/wheel speed. The transmission output shaft
-	# spins at final_drive times wheel speed, so its inertia is reflected by
-	# final_drive squared; the engine by the combined ratio squared. Only driven
-	# wheels are coupled to the drivetrain.
-	var total_drivetrain_inertia: float = (
+	for wheel in DRIVEN_WHEELS:
+		driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
+
+	differential_angular_velocity += (drive_torque - driven_wheel_resistance_torque) / _get_drivetrain_inertia() * step
+
+# Inertia seen at the differential/wheel speed. The transmission output shaft
+# spins at final_drive times wheel speed, so its inertia is reflected by
+# final_drive squared; the engine by the combined ratio squared. Only driven
+# wheels are coupled to the drivetrain.
+func _get_drivetrain_inertia() -> float:
+	var combined_gear_ratio: float = gear_ratio * final_drive
+	var total: float = (
 		differential_inertia +
 		transmission_inertia * final_drive * final_drive +
 		engine.rotor_inertia * combined_gear_ratio * combined_gear_ratio
 	)
 	for wheel in DRIVEN_WHEELS:
-		driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
-		total_drivetrain_inertia += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
+		total += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
+	return total
 
-	differential_angular_velocity += (drive_torque - driven_wheel_resistance_torque) / total_drivetrain_inertia * step
+# Inertia each driven wheel's tyre torque really has to move: the whole drivetrain,
+# shared by the driven wheels. The running gear uses it to keep the tyre force
+# stable at low speed.
+func _get_wheel_inertias() -> Dictionary:
+	var inertias: Dictionary = {}
+	var shared: float = _get_drivetrain_inertia() / DRIVEN_WHEELS.size()
+	for wheel in DRIVEN_WHEELS:
+		inertias[wheel] = shared
+	return inertias
 
 # 0..1 multiplier on the motor voltage, from the mounted battery's charge
 func _get_supply_voltage_factor() -> float:

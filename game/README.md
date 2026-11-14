@@ -696,6 +696,12 @@ Every physics step:
 
 There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward and `S` drives backward.
 
+**Low-speed stability (anti-jitter).** The Pacejka slip terms divide by ground speed, so they used to blow up near a standstill and the tyre force flipped sign every tick. Two fixes live in `RunningGear.simulate_suspensions`:
+- `low_speed_threshold` (default 1.5 m/s): the slip ratio and slip angle denominators are `max(abs(speed), low_speed_threshold)`. Near zero speed the tyre acts like smooth viscous friction (force proportional to slip speed), and a stationary robot gets zero tyre force with no hard-coded `2.0` slip or `sign()` hack. The lateral force no longer needs the `sign(velocity_longitudinal)` band-aid, because the slip angle is lateral / |longitudinal|.
+- Longitudinal force cap: the wheel is integrated explicitly, so a force that is too large for the wheel's inertia overshoots the ground speed and reverses. The force is clamped to `0.5 * inertia * |slip speed| / (radius^2 * step)`, so one step removes at most half the slip. For the driven wheels `Robot` passes the drivetrain inertia shared between them (`_get_wheel_inertias()`), not the wheel's own 0.03 kg m^2, since that is what the tyre torque actually has to move.
+
+Side effects: grip is slightly weaker below about 1.5 m/s, and there is still no true static friction, so a stationary robot can creep slowly on a steep slope.
+
 ### 15.3a Wheel parts and sockets (`socket/`)
 Each wheel can be a swappable `WheelPart` (`socket/wheel_part.gd`, a `HotswapPart`) mounted in a `HotswapSocket` (`socket/hotswap_socket.gd`). `Robot` has four exports (`front_left_socket`, `front_right_socket`, `rear_left_socket`, `rear_right_socket`) and builds `wheel_sockets` (wheel enum -> socket) in `_ready()`.
 
