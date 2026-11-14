@@ -13,6 +13,8 @@ extends Node
 
 signal interact(value: bool)
 signal primary(value: bool)
+## R: deploy / stow the arm (press only)
+signal arm_toggle
 
 
 ## Desired speed as a fraction of the robot's top speed. The robot uses it as the
@@ -27,6 +29,11 @@ var camera_azimuth: float = 0.0
 var camera_altitude: float = 0.0
 ## Limit (radians) of camera_altitude either way. The Robot sets it to the mast head's tilt range.
 var altitude_limit: float = PI / 2.0
+
+## Arm joint picked with 1-5 (1 = J1 yaw .. 5 = J5 tool turret)
+var arm_joint: int = 2
+## -1 (Z, lower) .. 1 (X, raise) while held, 0 otherwise
+var arm_rotate: float = 0.0
 
 var steer_speed: float = 2.0
 var desired_speed_rate: float = 2.0
@@ -71,7 +78,15 @@ func _physics_process(delta: float) -> void:
 			primary.emit(true)
 		elif Input.is_action_just_released("interact_primary"):
 			primary.emit(false)
+
+		if Input.is_action_just_pressed("arm_toggle"):
+			arm_toggle.emit()
+		for joint in range(1, 6):
+			if Input.is_action_just_pressed("arm_joint_%d" % joint):
+				arm_joint = joint
+		arm_rotate = Input.get_axis("arm_rotate_down", "arm_rotate_up")
 	else:
+		arm_rotate = 0.0
 		# While locked only let releases through; presses are ignored.
 		if Input.is_action_just_released("interact_use"):
 			interact.emit(false)

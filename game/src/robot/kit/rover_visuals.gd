@@ -13,7 +13,8 @@ extends Node3D
 ## - the steer brackets turned by each wheel's steering angle.
 ## Mounted wheel parts are moved onto their hub sockets on the linkage, and their models spin
 ## with the wheel speed. It also builds the fixed mast base and arm segments on their chassis
-## sockets and poses the arm (stowed by default), and pans / tilts the mast head from the mouse
+## sockets and drives the arm (stowed by default; R deploys / stows it, 1-5 pick a joint and
+## Z / X turn it, never into the ground), and pans / tilts the mast head from the mouse
 ## look with the rover camera riding on its pivot_camera. Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
@@ -45,6 +46,22 @@ const MAST_TILT_AXIS_HEIGHT: float = 0.10
 const PIVOT_CAMERA_FORWARD: float = 0.07
 
 const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
+# Deployed: upper arm forward, forearm angled down, turret level with the drill down
+const ARM_DEPLOYED: Dictionary = {"J1": 0.0, "J2": 0.0, "J3": -45.0, "J4": 45.0, "J5": 0.0}
+const ARM_JOINT_NAMES: Array[String] = ["J1", "J2", "J3", "J4", "J5"]
+const ARM_JOINT_LABELS: Array[String] = ["yaw", "shoulder", "elbow", "wrist", "turret"]
+# Degrees per second: all joints while deploying / stowing, the selected joint by hand
+const ARM_DEPLOY_SPEED: float = 60.0
+const ARM_JOINT_SPEED: float = 30.0
+# The arm stops before any part of it gets this close (m) to the terrain below it. While the
+# rover moves, the arm lifts itself if it would be that close ARM_LIFT_LOOKAHEAD seconds from
+# now (the arm points moved by the rover's linear and angular velocity).
+const ARM_GROUND_MARGIN: float = 0.02
+const ARM_LIFT_LOOKAHEAD: float = 0.25
+const ARM_LIFT_SPEED: float = 120.0
+# Lowest vertices per arm mesh that are checked against the terrain
+const ARM_GROUND_SAMPLES: int = 16
+const GROUND_MASK: int = 1
 
 const SIDE_WHEELS: Dictionary = {
 	"L": [RunningGear.Wheel.FRONT_LEFT, RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.REAR_LEFT],
@@ -63,6 +80,15 @@ var bogie_angles: Dictionary = {"L": 0.0, "R": 0.0}
 ## Arm joint angles in degrees (J1 yaw, J2 shoulder, J3 elbow, J4 wrist, J5 tool turret),
 ## clamped to ARM_RANGES when applied. Stowed by default.
 var arm_joints: Dictionary = ARM_STOWED.duplicate()
+## True once R has asked for the deployed pose (also while still moving there)
+var arm_deployed: bool = false
+## Pose the arm is moving to (deploy / stow), empty when it's at rest or under manual control
+var arm_target: Dictionary = {}
+## True while the last attempted step was refused because it would touch the ground
+var arm_blocked: bool = false
+var _posed_tool: HotswapPart = null
+# MeshInstance3D -> its mesh's vertex positions (local)
+var _mesh_vertices: Dictionary = {}
 # Joint name -> the arm model node it turns
 var _arm_nodes: Dictionary = {}
 
@@ -84,6 +110,7 @@ func _ready() -> void:
 		_build_side(side)
 	_build_mast_and_arm()
 	apply_arm_pose()
+	robot.controller.arm_toggle.connect(_on_arm_toggle)
 	_mast_top = find_child("socket_mast_head", true, false) as Node3D
 
 
@@ -118,6 +145,108 @@ func _model(instance: Node3D, model_name: String) -> Node3D:
 	return instance.find_child(model_name, true, false) as Node3D
 
 
+func _on_arm_toggle() -> void:
+	arm_deployed = not arm_deployed
+	arm_target = (ARM_DEPLOYED if arm_deployed else ARM_STOWED).duplicate()
+
+
+# Moves the arm one physics step: towards arm_target while deploying / stowing, else the
+# selected joint by hand (deployed only). A step that would bring the arm or tool within
+# ARM_GROUND_MARGIN of the terrain, and closer than it already is, is not taken.
+func _update_arm(delta: float) -> void:
+	var tool := _arm_tool()
+	if tool != _posed_tool:
+		if is_instance_valid(_posed_tool):
+			(_posed_tool.get_node("Model") as Node3D).rotation = Vector3.ZERO
+		_posed_tool = tool
+
+	var next: Dictionary = arm_joints.duplicate()
+	var active: bool = arm_deployed or not arm_target.is_empty()
+	var clearance_now: float = arm_ground_clearance() if active else INF
+	var clearance_ahead: float = arm_ground_clearance(ARM_LIFT_LOOKAHEAD) if active else INF
+	if clearance_ahead < ARM_GROUND_MARGIN:
+		# Terrain is coming up under the arm (the rover is driving onto something or pitching
+		# down), also mid-deploy / stow: lift the shoulder, then the elbow once the shoulder is
+		# at its limit; the deploy / stow carries on once it is clear
+		var lift: float = ARM_LIFT_SPEED * delta
+		if arm_joints["J2"] < ARM_RANGES["J2"].y:
+			next["J2"] = minf(arm_joints["J2"] + lift, ARM_RANGES["J2"].y)
+		else:
+			next["J3"] = minf(arm_joints["J3"] + lift, ARM_RANGES["J3"].y)
+	elif not arm_target.is_empty():
+		for joint in ARM_JOINT_NAMES:
+			next[joint] = move_toward(arm_joints[joint], arm_target[joint], ARM_DEPLOY_SPEED * delta)
+	elif arm_deployed and robot.controller.arm_rotate != 0.0:
+		var joint: String = ARM_JOINT_NAMES[robot.controller.arm_joint - 1]
+		var angle: float = arm_joints[joint] + robot.controller.arm_rotate * ARM_JOINT_SPEED * delta
+		next[joint] = wrapf(angle, -180.0, 180.0) if joint == "J5" else clampf(angle, ARM_RANGES[joint].x, ARM_RANGES[joint].y)
+	if next == arm_joints:
+		arm_blocked = false
+		return
+
+	var previous: Dictionary = arm_joints
+	arm_joints = next
+	apply_arm_pose()
+	var clearance_next: float = arm_ground_clearance()
+	if clearance_next < ARM_GROUND_MARGIN and clearance_next < clearance_now:
+		arm_joints = previous
+		apply_arm_pose()
+		arm_blocked = true
+		return
+	arm_blocked = false
+	if not arm_target.is_empty() and arm_joints == arm_target:
+		arm_target = {}
+
+
+func _arm_tool() -> HotswapPart:
+	var socket := robot.find_child("ArmToolSocket", true, false) as HotswapSocket
+	return socket.part if socket else null
+
+
+## Smallest height (m) of the arm's forearm, wrist and mounted tool above the terrain under
+## them: rays down from each mesh's ARM_GROUND_SAMPLES lowest vertices. Negative = inside the
+## terrain; INF with no terrain within 2 m below. With `lookahead` (s) each point is also
+## checked where the rover's motion will carry it by then.
+func arm_ground_clearance(lookahead: float = 0.0) -> float:
+	var meshes: Array = []
+	for joint in ["J3", "J4"]:
+		meshes += (_arm_nodes[joint] as Node).find_children("*", "MeshInstance3D", true, false)
+		if _arm_nodes[joint] is MeshInstance3D:
+			meshes.append(_arm_nodes[joint])
+	var tool := _arm_tool()
+	if tool:
+		meshes += tool.get_node("Model").find_children("*", "MeshInstance3D", true, false)
+	var space := get_world_3d().direct_space_state
+	var lowest: float = INF
+	var centre: Vector3 = robot.global_transform * robot.center_of_mass
+	for mesh in meshes:
+		var to_world: Transform3D = (mesh as MeshInstance3D).global_transform
+		var points: Array = _vertices(mesh).map(func(v: Vector3) -> Vector3: return to_world * v)
+		points.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.y < b.y)
+		for point in points.slice(0, ARM_GROUND_SAMPLES):
+			var checks: Array = [point]
+			if lookahead > 0.0:
+				var velocity: Vector3 = robot.linear_velocity + robot.angular_velocity.cross(point - centre)
+				checks.append(point + velocity * lookahead)
+			for p in checks:
+				var query := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 1.0, p + Vector3.DOWN * 2.0, GROUND_MASK)
+				var hit: Dictionary = space.intersect_ray(query)
+				if hit:
+					lowest = minf(lowest, p.y - (hit["position"] as Vector3).y)
+	return lowest
+
+
+func _vertices(mesh: MeshInstance3D) -> Array:
+	if not _mesh_vertices.has(mesh):
+		var unique: Dictionary = {}
+		var surfaces: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
+		for i in surfaces:
+			for v in mesh.mesh.surface_get_arrays(i)[Mesh.ARRAY_VERTEX]:
+				unique[v] = true
+		_mesh_vertices[mesh] = unique.keys()
+	return _mesh_vertices[mesh]
+
+
 ## Applies `arm_joints` (clamped to the checked ranges). Blender's X rotations map to Godot's
 ## X, the yaw (Blender Z) to Godot Y. J5 turns the tool turret, mounted in the arm tool socket.
 func apply_arm_pose() -> void:
@@ -128,6 +257,10 @@ func apply_arm_pose() -> void:
 			node.rotation = Vector3(0.0, deg_to_rad(angle), 0.0)
 		else:
 			node.rotation = Vector3(deg_to_rad(angle), 0.0, 0.0)
+	# J5 turns the mounted tool turret about its axis (Blender +Y = Godot -Z)
+	var tool := _arm_tool()
+	if tool:
+		(tool.get_node("Model") as Node3D).rotation = Vector3(0.0, 0.0, -deg_to_rad(arm_joints["J5"]))
 
 
 func _attach(model: String, parent: Node3D, position_in_parent: Vector3) -> Node3D:
@@ -152,6 +285,7 @@ func _physics_process(delta: float) -> void:
 		_pose_side(side)
 	_place_and_spin_wheels(delta)
 	_update_mast_head()
+	_update_arm(delta)
 
 
 # Angle of the vector a -> b in the robot's side (z, y) plane. Rotating about +X by t changes

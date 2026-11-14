@@ -21,9 +21,11 @@ func _process(_delta: float) -> void:
 		var looking_at = Debug.current_robot.looking_at_object
 		looking_at_prop = looking_at is InteractTrigger or looking_at is RigidBody3D
 		_update_battery_label(Debug.current_robot)
+		_update_arm_label(Debug.current_robot)
 	else:
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
+		%Arm.text = "ARM  --"
 	%Crosshair.visible = not looking_at_prop
 	%InteractCrosshair.visible = looking_at_prop
 
@@ -38,6 +40,26 @@ func _update_battery_label(robot: Robot) -> void:
 	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power]
 	# Turn red when the battery is low enough that the motor starts to sag
 	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
+
+
+func _update_arm_label(robot: Robot) -> void:
+	var visuals := robot.get_node_or_null("Visuals") as RoverVisuals
+	if visuals == null:
+		%Arm.text = "ARM  --"
+		return
+	var text: String
+	if not visuals.arm_target.is_empty():
+		text = "ARM  deploying" if visuals.arm_deployed else "ARM  stowing"
+	elif not visuals.arm_deployed:
+		text = "ARM  stowed"
+	else:
+		var index: int = robot.controller.arm_joint - 1
+		var joint: String = RoverVisuals.ARM_JOINT_NAMES[index]
+		text = "ARM  %s %s  %+.0f" % [joint, RoverVisuals.ARM_JOINT_LABELS[index], visuals.arm_joints[joint]]
+	if visuals.arm_blocked:
+		text += "  (ground)"
+	%Arm.text = text
+	%Arm.modulate = Color(1.0, 0.4, 0.3) if visuals.arm_blocked else Color.WHITE
 
 
 func fade_in():
