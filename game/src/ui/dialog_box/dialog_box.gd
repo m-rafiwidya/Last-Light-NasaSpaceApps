@@ -1,10 +1,11 @@
 extends Control
-## The root is a plain Control "slot" that the HUD's VBoxContainer lays out. The visible
-## panel lives inside it, pinned to the slot's bottom. Animating `reveal` shrinks/grows the
-## slot's height (so sibling boxes move smoothly) and squashes the panel to match.
-## The panel is not a direct child of a Container, so nothing resets its scale.
+## The root is a plain Control "slot" that the HUD's VBoxContainer lays out. The text
+## content lives inside it, pinned to the slot's bottom. Animating `reveal` shrinks/grows the
+## slot's height (so sibling boxes move smoothly) and squashes the content to match.
+## The background panel is provided by the HUD, which wraps all dialog boxes at once.
+## The content is not a direct child of a Container, so nothing resets its scale.
 
-@onready var _panel: PanelContainer = $Panel
+@onready var _content: Control = $Content
 
 ## 0 = collapsed, 1 = fully shown.
 var reveal: float = 1.0:
@@ -15,12 +16,12 @@ var reveal: float = 1.0:
 
 func _ready() -> void:
 	# The label's wrapped height can change after layout, so keep the slot in sync.
-	_panel.minimum_size_changed.connect(_apply_reveal)
+	_content.minimum_size_changed.connect(_apply_reveal)
 	_apply_reveal()
 
 
 func set_text(text: String):
-	$Panel/MarginContainer/RichTextLabel.text = text
+	$Content/RichTextLabel.text = text
 
 
 func fade_in():
@@ -49,11 +50,11 @@ func _create_tween(ease_type: Tween.EaseType) -> Tween:
 
 
 func _apply_reveal() -> void:
-	if _panel == null:
+	if _content == null:
 		return
-	# The panel is bottom-anchored, so its height is its minimum height. Using that
+	# The content is bottom-anchored, so its height is its minimum height. Using that
 	# directly avoids reading `size`, which lags a frame behind.
-	var full_height := _panel.get_combined_minimum_size().y
+	var full_height := _content.get_combined_minimum_size().y
 	custom_minimum_size.y = full_height * reveal
-	_panel.pivot_offset.y = full_height
-	_panel.scale.y = maxf(reveal, 0.001)
+	_content.pivot_offset.y = full_height
+	_content.scale.y = maxf(reveal, 0.001)

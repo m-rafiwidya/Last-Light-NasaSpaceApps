@@ -54,16 +54,20 @@ layout_mode = 2
 text = "This is a super long text ahahahahaha hahahahahaha hahahahahaha hahahahaha hahahahaha hahahaha hahahahah"
 fit_content = true
 
-[node name="DialogBoxContainer" type="VBoxContainer" parent="." unique_id=1663830133]
+[node name="DialogBoxContainer" type="PanelContainer" parent="." unique_id=1663830133]
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 320.0
-offset_top = -208.0
+offset_top = -64.0
 offset_right = -320.0
 offset_bottom = -64.0
 grow_horizontal = 2
 grow_vertical = 0
+theme = ExtResource("2_udh2q")
+
+[node name="Boxes" type="VBoxContainer" parent="DialogBoxContainer" unique_id=1663830134]
+layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 2

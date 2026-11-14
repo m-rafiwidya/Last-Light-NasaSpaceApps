@@ -20,7 +20,7 @@ func _process(_delta: float) -> void:
 func _on_dialog_played(dialog: Dialog):
 	var dialog_box: Control = dialog_box_scene.instantiate()
 	dialog_box.set_text(dialog.get_display_text())
-	$DialogBoxContainer.add_child(dialog_box)
+	$DialogBoxContainer/Boxes.add_child(dialog_box)
 	dialog_box.fade_in()
 	dialog_boxes[dialog.get_instance_id()] = dialog_box
 
