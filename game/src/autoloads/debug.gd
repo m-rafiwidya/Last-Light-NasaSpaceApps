@@ -1,5 +1,8 @@
 extends Node
 
+# Set by Car._ready()
+var current_car: Car
+
 var debug_console_output: PackedStringArray = [
 	'Debug console for "%s"' % ProjectSettings.get_setting("application/config/name", "Unnamed Project"),
 	'Game started at: %s' % Time.get_datetime_string_from_system()

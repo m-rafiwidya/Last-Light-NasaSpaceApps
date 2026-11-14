@@ -11,6 +11,7 @@ Follow the code in this order and the whole game will make sense:
 3. `src/ui/main_menu/` - the first screen the player sees.
 4. `src/autoloads/scene_loader.gd` - loads levels, spawns the player.
 5. `src/player/` - the physics-based first-person player.
+6. `src/car/` - the drivable car (currently what `SceneLoader` spawns instead of the player, see [section 15](#15-car)).
 
 Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD, pause menu, console.
 
@@ -32,6 +33,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 12. [Input map & physics layers](#12-input-map--physics-layers)
 13. [Known issues / gotchas / TODOs](#13-known-issues--gotchas--todos)
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
+15. [Car](#15-car)
 
 ---
 
@@ -44,7 +46,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Main scene | `res://src/main.tscn` |
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
-| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system |
+| Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable car (currently spawned instead of the player) |
 | Content | One level only: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) |
 | Theme | `res/theme.tres` (shared by all UI) |
 
@@ -60,6 +62,8 @@ game/
 ├── res/                     # raw assets
 │   ├── theme.tres           # global UI theme
 │   └── textures/{dev,ui}/   # dev grid textures, crosshair.svg, interaction.svg
+├── classic_muscle_car/      # car glTF model (copied from the openwheel project)
+├── engine_sound.gd          # procedural engine sound (AudioStreamGenerator), used by car.tscn
 └── src/
     ├── main.tscn / main.gd           # entry point (root "Main" node)
     ├── autoloads/
@@ -67,6 +71,11 @@ game/
     │   ├── game_state.gd             # state machine, pause, mouse mode
     │   ├── debug.gd                  # console log + command parser
     │   └── dialog_server.gd          # subtitle timing + signals
+    ├── car/
+    │   ├── car.tscn / car.gd                 # RigidBody3D vehicle sim (class Car)
+    │   ├── car_controller.gd                 # base class Controller (control_value + discrete_callbacks)
+    │   ├── player_car_controller.gd          # keyboard input -> control_value (class PlayerCarController)
+    │   └── components/                       # engine.gd/.tscn (CarEngine), running_gear.gd/.tscn (RunningGear)
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
     │   └── dialog_sequence.gd        # Resource: ordered array of Dialog
@@ -323,13 +332,21 @@ flowchart TD
 
 ### `_setup_level()` (gameplay level)
 
-Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. Then:
+Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It then spawns one of two things and finally calls `GameState.change_state_to(IN_GAME)` -> HUD appears, mouse captured.
 
+> **TEMPORARY:** `_setup_level()` currently calls `_setup_car(spawn_point)`. The `_setup_player(spawn_point)` call is commented out right below it. Swap the two lines to get the first-person player back.
+
+**`_setup_player(spawn_point)`**
 1. Creates a `PlayerController` (plain `Node`) and adds it to the level.
 2. Instantiates `player.tscn`, sets `GameState.player`, copies the spawn point's `transform`, assigns `player.controller`, adds it to the level.
-3. `GameState.change_state_to(IN_GAME)` -> HUD appears, mouse captured.
 
 The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals.
+
+**`_setup_car(spawn_point)`**
+1. Creates a `PlayerCarController` and adds it to the level.
+2. Instantiates `car.tscn` (`CAR_PACKED_SCENE`), sets `GameState.player = null`, copies the spawn point's `transform`, assigns `car.controller`, adds it to the level.
+
+Again the controller must be assigned **before** `add_child(car)`: `Car._ready()` registers its gear-shift callbacks on it and would crash on a null controller. See [section 15](#15-car).
 
 ### `_setup_main_menu()`
 
@@ -515,6 +532,14 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
+| `accelerate` / `brake` | W / S (car) |
+| `steer_left` / `steer_right` | A / D (car) |
+| `clutch` | Shift (car) |
+| `shift_up` / `shift_down` | E / Q (car) |
+| `camera` | C (car: toggle follow / bumper camera) |
+| `handbrake` | Space (car; **defined but not read by any code yet**) |
+
+The car actions were copied from the `openwheel` project and **overlap with the player's keys** (W/S/A/D, Space, Shift, E). That's harmless today because only one of car/player exists at a time, and each controller only reads its own actions.
 
 ### Collision layers (bit value in parentheses)
 
@@ -564,6 +589,19 @@ Grounded in the current code; useful to know before changing things.
 - Known TODO in code: crouch transitions can capture a transient camera transform; "friction doesn't work when walking then crouching".
 - `LEAP_SPEED`, `STEP_SIZE_*`, `JUMP_SPEED_PENALTY`, `PICKUP_TRANSLATE_KP/KD`, `PICKUP_ROTATE_KP/KD` constants are declared but unused (gains are computed inline instead).
 
+**Car** (see [section 15](#15-car) for details)
+- The car was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Controller.discrete_callbacks`, `Debug.current_car`, the nine car input actions, `classic_muscle_car/` and `engine_sound.gd` (all referenced by `car.tscn` by `res://` path), and any code that spawns it.
+- Physics settings were **not** ported: `openwheel` runs 360 physics ticks/s and gravity 20; this project uses Godot defaults (60 ticks/s, gravity 9.8). The tyre model has its own comments about "spazzing" at low speed, so expect a twitchy/floaty car until these are copied over.
+- `Engines` audio bus (used by `EngineSound`) does not exist here (no `default_bus_layout.tres`); Godot falls back to `Master`, so the engine sound loses its distortion/reverb chain.
+- `Car._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). This **ignores `GameState`'s mouse handling**, e.g. the mouse can become captured/visible incorrectly while paused or in the mission console.
+- `Car._input` and `Car._process` (camera, `camera` action) run regardless of `GameState`, so camera orbit and camera toggle still work while paused/in menus.
+- With `GameState.player = null` the HUD skips its crosshair logic, and both crosshair `TextureRect`s are visible by default, so **both crosshairs draw on top of each other** while driving. Hide them in `hud.tscn` or make `hud.gd` handle the no-player case.
+- `InteractTrigger`s and the mission console trigger can't be used while driving (they rely on the `Player` raycast).
+- `car.tscn` quirks inherited from `openwheel`: the `Model` node is `visible = false` (the car is invisible, only the collision/camera exist); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Car.controller` is typed `Controller` but is not set in the scene, so it **must** be assigned from code.
+- The car's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
+- The new `player_car_controller.gd` has no `.uid` file until Godot opens the project and generates one.
+- The `handbrake` action is declared but nothing handles it.
+
 **Repo hygiene**
 - `project.godot` `config/name` is still `"Game"` and the main menu title label reads `"New Game Project"`.
 
@@ -600,3 +638,55 @@ Add a new `match` case in `Debug.parse_command` (`autoloads/debug.gd`); use `add
 
 ### Add a new game state
 Add it to `GameState.State`, handle enter/exit side effects in `_on_state_enter` / `_on_state_exit`, then decide which UI screens it shows in `UIManager._on_game_state_changed`.
+
+### Switch between player and car
+In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_setup_car(spawn_point)`.
+
+---
+
+## 15. Car
+
+Files: `src/car/car.tscn`, `car.gd` (`class_name Car`), `car_controller.gd` (`class_name Controller`), `player_car_controller.gd` (`class_name PlayerCarController`), `components/engine.gd` (`CarEngine`), `components/running_gear.gd` (`RunningGear`). The sim was ported from the `openwheel` project, and `car.gd` is identical to the original.
+
+**Status:** `SceneLoader._setup_level()` temporarily spawns the car instead of the player (see [section 7](#7-scene-loading)). Everything else (HUD, pause, state machine) works as before.
+
+### 15.1 Design split
+Same idea as the player: the **controller** is *intent*, the **car** is *body*.
+
+- **`Controller`** (`car_controller.gd`, base class) = data only. `control_value` dictionary (`ACCELERATE`, `BRAKE`, `CLUTCH`, `STEER`, `GEAR`; values 0..1, steer -1..1) plus `discrete_callbacks` (`"shift_up"`, `"shift_down"`) which the `Car` fills with callables in `_ready()`.
+- **`PlayerCarController`** = keyboard implementation. Polls `Input` in `_physics_process`, moves each control value toward its target with `move_toward` (steer 2.0/s, throttle/brake/clutch 4.0/s), and calls the shift callbacks on `just_pressed`. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the pedals ease off and steering re-centres.
+- Because `Car` only talks to the `Controller` base class, an AI or replay controller can be dropped in.
+
+### 15.2 Scene structure (`car.tscn`, root `Car`)
+```
+Car (RigidBody3D, car.gd)  mass 800, layer 2, mask 7, COM (0,0.5,0), can_sleep=false, contact_monitor
+├── Model            glTF muscle car (currently visible = false)
+├── Engine           CarEngine: torque curve, peak 500, idle ~2000 rpm, redline 7000-7500 rpm
+├── RunningGear      RunningGear: tyre + suspension params (stiffness 40000, damping 4000, ride height 0.3)
+├── BodyCollision / CockpitCollision   CollisionPolygon3D
+├── BumperCamera     Camera3D
+├── FollowCamera     Camera3D (top_level, smoothed toward the pivot marker)
+├── FollowCameraPivot/FollowCamera   Marker3D target for the follow camera
+├── FollowCameraReset  Timer (re-aligns the follow camera behind the car after right-mouse orbit)
+└── EngineSound      AudioStreamPlayer3D + engine_sound.gd, bus "Engines"
+```
+
+### 15.3 Simulation (`Car._integrate_forces`)
+Every physics step:
+1. `_sync_driven_wheels_and_get_brake_torque`: forces the driven wheels (rear-left, rear-right) to the differential speed and sums their brake torque.
+2. `RunningGear.simulate_suspensions`: per wheel, ray-casts down (mask layer 1) from the wheel position. Computes spring + damper load, then slip ratio / slip angle and a Pacejka magic-formula tyre force (longitudinal + lateral), plus wheel torque that spins the wheel.
+3. `_step_drivetrain`: gets engine torque from `CarEngine` (torque curve, rev limiter), passes it through a clutch (capacity 621, driven by the clutch pedal) and gearbox (`gear_ratios[current_gear] * final_drive`, gear 0 = reverse, starts in gear 1), and integrates engine and differential speeds. Undriven (front) wheels are only braked.
+4. `_apply_wheel_forces`: applies suspension load at the wheel offset and tyre force at the contact point.
+
+Gears are changed with `shift_up` / `shift_down` (clamped to the `gear_ratios` array). It is a **manual gearbox with a clutch**; starting from rest needs the clutch handled and a gear selected.
+
+### 15.4 Cameras
+`Car._process` handles both: **follow** camera (6 m behind, height depends on pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `camera` action (C) toggles between them. The player's camera isn't used, so the car cameras must be `current`; the follow camera is `current` by default.
+
+### 15.5 Collision layers
+The car is on layer 2 (same layer as the player) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
+
+### 15.6 Recipe: spawn the car in a new place
+A level needs a `SpawnPoint`. The car spawns at its `transform` with the origin at the car's centre, and `RunningGear` ride height is 0.3 m, so give the marker a bit of height above the ground to avoid spawning inside it.
+
+See [section 13](#13-known-issues--gotchas--todos) ("Car") for the issues found while integrating it.

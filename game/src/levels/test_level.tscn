@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://b6i0nsumhm8x4" path="res://res/textures/dev/grey.png" id="1_br53r"]
 [ext_resource type="Texture2D" uid="uid://dt4imig118lxf" path="res://res/textures/dev/orange.png" id="2_7hvae"]
 [ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
-[ext_resource type="Resource" path="res://res/dialogs/test_sequence.tres" id="5_dlgseq"]
+[ext_resource type="Resource" uid="uid://caanilnhaye2v" path="res://res/dialogs/test_sequence.tres" id="5_dlgseq"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -176,7 +176,7 @@ environment = SubResource("Environment_br53r")
 transform = Transform3D(-0.7071068, -0.35355335, 0.6123724, 0, 0.8660254, 0.5, -0.7071067, 0.3535534, -0.6123724, 7, 4, -7)
 
 [node name="SpawnPoint" type="Marker3D" parent="." unique_id=1397337680]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 5)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=219238806]
 callback_mode_process = 0
