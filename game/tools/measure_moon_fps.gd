@@ -98,6 +98,12 @@ func _run() -> void:
 	Input.action_release("move_left")
 
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	# On foot outdoors, where the player spawned before the workshop (the spawn is inside it now),
+	# so this phase stays comparable with earlier runs
+	var outdoors := Vector3(-297.5, 0.0, 253.8)
+	GS.player.global_position = Vector3(outdoors.x, terrain.height_at(outdoors.x, outdoors.z) + 0.05, outdoors.z)
+	GS.player.linear_velocity = Vector3.ZERO
+	GS.player.controller.camera_azimuth = 0.0
 	Input.action_press("move_forward")
 	await _measure("player on foot")
 	Input.action_release("move_forward")

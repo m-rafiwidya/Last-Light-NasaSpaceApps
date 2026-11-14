@@ -56,6 +56,12 @@ wins:
 - **Frame rate** (MacBook Pro M4, 1920 x 1080, vsync off, `measure_moon_fps.gd`): standing in the
   bay facing the docked rover 148.6 fps (6.73 ms), against 164.6 fps (6.08 ms) facing the rover
   outside in the same run: +0.65 ms. p99 14.5 ms (14.6-18.1 ms in the other phases of that run).
+- **p99 frame times are not a workshop regression.** Measured back to back, three runs each,
+  alternating with the commit before the workshop (8761955): in the runs that kept the window's
+  focus the old commit's p99 was 12.5-18.0 ms against 10.1-17.3 ms now, phase for phase; the
+  README's earlier chase-camera p99 was 12-14 ms. The spread is the machine (other apps using CPU,
+  the window losing focus and being throttled to 30 fps). The tool's "on foot" phase had moved
+  inside the workshop with the spawn; it walks outdoors again from the old spawn spot.
 
 The brief overrides earlier asset plans. Its delivery contract applies to every part here:
 `.blend` source plus `.glb` export, metres, applied transforms, separately named moving pieces,
