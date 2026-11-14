@@ -1,0 +1,65 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/main_menu/menu_moon.gd" id="1_script"]
+[ext_resource type="Shader" path="res://src/ui/main_menu/menu_moon.gdshader" id="2_shader"]
+[ext_resource type="Texture2D" path="res://res/textures/moon/lroc_color_4k.jpg" id="3_albedo"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_moon"]
+render_priority = 0
+shader = ExtResource("2_shader")
+shader_parameter/albedo_map = ExtResource("3_albedo")
+shader_parameter/light_dir = Vector3(-0.5, 0.42, 0.76)
+shader_parameter/ambient = 0.1
+shader_parameter/terminator_softness = 0.15
+shader_parameter/brightness = 1.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_moon"]
+radius = 11.76
+height = 23.52
+radial_segments = 192
+rings = 96
+
+[node name="Moon" type="Control"]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1248.0
+offset_top = -1080.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("1_script")
+
+[node name="Container" type="SubViewportContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+
+[node name="Viewport" type="SubViewport" parent="Container"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+msaa_3d = 2
+size = Vector2i(1248, 1080)
+render_target_update_mode = 0
+
+[node name="Camera" type="Camera3D" parent="Container/Viewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 40)
+projection = 1
+size = 10.8
+near = 1.0
+far = 80.0
+
+[node name="Pivot" type="Node3D" parent="Container/Viewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.76, -6.6, 0)
+
+[node name="Sphere" type="MeshInstance3D" parent="Container/Viewport/Pivot"]
+mesh = SubResource("SphereMesh_moon")
+material_override = SubResource("ShaderMaterial_moon")

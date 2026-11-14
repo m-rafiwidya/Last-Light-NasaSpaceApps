@@ -6,3 +6,6 @@ tools/terrain/raw/
 
 # Private style references (other people's art): never commit
 tools/blender/reference/private/
+
+# Source rasters converted to .jpg for Godot (Moon colour map: see CREDITS.md)
+game/res/textures/moon/*.tif

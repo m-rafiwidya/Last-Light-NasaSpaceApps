@@ -97,6 +97,8 @@ func _labels(c: Dictionary) -> void:
 	_label("LabelDidYouKnow", EXO_600, 22, 0, c.text)
 	_label("LabelMono", PLEX_MONO, 12, 1, c.text_2)
 	_label("LabelMonoMedium", PLEX_MONO_500, 12, 1, c.text_2)
+	# Opening sequence's "TANDBORSTE PRESENTS" (its spacing is animated from 4 to 14)
+	_label("LabelPresents", PLEX_MONO, 13, 6, c.text_3)
 
 
 func _flat(color: Color, slant: float = 0.0, height: float = 0.0) -> StyleBoxFlat:
@@ -153,6 +155,14 @@ func _buttons(c: Dictionary) -> void:
 		_button_colors(u[0], u[3], c.text, c.disabled)
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			theme.set_stylebox(state, u[0], StyleBoxEmpty.new())
+
+	# SKIP (opening sequence, credits): small mono text, dim, lights up on hover/focus
+	_button_base("SkipButton", PLEX_MONO, 12, 4)
+	_button_colors("SkipButton", c.dim, c.text, c.disabled)
+	var skip := StyleBoxEmpty.new()
+	_margins(skip, 12, 10)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		theme.set_stylebox(state, "SkipButton", skip)
 
 	# Solid slanted buttons: [variation, font size, spacing, height, slant, h padding]
 	var solid: Array = [

@@ -2,8 +2,8 @@ extends MarginContainer
 ## Settings sub-screen. Pressing a tab button (General / Audio / Video / Controls) instantly shows
 ## that tab's list of dummy settings under the tab row. Exactly one tab is always shown
 ## (General by default); pressing the active tab again does nothing.
-## Most widgets are placeholders; the real ones are Video > Terrain Detail and Dust and Tracks
-## (GraphicsSettings) and
+## Most widgets are placeholders; the real ones are Video > Display Mode (DisplaySettings),
+## Terrain Detail and Dust and Tracks (GraphicsSettings) and
 ## Audio > Master / Music / Effects / Interface Volume (AudioSettings through AudioManager).
 ## Every button, toggle and slider plays its UI sound (ButtonSoundComponent, AudioManager).
 
@@ -68,7 +68,7 @@ func _build_audio(rows: VBoxContainer) -> void:
 
 
 func _build_video(rows: VBoxContainer) -> void:
-	_add_option(rows, "Display Mode", ["Windowed", "Fullscreen", "Borderless"])
+	_add_display_mode(rows)
 	_add_option(rows, "Resolution", ["1280x720", "1920x1080", "2560x1440", "3840x2160"])
 	_add_option(rows, "Quality Preset", ["Low", "Medium", "High", "Ultra"])
 	_add_graphics_option(rows, "Terrain Detail", GraphicsSettings.TERRAIN_DETAIL_NAMES, GraphicsSettings.get_terrain_detail(),
@@ -169,6 +169,28 @@ func _add_option(rows: VBoxContainer, label_text: String, options: Array[String]
 	row.add_child(option)
 	_add_sound(option)
 	option.item_selected.connect(func(_index: int) -> void: AudioManager.play_ui(&"click"))
+
+
+## The window mode (DisplaySettings): applied and saved at once; follows F11 / Alt+Enter and the
+## other menu's settings (main / pause), silently
+func _add_display_mode(rows: VBoxContainer) -> void:
+	var row := _make_row(rows, "Display Mode")
+	var option := OptionButton.new()
+	option.focus_mode = Control.FOCUS_NONE
+	option.custom_minimum_size.x = WIDGET_MIN_WIDTH
+	for item in DisplaySettings.MODE_NAMES:
+		option.add_item(item)
+	option.selected = DisplaySettings.get_mode()
+	option.item_selected.connect(func(index: int) -> void:
+		DisplaySettings.set_mode(index as DisplaySettings.Mode)
+		AudioManager.play_ui(&"click"))
+	row.add_child(option)
+	_add_sound(option)
+	var follow := func(mode: int) -> void:
+		if option.selected != mode:
+			option.select(mode)
+	DisplaySettings.events.mode_changed.connect(follow)
+	option.tree_exiting.connect(func() -> void: DisplaySettings.events.mode_changed.disconnect(follow))
 
 
 # A real graphics setting (GraphicsSettings, saved in user://settings.cfg), used when a level loads:

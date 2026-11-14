@@ -11,7 +11,8 @@ const MAIN_MENU_ID = "main_menu"
 const LEVEL_PATHS: Dictionary = {
 	"test_level": "res://src/levels/test_level.tscn",
 	"moon_level": "res://src/levels/moon_level.tscn",
-	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
+	# An empty level: the menu draws its own starfield and Moon (UI, own SubViewport)
+	MAIN_MENU_ID: "res://src/levels/menu_backdrop.tscn",
 }
 ## Player properties a level can set by having a property of the same name on its root
 const PLAYER_LEVEL_SETTINGS: Array[String] = ["jump_height", "ground_friction", "player_lifts_rovers"]
@@ -24,7 +25,7 @@ const PLAYABLE_LEVELS: Dictionary = {
 ## Longest wait (s) for a level's content (MoonTerrain's meshes) before starting it anyway
 const CONTENT_TIMEOUT: float = 120.0
 
-# For later to show intro like CS2
+## The main menu plays its opening sequence the first time it opens and clears this
 var is_first_main_menu_load: bool = true
 
 # Set by Game (root node)
@@ -191,17 +192,17 @@ func _setup_player(spawn_transform: Transform3D) -> void:
 
 
 func _setup_main_menu():
-	var camera = Camera3D.new()
-	camera.fov = 90.0
-
+	# A backdrop level with a CameraMarker is viewed through a camera there; the default
+	# backdrop is empty (the menu draws everything itself) and gets no camera, so the main
+	# viewport renders no 3D while the menu is up
 	var camera_marker: Marker3D = current_scene.get_node_or_null("CameraMarker")
 	if camera_marker:
+		var camera = Camera3D.new()
+		camera.fov = 90.0
 		camera.transform = camera_marker.transform
-	else:
-		push_error('No "CameraMarker" marker node found in level, using the origin.')
-	current_scene.add_child(camera)
-	# The level may contain a robot with its own cameras; make sure the menu camera wins
-	camera.make_current()
+		current_scene.add_child(camera)
+		# The level may contain a robot with its own cameras; make sure the menu camera wins
+		camera.make_current()
 
 	# Hey GameState, I finished loading, please start transition to MAIN_MENU
 	GameState.change_state_to(GameState.State.MAIN_MENU)

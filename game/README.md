@@ -50,7 +50,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); chosen on the main menu or switched from the pause menu |
+| Content | Two levels: `src/levels/test_level.tscn` and `src/levels/moon_level.tscn` (Moon: the real Apollo 12 landing site from an LROC NAC DTM with its sky and light at the EVA 2 moment); chosen on the main menu or switched from the pause menu |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -99,6 +99,7 @@ game/
     │   ├── terrain/                  # MoonTerrain (moon_terrain.gd), RockField (rock_field.gd), regolith.gdshader
     │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
     ├── settings/graphics_settings.gd # the settings that are really applied (terrain detail, dust and tracks), user://settings.cfg
+    ├── settings/display_settings.gd  # window mode (windowed / fullscreen / borderless), same file
     ├── effects/wheel_dust/           # WheelDust: the wheels' lunar dust (one GPUParticles3D per wheel), its particle and grain shaders
     ├── effects/tyre_tracks/          # TyreTracks: tyre tracks that last the session (TrackLog, TrackMap, TrackRaster, the shader include, TrackFloor)
     ├── player/
@@ -179,16 +180,16 @@ sequenceDiagram
     M->>SL: main_node = self
     M->>SL: load_scene("main_menu", no_fade_in = true)
     SL->>GS: change_state_to(LOADING)
-    GS-->>UI: state_changed -> LoadingScreen visible, other screens fade out
+    GS-->>UI: state_changed -> other screens fade out (launch: LoadingScreen stays hidden)
     SL-->>UI: request_transition(true)
-    UI->>LS: reset() (fully black immediately)
+    UI->>LS: reset() (not visible at launch)
     SL->>SL: _on_finished_fade_in() directly (no fade to wait for)
     SL->>SL: ResourceLoader.load_threaded_request(level)
     loop every frame
         SL->>SL: _process polls load_threaded_get_status
     end
     SL->>SL: _setup_scene() -> instantiate, add under Main
-    SL->>SL: _setup_main_menu() -> spawn Camera3D at CameraMarker
+    SL->>SL: _setup_main_menu() (empty backdrop: no camera)
     SL->>GS: change_state_to(MAIN_MENU)
     GS-->>UI: state_changed -> MainMenu.fade_in() (slides in)
     SL-->>UI: level_loaded
@@ -198,8 +199,9 @@ sequenceDiagram
 Key points:
 
 - `main.tscn` is just `Main (Node)` + an instance of `UIManager`. `main.gd` gives `SceneLoader` a reference to itself (`main_node`) so loaded levels get added as children of `Main`, then requests the `"main_menu"` level.
-- The first load passes `no_fade_in = true` because there is nothing to fade from; the screen is simply black until the menu is ready.
-- The **main menu backdrop is a real 3D level** (`test_level.tscn`, see `LEVEL_PATHS`) viewed through a camera placed at the level's `CameraMarker`. No player is spawned for it.
+- Launch goes black -> opening sequence with no loading screen: Godot's boot splash is plain `#050507` without an image (`application/boot_splash/*`), the main menu covers the screen with its sequence's black overlay from its `_ready()` (`OpeningSequence.cover()`), and `UIManager` keeps the `LoadingScreen` hidden for the launch's main-menu load (`_launching`, cleared when `MAIN_MENU` is first reached). Every later load (levels, Quit To Menu) shows the loading screen as before.
+- `main.gd` applies the saved window mode (`DisplaySettings.apply_saved()`) before the first load, except under tests (a script runs the `SceneTree`), which keep the window the command line asks for.
+- The main menu's "level" is **`menu_backdrop.tscn`, an empty `Node3D`** (see `LEVEL_PATHS`): the menu draws its own starfield and its 3D Moon (in its own `SubViewport`), so no camera is made and the main viewport renders no 3D while the menu is up. No player is spawned for it. (A backdrop level with a `CameraMarker` would still be viewed through a camera there.)
 
 ---
 
@@ -281,9 +283,9 @@ UIManager
    - `new == IN_GAME_PLAYER` -> `HUD.fade_in()` else `fade_out()`
    - `new == IN_GAME_ROBOT` -> `RobotHUD.fade_in()` else `fade_out()`
    - `new == MISSION_CONSOLE` -> `MissionConsole.fade_in()` else `fade_out()`
-   - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out).
+   - `LoadingScreen.visible = (new == LOADING or old == LOADING)` (so it stays visible through the `LOADING -> X` transition until `level_loaded` fades it out), except during the launch's main-menu load.
 2. **Relays SceneLoader signals to the LoadingScreen**: `request_transition(no_fade_in)` -> `reset()` (instant black) or `fade_in()`; `level_loaded` -> `fade_out()`.
-3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc).
+3. **Handles global keys** in `_process`: `console` (backtick) and `ui_cancel` (Esc); and in `_input` (before the GUI, so Alt+Enter doesn't also press the focused button): `toggle_fullscreen` (F11, Alt+Enter) -> `DisplaySettings.toggle_fullscreen()`, windowed <-> the last fullscreen kind, saved.
    - Backtick: shows/hides the `Console` popup. It does **not** change game state (the game keeps running while it is open). See [section 11](#11-debug-console).
    - Esc: `IN_GAME_PLAYER -> PAUSED`, `IN_GAME_ROBOT -> IN_GAME_PLAYER`, `PAUSED`/`MISSION_CONSOLE -> last in-game state`.
 
@@ -295,14 +297,16 @@ It also provides the shared animation helpers: `create_ui_tween()` (ease in/out 
 
 ### 6.3 Main menu (`ui/main_menu/`)
 
-- Two sub-screens inside one `CanvasLayer`: `MainMenuSubScreen` (Play Test level / Play Moon / Settings / Quit) and `SettingsSubMenu` (instance of `sub_screens/settings_sub_menu.tscn`).
-- Sub-screens "slide" horizontally by tweening `position`. Off-screen positions: main = `(-1920, 0)`, settings = `(1920, 0)`. On `_ready` both are placed off-screen; `fade_in()` slides the main sub-screen to `(0,0)`.
-- Buttons:
-  - **Play <level>** (a `LevelChoice`, one button per `SceneLoader.PLAYABLE_LEVELS` entry) -> `SceneLoader.load_scene(level_id)`
-  - **Settings** -> slides settings in; **Back** slides it out
-  - **Quit** -> `get_tree().quit()`
-- `fade_in()` resets to the main sub-screen and slides it in; `fade_out()` slides both sub-screens out.
-- Tweens come from `UIScreen.create_ui_tween()` / `slide_to()`.
+Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/`; design in `docs/ui/UI_SPEC.md`, all design sizes x 1.2).
+
+- `Background`: the static starfield (`components/starfield.gd`). It does not slide; it fades out and hides when the menu leaves.
+- `MainMenuSubScreen`: the Moon (`menu_moon.tscn`, below) and the left column at x 180: the astronaut logo (`res/ui/astronaut_logo.svg`, 7 s float loop), LAST LIGHT, then **PLAY / SETTINGS / QUIT GAME** (`UnderlineButton`s; hovering an item focuses it, so mouse and keyboard/gamepad share one highlight; up/down move between them).
+  - **PLAY** shows the playable levels under it (a `LevelChoice` with `button_scene = level_choice/level_button_v2.tscn`, one button per `SceneLoader.PLAYABLE_LEVELS` entry) -> `SceneLoader.load_scene(level_id)`. Temporary: the save popup replaces it.
+  - **SETTINGS** slides `SettingsSubMenu` (`sub_screens/settings_sub_menu.tscn`, still on the old theme) in; **Back** slides it out. **QUIT GAME** -> `get_tree().quit()`.
+- `MenuMoon` (`menu_moon.gd`): a sphere with the LROC colour map (`res/textures/moon/lroc_color_4k.jpg`) in a `SubViewport` with its own world and a transparent background, orthographic camera, unshaded shader with a fixed view-space light from the upper left and a softened terminator (`menu_moon.gdshader`; texture coordinates come from the object-space direction, so the near side faces +Z). It turns slowly by itself, can be dragged (inertia; spin resumes 1.2 s later), brightens and grows 2 % on hover, and emits `moon_clicked` on a click without drag (the planet explorer will hang off it). Only the disc takes the mouse (`_has_point`). `set_active(false)` stops the `SubViewport` rendering (`UPDATE_DISABLED`) and its `_process`: the menu does this whenever it is hidden or the settings cover it.
+- `Intro` (`opening_sequence.gd`): at launch it is shown as a black cover (`cover()`) while the menu loads; then the opening sequence, played the first time the menu opens per launch (`SceneLoader.is_first_main_menu_load`): black, TANDBORSTE PRESENTS, the Moon rises in, the astronaut drifts in, LAST LIGHT resolves from blur (a `CanvasGroup` with a mip-blur shader, `title_blur.gdshader`, switched off with its mipmaps once the title is sharp), the items slide in; about 10 s, timings from the board's `.ll-intro` CSS. Every element is a function of the sequence time, so SKIP / any key / click / gamepad button just applies the end state. Its clock is real time advanced at most 1/20 s per frame, so a first-frame hitch doesn't swallow the start, and for its first 0.5 s (under the opaque overlay) the Moon and the blurred title are drawn as if visible, so their first-use cost is paid while the screen is black. TANDBORSTE PRESENTS and LAST LIGHT are `SpacedLabel`s (`components/spaced_label.gd`): text shaped once and each letter drawn at a float offset, so their animated letter-spacing is smooth (a `FontVariation`'s `spacing_glyph` is whole pixels: every step moved the last letter by as many pixels as there are letters). F11 / Alt+Enter don't skip it. The debug console's `intro` command plays it again.
+- `fade_in()` slides the sub-screen in (or starts the opening sequence), shows the background and starts the Moon; `fade_out()` slides both sub-screens out, fades the background and stops the Moon.
+- Tests: `tests/test_main_menu.gd` (headless; windowed with `-- --shot=<dir>` it saves screenshots of the sequence, the menu and both fullscreen kinds; with `-- --measure` it prints frame times through the sequence). Measured on the M4, 1920 x 1080 window: mean 6.1 ms, p95 about 8 ms in every phase; the only frames over 20 ms (27-54 ms) are the first one or two, under the black overlay.
 
 ### 6.4 Pause menu (`ui/pause_menu/`)
 
@@ -310,7 +314,7 @@ Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect
 
 ### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
 
-Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting, except Video > Terrain Detail and Video > Dust and Tracks (`GraphicsSettings`, used at the next level load) and the audio volumes.
+Shared by main and pause menus. Layout: a tab row (General / Audio / Video / Controls), a `Pages` container (one `ScrollContainer` per tab, each holding a `Rows` VBox), and a Back button whose handler is connected by the parent menu. `settings_sub_menu.gd` builds the rows in code and switches pages via a `Tab` enum (`GENERAL`, `AUDIO`, `VIDEO`, `CONTROLS`): pressing a tab instantly shows its page under the tab row and hides the others. Exactly one page is always visible, and General is the default. All widgets (sliders, checkboxes, dropdowns, buttons) are **dummies** and are not wired to any real setting, except Video > Display Mode (`DisplaySettings`: Windowed, Fullscreen = exclusive, Borderless = borderless fullscreen window; applied at once, saved in `user://settings.cfg` section `display`, restored at launch, follows F11 / Alt+Enter; only the window mode changes, the 1920 x 1080 base and stretch settings stay), Video > Terrain Detail and Video > Dust and Tracks (`GraphicsSettings`, used at the next level load) and the audio volumes.
 
 ### 6.6 HUD (`ui/hud/`) and Robot HUD (`ui/robot_hud/`)
 
@@ -350,7 +354,7 @@ All buttons in the menus use `focus_mode = 0` (no keyboard focus).
 const LEVEL_PATHS: Dictionary = {
     "test_level": "res://src/levels/test_level.tscn",
     "moon_level": "res://src/levels/moon_level.tscn",
-    MAIN_MENU_ID: "res://src/levels/test_level.tscn",   # "main_menu"
+    MAIN_MENU_ID: "res://src/levels/menu_backdrop.tscn",   # "main_menu" (empty)
 }
 ## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
 const PLAYABLE_LEVELS: Dictionary = {"test_level": "Test level", "moon_level": "Moon"}
@@ -395,14 +399,14 @@ The controller must be assigned **before** `add_child(player)` because `Player._
 
 ### `_setup_main_menu()`
 
-Expects a **`CameraMarker`** (`Marker3D`; if missing, an error is logged and the origin is used). Creates a `Camera3D` (FOV 90) at that marker's transform, makes it current (the level contains a robot with its own camera), then sets state to `MAIN_MENU`. No player is spawned.
+If the backdrop level has a **`CameraMarker`** (`Marker3D`), creates a `Camera3D` (FOV 90) at that marker's transform and makes it current. The default backdrop (`menu_backdrop.tscn`) is empty and has none, so no camera is made. Then sets state to `MAIN_MENU`. No player is spawned.
 
 ### Level requirements checklist
 
 | Node name | Type | Needed for |
 |---|---|---|
 | `SpawnPoint` | `Marker3D` | any gameplay level |
-| `CameraMarker` | `Marker3D` | any level used as the main-menu backdrop |
+| `CameraMarker` | `Marker3D` | optional, a level used as a 3D main-menu backdrop |
 
 Content that is still being built when the level enters the tree (MoonTerrain's meshes) joins the group `loading_content` with `is_ready_to_play()` and a `content_ready` signal: `SceneLoader._setup_scene` waits for it (the loading screen stays up; at most `CONTENT_TIMEOUT`, 120 s, then it logs an error and starts anyway) before the player spawns.
 
@@ -791,8 +795,7 @@ Grounded in the current code; useful to know before changing things.
 - `GameState.State.IN_GAME_MENU`, `Player.inventory`/`active_item_index`, `viewmodel_controller`, `AudioStreamPlayer3D`, `is_rotating_held_object` are placeholders with no behaviour.
 
 **Scene loading**
-- `LEVEL_PATHS["main_menu"]` points at `test_level.tscn` (same file as the playable level) - fine for now, but a dedicated menu level is the intended direction (`is_first_main_menu_load` is reserved for an intro).
-- A failed main-menu load has nothing to fall back to and stays on the loading screen (a failed gameplay level falls back to the main menu).
+- A failed main-menu load has nothing to fall back to and stays on the loading screen, or on black at launch (a failed gameplay level falls back to the main menu).
 
 **UI**
 - The settings menu widgets (sliders, toggles, dropdowns, key-binding buttons) are dummies: they hold local state only and are not saved or applied. The selected settings tab persists while the menu stays alive (it is not reset to General on re-open), and the active tab button has no highlight yet. `ButtonSoundComponent` plays on an audio bus named `"UI"` that does not exist yet (no custom bus layout); until it is created Godot falls back to `Master`. **Planned:** a dedicated `UI` bus.

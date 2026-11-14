@@ -21,6 +21,10 @@ var _in_background: bool = false
 
 
 func _ready() -> void:
+	# The saved window mode (fullscreen or not). Not in tests (a script runs the SceneTree): they
+	# need the window as the command line opens it, whatever the player last chose
+	if get_tree().get_script() == null:
+		DisplaySettings.apply_saved()
 	SceneLoader.main_node = self
 	SceneLoader.load_scene("main_menu", true)
 

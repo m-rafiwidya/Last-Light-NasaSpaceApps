@@ -64,6 +64,18 @@ file in every capture from 2020 to 2026.
 
 Downscaled from 5400 x 2700 to 1024 x 512.
 
+## Main menu Moon
+
+`game/res/textures/moon/lroc_color_4k.jpg`: the colour map on the main menu's 3D Moon.
+
+- **CGI Moon Kit**, `lroc_color_16bit_srgb_4k.tif` (2025 colour map, 4096 x 2048), NASA's
+  Scientific Visualization Studio, from Lunar Reconnaissance Orbiter Camera
+  (LROC) WAC data, NASA/GSFC/Arizona State University, <https://svs.gsfc.nasa.gov/4720>.
+  Public domain.
+
+Converted from 16-bit to 8-bit and saved as a quality-90 JPEG (macOS `sips`), otherwise
+unchanged. The source TIFF is not committed (`.gitignore`).
+
 ## Moon terrain
 
 `game/res/terrain/moon_apollo12/`: the Moon level's ground at the Apollo 12 landing site, made by

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: switches levels the way the player does and checks nothing of the old level
 ## is left behind.
-##   1. Main menu "Play Test level". Drive the ready rover and pick up a pile part with it, Esc
+##   1. Main menu PLAY > "TEST LEVEL". Drive the ready rover and pick up a pile part with it, Esc
 ##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), "Switch to Moon".
 ##   2. On the Moon: the level's contents (the workshop; no outdoor drive trigger or pile), then
 ##      drive its rover from the workshop console with the rack's cartridge on its cargo mount, Esc out,
@@ -120,10 +120,10 @@ func _run_step():
 				return null
 			var play: Button = null
 			for button in _ui("MainMenu").find_children("*", "Button", true, false):
-				if button.text == "Play Test level":
+				if button.text == "TEST LEVEL":
 					play = button
 			var labels: Array = _ui("MainMenu").find_child("LevelChoice", true, false).get_children().map(func(b): return b.text)
-			_check("main menu offers both levels", labels == ["Play Test level", "Play Moon"], str(labels))
+			_check("main menu offers both levels", labels == ["TEST LEVEL", "MOON"], str(labels))
 			_remember_old()   # the menu backdrop
 			play.pressed.emit()
 		1:

@@ -46,6 +46,13 @@ func parse_command(input: String):
 					DialogServer.play_dialog(test_dialog)
 				else:
 					add_log("Not enough parameters!")
+			"intro":
+				# Replays the main menu's opening sequence
+				var menu: Node = get_tree().root.get_node_or_null("Main/UIManager/MainMenu")
+				if menu and GameState.state == GameState.State.MAIN_MENU:
+					menu.replay_intro()
+				else:
+					add_log("The opening sequence plays on the main menu only")
 			"fullbright":
 				var viewport = get_viewport()
 				if viewport.debug_draw != Viewport.DEBUG_DRAW_UNSHADED:
