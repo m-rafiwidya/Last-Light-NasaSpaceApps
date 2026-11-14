@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://src/ui/robot_hud/robot_hud.gd" id="1_rhud"]
 [ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://d25rgmp1s1quy" path="res://res/textures/ui/crosshair.svg" id="3_cross"]
+[ext_resource type="Texture2D" uid="uid://bm7tx5r1xr823" path="res://res/textures/ui/interaction.svg" id="4_interact"]
 
 [node name="RobotHUD" type="CanvasLayer"]
 script = ExtResource("1_rhud")
@@ -21,6 +23,20 @@ theme_override_constants/margin_top = 48
 theme_override_constants/margin_right = 48
 theme_override_constants/margin_bottom = 48
 
+[node name="CenterContainer" type="CenterContainer" parent="MarginContainer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Crosshair" type="TextureRect" parent="MarginContainer/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+texture = ExtResource("3_cross")
+
+[node name="InteractCrosshair" type="TextureRect" parent="MarginContainer/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+texture = ExtResource("4_interact")
+
 [node name="Speed" type="Label" parent="MarginContainer"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -34,4 +50,4 @@ layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 8
 theme_override_font_sizes/font_size = 24
-text = "WASD: drive   C: camera   RMB: orbit   Esc: exit robot"
+text = "WASD: drive   Mouse: look   E: pick up / drop   LMB: throw   Esc: exit robot"

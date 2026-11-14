@@ -15,7 +15,7 @@ buffer_length = 0.1
 [sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
 size = Vector3(1, 0.32641602, 1)
 
-[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("running_gear", "engine")]
+[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("running_gear", "engine", "pivot", "camera", "raycast")]
 collision_layer = 6
 collision_mask = 7
 mass = 80.0
@@ -30,6 +30,9 @@ angular_damp_mode = 1
 script = ExtResource("1_caus5")
 running_gear = NodePath("RunningGear")
 engine = NodePath("Engine")
+pivot = NodePath("Pivot")
+camera = NodePath("Pivot/Camera3D")
+raycast = NodePath("Pivot/Camera3D/RayCast3D")
 
 [node name="Engine" parent="." unique_id=1105020877 instance=ExtResource("2_y3xmu")]
 
@@ -50,18 +53,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.2)
 depth = 0.5
 polygon = PackedVector2Array(0.25, 0.3, -0.25, 0.3, -0.1, 0.6, 0.1, 0.6)
 
-[node name="BumperCamera" type="Camera3D" parent="." unique_id=1844620794]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 0.5, 0.1)
+[node name="Pivot" type="Node3D" parent="." unique_id=2031539751]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -0.2)
 
-[node name="FollowCamera" type="Camera3D" parent="." unique_id=849866000]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 2.5)
+[node name="Camera3D" type="Camera3D" parent="Pivot" unique_id=1844620794]
+fov = 90.0
+near = 0.001
+far = 500.0
 
-[node name="FollowCameraPivot" type="Node3D" parent="." unique_id=2031539751]
-
-[node name="FollowCamera" type="Marker3D" parent="FollowCameraPivot" unique_id=2009793792]
-
-[node name="FollowCameraReset" type="Timer" parent="." unique_id=1993091932]
-one_shot = true
+[node name="RayCast3D" type="RayCast3D" parent="Pivot/Camera3D" unique_id=1167366712]
+target_position = Vector3(0, 0, -3)
+collision_mask = 53
+collide_with_areas = true
 
 [node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=552406406]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.5)
@@ -73,5 +76,3 @@ volume = 0.2
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=2071253017]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17224121, 0)
 mesh = SubResource("BoxMesh_xa74p")
-
-[connection signal="timeout" from="FollowCameraReset" to="." method="_on_follow_camera_reset_timeout"]

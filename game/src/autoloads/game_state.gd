@@ -69,8 +69,7 @@ func _on_state_enter(_state: State):
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		State.IN_GAME_ROBOT:
 			last_in_game_state = _state
-			# Robot._input captures the mouse only while the right button orbits the camera
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		State.PAUSED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			pause_game()

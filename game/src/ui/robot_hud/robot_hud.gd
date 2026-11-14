@@ -12,10 +12,15 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	var looking_at_prop: bool = false
 	if is_instance_valid(Debug.current_robot):
 		%Speed.text = "SPEED  %4.1f m/s" % Debug.current_robot.linear_velocity.length()
+		var looking_at = Debug.current_robot.looking_at_object
+		looking_at_prop = looking_at is InteractTrigger or looking_at is RigidBody3D
 	else:
 		%Speed.text = "SPEED  --"
+	%Crosshair.visible = not looking_at_prop
+	%InteractCrosshair.visible = looking_at_prop
 
 
 func fade_in():

@@ -6,6 +6,12 @@ extends RigidBody3D
 @export var running_gear: RunningGear
 @export var engine: RobotEngine
 
+# First-person view, same setup as the player: yaw on the pivot, pitch on the camera,
+# and a ray from the camera that finds props to pick up.
+@export var pivot: Node3D
+@export var camera: Camera3D
+@export var raycast: RayCast3D
+
 # Single fixed gear, used for both forward and reverse. The engine is rigidly
 # coupled to the driven wheels (no clutch).
 @export var gear_ratio: float = 1.0
@@ -18,9 +24,6 @@ extends RigidBody3D
 @export var transmission_inertia: float = 0.004
 @export var differential_inertia: float = 0.01
 
-# Follow camera offset behind the robot, scaled to the robot's size
-@export var follow_camera_distance: float = 2.5
-@export var follow_camera_height: float = 0.8
 
 const DRIVEN_WHEELS: Array = [RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT]
 # Rolling resistance fades in over 1 / this rad/s of wheel speed so it can't
@@ -34,75 +37,63 @@ var motor_angular_velocity: float = 0.0
 var motor_torque: float = 0.0
 var differential_angular_velocity: float = 0.0
 
-var camera_mode: CameraMode = CameraMode.FOLLOW
-var camera_rotation: Vector3 = Vector3.ZERO
-var follow_camera_start_align: bool = true
-var camera_shake: Vector3 = Vector3.ZERO
-
-enum CameraMode{
-	FOLLOW,
-	BUMPER
-}
+# Object pickup (shared with the player, see ObjectHolder)
+var holder: ObjectHolder
+# Held object or whatever the pickup ray is aiming at (used by the robot HUD crosshair)
+var looking_at_object: Node3D = null
 
 
 func _ready() -> void:
-	$FollowCamera.set_as_top_level(true)
 	Debug.current_robot = self
 	running_gear.update_wheel_properties()
-	controller.toggle_camera.connect(_on_controller_toggle_camera)
+
+	# The robot is on the props layer, so the pickup ray must not pick up the robot itself
+	raycast.add_exception(self)
+	holder = ObjectHolder.new(self, pivot, camera)
+	controller.interact.connect(_on_controller_interact)
+	controller.primary.connect(_on_controller_primary)
+
 	GameState.state_changed.connect(_on_game_state_changed)
 
 
-# The robot's cameras only take over while it is being driven; otherwise the
+# The robot's camera only takes over while it is being driven; otherwise the
 # player's (or the main menu's) camera is the current one.
 func _on_game_state_changed(old_state, new_state) -> void:
 	if new_state == GameState.State.IN_GAME_ROBOT:
-		var active_camera: Camera3D = $FollowCamera if camera_mode == CameraMode.FOLLOW else $BumperCamera
-		active_camera.make_current()
-	elif old_state == GameState.State.IN_GAME_ROBOT and new_state == GameState.State.IN_GAME_PLAYER:
-		if is_instance_valid(GameState.player):
-			GameState.player.camera.make_current()
+		camera.make_current()
+	elif old_state == GameState.State.IN_GAME_ROBOT:
+		# Don't keep carrying a prop around while parked (PAUSED etc. keep it)
+		if new_state == GameState.State.IN_GAME_PLAYER:
+			holder.release()
+			if is_instance_valid(GameState.player):
+				GameState.player.camera.make_current()
 
 
 # Controller signals
-func _on_controller_toggle_camera(value: bool) -> void:
+func _on_controller_interact(value: bool) -> void:
 	if not value:
 		return
-	camera_mode = CameraMode.values()[(int(camera_mode) + 1) % CameraMode.size()]
-	match camera_mode:
-		CameraMode.FOLLOW:
-			$BumperCamera.current = false
-			$FollowCamera.current = true
-		CameraMode.BUMPER:
-			$FollowCamera.current = false
-			$BumperCamera.current = true
+
+	if holder.held_object:
+		holder.release()
+	elif raycast.is_colliding():
+		var collider = raycast.get_collider()
+		if collider is RigidBody3D:
+			holder.pickup(collider as RigidBody3D)
 
 
-func _input(event) -> void:
-	if GameState.state != GameState.State.IN_GAME_ROBOT:
-		return
-	if event is InputEventMouseMotion:
-		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			follow_camera_start_align = false
-			$FollowCameraReset.start()
-			camera_rotation.y += event.relative.x * -0.005
-			camera_rotation.x += event.relative.y * -0.005
-			camera_rotation.y = wrapf(camera_rotation.y, -PI, PI)
-		else:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+func _on_controller_primary(value: bool) -> void:
+	if value:
+		holder.throw()
 
-func _process(delta) -> void:
-	camera_rotation.x = clamp(camera_rotation.x, -PI/2.0, 0)
-	if follow_camera_start_align:
-		camera_rotation *= pow(32, -delta)
-	$FollowCameraPivot.rotation.y = camera_rotation.y
-	$FollowCameraPivot.rotation.x = camera_rotation.x
-	$FollowCameraPivot/FollowCamera.transform.origin = Vector3.ZERO
-	$FollowCameraPivot/FollowCamera.transform.origin.z = follow_camera_distance
-	$FollowCameraPivot/FollowCamera.transform.origin.y = follow_camera_height * (1.0 + sin(camera_rotation.x))
 
-	$FollowCamera.global_transform = $FollowCamera.global_transform.interpolate_with($FollowCameraPivot/FollowCamera.global_transform, delta * 20.0)
+func _physics_process(delta: float) -> void:
+	looking_at_object = holder.held_object if holder.held_object else raycast.get_collider()
+
+	holder.update(delta)
+
+	camera.rotation.x = controller.camera_altitude
+	pivot.rotation.y = controller.camera_azimuth
 
 
 func _integrate_forces(state) -> void:
@@ -167,6 +158,3 @@ func _apply_wheel_forces(state) -> void:
 			running_gear.wheel_states[wheel][RunningGear.WheelState.FORCE],
 			running_gear.wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT]
 		)
-
-func _on_follow_camera_reset_timeout():
-	follow_camera_start_align = true

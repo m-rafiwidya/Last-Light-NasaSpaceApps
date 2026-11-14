@@ -69,9 +69,11 @@ game/
     │   ├── game_state.gd             # state machine, pause, mouse mode
     │   ├── debug.gd                  # console log + command parser
     │   └── dialog_server.gd          # subtitle timing + signals
+    ├── object_holder/
+    │   └── object_holder.gd                  # shared pick up / hold / throw logic for the player and the robot (class ObjectHolder)
     ├── robot/
     │   ├── robot.tscn / robot.gd                 # RigidBody3D vehicle sim (class Robot)
-    │   ├── robot_controller.gd                 # keyboard input -> desired_speed/steer vars + camera signal (class RobotController)
+    │   ├── robot_controller.gd                 # keyboard + mouse input -> desired_speed/steer/look vars + interact/primary signals (class RobotController)
     │   └── components/                       # engine.gd/.tscn (RobotEngine), running_gear.gd/.tscn (RunningGear), engine_sound.gd (motor whir)
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
@@ -206,7 +208,7 @@ stateDiagram-v2
 | `MAIN_MENU` | Mouse mode `VISIBLE` | - | `MainMenu` |
 | `LOADING` | - | - | `LoadingScreen` visible |
 | `IN_GAME_PLAYER` | Mouse `CAPTURED`; remembered as `last_in_game_state` | - | `HUD` |
-| `IN_GAME_ROBOT` | Mouse `VISIBLE` (the robot captures it only while the right button orbits the camera); remembered as `last_in_game_state`; robot camera becomes current | - | `RobotHUD` |
+| `IN_GAME_ROBOT` | Mouse `CAPTURED`; remembered as `last_in_game_state`; robot camera becomes current | - | `RobotHUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
 | `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (computer-theme window with hardcoded dummy mission list, X button closes, opacity fade) |
 
@@ -352,13 +354,11 @@ Requires a node named **`SpawnPoint`** (`Marker3D`) in the level. It spawns the 
 1. Creates a `PlayerController` (plain `Node`) and adds it to the level.
 2. Instantiates `player.tscn`, sets `GameState.player`, copies the spawn point's `transform`, assigns `player.controller`, adds it to the level.
 
-The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals.
-
-The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals. `_setup_player` also makes the player's camera current, since the robot's cameras live in the level too.
+The controller must be assigned **before** `add_child(player)` because `Player._ready()` connects to its signals. `_setup_player` also makes the player's camera current, since the robot's camera lives in the level too.
 
 ### `_setup_main_menu()`
 
-Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then creates a `Camera3D` (FOV 90) at that marker's transform and makes it current (the level contains a robot with its own cameras). No player is spawned.
+Requires a **`CameraMarker`** (`Marker3D`). Sets state to `MAIN_MENU`, then creates a `Camera3D` (FOV 90) at that marker's transform and makes it current (the level contains a robot with its own camera). No player is spawned.
 
 ### Level requirements checklist
 
@@ -468,7 +468,8 @@ The raycast has `collide_with_areas = true`, mask `53` = layers 1, 3, 5, 6 (worl
 ### Holding / throwing a `RigidBody3D`
 
 - **Pick up**: stores the object's original layer/mask and orientation (relative to the camera). The object is moved to **collision layer 4 (the "held" layer)** and its mask drops the player layer, so it can't push the player around or shove them upward.
-- **While held** (`update_held_object`, every physics step): a PID-style controller applies force and torque to pull the object to a point `PICKUP_DISTANCE` = 2 m in front of the camera. Pitch is clamped so the player can't pull themselves up by looking down. Gains scale with mass (`log(mass/10 + 1)` for position, linear in mass for rotation). Integral terms (`KI`) are 0. `apply_reaction_force` (pushes the player back) is `false`.
+- **Shared code**: all of this lives in `ObjectHolder` (`src/object_holder/object_holder.gd`, a `RefCounted` created with `ObjectHolder.new(body, pivot, camera)`), used by both `Player` (`player.holder`) and `Robot` (`robot.holder`). API: `pickup(body)`, `release()`, `throw()`, `update(delta)`, `held_object`.
+- **While held** (`ObjectHolder.update`, every physics step): a PID-style controller applies force and torque to pull the object to a point `PICKUP_DISTANCE` = 2 m in front of the camera. Pitch is clamped so the holder can't pull itself up by looking down. Gains scale with mass (`log(mass/10 + 1)` for position, linear in mass for rotation). Integral terms (`KI`) are 0. `apply_reaction_force` (pushes the holder back) is `false`. A collision exception with the holder is added while held (needed for the robot, which is on the props layer).
 - **Release**: press E again; restores original layer/mask.
 - **Throw**: left click (`interact_primary`) while holding -> releases and applies an impulse along the camera forward vector, scaled with mass.
 - `secondary` (right click) only sets `is_rotating_held_object`; re-rotation isn't implemented.
@@ -540,9 +541,8 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
-| `camera` | C (robot: toggle follow / bumper camera) |
 
-The robot shares the player's movement actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering. The only robot-only action is `camera`.
+The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. It has no robot-only actions.
 
 ### Collision layers (bit value in parentheses)
 
@@ -590,31 +590,29 @@ Grounded in the current code; useful to know before changing things.
 
 **Player**
 - Known TODO in code: crouch transitions can capture a transient camera transform; "friction doesn't work when walking then crouching".
-- `LEAP_SPEED`, `STEP_SIZE_*`, `JUMP_SPEED_PENALTY`, `PICKUP_TRANSLATE_KP/KD`, `PICKUP_ROTATE_KP/KD` constants are declared but unused (gains are computed inline instead).
+- `LEAP_SPEED`, `STEP_SIZE_*`, `JUMP_SPEED_PENALTY`, constants are declared but unused (the pickup gains are computed inline in `ObjectHolder`).
 
 **Robot** (see [section 15](#15-robot) for details)
 - The robot was ported from the separate `openwheel` project and was **not wired up when it landed**. Missing pieces found and fixed: `Debug.current_robot`, the robot input actions, and level placement. The original glTF car model was dropped; the robot is currently a placeholder box mesh.
 - Physics settings were **not** ported: `openwheel` runs 360 physics ticks/s and gravity 20; this project runs 240 ticks/s (`project.godot`) with Godot's default gravity (9.8, not lunar). The tyre model has its own comments about "spazzing" at low speed, so expect some twitchiness. The robot's mass, springs, tyre stiffness and motor were tuned for 9.8 gravity; if you change gravity, they need retuning.
-- While in `IN_GAME_ROBOT`, `Robot._input` sets `Input.mouse_mode` to `VISIBLE` on every mouse motion without the right button held (and `CAPTURED` while it is). It is now gated by the state, but pausing while the right button is held can still leave the mouse captured.
-- `Robot._process` (camera orbit smoothing) still runs regardless of `GameState`; only the input side is gated.
+
 - The player is still alive (frozen, input locked) while the robot is driven, and the robot is also in the world while the player walks around (it just coasts to a stop).
 - `InteractTrigger`s can't be used while driving (they rely on the `Player` raycast); Esc is the only way out.
-- `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
+- `robot.tscn` quirks inherited from `openwheel`: the visual is just a placeholder `MeshInstance3D` box (1 x 0.33 x 1 m); `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
 
 **Camera ownership** (for future consideration)
 - Several places decide which `Camera3D` is `current`, with no single owner:
   - `SceneLoader._setup_player` makes the player's camera current, and `_setup_main_menu` does the same for the menu camera.
-  - `Robot._on_game_state_changed` makes the robot's active camera current on entering `IN_GAME_ROBOT`.
-  - `Robot._on_controller_toggle_camera` swaps follow/bumper.
+  - `Robot._on_game_state_changed` makes the robot's camera current on entering `IN_GAME_ROBOT`.
 - The robot reaches into `GameState.player.camera` to hand the view back when going `IN_GAME_ROBOT -> IN_GAME_PLAYER`, so the robot has to know about the player. If `GameState.player` is gone or stale it silently does nothing and no camera is current. Any new camera user (cutscene, map view, spectator) would need the same ad-hoc handover.
-- Correctness depends on ordering: Godot allows one current camera per viewport and `make_current()` just steals it. This is why the robot's cameras are no longer `current` in `robot.tscn` (otherwise they won the view on load), and why `_setup_main_menu` calls `make_current()` explicitly (the level contains a robot with its own cameras). Anything that adds a camera with `current = true` can break this.
+- Correctness depends on ordering: Godot allows one current camera per viewport and `make_current()` just steals it. This is why the robot's camera is not `current` in `robot.tscn` (otherwise they won the view on load), and why `_setup_main_menu` calls `make_current()` explicitly (the level contains a robot with its own camera). Anything that adds a camera with `current = true` can break this.
 - The player's `release_camera()` / `bind_camera()` helpers (see 8.7) are an unused, player-only version of the same idea. `GameState.camera` is declared but unused.
 - **Possible fix, if it starts to hurt:** a small `CameraManager` autoload with a stack of cameras.
-  - `push(camera)` makes it current and remembers the previous one; `pop(camera)` returns to the one below, skipping freed cameras; `set_active(camera)` replaces the top entry (for the robot's follow/bumper toggle).
+  - `push(camera)` makes it current and remembers the previous one; `pop(camera)` returns to the one below, skipping freed cameras; `set_active(camera)` replaces the top entry (for swapping the active view).
   - The player pushes its camera on entering `IN_GAME_PLAYER`, the robot pushes on `IN_GAME_ROBOT` and pops on exit, and `SceneLoader` pushes the menu camera. The robot and `SceneLoader` would no longer touch each other's cameras.
   - It would also be the one place to add blends between views (tween a transition `Camera3D`), replacing `release_camera` / `bind_camera` and `GameState.camera`.
-  - **Do not reparent cameras** to switch views: the robot's follow camera is `top_level` and smoothed toward a pivot marker, and the player's camera is driven by `Pivot` and the crouch tweens, so reparenting would break both for no gain over `make_current()` or a transition camera.
+  - **Do not reparent cameras** to switch views: the player's and robot's cameras are driven by their `Pivot` nodes (and the player's by the crouch tweens), so reparenting would break both for no gain over `make_current()` or a transition camera.
 - Not worth doing while the game only switches between the player and the robot; worth doing once a third camera user or view blending appears.
 
 **Repo hygiene**
@@ -669,9 +667,9 @@ Files: `src/robot/robot.tscn`, `robot.gd` (`class_name Robot`), `robot_controlle
 ### 15.1 Design split
 Same idea as the player: the **controller** is *intent*, the **robot** is *body*.
 
-- **`RobotController`** (`robot_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (-1 full reverse .. 1 full forward, 0 = no input; used by the robot as the motor voltage, so it maps to a fraction of top speed) and `steer` (-1 left .. 1 right), plus the `toggle_camera` signal (emitted with `true` on press, `false` on release). The `Robot` reads the variables directly and connects to the signal in `_ready()`.
-- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Input only counts while `GameState.state == IN_GAME_ROBOT`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the robot slows down) and steering re-centres.
-- `Robot` only uses `desired_speed`, `steer` and the signal, so an AI or replay controller exposing the same interface could be swapped in.
+- **`RobotController`** (`robot_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (-1 full reverse .. 1 full forward, 0 = no input; used by the robot as the motor voltage, so it maps to a fraction of top speed) and `steer` (-1 left .. 1 right), `camera_azimuth` / `camera_altitude` (mouse look, like `PlayerController`), plus the `interact` and `primary` signals (emitted with `true` on press, `false` on release). The `Robot` reads the variables directly and connects to the signals in `_ready()`.
+- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signals on press/release. While locked, only releases are emitted. Input only counts while `GameState.state == IN_GAME_ROBOT`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the robot slows down) and steering re-centres.
+- `Robot` only uses `desired_speed`, `steer`, the look angles and the signals, so an AI or replay controller exposing the same interface could be swapped in.
 
 ### 15.2 Scene structure (`robot.tscn`, root `Robot`)
 ```
@@ -680,10 +678,9 @@ Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7,
 ├── Engine           RobotEngine: brushed DC motor (stall torque 10.7 Nm, no-load speed 345 rad/s)
 ├── RunningGear      RunningGear: tyre + suspension params (wheelbase/track 1 m, wheel radius 0.15, spring 4000, damping 400, ride height 0.15)
 ├── BodyCollision / CockpitCollision   CollisionPolygon3D
-├── BumperCamera     Camera3D
-├── FollowCamera     Camera3D (top_level, smoothed toward the pivot marker)
-├── FollowCameraPivot/FollowCamera   Marker3D target for the follow camera
-├── FollowCameraReset  Timer (re-aligns the follow camera behind the robot after right-mouse orbit)
+├── Pivot            Node3D, yaw (at 0, 1, -0.2)
+│   └── Camera3D     first-person camera, pitch (FOV 90)
+│       └── RayCast3D  3 m pickup ray, mask 53, collides with areas
 └── EngineSound      AudioStreamPlayer3D + components/engine_sound.gd (procedural motor whir)
 ```
 
@@ -700,7 +697,11 @@ There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward
 A procedural electric-motor whir through an `AudioStreamGenerator` (22.05 kHz), generated per frame from `Robot.motor_angular_velocity` and `Robot.motor_torque`. Pitch follows motor speed (70 to 650 Hz across 0 to no-load speed), loudness follows speed plus load (silent when parked), and load adds upper harmonics and controller (PWM) whine. It also adds an inharmonic gear whine and a little noise. All of it is tunable through exports on the node (the scene sets `volume = 0.2`).
 
 ### 15.4 Cameras
-`Robot._process` handles both (the `camera` dictionary was removed; it was unused): **follow** camera (`follow_camera_distance` = 2.5 m behind, height `follow_camera_height` = 0.8 m scaled by pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME_ROBOT`. The robot's cameras are **not** `current` in the scene any more: `Robot` listens to `GameState.state_changed`, makes the active robot camera current on entering `IN_GAME_ROBOT`, and gives the camera back to `GameState.player` when going `IN_GAME_ROBOT -> IN_GAME_PLAYER`. `Robot._input` (mouse orbit / mouse mode) is ignored outside `IN_GAME_ROBOT`.
+The robot has a single **first-person camera** that looks and picks things up like the player's (the follow / bumper modes and the `camera` input action were removed). The layout mirrors the player: `Pivot` (yaw, at (0, 1, -0.2) in the robot's local space: 1 m up, ahead of the cockpit) -> `Camera3D` (pitch, FOV 90, near 0.001, far 500) -> `RayCast3D` (3 m, collides with areas, mask 53). `Robot._physics_process` sets `camera.rotation.x = controller.camera_altitude` and `pivot.rotation.y = controller.camera_azimuth`, so the view is relative to the robot body and turns with it. Mouse look is read by `RobotController._unhandled_input` (same sensitivity formula as the player) and only while `IN_GAME_ROBOT`; `GameState` captures the mouse in that state.
+
+The camera is **not** `current` in the scene: `Robot` listens to `GameState.state_changed`, makes it current on entering `IN_GAME_ROBOT`, and on `IN_GAME_ROBOT -> IN_GAME_PLAYER` drops any held prop and gives the camera back to `GameState.player`.
+
+**Pickup** is identical to the player's, since both use the shared `ObjectHolder` (`src/object_holder/object_holder.gd`, section 9): `E` (`interact_use`) picks up the `RigidBody3D` under the crosshair or drops the held one, left click (`interact_primary`) throws it. `RobotController` exposes these as `interact` / `primary` signals. The robot is on the props layer, so the ray ignores the robot itself (`raycast.add_exception`) and a held prop gets a collision exception with the robot. `InteractTrigger`s are not usable from the robot. `Robot.looking_at_object` feeds the crosshair in `RobotHUD`.
 
 ### 15.5 Collision layers
 The robot is on layers 2 and 3 (collision_layer 6) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.

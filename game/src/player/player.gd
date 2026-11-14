@@ -22,14 +22,6 @@ const JUMP_SPEED_PENALTY: float = 0.5
 const STEP_SIZE_WALK: float = 0.6
 const STEP_SIZE_SPRINT: float = 1.0
 
-# Object pickup constants
-const PICKUP_DISTANCE: float = 2.0
-const PICKUP_TRANSLATE_KP: float = 1600.0
-const PICKUP_TRANSLATE_KI: float = 0.0
-const PICKUP_TRANSLATE_KD: float = 144.0
-const PICKUP_ROTATE_KP: float = 100.0
-const PICKUP_ROTATE_KI: float = 0.0
-const PICKUP_ROTATE_KD: float = 10.0
 
 # Node references
 @export var pivot: Node3D
@@ -38,15 +30,12 @@ const PICKUP_ROTATE_KD: float = 10.0
 @export var viewmodel_controller: Node3D
 @export var controller: PlayerController
 
-# Object pickup variables
+# Object pickup (shared with the robot, see ObjectHolder)
 var looking_at_object: Node3D = null
-var held_object: RigidBody3D = null
-var held_object_original_layer: int = 0
-var held_object_original_mask: int = 0
-var held_object_original_orientation: Quaternion = Quaternion.IDENTITY
-var pickup_translation_integral: Vector3 = Vector3.ZERO
-var pickup_angular_integral: Vector3 = Vector3.ZERO
-var apply_reaction_force: bool = false
+var holder: ObjectHolder
+var held_object: RigidBody3D:
+	get:
+		return holder.held_object if holder else null
 
 
 var is_on_floor: bool = false
@@ -128,91 +117,6 @@ func release_camera(new_transform, fov=90.0):
 	camera_tween.tween_property(camera, "fov", fov, CROUCH_TIME)
 
 
-# Object pickup
-func pickup_object(object: RigidBody3D) -> void:
-	held_object = object
-
-	held_object_original_layer = held_object.collision_layer
-	held_object_original_mask = held_object.collision_mask
-	held_object_original_orientation = camera.global_transform.basis.inverse().get_rotation_quaternion() * object.global_transform.basis.get_rotation_quaternion()
-
-	var held_layer = 4
-	var player_layer = 2
-
-	# Put held object on its own layer
-	held_object.collision_layer = 1 << (held_layer - 1)
-
-	# Exclude player collision
-	held_object.collision_mask &= ~(1 << (player_layer - 1))
-
-	pickup_translation_integral = Vector3.ZERO
-	pickup_angular_integral = Vector3.ZERO
-
-	#viewmodel_controller.set_holstered(true)
-
-
-func update_held_object(delta: float) -> void:
-	if held_object:
-		# Calculate target position in front of camera
-		# Limit angle so player can't pull themselves up by the bootstraps
-		var clamped_camera_basis: Basis = Basis.IDENTITY.rotated(
-			Vector3.RIGHT,
-			clamp(camera.rotation.x, -PI/2.0 + 60.0/180.0*PI, PI/2.0)
-		)
-		clamped_camera_basis = pivot.global_transform.basis * clamped_camera_basis
-		var target_pos: Vector3 = (
-			camera.global_position - clamped_camera_basis.z * PICKUP_DISTANCE
-		)
-
-		# Translation PID
-		var translation_error: Vector3 = target_pos - held_object.global_position
-		pickup_translation_integral += translation_error * delta
-		var translation_derivative: Vector3 = -held_object.linear_velocity
-
-		var pickup_translate_kp = 10.0 * log(held_object.mass / 10.0 + 1.0) * 100.0
-		var pickup_translate_kd = 10.0 * log(held_object.mass / 10.0 + 1.0) * 10.0
-
-		var force: Vector3 = (
-			translation_error * pickup_translate_kp + pickup_translation_integral * PICKUP_TRANSLATE_KI + translation_derivative * pickup_translate_kd
-		)
-
-		held_object.apply_central_force(force)
-		if apply_reaction_force: # Push back player
-			apply_central_force(-force)
-
-		# Angular PID
-		var current_quat: Quaternion = held_object.global_transform.basis.get_rotation_quaternion()
-		var target_quat: Quaternion = clamped_camera_basis.get_rotation_quaternion() * held_object_original_orientation
-		var error_quat: Quaternion = target_quat * current_quat.inverse()
-		error_quat = error_quat.normalized()
-		if error_quat.w < 0:
-			error_quat = -error_quat
-
-		var error_angle_axis: Vector3 = error_quat.get_angle() * error_quat.get_axis()
-		pickup_angular_integral += error_angle_axis * delta
-		var derivative_angular: Vector3 = -held_object.angular_velocity
-
-		var pickup_rotate_kp = held_object.mass * 10.0
-		var pickup_rotate_kd = held_object.mass * 1.0
-
-		var torque: Vector3 = (
-			error_angle_axis * pickup_rotate_kp + pickup_angular_integral * PICKUP_ROTATE_KI + derivative_angular * pickup_rotate_kd
-		)
-
-		held_object.apply_torque(torque)
-
-
-func release_object() -> void:
-	if held_object:
-		held_object.collision_layer = held_object_original_layer
-		held_object.collision_mask = held_object_original_mask
-
-		held_object = null
-		pickup_translation_integral = Vector3.ZERO
-		pickup_angular_integral = Vector3.ZERO
-
-		#viewmodel_controller.set_holstered(false)
-
 
 func set_crouch(value: bool) -> void:
 	var shape: CapsuleShape3D = $CollisionShape3D.shape
@@ -237,6 +141,7 @@ func set_crouch(value: bool) -> void:
 
 
 func _ready() -> void:
+	holder = ObjectHolder.new(self, pivot, camera)
 	controller.crouch.connect(_on_controller_crouch)
 	controller.interact.connect(_on_controller_interact)
 	controller.primary.connect(_on_controller_primary)
@@ -256,11 +161,11 @@ func _on_controller_interact(value: bool) -> void:
 		return
 	
 	if held_object:
-		release_object()
+		holder.release()
 	elif raycast.is_colliding():
 		var collider = raycast.get_collider()
 		if collider is RigidBody3D:
-			pickup_object(raycast.get_collider() as RigidBody3D)
+			holder.pickup(collider as RigidBody3D)
 		elif collider is InteractTrigger:
 			collider.interact(self)
 
@@ -269,13 +174,7 @@ func _on_controller_primary(value: bool) -> void:
 	if not value:
 		return
 	
-	if held_object:
-		var thrown_object = held_object
-		release_object()
-		# TODO: Properly tune this
-		var throw_force: float = 10.0 * log(thrown_object.mass / 10.0 + 1.0) * 20.0
-		var throw_direction: Vector3 = -camera.global_transform.basis.z
-		thrown_object.apply_central_impulse(throw_direction * throw_force)
+	holder.throw()
 
 
 func _on_controller_secondary(value: bool) -> void:
@@ -388,7 +287,7 @@ var crouch_check_was_colliding: bool = false
 func _physics_process(delta: float) -> void:
 	looking_at_object = held_object if held_object else raycast.get_collider()
 	
-	update_held_object(delta)
+	holder.update(delta)
 	
 	# Update rotation and viewmodel lag
 	var prev_altitude = camera.rotation.x
