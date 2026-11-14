@@ -104,7 +104,7 @@ func _run() -> void:
 	workshop = level.get_node("Workshop")
 	rover = level.get_node("ReadyRover")
 	iris = level.get_node("Iris")
-	panel = level.get_node("IrisPanelPlaceholder")
+	panel = level.get_node("Iris/ServicePanel")
 	director = level.get_node("MissionDirector")
 	console = root.get_node("Main").find_child("MissionConsole", true, false)
 	hint = root.get_node("Main").find_child("MissionHint", true, false)

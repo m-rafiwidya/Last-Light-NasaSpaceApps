@@ -216,8 +216,11 @@ func _refresh_highlight() -> void:
 	target = resolve(step.get("target", ""))
 	if target == null:
 		return
+	var glow_root := target.get("highlight_node") as Node3D
+	if not is_instance_valid(glow_root):
+		glow_root = target
 	var meshes: Array[GeometryInstance3D] = []
-	for node in target.find_children("*", "GeometryInstance3D", true, false):
+	for node in glow_root.find_children("*", "GeometryInstance3D", true, false):
 		var mesh := node as GeometryInstance3D
 		if mesh.is_visible_in_tree() and not mesh is Label3D and mesh.material_overlay == null:
 			meshes.append(mesh)
