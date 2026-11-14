@@ -5,7 +5,7 @@
 
 [node name="ThermalHeaterPart" instance=ExtResource("1_base")]
 mass = 0.6
-part_type = 6
+part_type = 7
 catalog_id = "thermal_heater"
 tint_material = &"rover_dark"
 

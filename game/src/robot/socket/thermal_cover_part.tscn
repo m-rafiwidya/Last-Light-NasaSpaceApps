@@ -5,7 +5,7 @@
 
 [node name="ThermalCoverPart" instance=ExtResource("1_base")]
 mass = 0.9
-part_type = 6
+part_type = 7
 catalog_id = "thermal_cover"
 tint_material = &"rover_gold"
 

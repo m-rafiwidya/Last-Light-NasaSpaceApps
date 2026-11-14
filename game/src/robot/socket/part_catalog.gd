@@ -86,18 +86,18 @@ const ENTRIES: Dictionary = {
 	"thermal_cover": {
 		"name": "Thermal cover",
 		"description": "Insulating blanket for the electronics bay: slows heat loss in shade. 0.9 kg, no power.",
-		"mounts": "Lies on the deck's right rear, beside the antenna; stored on the sample bench",
+		"mounts": "Mounts on the deck's right rear, beside the antenna; stored on the sample bench",
 	},
 	"thermal_heater": {
 		"name": "Heater",
 		"description": "Keeps the electronics bay warm under the thermal cover. 0.6 kg, 12 W while on.",
-		"mounts": "Sits on the deck in front of the thermal cover; stored on the sample bench",
+		"mounts": "Mounts on the deck in front of the thermal cover; stored on the sample bench",
 	},
 }
 
 ## Default catalog entry per HotswapPart.PartType (by value: WHEEL, MOTOR, BATTERY, MAST_HEAD,
-## ARM_TOOL, ANTENNA, CARGO)
-const TYPE_DEFAULTS: Array[String] = ["wheel", "motor", "battery", "mast_head", "arm_tool", "antenna", "cartridge"]
+## ARM_TOOL, ANTENNA, CARGO, THERMAL)
+const TYPE_DEFAULTS: Array[String] = ["wheel", "motor", "battery", "mast_head", "arm_tool", "antenna", "cartridge", "thermal_cover"]
 
 const UNKNOWN: Dictionary = {"name": "Part", "description": "", "mounts": ""}
 

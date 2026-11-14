@@ -463,5 +463,6 @@ Swappable variants keep to their slot's budget.
 - **`field_logger`**: cargo like the cartridge, at `socket_cargo_item`, in the module cradle.
 - **Thermal kit**: `thermal_cover` (origin (0.1225, -0.02, 0.44)) and `thermal_heater` ((0.12, 0.225,
   0.44)) on the deck's right rear, between the mast, the antenna, the low-gain antenna and the cargo
-  mount; no chassis empties or sockets yet. 174 + 98 triangles (budgets 250, 150), outside the
+  mount. `PartType.THERMAL`; sockets `ThermalCoverSocket` and `HeaterSocket` in `robot.tscn` sit at
+  these origins (no chassis empties), each limited to its part by `accepted_catalog_id`. 174 + 98 triangles (budgets 250, 150), outside the
   8,000 rover budget's fixed parts (they're optional add-ons). Clearances: ASSET_PLAN.md A17.

@@ -6,7 +6,8 @@ extends SceneTree
 ##      bench holds the sampling kit on its tray and the thermal kit on its low shelf. M3 parts
 ##      (make_m3_kit.py): both tool turrets on the rack, the thermal one with its reading point;
 ##      catalog entries, masses and types; the far logger's two handwritten labels (Caveat, pen
-##      blue, one on top facing up, one underneath facing down, each fitting its plate).
+##      blue, one on top facing up, one underneath facing down, each fitting its plate); the thermal
+##      kit's two deck sockets take only their own part (not the cargo mount) and seat it on the deck.
 ##   2. Reach: from where the player stands (console, between the rover and the rack, the
 ##      charger), a ray from the eye reaches the console, the restock button, rack parts, the
 ##      rover's battery socket and the charger within 3 m, nothing in the way.
@@ -220,7 +221,7 @@ func _m3_part_checks(stock: Node3D) -> void:
 		and thermal[0].find_child("pivot_reading_aim", true, false) != null, "%d turret(s), %d thermal" % [turrets.size(), thermal.size()])
 	var ok := true
 	var detail := ""
-	for item in [["arm_tool_thermal_part", 5.3, 4], ["field_logger_part", 1.6, 6], ["thermal_cover_part", 0.9, 6], ["thermal_heater_part", 0.6, 6]]:
+	for item in [["arm_tool_thermal_part", 5.3, 4], ["field_logger_part", 1.6, 6], ["thermal_cover_part", 0.9, 7], ["thermal_heater_part", 0.6, 7]]:
 		var part: RigidBody3D = load("res://src/robot/socket/%s.tscn" % item[0]).instantiate()
 		ok = ok and absf(part.mass - item[1]) < 0.001 and part.part_type == item[2] and part.get_display_name() != "Part" \
 			and not part.get_description().is_empty()
@@ -253,6 +254,40 @@ func _m3_part_checks(stock: Node3D) -> void:
 			room.x * 1000, room.y * 1000, facing, off * 1000]
 	logger.queue_free()
 	_check("the far logger's two labels: Caveat in pen blue, on top facing up and underneath facing down, each fits its plate", ok, detail)
+	# The thermal kit's deck sockets (THERMAL type, one catalog entry each): each takes only its own part,
+	# the cargo mount neither; mounted, each sits at its origin on the deck (rover frame, ROVER_KIT.md 10)
+	var sockets: Dictionary = {"thermal_cover": [rover.find_child("ThermalCoverSocket", true, false), Vector3(0.1225, 0.44, 0.02)],
+		"thermal_heater": [rover.find_child("HeaterSocket", true, false), Vector3(0.12, 0.44, -0.225)]}
+	var cargo_socket = rover.find_child("CargoSocket", true, false)
+	var kit_parts: Dictionary = {}
+	for id in sockets:
+		var part: RigidBody3D = load("res://src/robot/socket/%s_part.tscn" % id).instantiate()
+		part.freeze = true
+		rover.get_parent().add_child(part)
+		part.global_position = rover.global_position + Vector3(0.0, 20.0, 0.0)
+		kit_parts[id] = part
+	ok = sockets.values().all(func(entry): return entry[0] != null) and cargo_socket != null
+	detail = ""
+	if ok:
+		var other: Dictionary = {"thermal_cover": "thermal_heater", "thermal_heater": "thermal_cover"}
+		for id in sockets:
+			var socket = sockets[id][0]
+			ok = ok and socket.can_accept(kit_parts[id]) and not socket.can_accept(kit_parts[other[id]]) and not cargo_socket.can_accept(kit_parts[id]) \
+				and kit_parts[id].part_type == 7
+		for id in sockets:
+			var socket = sockets[id][0]
+			socket.mount(kit_parts[id])
+			var off: float = (rover.to_local(kit_parts[id].global_position) - sockets[id][1]).length()
+			var bottom: float = INF
+			for mesh in kit_parts[id].find_children("*", "MeshInstance3D", true, false):
+				var box: AABB = rover.global_transform.affine_inverse() * (mesh as Node3D).global_transform * (mesh as MeshInstance3D).get_aabb()
+				bottom = minf(bottom, box.position.y)
+			ok = ok and socket.part == kit_parts[id] and off < 0.001 and absf(bottom - 0.44) < 0.002
+			detail += " %s: %.1f mm off its origin, bottom at %.3f m;" % [id, off * 1000.0, bottom]
+			socket.unmount()
+	for part in kit_parts.values():
+		part.queue_free()
+	_check("thermal sockets: the cover's and the heater's each take only their own part, the cargo mount neither; mounted, on the deck", ok, detail)
 
 
 # 2 ---------------------------------------------------------------------------------------------

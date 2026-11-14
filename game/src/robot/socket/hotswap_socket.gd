@@ -18,6 +18,9 @@ signal part_refused(part: HotswapPart)
 ## When false only parts of `accepted_type` are mounted
 @export var accepts_any_type: bool = true
 @export var accepted_type: HotswapPart.PartType = HotswapPart.PartType.WHEEL
+## When set, only the part with this catalog entry is mounted (one part type, several spots: the
+## thermal cover's socket takes the cover, not the heater)
+@export var accepted_catalog_id: String = ""
 ## Where a mounted part's origin goes, relative to the socket. Kit parts have their origin
 ## at their connector, so their sockets use zero (ROVER_KIT.md 4).
 @export var mount_offset: Vector3 = Vector3(0.0, 0.1, 0.0)
@@ -87,7 +90,9 @@ func get_trigger() -> InteractTrigger:
 
 ## What goes in this socket, for the tooltip of an empty socket
 func get_accepted_name() -> String:
-	return "Any part" if accepts_any_type else PartCatalog.type_name(accepted_type)
+	if accepts_any_type:
+		return "Any part"
+	return PartCatalog.entry(accepted_catalog_id)["name"] if accepted_catalog_id else PartCatalog.type_name(accepted_type)
 
 
 func is_occupied() -> bool:
@@ -101,7 +106,8 @@ func can_accept(candidate: HotswapPart) -> bool:
 
 
 func accepts_type(candidate: HotswapPart) -> bool:
-	return accepts_any_type or candidate.part_type == accepted_type
+	return accepts_any_type or (candidate.part_type == accepted_type
+		and (accepted_catalog_id.is_empty() or candidate.get_catalog_id() == accepted_catalog_id))
 
 
 func mount(new_part: HotswapPart) -> void:
