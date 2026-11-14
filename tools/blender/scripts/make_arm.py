@@ -62,7 +62,10 @@ RANGES = {
     "J3": (-90.0, 90.0),
     "J4": (-110.0, 110.0),
 }
-STOWED = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
+# Stowed lifts the turret 57 mm over a loaded cargo mount (ROVER_KIT.md 9); the old stowed pose is
+# the latch pose, where the turret hub's end meets a cargo part's top face on the mount
+STOWED = {"J1": 0.0, "J2": 90.0, "J3": 80.0, "J4": 100.0, "J5": 0.0}
+LATCH = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 REACH_DOWN = {"J1": 0.0, "J2": -10.0, "J3": -41.0, "J4": 51.0, "J5": 0.0}
 REST = {"J1": 0.0, "J2": 0.0, "J3": 0.0, "J4": 0.0, "J5": 0.0}
 
@@ -247,6 +250,8 @@ def make_parts() -> dict:
     tool = kit.mesh_object("arm_tool", build_tool(), [kit.get_material("rover_metal"), kit.get_material("rover_dark")])
     tool.location = TOOL
     kit.make_collision_child(tool, tool_collision())
+    # The hub's end face, along the wrist: a carried cargo part's anchor_latch goes here
+    kit.add_socket(tool, "pivot_latch", TOOL + Vector((0.0, HUB_LENGTH, 0.0)))
     kit.save_blend(os.path.join(kit.PARTS_DIR, "arm_tool.blend"))
     kit.export_part(tool, os.path.join(kit.EXPORT_DIR, "arm_tool.glb"))
     tris["arm_tool"] = kit.triangle_count(tool)
@@ -402,7 +407,7 @@ def run_checks() -> list:
         rb.pair_gap(arm["mount"], scene["chassis"], mount_joint) * 1000.0))
 
     # Named poses
-    for name, joints in (("stowed", STOWED), ("reaching down", REACH_DOWN), ("rest", REST)):
+    for name, joints in (("stowed", STOWED), ("latch", LATCH), ("reaching down", REACH_DOWN), ("rest", REST)):
         pose_arm(arm, joints)
         line = "%s %s: lowest arm point z %.3f (%.0f mm above the ground)" % (
             name, joints, lowest_z(moving), (lowest_z(moving) - GROUND_Z) * 1000.0)
