@@ -2,7 +2,7 @@ extends Control
 
 ## Debug traction display: one friction circle per wheel.
 ##
-## Each circle is the tyre's grip limit (friction coefficient * vertical load). The
+## Each circle is the tyre's grip limit (friction coefficient * wheel grip * vertical load). The
 ## dot is the force the ground currently puts on that wheel, drawn in the wheel's own
 ## frame: up = driving force (accelerating), down = braking, sideways = cornering.
 ## Dot on the rim = the tyre is at its limit, outside = sliding. A fading trail shows
@@ -85,13 +85,8 @@ func _update_data(delta: float) -> void:
 
 	for wheel in RunningGear.Wheel.values():
 		var state: Dictionary = gear.wheel_states[wheel]
-		var props: Dictionary = gear.wheel_properties[wheel]
 
-		var steer_angle: float = (
-			-robot.controller.steer *
-			props[RunningGear.WheelProperty.MAX_STEER_ANGLE] *
-			props[RunningGear.WheelProperty.STEER_BIAS]
-		)
+		var steer_angle: float = gear.get_steer_angle(wheel, robot.controller.steer)
 		_steer_angle[wheel] = lerp_angle(_steer_angle[wheel], steer_angle, blend)
 
 		var in_contact: bool = state[RunningGear.WheelState.IN_CONTACT]
@@ -105,8 +100,8 @@ func _update_data(delta: float) -> void:
 			var force: Vector3 = inverse_basis * state[RunningGear.WheelState.FORCE]
 			var forward: Vector3 = Vector3.FORWARD.rotated(Vector3.UP, steer_angle)
 			var right: Vector3 = forward.rotated(Vector3.UP, -PI / 2.0)
-			var longitudinal: float = force.dot(forward) / (gear.longitudinal_friction_coefficient * wheel_load)
-			var lateral: float = force.dot(right) / (gear.lateral_friction_coefficient * wheel_load)
+			var longitudinal: float = force.dot(forward) / (gear.get_longitudinal_friction(wheel) * wheel_load)
+			var lateral: float = force.dot(right) / (gear.get_lateral_friction(wheel) * wheel_load)
 			# Screen space: +x right, -y forward (driving force points up)
 			target = Vector2(lateral, -longitudinal)
 

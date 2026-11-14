@@ -15,10 +15,6 @@ signal interact(value: bool)
 signal primary(value: bool)
 
 
-const SENS: float = 20.8 / 2.0
-const DPI: float = 1000
-
-
 ## Desired speed as a fraction of the robot's top speed. The robot uses it as the
 ## motor voltage: -1 (full reverse) .. 1 (full forward), 0 = no input.
 var desired_speed: float = 0.0
@@ -36,12 +32,8 @@ var desired_speed_rate: float = 2.0
 var was_input_enabled: bool = false
 
 
-func px_to_rad(pixels: float) -> float:
-	return pixels / (DPI / 2.54) / SENS * PI * 2.0
-
-
 func is_input_enabled() -> bool:
-	return GameState.state == GameState.State.IN_GAME_ROBOT
+	return GameState.state == GameState.State.IN_GAME_ROBOT and not Debug.console_open
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -49,8 +41,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		camera_altitude = clamp(camera_altitude - px_to_rad(event.relative.y), -PI / 2, PI / 2)
-		camera_azimuth = fmod(camera_azimuth - px_to_rad(event.relative.x), 2.0 * PI)
+		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y), -PI / 2, PI / 2)
+		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x), 2.0 * PI)
 
 
 func _physics_process(delta: float) -> void:

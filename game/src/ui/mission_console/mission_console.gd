@@ -1,7 +1,5 @@
 extends UIScreen
 
-const FADE_DURATION: float = 0.5
-
 const GREY: Texture2D = preload("res://res/textures/dev/grey.png")
 const ORANGE: Texture2D = preload("res://res/textures/dev/orange.png")
 
@@ -87,10 +85,6 @@ func fade_out():
 func _fade_to(alpha: float) -> Tween:
 	if fade_tween:
 		fade_tween.kill()
-	fade_tween = create_tween()
-	fade_tween.set_ignore_time_scale(true)
-	fade_tween.set_ease(Tween.EASE_IN_OUT)
-	fade_tween.set_trans(Tween.TRANS_CUBIC)
-	fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	fade_tween = create_ui_tween()
 	fade_tween.tween_property(%Window, "modulate:a", alpha, FADE_DURATION)
 	return fade_tween

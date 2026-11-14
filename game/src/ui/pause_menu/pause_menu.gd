@@ -10,23 +10,14 @@ enum SubScreen{
 var sub_screen: SubScreen = SubScreen.PAUSE_MENU
 
 
-func create_de_facto_tween() -> Tween:
-	var tween = create_tween()
-	tween.set_ignore_time_scale(true)
-	tween.set_ease(Tween.EASE_IN_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	return tween
-
-
 func _ready() -> void:
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume.pressed.connect(_on_resume_pressed)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToMenu.pressed.connect(_on_quit_to_menu_pressed)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToDesktop.pressed.connect(_on_quit_to_desktop_pressed)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/Settings.pressed.connect(_on_settings_pressed)
 	$SettingsSubMenu/VBoxContainer/Back.pressed.connect(_on_back_pressed)
-	$PauseMenuSubScreen.position = Vector2(-1920.0, 0.0)
-	$SettingsSubMenu.position = Vector2(1920.0, 0.0)
+	$PauseMenuSubScreen.position = Vector2(-SLIDE_DISTANCE, 0.0)
+	$SettingsSubMenu.position = Vector2(SLIDE_DISTANCE, 0.0)
 
 
 func _on_resume_pressed():
@@ -53,56 +44,24 @@ func _on_back_pressed():
 
 func update_subscreen():
 	if sub_screen == SubScreen.PAUSE_MENU:
-		fade_out_settings()
-		fade_in_pause_menu()
+		slide_to($SettingsSubMenu, SLIDE_DISTANCE)
+		slide_to($PauseMenuSubScreen, 0.0)
 	elif sub_screen == SubScreen.SETTINGS:
-		fade_out_pause_menu()
-		fade_in_settings()
+		slide_to($PauseMenuSubScreen, -SLIDE_DISTANCE)
+		slide_to($SettingsSubMenu, 0.0)
 
 
-func fade_in_pause_menu():
-	var position: Vector2 = Vector2.ZERO
-	var tween = create_de_facto_tween()
-	tween.tween_property($PauseMenuSubScreen, "position", position, 0.5)
-
-
-func fade_out_pause_menu():
-	var position: Vector2 = Vector2(-1920.0, 0.0)
-	var tween = create_de_facto_tween()
-	tween.tween_property($PauseMenuSubScreen, "position", position, 0.5)
-
-
-func fade_in_settings():
-	var position: Vector2 = Vector2.ZERO
-	var tween = create_de_facto_tween()
-	tween.tween_property($SettingsSubMenu, "position", position, 0.5)
-
-
-func fade_out_settings():
-	var position: Vector2 = Vector2(1920.0, 0.0)
-	var tween = create_de_facto_tween()
-	tween.tween_property($SettingsSubMenu, "position", position, 0.5)
-
-
-func fade_in_bg_tint():
-	var color: Color = Color(0.0, 0.0, 0.0, 0.5)
-	var tween = create_de_facto_tween()
-	tween.tween_property($BGTint, "color", color, 0.5)
-
-
-func fade_out_bg_tint():
-	var color: Color = Color(0.0, 0.0, 0.0, 0.0)
-	var tween = create_de_facto_tween()
-	tween.tween_property($BGTint, "color", color, 0.5)
+func _fade_bg_tint(alpha: float) -> void:
+	create_ui_tween().tween_property($BGTint, "color", Color(0.0, 0.0, 0.0, alpha), FADE_DURATION)
 
 
 func fade_in():
 	sub_screen = SubScreen.PAUSE_MENU
-	fade_in_bg_tint()
+	_fade_bg_tint(0.5)
 	update_subscreen()
 
 
 func fade_out():
-	fade_out_pause_menu()
-	fade_out_settings()
-	fade_out_bg_tint()
+	slide_to($PauseMenuSubScreen, -SLIDE_DISTANCE)
+	slide_to($SettingsSubMenu, SLIDE_DISTANCE)
+	_fade_bg_tint(0.0)

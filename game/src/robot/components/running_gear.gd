@@ -107,6 +107,8 @@ enum WheelProperty{
 	MAX_STEER_ANGLE,
 	STEER_BIAS,
 	INERTIA,
+	# Multiplier on both friction coefficients (from the mounted WheelPart's grip)
+	GRIP,
 }
 
 var wheel_properties: Dictionary
@@ -122,6 +124,7 @@ func update_wheel_properties() -> void:
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 1.0,
 			WheelProperty.INERTIA: wheel_inertia,
+			WheelProperty.GRIP: 1.0,
 		},
 		Wheel.FRONT_RIGHT: {
 			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, -wheel_base / 2.0),
@@ -132,6 +135,7 @@ func update_wheel_properties() -> void:
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 1.0,
 			WheelProperty.INERTIA: wheel_inertia,
+			WheelProperty.GRIP: 1.0,
 		},
 		Wheel.REAR_LEFT: {
 			WheelProperty.POSITION: Vector3(-track_width / 2.0, 0, wheel_base / 2.0),
@@ -142,6 +146,7 @@ func update_wheel_properties() -> void:
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 0.0,
 			WheelProperty.INERTIA: wheel_inertia,
+			WheelProperty.GRIP: 1.0,
 		},
 		Wheel.REAR_RIGHT: {
 			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, wheel_base / 2.0),
@@ -152,6 +157,7 @@ func update_wheel_properties() -> void:
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 0.0,
 			WheelProperty.INERTIA: wheel_inertia,
+			WheelProperty.GRIP: 1.0,
 		}
 	}
 	return
@@ -182,6 +188,13 @@ func get_steer_angle(wheel: Wheel, steer: float) -> float:
 		wheel_properties[wheel][WheelProperty.MAX_STEER_ANGLE] *
 		wheel_properties[wheel][WheelProperty.STEER_BIAS]
 	)
+
+## Friction coefficients of a wheel, including its grip multiplier
+func get_longitudinal_friction(wheel: Wheel) -> float:
+	return longitudinal_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP]
+
+func get_lateral_friction(wheel: Wheel) -> float:
+	return lateral_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP]
 
 ## `steer` is -1 (full left) .. 1 (full right).
 ## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque
@@ -263,17 +276,21 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 		# denominator floored like the slip ratio. Zero speed gives zero slip angle.
 		var slip_angle_gradient: float = velocity_lateral / max(abs(velocity_longitudinal), low_speed_threshold)
 
+		# Both coefficients scale with the wheel's grip, so their ratio (mu_zero) is unchanged
+		var longitudinal_friction: float = get_longitudinal_friction(wheel)
+		var lateral_friction: float = get_lateral_friction(wheel)
+
 		var normalized_slip_ratio: float = (
 			longitudinal_stiffness *
 			slip_ratio / (
-				longitudinal_friction_coefficient *
+				longitudinal_friction *
 				suspension_load.dot(y_basis)
 			)
 		)
 		var normalized_slip_angle: float = (
 			cornering_stiffness *
 			slip_angle_gradient / (
-				lateral_friction_coefficient *
+				lateral_friction *
 				suspension_load.dot(y_basis)
 			)
 		)
@@ -286,9 +303,9 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 
 		var mu_zero: float = (
 			cornering_stiffness *
-			longitudinal_friction_coefficient / (
+			longitudinal_friction / (
 				longitudinal_stiffness *
-				lateral_friction_coefficient
+				lateral_friction
 			)
 		)
 		var multiplier_value: float		= multiplier(normalized_combined_slip, mu_zero)
@@ -317,7 +334,7 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 
 		var longitudinal_force_magnitude: float = (
 			suspension_load.dot(y_basis) *
-			longitudinal_friction_coefficient *
+			longitudinal_friction *
 			normalized_longitudinal_force
 		)
 
@@ -338,7 +355,7 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}) 
 		var lateral_force: Vector3 = (
 			wheel_direction.rotated(y_basis, PI/2.0) *
 			suspension_load.dot(y_basis) *
-			lateral_friction_coefficient *
+			lateral_friction *
 			normalized_lateral_force
 		)
 		var total_force: Vector3 = (

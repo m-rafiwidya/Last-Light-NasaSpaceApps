@@ -4,6 +4,9 @@ extends UIScreen
 ## The player HUD (crosshair, subtitles) is shown in IN_GAME_PLAYER instead.
 
 
+var fade_tween: Tween = null
+
+
 func _ready() -> void:
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
@@ -43,13 +46,14 @@ func fade_in():
 
 
 func fade_out():
-	_fade_to(0.0)
+	if visible:
+		_fade_to(0.0).tween_callback(hide)
 
 
-func _fade_to(alpha: float) -> void:
-	var tween = create_tween()
-	tween.set_ignore_time_scale(true)
-	tween.set_ease(Tween.EASE_IN_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tween.tween_property($CanvasModulate, "color", Color(1.0, 1.0, 1.0, alpha), 0.5)
+# Kills the previous fade so a quick fade_out -> fade_in can't hide the HUD afterwards
+func _fade_to(alpha: float) -> Tween:
+	if fade_tween:
+		fade_tween.kill()
+	fade_tween = create_ui_tween()
+	fade_tween.tween_property($CanvasModulate, "color", Color(1.0, 1.0, 1.0, alpha), FADE_DURATION)
+	return fade_tween

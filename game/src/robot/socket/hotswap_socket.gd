@@ -60,7 +60,8 @@ func unmount() -> HotswapPart:
 		return null
 	var old_part := part
 	part = null
-	var new_parent: Node = _world if is_instance_valid(_world) else get_tree().current_scene
+	# current_scene is Main, not the level, so fall back to the loaded level instead
+	var new_parent: Node = _world if is_instance_valid(_world) else SceneLoader.current_scene
 	old_part.reparent(new_parent, true)
 	old_part.detach()
 	_trigger.tooltip = ""

@@ -150,10 +150,10 @@ func _update_power_parts() -> void:
 		battery = battery_socket.part as BatteryPart
 
 
-# Reads the radius of each mounted WheelPart into the running gear and moves the
+# Reads the radius and grip of each mounted WheelPart into the running gear and moves the
 # part to where the running gear says its wheel is (hanging from the suspension),
 # turned by the wheel's steering angle.
-# An empty socket falls back to the running gear's default wheel_radius.
+# An empty socket falls back to the running gear's default wheel_radius and grip 1.
 func _update_wheel_parts() -> void:
 	var inverse_basis: Basis = global_transform.basis.inverse()
 	for wheel in wheel_sockets:
@@ -164,6 +164,7 @@ func _update_wheel_parts() -> void:
 
 		var radius: float = wheel_part.radius if wheel_part else running_gear.wheel_radius
 		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
+		properties[RunningGear.WheelProperty.GRIP] = wheel_part.grip if wheel_part else 1.0
 		if not wheel_part:
 			continue
 

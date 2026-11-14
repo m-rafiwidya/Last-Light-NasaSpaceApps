@@ -7,9 +7,7 @@ signal level_unloaded(level_name)
 const PLAYER_PACKED_SCENE: PackedScene = preload("res://src/player/player.tscn")
 
 const MAIN_MENU_ID = "main_menu"
-# TODO: Kinda dangerous if someone forgot to change these to a valid path
-# is there a built in godot way for file paths?
-# or maybe just do a debug check over this and see if its a valid path
+# Every path is checked in _ready(), so a typo shows up as an error at startup
 const LEVEL_PATHS: Dictionary = {
 	"test_level": "res://src/levels/test_level.tscn",
 	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
@@ -29,6 +27,9 @@ var loading_scene_id: String = ""
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process(false)
+	for level_name in LEVEL_PATHS:
+		if not ResourceLoader.exists(LEVEL_PATHS[level_name]):
+			push_error('SceneLoader: level "%s" points at a missing file: %s' % [level_name, LEVEL_PATHS[level_name]])
 
 
 func load_scene(level_name: String, no_fade_in: bool = false) -> void:
@@ -58,15 +59,17 @@ func _on_finished_fade_in() -> void:
 	# OK, I'm now allowed to start loading resources
 	# Unload current level if it exists
 	if current_scene:
-		#GameState.player = null
+		GameState.player = null
 		current_scene.queue_free()
-		emit_signal("level_unloaded", current_scene.name)
+		level_unloaded.emit(current_scene.name)
+		current_scene = null
 
 	# Make loading thread
 	var err = ResourceLoader.load_threaded_request(LEVEL_PATHS[loading_scene_id])
 
 	if err != OK:
 		push_error("Threaded loading failed with error: " + str(err))
+		_on_load_failed()
 		return
 
 	# Start checking continuously
@@ -78,9 +81,19 @@ func _process(_delta: float) -> void:
 	if status == ResourceLoader.THREAD_LOAD_LOADED:
 		_setup_scene()
 		set_process(false)
-	elif status == ResourceLoader.THREAD_LOAD_FAILED:
+	elif status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		push_error("Threaded loading FAILED.")
 		set_process(false)
+		_on_load_failed()
+
+
+# The old level is already gone, so fall back to the main menu. If the main menu
+# itself failed there is nothing to fall back to; stay on the loading screen.
+func _on_load_failed() -> void:
+	var failed_id: String = loading_scene_id
+	loading_scene_id = ""
+	if failed_id != MAIN_MENU_ID:
+		load_scene(MAIN_MENU_ID, true)
 
 
 func _setup_scene() -> void:
@@ -95,16 +108,18 @@ func _setup_scene() -> void:
 		_setup_level()
 	loading_scene_id = ""
 
-	emit_signal("level_loaded", current_scene.name)
+	level_loaded.emit(current_scene.name)
 
 
 func _setup_level():
-	var spawn_point = current_scene.get_node_or_null("SpawnPoint")
-	if not spawn_point:
-		push_error('No "SpawnPoint" marker node found in level.')
-		return
+	var spawn_transform: Transform3D = Transform3D.IDENTITY
+	var spawn_point: Marker3D = current_scene.get_node_or_null("SpawnPoint")
+	if spawn_point:
+		spawn_transform = spawn_point.transform
+	else:
+		push_error('No "SpawnPoint" marker node found in level, spawning at the origin.')
 
-	_setup_player(spawn_point)
+	_setup_player(spawn_transform)
 
 	# Hey GameState, I finished loading, please start transition to IN_GAME_PLAYER
 	# (the robot, if the level has one, is placed manually in the level)
@@ -112,13 +127,13 @@ func _setup_level():
 
 
 # Spawn the first-person player at the designated spawn point
-func _setup_player(spawn_point: Marker3D) -> void:
+func _setup_player(spawn_transform: Transform3D) -> void:
 	var player_controller = PlayerController.new()
 	current_scene.add_child(player_controller)
 
 	var player = PLAYER_PACKED_SCENE.instantiate()
 	GameState.player = player
-	player.transform = spawn_point.transform
+	player.transform = spawn_transform
 	player.controller = player_controller
 	current_scene.add_child(player)
 	# The robot's cameras are not current by default; make sure the player's is
@@ -126,17 +141,17 @@ func _setup_player(spawn_point: Marker3D) -> void:
 
 
 func _setup_main_menu():
-	GameState.change_state_to(GameState.State.MAIN_MENU)
-	var camera_marker: Marker3D = current_scene.get_node_or_null("CameraMarker")
-	if not camera_marker:
-		push_error('No "CameraMarker" marker node found in level.')
-		return
-
 	var camera = Camera3D.new()
 	camera.fov = 90.0
 
-	camera.transform = camera_marker.transform
+	var camera_marker: Marker3D = current_scene.get_node_or_null("CameraMarker")
+	if camera_marker:
+		camera.transform = camera_marker.transform
+	else:
+		push_error('No "CameraMarker" marker node found in level, using the origin.')
 	current_scene.add_child(camera)
 	# The level may contain a robot with its own cameras; make sure the menu camera wins
 	camera.make_current()
+
 	# Hey GameState, I finished loading, please start transition to MAIN_MENU
+	GameState.change_state_to(GameState.State.MAIN_MENU)
