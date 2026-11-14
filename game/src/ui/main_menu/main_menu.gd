@@ -9,7 +9,7 @@ var sub_screen: SubScreen = SubScreen.MAIN_MENU
 
 
 func _ready() -> void:
-	$MainMenuSubScreen/VBoxContainer/VBoxContainer/Start.pressed.connect(_on_start_pressed)
+	$MainMenuSubScreen/VBoxContainer/VBoxContainer/LevelChoice.level_chosen.connect(_on_level_chosen)
 	$MainMenuSubScreen/VBoxContainer/VBoxContainer/Quit.pressed.connect(_on_quit_pressed)
 	$MainMenuSubScreen/VBoxContainer/VBoxContainer/Settings.pressed.connect(_on_settings_pressed)
 	$SettingsSubMenu/VBoxContainer/Back.pressed.connect(_on_back_pressed)
@@ -17,8 +17,8 @@ func _ready() -> void:
 	$SettingsSubMenu.position = Vector2(SLIDE_DISTANCE, 0.0)
 
 
-func _on_start_pressed():
-	SceneLoader.load_scene("test_level")
+func _on_level_chosen(level_id: String):
+	SceneLoader.load_scene(level_id)
 
 
 func _on_settings_pressed():

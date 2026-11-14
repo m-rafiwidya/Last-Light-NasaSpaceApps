@@ -10,7 +10,13 @@ const MAIN_MENU_ID = "main_menu"
 # Every path is checked in _ready(), so a typo shows up as an error at startup
 const LEVEL_PATHS: Dictionary = {
 	"test_level": "res://src/levels/test_level.tscn",
+	"moon_level": "res://src/levels/moon_level.tscn",
 	MAIN_MENU_ID: "res://src/levels/test_level.tscn",
+}
+## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
+const PLAYABLE_LEVELS: Dictionary = {
+	"test_level": "Test level",
+	"moon_level": "Moon",
 }
 
 # For later to show intro like CS2
@@ -20,6 +26,8 @@ var is_first_main_menu_load: bool = true
 var main_node: Node = null
 
 var current_scene: Node = null
+## Id (LEVEL_PATHS key) of the level in current_scene, "" while none is loaded
+var current_level_id: String = ""
 var progress: Array = [0.0]
 var loading_scene_id: String = ""
 
@@ -30,6 +38,9 @@ func _ready() -> void:
 	for level_name in LEVEL_PATHS:
 		if not ResourceLoader.exists(LEVEL_PATHS[level_name]):
 			push_error('SceneLoader: level "%s" points at a missing file: %s' % [level_name, LEVEL_PATHS[level_name]])
+	for level_name in PLAYABLE_LEVELS:
+		if not LEVEL_PATHS.has(level_name):
+			push_error('SceneLoader: playable level "%s" is not in LEVEL_PATHS' % level_name)
 
 
 func load_scene(level_name: String, no_fade_in: bool = false) -> void:
@@ -58,12 +69,17 @@ func load_scene(level_name: String, no_fade_in: bool = false) -> void:
 func _on_finished_fade_in() -> void:
 	# OK, I'm now allowed to start loading resources
 	# Unload current level if it exists
+	# Nothing may keep pointing into the old level: the player, the driven rover (camera and
+	# robot HUD follow it) and the robot the HUD reads. Held props, cameras and rovers are
+	# freed with the level.
 	if current_scene:
 		GameState.player = null
 		GameState.robot = null
+		Debug.current_robot = null
 		current_scene.queue_free()
 		level_unloaded.emit(current_scene.name)
 		current_scene = null
+		current_level_id = ""
 
 	# Make loading thread
 	var err = ResourceLoader.load_threaded_request(LEVEL_PATHS[loading_scene_id])
@@ -100,6 +116,7 @@ func _on_load_failed() -> void:
 func _setup_scene() -> void:
 	var level_scene = ResourceLoader.load_threaded_get(LEVEL_PATHS[loading_scene_id])
 	current_scene = level_scene.instantiate()
+	current_level_id = loading_scene_id
 	main_node.add_child(current_scene)
 
 	# Can accomodate gamemodes for future projects

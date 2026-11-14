@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://ds0ii545dct55" path="res://src/ui/button_style_components/button_resize_component.gd" id="3_vvyjd"]
 [ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="4_j7lcx"]
 [ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="6_qrgyy"]
+[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="90_levels"]
 
 [node name="PauseMenu" type="CanvasLayer" unique_id=511829539]
 script = ExtResource("1_tnmsp")
@@ -61,6 +62,13 @@ metadata/_custom_type_script = "uid://ds0ii545dct55"
 [node name="ButtonSoundComponent" type="Node" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume" unique_id=800785514]
 script = ExtResource("4_j7lcx")
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+
+[node name="LevelChoice" type="VBoxContainer" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+script = ExtResource("90_levels")
+text_format = "Switch to %s"
+hide_current_level = true
 
 [node name="Settings" type="Button" parent="PauseMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=920191874]
 layout_mode = 2

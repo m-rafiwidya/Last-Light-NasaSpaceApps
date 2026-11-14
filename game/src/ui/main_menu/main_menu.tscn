@@ -5,6 +5,7 @@
 [ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_osdni"]
 [ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="5_vivct"]
 [ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="6_6ut4k"]
+[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="7_levels"]
 
 [node name="MainMenu" type="CanvasLayer" unique_id=639443980]
 script = ExtResource("1_2hyyg")
@@ -40,19 +41,11 @@ layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 4
 
-[node name="Start" type="Button" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=765854854]
+[node name="LevelChoice" type="VBoxContainer" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
-focus_mode = 0
-text = "Start"
-
-[node name="ButtonResizeComponent" type="Node" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer/Start" unique_id=584736202]
-script = ExtResource("2_4ux21")
-metadata/_custom_type_script = "uid://ds0ii545dct55"
-
-[node name="ButtonSoundComponent" type="Node" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer/Start" unique_id=155358606]
-script = ExtResource("5_vivct")
-metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+script = ExtResource("7_levels")
+text_format = "Play %s"
 
 [node name="Settings" type="Button" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=1821534089]
 layout_mode = 2

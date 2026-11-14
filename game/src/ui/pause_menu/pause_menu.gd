@@ -12,6 +12,7 @@ var sub_screen: SubScreen = SubScreen.PAUSE_MENU
 
 func _ready() -> void:
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/Resume.pressed.connect(_on_resume_pressed)
+	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/LevelChoice.level_chosen.connect(_on_level_chosen)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToMenu.pressed.connect(_on_quit_to_menu_pressed)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/QuitToDesktop.pressed.connect(_on_quit_to_desktop_pressed)
 	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/Settings.pressed.connect(_on_settings_pressed)
@@ -22,6 +23,12 @@ func _ready() -> void:
 
 func _on_resume_pressed():
 	GameState.return_to_game()
+
+
+# Loads the chosen level in place of this one; leaving PAUSED unpauses the tree, and the old
+# level (player, rovers, held props, cameras) is freed before the new one is set up
+func _on_level_chosen(level_id: String):
+	SceneLoader.load_scene(level_id)
 
 
 func _on_settings_pressed():
@@ -57,6 +64,7 @@ func _fade_bg_tint(alpha: float) -> void:
 
 func fade_in():
 	sub_screen = SubScreen.PAUSE_MENU
+	$PauseMenuSubScreen/VBoxContainer/VBoxContainer/LevelChoice.refresh()
 	_fade_bg_tint(0.5)
 	update_subscreen()
 

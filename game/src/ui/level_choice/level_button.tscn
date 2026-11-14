@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://ds0ii545dct55" path="res://src/ui/button_style_components/button_resize_component.gd" id="1_resize"]
+[ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="2_sound"]
+
+[node name="LevelButton" type="Button"]
+size_flags_horizontal = 0
+focus_mode = 0
+text = "Level"
+
+[node name="ButtonResizeComponent" type="Node" parent="."]
+script = ExtResource("1_resize")
+metadata/_custom_type_script = "uid://ds0ii545dct55"
+
+[node name="ButtonSoundComponent" type="Node" parent="."]
+script = ExtResource("2_sound")
+metadata/_custom_type_script = "uid://dvlm1ln22f2ch"

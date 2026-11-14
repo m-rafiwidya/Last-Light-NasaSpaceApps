@@ -47,7 +47,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | One level only: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) |
+| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (placeholder Moon); chosen on the main menu or switched from the pause menu |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -82,7 +82,9 @@ game/
     ├── interact_trigger/
     │   └── interact_trigger.gd       # Area3D the player can "use" with E
     ├── levels/
-    │   └── test_level.tscn           # the only level
+    │   ├── rover_level.gd            # base for levels with rovers + a parts pile (class RoverLevel)
+    │   ├── test_level.tscn / .gd     # the test sandbox (extends RoverLevel)
+    │   └── moon_level.tscn           # Moon level, placeholder ground and sky (script: rover_level.gd)
     ├── player/
     │   ├── player.tscn / player.gd           # RigidBody3D character (class Player)
     │   └── player_controller.gd              # input -> intent (class PlayerController)
@@ -91,6 +93,7 @@ game/
         ├── ui_manager/               # orchestrates all screens
         ├── main_menu/
         ├── pause_menu/
+        ├── level_choice/             # one menu button per playable level (main menu, pause menu)
         ├── hud/                      # player HUD (crosshair, subtitles)
         ├── robot_hud/                # robot HUD (speed, battery, friction circles, camera-feed overlay)
         ├── mission_console/          # computer-theme mission list (dummy content)
@@ -191,14 +194,14 @@ stateDiagram-v2
     [*] --> LOADING
     LOADING --> MAIN_MENU: main menu level ready
     LOADING --> IN_GAME_PLAYER: gameplay level ready (player spawned)
-    MAIN_MENU --> LOADING: Start pressed
+    MAIN_MENU --> LOADING: Play <level> pressed
     IN_GAME_PLAYER --> PAUSED: Esc
     IN_GAME_PLAYER --> IN_GAME_ROBOT: RobotTrigger interacted
     IN_GAME_ROBOT --> IN_GAME_PLAYER: Esc
     IN_GAME_PLAYER --> MISSION_CONSOLE: MissionConsoleTrigger interacted
     MISSION_CONSOLE --> IN_GAME_PLAYER: Esc or X
     PAUSED --> IN_GAME_PLAYER: Esc or Resume
-    PAUSED --> LOADING: Quit To Menu
+    PAUSED --> LOADING: Switch to <level> / Quit To Menu
 ```
 
 ### Side effects per state
@@ -269,10 +272,10 @@ It also provides the shared animation helpers: `create_ui_tween()` (ease in/out 
 
 ### 6.3 Main menu (`ui/main_menu/`)
 
-- Two sub-screens inside one `CanvasLayer`: `MainMenuSubScreen` (Start / Settings / Quit) and `SettingsSubMenu` (instance of `sub_screens/settings_sub_menu.tscn`).
+- Two sub-screens inside one `CanvasLayer`: `MainMenuSubScreen` (Play Test level / Play Moon / Settings / Quit) and `SettingsSubMenu` (instance of `sub_screens/settings_sub_menu.tscn`).
 - Sub-screens "slide" horizontally by tweening `position`. Off-screen positions: main = `(-1920, 0)`, settings = `(1920, 0)`. On `_ready` both are placed off-screen; `fade_in()` slides the main sub-screen to `(0,0)`.
 - Buttons:
-  - **Start** -> `SceneLoader.load_scene("test_level")`
+  - **Play <level>** (a `LevelChoice`, one button per `SceneLoader.PLAYABLE_LEVELS` entry) -> `SceneLoader.load_scene(level_id)`
   - **Settings** -> slides settings in; **Back** slides it out
   - **Quit** -> `get_tree().quit()`
 - `fade_in()` resets to the main sub-screen and slides it in; `fade_out()` slides both sub-screens out.
@@ -280,7 +283,7 @@ It also provides the shared animation helpers: `create_ui_tween()` (ease in/out 
 
 ### 6.4 Pause menu (`ui/pause_menu/`)
 
-Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState.return_to_game()`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
+Same structure as the main menu (sub-screen sliding), plus a `BGTint` `ColorRect` that fades to 50% black. Buttons: **Resume** (`GameState.return_to_game()`), **Switch to <level>** (a `LevelChoice` with `hide_current_level`: one button per playable level except the loaded one, refreshed in `fade_in()`; `SceneLoader.load_scene(level_id)`), **Settings**, **Quit To Menu** (`SceneLoader.load_scene("main_menu")`), **Quit To Desktop**. `fade_in()` always resets to the pause sub-screen.
 
 ### 6.5 Settings sub-menu (`ui/sub_screens/settings_sub_menu.tscn`)
 
@@ -322,9 +325,14 @@ All buttons in the menus use `focus_mode = 0` (no keyboard focus).
 ```gdscript
 const LEVEL_PATHS: Dictionary = {
     "test_level": "res://src/levels/test_level.tscn",
+    "moon_level": "res://src/levels/moon_level.tscn",
     MAIN_MENU_ID: "res://src/levels/test_level.tscn",   # "main_menu"
 }
+## The levels the player can choose (main menu, pause menu), in menu order: id -> display name
+const PLAYABLE_LEVELS: Dictionary = {"test_level": "Test level", "moon_level": "Moon"}
 ```
+
+`current_level_id` is the id of the loaded level ("" while none is). `ui/level_choice/` builds the menus' level buttons from `PLAYABLE_LEVELS` (`LevelChoice`, a `VBoxContainer` of `level_button.tscn`s, emits `level_chosen(level_id)`), so a new playable level only needs an entry there.
 
 ### Flow of `load_scene(level_name, no_fade_in = false)`
 
@@ -372,7 +380,15 @@ Expects a **`CameraMarker`** (`Marker3D`; if missing, an error is logged and the
 | `SpawnPoint` | `Marker3D` | any gameplay level |
 | `CameraMarker` | `Marker3D` | any level used as the main-menu backdrop |
 
-Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoader._ready()`, so a typo is reported at startup. If a threaded load fails, `SceneLoader` clears its loading state and falls back to the main menu (unless the main menu itself failed). On unload it also clears `GameState.player`.
+Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoader._ready()`, so a typo is reported at startup. If a threaded load fails, `SceneLoader` clears its loading state and falls back to the main menu (unless the main menu itself failed). On unload it also clears `GameState.player`, `GameState.robot` and `Debug.current_robot` (the robot HUD's rover), so nothing points into the old level; its player, rovers, cameras and held props are freed with it, `DialogServer` stops any dialog (`level_unloaded`), leaving `PAUSED` unpauses the tree, and the new level's player camera is made current. `tests/test_level_switch.gd` checks all of this switching Test level -> Moon -> Test level -> main menu through the real menus (with a prop held on foot and by the driven rover).
+
+### Rover levels (`levels/rover_level.gd`)
+
+`RoverLevel` is the shared level script for rovers and the parts pile, found by name: every `Robot` child `<Rover>` with an `InteractTrigger` named `<Rover>Trigger` gets "E drives this rover"; `PartsPile` is recorded as the level starts and `RespawnPartsTrigger` clears its loose parts and lays it out again. `test_level.gd` extends it (adding the dialog and mission console triggers); the Moon level uses it as is.
+
+### The Moon level (`levels/moon_level.tscn`)
+
+Placeholders until the real terrain, sky and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture), a black sky with grey ambient light and a low `Sun` (about 23 degrees up, shadows). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Gravity is still the project's 9.8 m/s^2.
 
 ### The test level (`levels/test_level.tscn`)
 
@@ -630,7 +646,8 @@ Grounded in the current code; useful to know before changing things.
 2. Add a `Marker3D` named **`SpawnPoint`** (player spawns with its transform).
 3. (Optional, if used as menu backdrop) add a `Marker3D` named **`CameraMarker`**.
 4. Register it in `SceneLoader.LEVEL_PATHS`: `"my_level": "res://src/levels/my_level.tscn"`.
-5. Load it with `SceneLoader.load_scene("my_level")`.
+5. To offer it in the main and pause menus, add it to `SceneLoader.PLAYABLE_LEVELS` with its display name; otherwise load it with `SceneLoader.load_scene("my_level")`.
+6. For drivable rovers and a parts pile, use `rover_level.gd` as the root script (or extend `RoverLevel`) and follow its naming (`<Rover>` + `<Rover>Trigger`, `PartsPile`, `RespawnPartsTrigger`).
 
 ### Add a pickup prop
 `RigidBody3D` with `collision_layer = 4` (layer 3), a collision shape, and a mesh. No script needed; the player's raycast finds it and the HUD shows the interaction crosshair.

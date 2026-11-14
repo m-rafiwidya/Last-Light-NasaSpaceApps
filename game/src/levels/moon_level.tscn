@@ -1,0 +1,170 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/levels/rover_level.gd" id="1_level"]
+[ext_resource type="Texture2D" uid="uid://b6i0nsumhm8x4" path="res://res/textures/dev/grey.png" id="2_grey"]
+[ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="4_t1chq"]
+[ext_resource type="PackedScene" uid="uid://dvqu81j65chtr" path="res://src/robot/robot.tscn" id="6_robot"]
+[ext_resource type="Script" uid="uid://dejcbl7savjo6" path="res://src/robot/robot_controller.gd" id="7_robotctl"]
+[ext_resource type="PackedScene" uid="uid://dtk4pjjttlx0" path="res://src/robot/socket/wheel_part.tscn" id="21_wheel"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/motor_part.tscn" id="22_motor"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/battery_part.tscn" id="23_battery"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/mast_head_part.tscn" id="24_mast_head"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/arm_tool_part.tscn" id="25_arm_tool"]
+[ext_resource type="PackedScene" path="res://src/robot/socket/antenna_part.tscn" id="26_antenna"]
+
+[sub_resource type="Environment" id="Environment_moon"]
+background_mode = 1
+background_color = Color(0, 0, 0, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.57, 0.62, 1)
+ambient_light_energy = 0.35
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.72, 0.72, 0.7, 1)
+albedo_texture = ExtResource("2_grey")
+uv1_triplanar = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_strxf"]
+
+[node name="MoonLevel" type="Node3D"]
+script = ExtResource("1_level")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.8660254, -0.2241439, 0.4472136, 0, 0.8944272, 0.4472136, -0.5, 0.3882286, -0.7745967, 0, 0, 0)
+light_energy = 1.6
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_moon")
+
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 5)
+
+[node name="Ground" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+material_override = SubResource("StandardMaterial3D_ground")
+use_collision = true
+collision_mask = 0
+size = Vector3(512, 1, 512)
+
+[node name="ReadyRoverTrigger" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 1, -3)
+script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to drive this rover"
+metadata/_custom_type_script = "uid://b3epixqjbcndx"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ReadyRoverTrigger"]
+shape = SubResource("BoxShape3D_strxf")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="ReadyRoverTrigger"]
+mesh = SubResource("BoxMesh_xa74p")
+
+[node name="Label3D" type="Label3D" parent="ReadyRoverTrigger"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
+text = "Drive Robot"
+
+[node name="Sign" type="Label3D" parent="ReadyRoverTrigger"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+billboard = 1
+modulate = Color(1, 0.85, 0.4, 1)
+outline_size = 16
+font_size = 64
+text = "Ready to drive"
+
+[node name="ReadyRoverController" type="Node" parent="."]
+script = ExtResource("7_robotctl")
+
+[node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.5, -1.2)
+controller = NodePath("../ReadyRoverController")
+start_assembled = true
+
+[node name="RespawnPartsTrigger" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.8, 1, -2.8)
+script = ExtResource("4_t1chq")
+tooltip = "Press \"E\" to respawn the parts pile"
+metadata/_custom_type_script = "uid://b3epixqjbcndx"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RespawnPartsTrigger"]
+shape = SubResource("BoxShape3D_strxf")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="RespawnPartsTrigger"]
+mesh = SubResource("BoxMesh_xa74p")
+
+[node name="Label3D" type="Label3D" parent="RespawnPartsTrigger"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
+text = "Respawn parts"
+
+[node name="Sign" type="Label3D" parent="RespawnPartsTrigger"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+billboard = 1
+modulate = Color(1, 0.85, 0.4, 1)
+outline_size = 16
+font_size = 64
+text = "Respawn parts"
+
+[node name="PartsPile" type="Node3D" parent="."]
+
+[node name="WheelPart" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -0.5)
+
+[node name="WheelPart2" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -0.5)
+
+[node name="WheelPart3" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -0.5)
+
+[node name="WheelPart4" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -1.5)
+
+[node name="WheelPart5" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -5.2)
+grip = 1.3
+catalog_id = "wheel_high_grip"
+tint = Color(0.62, 0.34, 0.12, 1)
+
+[node name="WheelPart6" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -5.2)
+grip = 1.3
+catalog_id = "wheel_high_grip"
+tint = Color(0.62, 0.34, 0.12, 1)
+
+[node name="WheelPart7" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -5.2)
+grip = 1.3
+catalog_id = "wheel_high_grip"
+tint = Color(0.62, 0.34, 0.12, 1)
+
+[node name="WheelPart8" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 20, 0.5, -5.2)
+grip = 1.3
+catalog_id = "wheel_high_grip"
+tint = Color(0.62, 0.34, 0.12, 1)
+
+[node name="MotorPart" parent="PartsPile" instance=ExtResource("22_motor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0.5, -2.8)
+stall_torque = 10.7
+no_load_speed = 345.0
+
+[node name="BatteryPart" parent="PartsPile" instance=ExtResource("23_battery")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.2, 0.5, -2.8)
+capacity = 100.0
+initial_charge = 1.0
+
+[node name="MastHeadPart" parent="PartsPile" instance=ExtResource("24_mast_head")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.4, 0.3, -2.8)
+
+[node name="ArmToolPart" parent="PartsPile" instance=ExtResource("25_arm_tool")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0.3, -3.9)
+
+[node name="AntennaPart" parent="PartsPile" instance=ExtResource("26_antenna")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.2, 0.3, -3.9)
+
+[node name="WheelPart9" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 18, 0.5, -1.5)
+
+[node name="WheelPart10" parent="PartsPile" instance=ExtResource("21_wheel")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 19, 0.5, -1.5)
