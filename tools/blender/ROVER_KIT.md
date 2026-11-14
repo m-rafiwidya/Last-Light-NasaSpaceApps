@@ -21,7 +21,9 @@ Revised while building the mast: the mast head is two objects in one GLB, the pa
 Revised while building the arm: arm lengths scaled from Curiosity (about 0.95 m), a yaw
 turntable `arm_shoulder_yaw` inside the arm_shoulder GLB, new joint origins, joint ranges,
 stowed and reaching-down poses (3.3, 5); the mast's inward sensor boom turned outboard, out of
-the arm's reach (3.3); arm budgets rebalanced (6.2).
+the arm's reach (3.3); arm budgets rebalanced (6.2). Revised while building the power unit,
+antenna and motor: the antenna is two objects in one GLB, the panning base `antenna` and the
+tilting `antenna_dish`; antenna pan / tilt range; shape notes; actual kit triangle count (3.3, 5, 6.2).
 
 ---
 
@@ -163,9 +165,10 @@ All linkage rotation is about the X axis, so x bands never change.
 | `arm_forearm` (J3, pitches about X) | (-0.09, 0.89, 0.345) | `socket_arm_wrist` (-0.09, 1.22, 0.345) |
 | `arm_wrist` (J4, pitches about X) | (-0.09, 1.22, 0.345) | `socket_arm_tool` (-0.125, 1.29, 0.345) |
 | `arm_tool` (J5, turns about Y) | (-0.125, 1.29, 0.345) | collider `arm_tool-convcolonly` |
-| `motor` (drive unit) | (0.12, 0.33, 0.30), its back face on the hatch floor | none |
-| `power_unit` | (0.00, -0.45, 0.36) on the rear face | none |
-| `antenna` | (-0.15, -0.25, 0.44) on the deck | none |
+| `motor` (drive unit) | (0.12, 0.33, 0.30), its back face on the hatch floor | collider `motor-convcolonly` |
+| `power_unit` | (0.00, -0.45, 0.36) on the rear face | collider `power_unit-convcolonly` |
+| `antenna` (base, pans about Z) | (-0.15, -0.25, 0.44) on the deck | child object `antenna_dish`; collider `antenna-convcolonly` |
+| `antenna_dish` (dish, tilts about X) | (-0.15, -0.25, 0.58), on the tilt axis; child of `antenna` | none |
 
 Shape notes:
 - **Chassis:** body 0.50 (W) x 0.90 (L, y -0.45 to +0.45) x 0.24 (H, z 0.20 to 0.44). Ground
@@ -193,9 +196,19 @@ Shape notes:
     J5 = `arm_tool` about -Z (Blender +Y).
 - **Arm tool:** turret of five simple tools around a hub, 72 degrees apart: drill (pointing
   down at J5 = 0), scoop, brush, small camera (rover_dark lens) and sensor (rover_dark face).
-- **Power unit:** finned dark cylinder (diameter about 0.14, length about 0.35), angled up and back
-  from its rear-face connector. The angle is modelled into the mesh.
-- **Antenna:** flat hexagonal high-gain dish (about 0.22 across) on a small gimbal, gold accent.
+- **Power unit:** rover_dark. Keyed plug and boss on the rear face, a strut back to a cylinder
+  (diameter 0.14, length 0.35) with eight radial fins (0.11 m out from its axis), angled 40
+  degrees up and back like Curiosity's RTG, starting 0.13 m behind the rear face. The angle is
+  modelled into the mesh. It stays within x +-0.11, inside the rear wheels' steering sweep.
+- **Antenna:** two objects in one GLB, like the mast head. `antenna` (rover_metal) is the base:
+  keyed plug, turntable, post and a fork holding the tilt axle at z 0.58. `antenna_dish` is the
+  tilting part: axle, hub, stand-off and a flat hexagonal dish 0.22 m across (rover_body), its
+  underside 40 mm above the axle, with a small gold boss in the centre (the kit's only
+  rover_gold). In Godot: pan = rotate `antenna` about Y, tilt = rotate `antenna_dish` about X;
+  tilt 0 faces the dish straight up.
+- **Motor:** see the hatch note below; rover_dark, 0.154 x 0.112 x 0.134 m body with a 3 mm fit
+  gap to the pocket walls, front face set 8 mm back with four vertical cooling ribs flush with
+  the chassis front face.
 - **Mast base:** keyed plug into the deck, a 60 mm foot, a 40 mm pole and a 60 mm top collar
   with the keyed recess at z 0.95; two small sensor booms, outboard (+X) at z 0.78 and to the
   rear (-Y) at z 0.72, out of the camera's forward view and out of the arm's reach (a boom
@@ -290,6 +303,8 @@ follow the linkage (their hub sockets), not the physics contact.
 | Arm J3 elbow (positive = raise the forearm) | -90 to +90 degrees |
 | Arm J4 wrist | -110 to +110 degrees |
 | Arm J5 tool turret | any angle |
+| Antenna pan (`antenna`, about the vertical) | any angle (checked every 15 degrees) |
+| Antenna tilt (`antenna_dish`, about X; 0 = facing up) | +-90 degrees |
 
 The arm was checked over the whole product of these ranges (J1 every 5, J2 and J3 every 15,
 J4 every 22, J5 every 18 degrees; 41,184 poses) at steering -30, 0 and +30: it keeps 20 mm from
@@ -298,6 +313,12 @@ non-adjacent segments. Closest: forearm to the mast head 22 mm, at full left yaw
 folded back. The left yaw is limited by the mast: at +20 degrees the folded arm comes within
 2 mm of the mast head. The ground is not part of this check: over the full ranges the tool
 can reach 0.20 m below flat ground, so whatever drives the arm must keep it above the terrain.
+
+The power unit, antenna and motor were checked in `make_power_antenna_motor.py`: the power unit
+keeps 219 mm from the rear wheels, brackets and bogies over the rocker, bogie and steering
+ranges; the antenna dish keeps 22 mm from its own base and 45 mm from the deck and the low-gain
+antenna over its range, and 481 mm from the mast head over both ranges; the arm, over its whole
+range, keeps 209 mm from the antenna's swept envelope and 60 mm from the motor.
 
 **Arm poses** (J1, J2, J3, J4, J5 in degrees):
 - **Stowed** (0, 90, 90, 90, 0): the upper arm stands up at the front-left corner, the forearm
@@ -348,6 +369,10 @@ check also confirms that no head geometry is ever inside the game camera's view 
 The arm budgets were rebalanced when it was built (shoulder +130 for the yaw turntable and
 its two connectors, wrist +30, tool -60); the chassis gave up 100 (it uses 556), so the
 total is unchanged.
+
+**Actual count, complete rover:** 6,308 triangles (wheels 6 x 400, brackets 4 x 144,
+rockers and bogies 4 x 228, chassis 556, mast 200 + 264, arm 272 + 3 x 140 + 224, power unit
+192, antenna 204, motor 88), 1,692 under the 8,000 target.
 
 Swappable variants keep to their slot's budget.
 
