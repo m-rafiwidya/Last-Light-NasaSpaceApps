@@ -47,7 +47,7 @@ Before you merge, check that:
 4. Unfinished features are hidden or harmless, not crashing.
 5. New scripts have their `.uid` files committed. Open the project in the Godot editor once so it creates them. If they're missing, each person's editor makes its own and they clash.
 
-Four tests, `test_cursor`, `test_terrain`, `test_level_switch` and `test_player_body`, were already failing before this workflow started (the last three because the rack now holds 19 parts and there's a new `THERMAL` part type). Don't worry about those, but don't let any other test break.
+Only `test_cursor` is a known failure (headless runs can't capture the cursor). Don't worry about it, but don't let any other test break.
 
 ## Rules for Claude Code
 

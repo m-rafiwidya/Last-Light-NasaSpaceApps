@@ -18,6 +18,7 @@ var _done_objectives: Dictionary = {}
 var _done_missions: Dictionary = {}
 var _flags: Dictionary = {}
 var _items: Dictionary = {}
+var _played_triggers: Dictionary = {}
 var play_time_sec: float = 0.0
 var recoveries: int = 0
 
@@ -156,12 +157,30 @@ func has_item(id: String) -> bool:
 	return _items.has(id)
 
 
+## Dialogue triggers (DialogueTriggers.trigger_id) that already played this campaign
+func mark_trigger_played(id: String) -> void:
+	_played_triggers[id] = true
+
+
+func is_trigger_played(id: String) -> bool:
+	return _played_triggers.has(id)
+
+
+func has_objective(id: String) -> bool:
+	return _objective_mission.has(id)
+
+
+func has_mission(id: String) -> bool:
+	return _missions.has(id)
+
+
 func reset() -> void:
 	_current = ""
 	_done_objectives.clear()
 	_done_missions.clear()
 	_flags.clear()
 	_items.clear()
+	_played_triggers.clear()
 	play_time_sec = 0.0
 	recoveries = 0
 
@@ -188,6 +207,7 @@ func save_state() -> Dictionary:
 		"missions_done": _done_missions.keys(),
 		"flags": _flags.keys(),
 		"items": _items.duplicate(),
+		"triggers_played": _played_triggers.keys(),
 		"play_time_sec": play_time_sec,
 		"recoveries": recoveries,
 	}
@@ -213,6 +233,10 @@ func load_state(data: Dictionary) -> bool:
 		var count: Variant = data["items"][item]
 		if (count is int or count is float) and int(count) > 0:
 			_items[str(item)] = int(count)
+	var played: Variant = data.get("triggers_played")
+	if played is Array:
+		for trigger in played:
+			_played_triggers[str(trigger)] = true
 	var time: Variant = data.get("play_time_sec")
 	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
 	var recovered: Variant = data.get("recoveries")

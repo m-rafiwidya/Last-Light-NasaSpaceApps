@@ -221,7 +221,7 @@ func _check_general() -> void:
 	var tooltips: Button = _control("General", "Show Tooltips")
 	var fps: Button = _control("General", "Show FPS Counter")
 	var hud: Node = root.get_node("Main/UIManager/HUD")
-	var boxes: Control = hud.get_node("DialogBoxContainer")
+	var boxes: Control = hud.get_node("SubtitleStack")
 
 	# A line playing (with a voice stream, to see its bus) while the subtitle settings change
 	var dialog: Resource = load("res://src/dialog/dialog.gd").new()

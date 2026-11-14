@@ -4,17 +4,13 @@ extends Node
 
 signal finished
 
-const TRIGGERS_PATH: String = "res://res/story/dialogue_triggers.json"
-const LINES_PATH: String = "res://res/story/lines.json"
 const IRIS_SHOT_TIME: float = 4.0
-const LINE_MIN_DURATION: float = 3.0
 const DIALOGUE_TIMEOUT_EXTRA: float = 5.0
 const CAMERA_DISTANCE: float = 9.0
 const CAMERA_HEIGHT: float = 3.0
 
 var director: MissionDirector = null
 var playing: bool = false
-var _closing_sequence: DialogSequence = null
 
 
 func _ready() -> void:
@@ -34,14 +30,14 @@ func _on_mission_completed(id: String) -> void:
 
 func _play() -> void:
 	GameState.change_state_to(GameState.State.IN_GAME_MENU)
+	var closing := _closing_sequence()
 	if director and director.rover and director.pad and not director.pad.is_in_zone(director.rover):
 		director.dock_rover()
 	await _show_iris()
 	if not is_inside_tree():
 		return
 	GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
-	_play_closing_lines_until_trigger_system()
-	await _wait_for_dialogue(_dialogue_timeout())
+	await _wait_for_dialogue(closing, DialogServer.queued_duration() + DIALOGUE_TIMEOUT_EXTRA)
 	if not is_inside_tree():
 		return
 	GameState.change_state_to(GameState.State.IN_GAME_MENU)
@@ -78,68 +74,48 @@ func _show_iris() -> void:
 	camera.queue_free()
 
 
-## Delete once the dialogue trigger system plays the lines for the ending's event (mission_completed:m3).
-func _play_closing_lines_until_trigger_system() -> void:
+## The trigger system's sequence for the ending event, else the missions.json fallback lines queued here
+func _closing_sequence() -> DialogSequence:
+	var event := _ending_event()
+	if DialogueTriggers.has_trigger(event):
+		return DialogueTriggers.sequence_for(event)
 	var lines := closing_lines()
 	if lines.is_empty():
+		return null
+	var sequence := DialogSequence.new()
+	sequence.dialogs = lines
+	DialogServer.queue_sequence(sequence)
+	return sequence
+
+
+func _wait_for_dialogue(sequence: DialogSequence, timeout: float) -> void:
+	if not DialogServer.is_sequence_pending(sequence):
 		return
-	_closing_sequence = DialogSequence.new()
-	_closing_sequence.dialogs = lines
-	DialogServer.play_dialog_sequence(_closing_sequence)
-
-
-func _wait_for_dialogue(timeout: float) -> void:
 	var done: Array = [false]
-	var on_finished := func(sequence: DialogSequence, _completed: bool) -> void:
-		if _closing_sequence == null or sequence == _closing_sequence:
+	var on_finished := func(finished_sequence: DialogSequence, _completed: bool) -> void:
+		if finished_sequence == sequence:
 			done[0] = true
 	DialogServer.sequence_finished.connect(on_finished)
 	var elapsed: float = 0.0
-	while not done[0] and elapsed < timeout and is_inside_tree():
+	while not done[0] and DialogServer.is_sequence_pending(sequence) and elapsed < timeout and is_inside_tree():
 		await get_tree().process_frame
 		elapsed += get_process_delta_time()
 	DialogServer.sequence_finished.disconnect(on_finished)
-	_closing_sequence = null
 
 
-func _dialogue_timeout() -> float:
-	var total: float = DIALOGUE_TIMEOUT_EXTRA
-	for line in closing_lines():
-		total += DialogServer.get_dialog_duration(line) + DialogServer.SEQUENCE_GAP
-	return total
-
-
-## The ending event's lines from dialogue_triggers.json / lines.json, else the fallback in missions.json
+## The ending event's lines from the dialogue data, else the fallback in missions.json
 func closing_lines() -> Array[Dialog]:
 	var ending := CampaignState.mission_ending(CampaignState.last_mission())
-	var event: String = ending.get("event", "")
-	var triggers: Variant = _read_json(TRIGGERS_PATH)
-	var lines: Variant = _read_json(LINES_PATH)
-	var result: Array[Dialog] = []
-	if triggers is Array and lines is Dictionary:
-		for trigger in triggers:
-			if trigger is Dictionary and trigger.get("on") == event and lines.get(trigger.get("line")) is Dictionary:
-				result.append(_dialog(lines[trigger["line"]]))
+	var result := DialogueTriggers.lines_for(_ending_event())
 	if result.is_empty() and ending.get("lines") is Array:
 		for line in ending["lines"]:
 			if line is Dictionary:
-				result.append(_dialog(line))
+				result.append(DialogueTriggers.make_dialog(line))
 	return result
 
 
-func _dialog(entry: Dictionary) -> Dialog:
-	var dialog := Dialog.new()
-	dialog.speaker = str(entry.get("speaker", ""))
-	dialog.subtitle = str(entry.get("text", ""))
-	dialog.min_duration = LINE_MIN_DURATION
-	var audio: String = str(entry.get("audio", ""))
-	if audio and ResourceLoader.exists(audio):
-		dialog.audio_stream = load(audio)
-	return dialog
-
-
-func _read_json(path: String) -> Variant:
-	return JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+func _ending_event() -> String:
+	return str(CampaignState.mission_ending(CampaignState.last_mission()).get("event", ""))
 
 
 func _wait(seconds: float) -> void:
