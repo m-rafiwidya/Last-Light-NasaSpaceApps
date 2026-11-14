@@ -91,6 +91,11 @@ enum WheelState{
 	CENTER_HEIGHT,
 	# The body the wheel stands on (null if none)
 	GROUND_BODY,
+	# Longitudinal slip relative to what the tyre can carry (slip ratio * longitudinal
+	# stiffness / (friction * load)); + = the wheel turns faster than the ground passes.
+	# The tyre force peaks near 2.7 (pacejka_b / c / e); 0 without a loaded contact.
+	# Read by the Robot's traction control.
+	NORMALIZED_SLIP,
 }
 
 var wheel_states: Dictionary = {}
@@ -108,6 +113,7 @@ func _init() -> void:
 			WheelState.IS_SLIPPING: false,
 			WheelState.CENTER_HEIGHT: 0.0,
 			WheelState.GROUND_BODY: null,
+			WheelState.NORMALIZED_SLIP: 0.0,
 		}
 
 enum WheelProperty{
@@ -160,6 +166,7 @@ func _clear_wheel_contact(wheel: Wheel) -> void:
 	wheel_states[wheel][WheelState.FORCE] = Vector3.ZERO
 	wheel_states[wheel][WheelState.TORQUE] = 0.0
 	wheel_states[wheel][WheelState.GROUND_BODY] = null
+	wheel_states[wheel][WheelState.NORMALIZED_SLIP] = 0.0
 
 
 # Touching the ground without being held up by it (a wall, or the spring extending faster
@@ -361,6 +368,7 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, 
 				suspension_load.dot(y_basis)
 			)
 		)
+		wheel_states[wheel][WheelState.NORMALIZED_SLIP] = normalized_slip_ratio
 		var normalized_combined_slip: float = (
 			sqrt(
 				normalized_slip_ratio*normalized_slip_ratio +

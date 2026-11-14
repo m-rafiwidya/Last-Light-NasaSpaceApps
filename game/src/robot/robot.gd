@@ -50,6 +50,16 @@ extends RigidBody3D
 # what finally stops the robot once the motor's back-EMF braking has faded out, and
 # it pulls the loaded top speed a little below the motor's no-load speed.
 @export var rolling_resistance_force: float = 12.0
+# Traction control (see _update_traction_factors): while a wheel's drive torque pushes its
+# normalized slip (RunningGear.WheelState.NORMALIZED_SLIP, tyre force peaks near 2.7) past
+# traction_slip_target, the torque is scaled down linearly, to nothing at traction_slip_limit,
+# per axle, eased by traction_response. Past the peak the tyre loses force and sideways grip,
+# so the rover would spin round; on Earth the motors rarely get there.
+@export var traction_control: bool = true
+@export var traction_slip_target: float = 1.0
+@export var traction_slip_limit: float = 2.0
+# How fast (1/s) each wheel's torque factor follows its target
+@export var traction_response: float = 60.0
 # Rotational inertias (kg m^2) of the transmission output shaft and differential
 @export var transmission_inertia: float = 0.004
 @export var differential_inertia: float = 0.01
@@ -61,11 +71,19 @@ const DRIVEN_WHEELS: Array = [
 	RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.MIDDLE_RIGHT,
 	RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT,
 ]
+# Left / right pairs, for traction control's select-low
+const AXLES: Array = [
+	[RunningGear.Wheel.FRONT_LEFT, RunningGear.Wheel.FRONT_RIGHT],
+	[RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.MIDDLE_RIGHT],
+	[RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT],
+]
 # Rolling resistance fades in over 1 / this rad/s of wheel speed so it can't
 # flip the wheel's direction at near-zero speed.
 const ROLLING_RESISTANCE_SLIP_GAIN: float = 0.5
 
 # Drivetrain state (one motor per driven wheel, see _step_drivetrain)
+# Traction control: 0..1 multiplier on each driven wheel's motor torque. Read by the HUD.
+var traction_factors: Dictionary = {}
 # Average signed motor speed (rad/s) of the wheel motors, positive = forward. Read by engine_sound.gd
 var motor_angular_velocity: float = 0.0
 # Total torque (Nm) of the wheel motors this step. Read by engine_sound.gd
@@ -399,11 +417,16 @@ func _step_drivetrain(step: float) -> void:
 	motor_angular_velocity = 0.0
 	motor_torque = 0.0
 	electrical_power = 0.0
+	var torques: Dictionary = {}
+	for wheel in DRIVEN_WHEELS:
+		var wheel_motor_speed: float = running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] * combined_gear_ratio
+		torques[wheel] = engine.get_motor_torque(wheel_motor_speed, voltage) * share
+	_update_traction_factors(torques, step)
 	for wheel in DRIVEN_WHEELS:
 		var wheel_state: Dictionary = running_gear.wheel_states[wheel]
 		var wheel_speed: float = wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY]
 		var wheel_motor_speed: float = wheel_speed * combined_gear_ratio
-		var wheel_motor_torque: float = engine.get_motor_torque(wheel_motor_speed, voltage) * share
+		var wheel_motor_torque: float = torques[wheel] * traction_factors[wheel]
 		electrical_power += engine.get_electrical_power(wheel_motor_torque / share, voltage) * share
 		motor_angular_velocity += wheel_motor_speed * share
 		motor_torque += wheel_motor_torque
@@ -422,6 +445,31 @@ func _step_drivetrain(step: float) -> void:
 
 	if battery:
 		battery.drain(electrical_power * step / 3600.0)
+
+# Traction control. Each driven wheel's target factor: while its motor drives it (torque the
+# way the wheel turns, or from a standstill) and that torque adds to the slip, from 1 at
+# traction_slip_target down to 0 at traction_slip_limit; otherwise 1. Braking torque (back-EMF,
+# reverse throttle against the wheel's turning) is never limited, so a parked rover holds on a
+# slope as before. Both wheels of an axle then take the lower target of the two that are on
+# the ground (select-low), so left and right push equally and uneven grip (a lifting front
+# wheel under hard acceleration) can't yaw the rover. Factors ease towards their targets.
+func _update_traction_factors(torques: Dictionary, step: float) -> void:
+	var targets: Dictionary = {}
+	for wheel in DRIVEN_WHEELS:
+		var state: Dictionary = running_gear.wheel_states[wheel]
+		var slip: float = state[RunningGear.WheelState.NORMALIZED_SLIP]
+		var torque: float = torques[wheel]
+		targets[wheel] = 1.0
+		if traction_control and slip * torque > 0.0 and torque * state[RunningGear.WheelState.ANGULAR_VELOCITY] >= 0.0:
+			targets[wheel] = clampf((traction_slip_limit - absf(slip)) / (traction_slip_limit - traction_slip_target), 0.0, 1.0)
+	for axle in AXLES:
+		var target: float = 1.0
+		for wheel in axle:
+			if running_gear.wheel_states[wheel][RunningGear.WheelState.IN_CONTACT]:
+				target = minf(target, targets[wheel])
+		for wheel in axle:
+			traction_factors[wheel] = move_toward(traction_factors.get(wheel, 1.0), target, traction_response * step)
+
 
 # Inertia (kg m^2) seen at one driven wheel: the wheel plus its share of the transmission,
 # differential and motor rotor. The transmission output shaft spins at final_drive times

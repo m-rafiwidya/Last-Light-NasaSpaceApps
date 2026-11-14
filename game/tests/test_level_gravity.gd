@@ -16,6 +16,7 @@ extends SceneTree
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_level_gravity.gd
+##     (append `-- no_traction_control` to measure the rover without traction control)
 
 const TICKS: int = 240
 const MOON: float = 1.62
@@ -91,10 +92,18 @@ func _release_all() -> void:
 
 func _place_rover(rover: RigidBody3D, at: Vector3, heading: float = 0.0) -> void:
 	_release_all()
-	rover.global_transform = Transform3D(Basis(Vector3.UP, heading), at)
+	_teleport(rover, Transform3D(Basis(Vector3.UP, heading), at))
+	await _ticks(2.0)   # settle
+
+
+# At rest, wheels stopped too (RunningGear.WheelState.ANGULAR_VELOCITY = 0), so one run's wheel
+# spin can't carry into the next
+func _teleport(rover: RigidBody3D, to: Transform3D) -> void:
+	rover.global_transform = to
 	rover.linear_velocity = Vector3.ZERO
 	rover.angular_velocity = Vector3.ZERO
-	await _ticks(2.0)   # settle, let the wheels stop
+	for wheel in rover.running_gear.wheel_states:
+		rover.running_gear.wheel_states[wheel][0] = 0.0
 
 
 func _forward_speed(rover: RigidBody3D) -> float:
@@ -188,9 +197,7 @@ func _measure_rover(rover: RigidBody3D, g: float) -> void:
 	var slope: float = atan(RAMP_HEIGHT / RAMP_LENGTH)
 	var up_slope := Basis(Vector3.RIGHT, slope)
 	var on_slope: Vector3 = RAMP_ORIGIN + Vector3(0.0, 1.0, -1.0 / tan(slope)) + up_slope.y * 0.12
-	rover.global_transform = Transform3D(up_slope, on_slope)
-	rover.linear_velocity = Vector3.ZERO
-	rover.angular_velocity = Vector3.ZERO
+	_teleport(rover, Transform3D(up_slope, on_slope))
 	await _ticks(0.3)
 	var settled: Vector3 = rover.global_position
 	await _ticks(1.0)
@@ -280,6 +287,9 @@ func _run() -> void:
 	for g in [EARTH, MOON]:
 		await _measure_player(GS.player, g)
 	var rover: RigidBody3D = level.get_node("ReadyRover")
+	# `-- no_traction_control` measures the rover without it, for comparison
+	if "no_traction_control" in OS.get_cmdline_user_args():
+		rover.traction_control = false
 	GS.drive(rover)
 	await _ticks(0.5)
 	for g in [EARTH, MOON]:
@@ -290,8 +300,16 @@ func _run() -> void:
 	# take-off speed, and the slope the motors couldn't hold on Earth being easy on the Moon.
 	# The rest (wheelspin, braking, cornering) is reported above as MEASURE lines.
 	var r := results
-	_check("30%% throttle top speed doesn't depend on gravity (within 10%%)",
+	_check("30% throttle top speed doesn't depend on gravity (within 10%)",
 		absf(r["30%% throttle: top forward speed@%s" % MOON] / r["30%% throttle: top forward speed@%s" % EARTH] - 1.0) < 0.1)
+	if rover.traction_control:
+		_check("Moon full throttle: traction control keeps 85% of Earth's top speed",
+			r["100%% throttle: top forward speed@%s" % MOON] > 0.85 * r["100%% throttle: top forward speed@%s" % EARTH],
+			"%.2f m/s" % r["100%% throttle: top forward speed@%s" % MOON])
+		_check("Moon full throttle: no spin-out (drift under 1.5x Earth's)",
+			r["100%% throttle: heading drift, no steering@%s" % MOON] < 1.5 * r["100%% throttle: heading drift, no steering@%s" % EARTH],
+			"%.0f deg vs %.0f" % [r["100%% throttle: heading drift, no steering@%s" % MOON], r["100%% throttle: heading drift, no steering@%s" % EARTH]])
+		_check("Moon rover climbs the ramp with a run-up", r["ramp, 3 m run-up: highest (top 3.0)@%s" % MOON] > 3.0)
 	_check("Moon rover climbs the ramp from a standstill",
 		r["ramp from standstill 1 m up: highest (top 3.0)@%s" % MOON] > 3.0)
 	_check("Earth jump is JUMP_HEIGHT (0.8 m)", absf(r["player jump height@%s" % EARTH] - 0.8) < 0.1,
