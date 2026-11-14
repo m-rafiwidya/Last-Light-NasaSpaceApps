@@ -7,7 +7,10 @@ system. **Every part follows this spec.**
 
 Status: approved 2026-10-07. Revised 2026-10-07 while building the steer bracket: renamed the
 bracket's `socket_wheel` to `socket_wheel_hub` and added the Godot name rules (2.2); fixed the
-connector recess position (2.5).
+connector recess position (2.5). Revised again while building the rocker and bogie: their
+budgets are 230 each (were 250 / 200), since round pivot housings and every keyed recess need
+about 228 per part (6.2). Added: keys on moving joints only mark the rest pose (2.5), and the
+clearance-checked pose range that the visuals must clamp to (5).
 
 ---
 
@@ -76,6 +79,8 @@ connector recess position (2.5).
 - **Key:** an 8 mm wide notch on the plug and a matching tab in the collar. The key points **+Y**;
   if the connector's axis runs along Y, the key points **+Z**. Wheel hubs face along X, key at +Z.
 - Joints read as round actuator bosses; a collar may be wider than the beam it sits on.
+- **Moving joints** (rocker pivot, bogie pivot, steering): the key only marks the rest pose. In
+  use the plug rotates inside the recess, hidden inside the joint.
 
 ### 2.6 Clearance
 - **At least 20 mm** between any two parts that are not joined at a connector, in the rest pose and
@@ -217,6 +222,19 @@ A script on the rover poses the linkage every physics frame from the physics whe
 The six physics wheels are independent springs and the linkage is rigid, so on rough ground a
 visual wheel may sit up to about 2 cm off its physics contact. On flat ground the offset is zero.
 
+**Verified pose range.** The section 3.4 clearances were checked for every combination of:
+
+| Joint | Range |
+|---|---|
+| Rocker (about X, at its pivot) | +-10 degrees |
+| Bogie (about X, at its pivot) | +-15 degrees |
+| Steering (front, rear counter-steers) | +-30 degrees |
+
+`rover_visuals.gd` must clamp the rocker and bogie angles to this range (steering is already
+limited to +-30 degrees by the physics), so the visuals never reach a pose that was not
+clearance-checked. Widening a range means re-running the check in
+`tools/blender/scripts/make_rocker_bogie.py` first.
+
 ---
 
 ## 6. Look
@@ -232,8 +250,8 @@ visual wheel may sit up to about 2 cm off its physics contact. On flat ground th
 | Part | Triangles |
 |---|---|
 | chassis | 1,300 |
-| rockers | 2 x 250 |
-| bogies | 2 x 200 |
+| rockers | 2 x 230 |
+| bogies | 2 x 230 |
 | steer brackets | 4 x 150 |
 | wheels | 6 x 400 |
 | mast_base | 300 |
@@ -243,7 +261,7 @@ visual wheel may sit up to about 2 cm off its physics contact. On flat ground th
 | motor | 200 |
 | power_unit | 400 |
 | antenna | 250 |
-| **Total** | **7,720** (280 spare) |
+| **Total** | **7,740** (260 spare) |
 
 Swappable variants keep to their slot's budget.
 
