@@ -3,15 +3,21 @@ extends SceneTree
 ## with its headlights on, SECONDS each in the chase and the mast view, then the player walks
 ## on foot with the helmet light on, then stands facing the parked rover, its headlights and the
 ## helmet light both in view (the player's helmet light is on throughout), then stands in the
-## workshop's bay facing the docked rover (the workshop's lights, WORKSHOP_KIT.md 8). Prints per phase the mean frame rate and the 99th percentile and worst frame times
-## and the triangles drawn per frame; before that the load time (main menu to playing, and the
+## workshop's bay facing the docked rover (the workshop's lights, WORKSHOP_KIT.md 8), then the
+## decor's cost (DECOR_KIT.md 8: `_decor_ab`, two off/on pairs in the bay and two from the rover on
+## the apron). Prints per phase the mean frame rate and the 99th
+## percentile and worst frame times, the triangles drawn and the draw calls per frame; before that
+## the load time (main menu to playing, and the
 ## terrain's own data / mesh times: the meshes come from user://terrain_cache after the first load)
 ## and the memory in use (static and video) on the menu and once the level is in.
 ## Vsync is off unless `vsync` is given, so the numbers show the headroom.
 ##
 ##     Godot --path game -s res://tools/measure_moon_fps.gd --resolution 1920x1080
 ##     (append `-- vsync`, `sun=<elevation>`, `quality=<0-5>` (directional soft shadow quality),
-##     `atlas=<size>` (directional shadow atlas) or `lights=off` to compare)
+##     `atlas=<size>` (directional shadow atlas) or `lights=off` to compare; `unthrottled` keeps
+##     the frame rate up while the window is unfocused (main.gd caps an unfocused window at
+##     30 fps), for A/B phases in one run when the window can't keep the focus; `decor_ab` measures
+##     only the decor's cost: three off/on pairs in the bay and three on the apron)
 
 const SECONDS: float = 12.0
 const WARM_UP: float = 2.0
@@ -25,7 +31,7 @@ var args: Dictionary = {}
 
 
 func _initialize() -> void:
-	_watchdog(300.0)
+	_watchdog(480.0)
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -41,6 +47,9 @@ func _run() -> void:
 		InputMap.action_erase_events(action)
 	DisplayServer.window_move_to_foreground()
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if args.has("vsync") else DisplayServer.VSYNC_DISABLED)
+	if args.has("unthrottled"):
+		root.get_node("Main").throttle_when_unfocused = false
+		Engine.max_fps = 0
 
 	while GS.state != GS.State.MAIN_MENU:
 		await process_frame
@@ -74,12 +83,19 @@ func _run() -> void:
 		RenderingServer.directional_shadow_atlas_set_size(int(args["atlas"]), true)
 	if args.has("quality"):
 		RenderingServer.directional_soft_shadow_filter_set_quality(int(args["quality"]))
-	print("SETUP %s, %.0f Hz screen, sun %s deg, vsync %s, atlas %s, soft shadow quality %s, %s" % [
+	print("SETUP %s, %.0f Hz screen, sun %s deg, vsync %s, atlas %s, soft shadow quality %s, %s%s" % [
 		RenderingServer.get_video_adapter_name(), DisplayServer.screen_get_refresh_rate(), sky.get("sun_elevation"), args.has("vsync"),
-		args.get("atlas", "default"), args.get("quality", "default"), "lights off" if args.get("lights") == "off" else "lights on"])
+		args.get("atlas", "default"), args.get("quality", "default"), "lights off" if args.get("lights") == "off" else "lights on",
+		", unthrottled when unfocused" if args.has("unthrottled") else ""])
 
 	var rover: Node = level.get_node("ReadyRover")
 	var workshop: Node3D = level.get_node("Workshop")
+	if args.has("decor_ab"):
+		if "headlights_on" in rover:
+			rover.headlights_on = args.get("lights") != "off"
+		await _decor_ab(workshop, rover, 3)
+		quit()
+		return
 	# The rover starts docked in the workshop: out onto the apron for the drive
 	rover.global_transform = Transform3D(workshop.global_basis, workshop.to_global(Vector3(-1.0, 0.4, -16.0)))
 	GS.drive(rover)
@@ -128,7 +144,39 @@ func _run() -> void:
 	player.controller.camera_azimuth = atan2(-to_rover.x, -to_rover.z)
 	player.controller.camera_altitude = deg_to_rad(-20.0)
 	await _measure("player in the workshop, facing the docked rover")
+	await _decor_ab(workshop, rover, 2)
 	quit()
+
+
+## The decor's cost (DECOR_KIT.md 8), back to back in the same places, `rounds` times: decor
+## off then on, standing in the bay facing the docked rover, then from the rover parked 8 m out
+## on the apron facing the bay door (chase camera: the facade, the exterior decor and the tracks).
+## The decor is hidden, not freed (its colliders stay); everything is put back in place before
+## each phase, so the pairs see the same view.
+func _decor_ab(workshop: Node3D, rover: Node, rounds: int) -> void:
+	var player: Node = GS.player
+	for view in ["workshop bay", "apron facing the door"]:
+		for k in 2 * rounds:
+			if view == "workshop bay":
+				if GS.state != GS.State.IN_GAME_PLAYER:
+					GS.change_state_to(GS.State.IN_GAME_PLAYER)
+				rover.global_transform = workshop.get_dock_transform().translated(Vector3.UP * 0.05)
+				player.global_position = workshop.to_global(Vector3(1.3, 0.05, -2.6))
+				player.linear_velocity = Vector3.ZERO
+				var to_rover: Vector3 = rover.global_position - player.global_position
+				player.controller.camera_azimuth = atan2(-to_rover.x, -to_rover.z)
+				player.controller.camera_altitude = deg_to_rad(-20.0)
+			else:
+				rover.global_transform = Transform3D(workshop.global_basis * Basis(Vector3.UP, PI), workshop.to_global(Vector3(-1.0, 0.4, -12.0)))
+				if GS.state != GS.State.IN_GAME_ROBOT:
+					GS.drive(rover)
+				rover.get_node("CameraRig")._switch(CHASE)
+			rover.linear_velocity = Vector3.ZERO
+			rover.angular_velocity = Vector3.ZERO
+			var on: bool = k % 2 == 1
+			workshop.set_decor_visible(on)
+			await _measure("%s, decor %s" % [view, "on" if on else "off"])
+	workshop.set_decor_visible(true)
 
 
 func _measure(phase: String) -> void:
@@ -140,6 +188,12 @@ func _measure(phase: String) -> void:
 		await process_frame
 	var frame_times: Array[float] = []
 	var primitives: float = 0.0
+	var draw_calls: float = 0.0
+	# The render's CPU cost, which a frame cap (an unfocused window's) doesn't hide (the GPU time
+	# isn't reported on Metal)
+	var viewport_rid: RID = root.get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(viewport_rid, true)
+	var cpu_render: float = 0.0
 	var unfocused: int = 0
 	var last: int = Time.get_ticks_usec()
 	start = last
@@ -148,15 +202,19 @@ func _measure(phase: String) -> void:
 		var now: int = Time.get_ticks_usec()
 		frame_times.append((now - last) / 1000.0)
 		primitives += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
+		draw_calls += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+		cpu_render += RenderingServer.viewport_get_measured_render_time_cpu(viewport_rid) + RenderingServer.get_frame_setup_time_cpu()
 		last = now
 		if not DisplayServer.window_is_focused():
 			unfocused += 1
 	var sorted: Array[float] = frame_times.duplicate()
 	sorted.sort()
 	var mean: float = (last - start) / 1000.0 / frame_times.size()
-	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames  %.2f M triangles a frame%s" % [
-		phase, 1000.0 / mean, mean, sorted[int(sorted.size() * 0.99)], sorted[-1],
-		frame_times.size(), primitives / frame_times.size() / 1e6, "" if unfocused == 0 else "  (%d unfocused: throttled)" % unfocused])
+	print("FPS %-22s mean %6.1f fps (%5.2f ms)  median %5.2f ms  p99 %5.2f ms  worst %6.2f ms  CPU render %5.2f ms  %d frames  %.2f M triangles, %.0f draw calls a frame%s" % [
+		phase, 1000.0 / mean, mean, sorted[sorted.size() / 2], sorted[int(sorted.size() * 0.99)], sorted[-1],
+		cpu_render / frame_times.size(),
+		frame_times.size(), primitives / frame_times.size() / 1e6, draw_calls / frame_times.size(),
+		"" if unfocused == 0 else "  (%d unfocused)" % unfocused])
 
 
 # A hang fails the run instead of stalling it (the windowed tools wait for a level to load)

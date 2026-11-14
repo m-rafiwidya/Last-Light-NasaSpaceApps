@@ -19,6 +19,26 @@ this project's scripts from its own rover kit; nothing third-party
 `game/res/models/astronaut_kit/`: original, made by this project's scripts; nothing
 third-party (`game/res/models/astronaut_kit/PROVENANCE.md`).
 
+## Decor kit
+
+`game/res/models/decor_kit/` and the tyre-track textures in `game/res/textures/decor/`: original,
+made by this project's scripts; nothing third-party (`game/res/models/decor_kit/PROVENANCE.md`).
+
+## History cards
+
+The two photographs on the workshop's history cards (`game/res/textures/decor/`; download,
+checksums and processing in its `PROVENANCE.md`):
+
+- **AS12-49-7278**, "Astronaut Alan Bean holds Special Environmental Sample Container",
+  19-20 November 1969. Photo: NASA (taken by Charles Conrad Jr.).
+  <https://images.nasa.gov/details/as12-49-7278>
+- **AS12-48-7136**, "Apollo 12 Mission image - Astronaut Alan L. Bean, lunar module pilot, and
+  two U.S. spacecraft" (Conrad at Surveyor 3, Intrepid behind), 20 November 1969. Photo: NASA
+  (taken by Alan L. Bean). <https://images.nasa.gov/details/as12-48-7136>
+
+Both are public domain NASA images, cropped square and resized to 1024 x 1024, otherwise
+unchanged. Each card prints its credit and NASA ID under the photo.
+
 ## Star map
 
 `game/res/textures/sky/starmap_2020_4k.exr`: the Moon level's sky.

@@ -24,6 +24,9 @@ extends Node3D
 ## - Astronaut (tools/blender/ASTRONAUT_KIT.md): an empty suit on its stand in the operator area,
 ##   and the operator seated at the console on a stool, shown only while the console drives the
 ##   rover (the rover's camera can see them through the partition window). Both are static meshes.
+## - Decor (tools/blender/DECOR_KIT.md, `decor_enabled`): set dressing inside and around the
+##   workshop, built by WorkshopDecor as the child "Decor". Scenery only: it can't be picked up,
+##   used or scanned.
 
 const KIT_DIR: String = "res://res/models/workshop_kit/"
 const ASTRONAUT_DIR: String = "res://res/models/astronaut_kit/"
@@ -40,6 +43,8 @@ const DOOR_OPEN_ANGLE: float = -90.0
 @export var airlock_barrier: bool = true
 ## Put the rover parts on the rack
 @export var stock_rack: bool = true
+## Dress the workshop (DECOR_KIT.md): clutter, safety gear, crew things, history cards, exterior
+@export var decor_enabled: bool = true
 @export var door_open_time: float = 2.5
 @export var door_close_delay: float = 3.0
 @export var personnel_door_time: float = 0.8
@@ -56,6 +61,8 @@ var restock_trigger: InteractTrigger = null
 var operator: Node3D = null
 ## The empty suit on its stand (its helmet on the stand's shelf)
 var suit_on_stand: Node3D = null
+## The set dressing (null when `decor_enabled` is off)
+var decor: WorkshopDecor = null
 var curtain: StaticBody3D = null
 ## Layout empties and part empties by name (positions in this node's frame)
 var anchors: Dictionary = {}
@@ -127,6 +134,10 @@ func _ready() -> void:
 	_build_labels()
 	_build_console_screen()
 	_build_astronauts()
+	if decor_enabled:
+		decor = WorkshopDecor.new()
+		decor.name = "Decor"
+		add_child(decor)
 	if stock_rack:
 		_build_rack_stock()
 
@@ -501,6 +512,12 @@ func _transform_in(root: Node3D, node: Node3D) -> Transform3D:
 
 
 # --- Gameplay ------------------------------------------------------------------------------
+
+## Shows or hides the set dressing (its colliders stay), for comparing its frame-rate cost
+func set_decor_visible(shown: bool) -> void:
+	if decor:
+		decor.visible = shown
+
 
 ## Where the docked rover's origin goes, facing out of the bay door
 func get_dock_transform() -> Transform3D:

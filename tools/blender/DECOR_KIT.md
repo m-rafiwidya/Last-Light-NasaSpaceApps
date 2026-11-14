@@ -6,7 +6,78 @@ fasteners, a few amber work lights and clearly labelled equipment. It also cover
 **A12** (paper and service-note props near their equipment) and its optional **historical image
 cards**. The conventions are `WORKSHOP_KIT.md`'s unless this file says otherwise.
 
-Status: **proposed 2026-10-10, awaiting approval. Nothing is modelled yet.**
+Status: **approved 2026-10-10**, with these answers:
+- the budget is fine;
+- the technical service notes stay as placeholders, with every word in one file
+  (`game/res/decor/decor_texts.json`), drawn as text in Godot, never baked into an image;
+- two history cards; a third only with a confirmed NASA source and ID;
+- tracks only on the Moon.
+
+**Built 2026-10-10.** Models: `tools/blender/scripts/decor/` (every generator's checks pass);
+game: `game/src/workshop/workshop_decor.gd` (game README, "The workshop"); test:
+`game/tests/test_workshop.gd` section 7 (Moon level and test level, all pass). Where the build
+differs from the text below, this list wins:
+
+- **No HC3.** NASA's Image and Video Library has no picture taken by Surveyor 3's own camera
+  (its "Surveyor 3" results are Apollo 12 frames, artists' concepts and later orbital views), so
+  there are two cards, as approved.
+- **Wall pieces** stand 35 mm off the wall face (`WALL_GAP`), clear of the walls' 30 mm frame
+  members and 20 mm kick plate. Every placement is in `decor_kit_common.py`.
+- **Moves:** the second extinguisher (EX2) is at x 3.30, since the ration crate (CR4) takes x 2.20
+  to 2.80; S2 and N2 are at x 1.35, 8.5 cm outside the charger's trigger. The mug is on the
+  operator's right of the screen (+Y) and the tablet on the left, **propped on a kickstand at 60
+  degrees**: lying flat, it hid behind the console's control deck. The plant lab sits under the
+  east window's sill (top at 1.18 m); the low sun passes over it, not onto it.
+- **Materials:** one `dc_photo` for both photo quads (Godot puts each card's photo on it as a
+  material override) instead of `dc_card_a12` / `dc_card_s3`.
+- **Words** (`decor_texts.json`; `text_<style>_<key>` empties, children of their piece's
+  `place_` / `outside_` empty): notes have a 16 mm title and a 12 mm body that wraps (both may
+  shrink to 8 mm) starting under the clip; signs 18 mm, wrapped; labels fill their plate (crate
+  labels and the paper tags wrap); the cards have a 15 mm title, a 10.5 mm caption and an 8 mm
+  credit. All fit (the test checks it). The Surveyor 3 caption says "About 570 m
+  east-north-east of this bay": 572 m from the workshop's centre at bearing 65.5 degrees
+  (`terrain.json`), 556 m from its nearest corner.
+- **Text keys** that end like a Godot import hint are renamed: `label_wheel_tag`, not
+  `label_tag_wheel` (the exporter refused `_wheel`).
+- **Cable:** built by Godot along `path_cable_*` (a 3 cm amber square tube, 56 triangles), so its
+  points can rest on the ground.
+- **Tracks:** 15 decals (three tracks, five segments each); texture 256 x 1024 for a 1.2 x 2.5 m
+  decal.
+- **Triangles** (each generator reports them): tool chest 232, crate 78, cable reel 152, spare
+  panels 80, spare wheel 270, ladder 174, oxygen rack 408, extinguisher 138, threshold band 40,
+  signs 16 / 32 / 17, mug 122, tablet 26, plant lab 256, service note 36, history card 38,
+  junction box 80. Merged interior 2,669 (with the photos), exterior pieces 404, cable 56:
+  **3,129 in all** (cap 3,500).
+- **Draw calls:** the interior is 10 surfaces plus the two photo quads; 33 Label3Ds; 15 decals.
+- **Collision:** 12 static boxes: the tool chest, four crates, the reel, the spare panels, the
+  oxygen rack and the plant lab inside; two crates and the reel outside.
+- **Shadows:** the merged interior is one mesh, so all of it casts (splitting off the flat pieces
+  would add draw calls for nothing measurable). Labels and decals don't.
+- **Checks as built** (`make_decor_layout.py`): every workshop check passes with the decor in the
+  room (the closest decor to the U-turn is the tool chest, 0.76 m, needs 0.48); nothing in the
+  keep-clear zone, on the pad or in the exterior lane (wall pieces above the rover's 1.22 m don't
+  count, e.g. the ramp sign on the facade); least gap to a trigger 0.050 m (the ration crate to
+  the charger's trigger, through the partition); 68 sight lines clear.
+- **Light:** no lights were added. The bay's west wall and the door's west side are the
+  workshop's dimmest corners (mean brightness 0.14 in `tools/previews/decor/`), so the tool
+  chest, tanks and extinguisher there read as silhouettes with legible signs. A fourth unshadowed
+  amber lamp on the west wall would lift them, if wanted.
+- **Frame rate** (`game/tools/measure_moon_fps.gd -- unthrottled decor_ab`: decor off / on pairs
+  in the same run, the decor hidden, not freed; MacBook Pro M4, 1920 x 1080, vsync off; four
+  runs, 2026-10-10):
+  - The render's CPU time: bay 0.54 ms off, 0.59 ms on (**+0.05 ms**); apron 0.49 ms off,
+    0.57 ms on (**+0.08 ms**).
+  - Draw calls (all passes: depth, main, the sun's four cascades, the bay light's shadow): about
+    +180 in the bay (about 1,250 to 1,430) and +250 on the apron, far more than 7.2's "about 50",
+    which counted the main pass only. Triangles: +0.02-0.05 M a frame.
+  - Frame time: the measuring window couldn't keep the focus (the machine was in use), and macOS
+    then holds an unfocused window at about 145 fps. In every phase held there, decor on and off
+    both stay at 6.90 ms, so the decor never pushes a frame past it. The one pair measured in
+    focus in the bay: median 5.75 ms off, 5.92 ms on (mean 6.04 / 6.36 ms). Pairs differ by up to
+    0.3 ms on this machine, more than section 8's 0.15 ms limit, so **the limit is not yet
+    confirmed on frame time**: run `decor_ab` once with the window in front (about 3 minutes).
+    `unthrottled` (`main.gd`'s unfocused cap off) and the per-phase median, CPU render time and
+    draw calls were added to the tool for this.
 
 Every piece is an original design built by script, with no borrowed meshes. The only third-party
 content is two NASA photographs (section 6), credited on the cards and in `CREDITS.md`.
