@@ -146,20 +146,30 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 
 ## UI sound effects
 
-`ui_sounds.py` builds the game's UI sounds from the synth engine:
-`.venv/bin/python ui_sounds.py [names...]` writes `output/ui/<name>.wav` (48 kHz, 24-bit,
-stereo, no loops) and `output/ui/_preview.wav` (every sound in order with gaps; the order and
-times print in the terminal).
+`ui_sounds.py` builds the game's UI sounds in two alternative sets (the user is comparing them):
+`.venv/bin/python ui_sounds.py [soft|felt] [names...]` writes `output/ui_<set>/<name>.wav`
+(48 kHz, 24-bit, stereo, no loops) and `output/ui_<set>/_preview.wav` (every sound in order with
+gaps; the order and times print in the terminal).
 
+- `soft`: warm and round. Hover, click, toggle and slider are pure sine droplets (no overtones,
+  a tiny upward glide, 30–120 ms audible); confirm, back and notification are short pad_sine
+  blooms.
+- `felt`: the memory track's felt piano (FluidSynth piano, softened, dimmed). Taps are short
+  notes with a firm damper and almost no blur (80–230 ms audible); confirm, back and
+  notification are two soft muted notes.
+- Shared by both: error (low muffled sine thud falling G2 to C2), menu_open/menu_close (Cadd9
+  pad swell, filter opening/closing, under 1 s) and game_start (Cmaj7#11 pad swell with a soft
+  pad_sine layer, about 3 s).
+- Never: bells, chimes, FM or anything that rings or sounds metallic (the user rejected them).
 - Tuning: every pitched sound is a scale degree of `KEY_ROOT` in `SCALE` (currently C Lydian,
   matching the memory/liminal loops). If the main music settles in another key, change those two
   lines and re-render.
-- Character: soft and gentle, a little clearer than the music (lowpass ~4.5–5.5 kHz instead of
-  ~1–2 kHz), the same synthetic hall with short decays (0.3–2 s), nothing above ~6 kHz to speak of.
+- Character: soft and gentle, a little clearer than the music (lowpass about 5 kHz instead of
+  1–2 kHz), the same synthetic hall with short decays, nothing above about 3 kHz to speak of.
 - Direction: positive actions rise (confirm, toggle_on, notification), back and cancel fall
-  (back, toggle_off). Error is a low, muffled thud falling to the root, never buzzy.
-- Response: clicks, hovers, toggles and confirm start within ~2 ms; only swells (menus,
-  game_start) fade in.
+  (back, toggle_off).
+- Response: taps and droplets start within about 6 ms (felt toggles about 14 ms); only the
+  swells fade in.
 - Levels: each sound is peak-normalised to its entry in `LEVELS` (hover −32 and slider_tick
   −36 dBFS, up to game_start −15). Keep new sounds in that ladder: frequent sounds quietest.
 - Variations: `hover` and `click` have three each (`_1` to `_3`, different scale notes); the game
