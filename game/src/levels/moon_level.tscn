@@ -1,0 +1,127 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/levels/rover_level.gd" id="1_level"]
+[ext_resource type="Script" path="res://src/levels/terrain/moon_terrain.gd" id="2_terrain"]
+[ext_resource type="PackedScene" uid="uid://dvqu81j65chtr" path="res://src/robot/robot.tscn" id="6_robot"]
+[ext_resource type="Script" uid="uid://dejcbl7savjo6" path="res://src/robot/robot_controller.gd" id="7_robotctl"]
+[ext_resource type="Script" path="res://src/levels/lunar_sky.gd" id="8_lunar_sky"]
+[ext_resource type="PackedScene" path="res://src/workshop/workshop.tscn" id="30_workshop"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_marker_post.glb" id="31_post"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_base.glb" id="32_sign"]
+[ext_resource type="PackedScene" path="res://src/kite/kite.tscn" id="33_kite"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_route.glb" id="34_route_sign"]
+[ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
+[ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
+[ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("9_sky_shader")
+shader_parameter/star_map = ExtResource("10_stars")
+shader_parameter/star_energy = 0.4324
+shader_parameter/earth_map = ExtResource("11_earth")
+
+[sub_resource type="Sky" id="Sky_moon"]
+sky_material = SubResource("ShaderMaterial_sky")
+radiance_size = 1
+
+[sub_resource type="Environment" id="Environment_moon"]
+background_mode = 2
+sky = SubResource("Sky_moon")
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.68, 0.8, 1)
+ambient_light_energy = 0.0736
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 1.3875
+
+[node name="MoonLevel" type="Node3D"]
+script = ExtResource("1_level")
+gravity = 1.62
+jump_height = 1.2
+ground_friction = 1.6
+earth_direction = Vector3(0.480189, 0.877163, 0.002010)
+camera_far = 50000.0
+rover_pickup = false
+player_lifts_rovers = false
+rover_suspension = {
+"front_spring_stiffness": 440.8,
+"middle_spring_stiffness": 440.8,
+"rear_spring_stiffness": 440.8,
+"bump_stop_length": 0.15,
+"bump_stop_stiffness": 3000.0,
+"bump_stop_damping": 2000.0
+}
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.01090286, -0.2877262, 0.9576506, 0, 0.9577076, 0.2877433, -0.9999406, -0.003137224, 0.01044175, 0, 0, 0)
+light_energy = 2.0
+light_angular_distance = 0.0
+shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.0
+directional_shadow_split_1 = 0.02
+directional_shadow_split_2 = 0.08
+directional_shadow_split_3 = 0.3
+directional_shadow_max_distance = 500.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." node_paths=PackedStringArray("sun")]
+environment = SubResource("Environment_moon")
+script = ExtResource("8_lunar_sky")
+sun = NodePath("../Sun")
+sun_elevation = 16.7229
+sun_azimuth = 90.6247
+use_fixed_orientation = true
+fixed_world_to_equatorial = Basis(-0.263329046, -0.963672398, 0.04464665, -0.895427769, 0.261378184, 0.360403322, -0.358980394, 0.0549268128, -0.931727493)
+earth_angular_diameter = 1.9195
+earth_facing_longitude = -135.077
+
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -297.709, -5.32, 260.168)
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("2_terrain")
+
+[node name="ReadyRoverController" type="Node" parent="."]
+script = ExtResource("7_robotctl")
+
+[node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302.583, -5.22, 260.0098)
+controller = NodePath("../ReadyRoverController")
+start_assembled = true
+
+[node name="Workshop" parent="." node_paths=PackedStringArray("rover") instance=ExtResource("30_workshop")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302, -5.37, 260)
+rover = NodePath("../ReadyRover")
+
+[node name="BaseSign" type="Node3D" parent="."]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -294.62, -5.371, 245.21)
+
+[node name="Post" parent="BaseSign" instance=ExtResource("31_post")]
+
+[node name="Sign" parent="BaseSign" instance=ExtResource("32_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)
+
+[node name="Label3D" type="Label3D" parent="BaseSign/Sign"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, -0.115, -0.02)
+modulate = Color(0.11, 0.115, 0.125, 1)
+outline_size = 0
+font_size = 96
+pixel_size = 0.00088
+text = "BASE"
+
+[node name="Kite" parent="." instance=ExtResource("33_kite")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+
+[node name="KiteGate" type="Node3D" parent="."]
+
+[node name="PostLeft" parent="KiteGate" instance=ExtResource("31_post")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -208.81, -3.192, 139.47)
+
+[node name="Sign" parent="KiteGate/PostLeft" instance=ExtResource("34_route_sign")]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 1.05, -0.03)
+
+[node name="PostRight" parent="KiteGate" instance=ExtResource("31_post")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -206.5, -3.143, 141.38)
+
+[node name="Sign" parent="KiteGate/PostRight" instance=ExtResource("34_route_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)

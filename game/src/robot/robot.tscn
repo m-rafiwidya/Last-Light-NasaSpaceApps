@@ -1,0 +1,230 @@
+[gd_scene format=3 uid="uid://dvqu81j65chtr"]
+
+[ext_resource type="Script" uid="uid://bbqam5tp6wery" path="res://src/robot/robot.gd" id="1_caus5"]
+[ext_resource type="Script" uid="uid://cq1fv7irf222e" path="res://src/robot/components/engine_sound.gd" id="2_460mh"]
+[ext_resource type="PackedScene" uid="uid://4arryn46ujiy" path="res://src/robot/components/engine.tscn" id="2_y3xmu"]
+[ext_resource type="PackedScene" uid="uid://c5pjveyc6065i" path="res://src/robot/components/running_gear.tscn" id="4_6b27f"]
+[ext_resource type="PackedScene" uid="uid://6lqw13v7axa8" path="res://src/robot/socket/hotswap_socket.tscn" id="20_socket"]
+[ext_resource type="PackedScene" uid="uid://dy5tit5s5tomt" path="res://res/models/rover_kit/chassis.glb" id="21_chassis"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_visuals.gd" id="22_visuals"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_camera.gd" id="23_camera_rig"]
+[ext_resource type="Script" path="res://src/robot/kit/cargo_delivery.gd" id="24_cargo_delivery"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_scanner.gd" id="25_scanner"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
+bounce = 0.5
+
+[sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_2vce4"]
+mix_rate = 22050.0
+buffer_length = 0.1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.5, 0.24, 0.9)
+
+[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket", "headlights")]
+collision_layer = 6
+collision_mask = 71
+mass = 80.0
+physics_material_override = SubResource("PhysicsMaterial_6kj2t")
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.15, 0)
+inertia = Vector3(8, 13, 8)
+can_sleep = false
+contact_monitor = true
+linear_damp_mode = 1
+angular_damp_mode = 1
+script = ExtResource("1_caus5")
+body_model = NodePath("Body")
+body_collision = NodePath("BodyCollision")
+running_gear = NodePath("RunningGear")
+engine = NodePath("Engine")
+pivot = NodePath("Pivot")
+camera = NodePath("Pivot/Camera3D")
+raycast = NodePath("Pivot/Camera3D/RayCast3D")
+front_left_socket = NodePath("HotswapSocket4")
+front_right_socket = NodePath("HotswapSocket5")
+middle_left_socket = NodePath("WheelSocketMiddleL")
+middle_right_socket = NodePath("WheelSocketMiddleR")
+rear_left_socket = NodePath("HotswapSocket2")
+rear_right_socket = NodePath("HotswapSocket6")
+motor_socket = NodePath("HotswapSocket")
+battery_socket = NodePath("HotswapSocket3")
+headlights = NodePath("Headlights")
+
+[node name="Engine" parent="." unique_id=1105020877 instance=ExtResource("2_y3xmu")]
+
+[node name="RunningGear" parent="." unique_id=1604477408 instance=ExtResource("4_6b27f")]
+
+[node name="WheelFront" type="Marker3D" parent="." unique_id=704094160]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.5)
+
+[node name="WheelBack" type="Marker3D" parent="." unique_id=63669362]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5)
+
+[node name="BodyCollision" type="CollisionShape3D" parent="." unique_id=1915869618]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+shape = SubResource("BoxShape3D_body")
+
+
+[node name="Pivot" type="Node3D" parent="." unique_id=2031539751]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -0.2)
+
+[node name="Camera3D" type="Camera3D" parent="Pivot" unique_id=1844620794]
+fov = 90.0
+near = 0.001
+far = 500.0
+
+[node name="RayCast3D" type="RayCast3D" parent="Pivot/Camera3D" unique_id=1167366712]
+target_position = Vector3(0, 0, -3)
+collision_mask = 53
+collide_with_areas = true
+
+[node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=552406406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.5)
+stream = SubResource("AudioStreamGenerator_2vce4")
+autoplay = true
+script = ExtResource("2_460mh")
+volume = 0.2
+
+[node name="HotswapSocket" parent="." unique_id=1918480086 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.3, -0.33)
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.24, 0.24, 0.3)
+capture_offset = Vector3(0, 0, -0.22)
+trigger_size = Vector3(0.22, 0.2, 0.16)
+trigger_offset = Vector3(0, 0, -0.16)
+anchor = &"socket_motor"
+accepts_any_type = false
+accepted_type = 1
+
+[node name="HotswapSocket3" parent="." unique_id=1336823150 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.36, 0.45)
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.3, 0.4, 0.36)
+capture_offset = Vector3(0, 0.05, 0.24)
+trigger_size = Vector3(0.28, 0.36, 0.32)
+trigger_offset = Vector3(0, 0.05, 0.24)
+anchor = &"socket_power"
+accepts_any_type = false
+accepted_type = 2
+
+[node name="HotswapSocket2" parent="." unique_id=1712093545 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.05, 0.5)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_rear_L"
+accepts_any_type = false
+
+[node name="HotswapSocket4" parent="." unique_id=953150043 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.05, -0.5)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_front_L"
+accepts_any_type = false
+
+[node name="HotswapSocket5" parent="." unique_id=732514943 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.05, -0.5)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_front_R"
+accepts_any_type = false
+
+[node name="HotswapSocket6" parent="." unique_id=1708376784 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.05, 0.5)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_rear_R"
+accepts_any_type = false
+
+[node name="WheelSocketMiddleL" parent="." unique_id=1203948571 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.05, 0)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_middle_L"
+accepts_any_type = false
+
+[node name="WheelSocketMiddleR" parent="." unique_id=1203948572 instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.05, 0)
+mount_offset = Vector3(0, 0, 0)
+anchor = &"socket_wheel_middle_R"
+accepts_any_type = false
+
+[node name="Body" parent="." unique_id=1203948573 instance=ExtResource("21_chassis")]
+
+[node name="Visuals" type="Node3D" parent="." unique_id=1203948574]
+script = ExtResource("22_visuals")
+
+[node name="MastHeadSocket" parent="." unique_id=1203948575 instance=ExtResource("20_socket")]
+socket_name = "Mast head socket"
+accepts_any_type = false
+accepted_type = 3
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.26, 0.24, 0.24)
+capture_offset = Vector3(0, 0.12, 0)
+trigger_size = Vector3(0.26, 0.2, 0.2)
+trigger_offset = Vector3(0, 0.1, 0)
+anchor = &"socket_mast_head"
+
+[node name="ArmToolSocket" parent="." unique_id=1203948576 instance=ExtResource("20_socket")]
+socket_name = "Arm tool socket"
+accepts_any_type = false
+accepted_type = 4
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.24, 0.24, 0.24)
+capture_offset = Vector3(0, 0, -0.04)
+trigger_size = Vector3(0.22, 0.22, 0.22)
+trigger_offset = Vector3(0, 0, -0.04)
+anchor = &"socket_arm_tool"
+follow_anchor = true
+
+[node name="AntennaSocket" parent="." unique_id=1203948577 instance=ExtResource("20_socket")]
+socket_name = "Antenna socket"
+accepts_any_type = false
+accepted_type = 5
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.28, 0.3, 0.28)
+capture_offset = Vector3(0, 0.15, 0)
+trigger_size = Vector3(0.24, 0.24, 0.24)
+trigger_offset = Vector3(0, 0.14, 0)
+anchor = &"socket_antenna"
+
+[node name="CargoSocket" parent="." instance=ExtResource("20_socket")]
+socket_name = "Cargo mount"
+accepts_any_type = false
+accepted_type = 6
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.4, 0.3, 0.26)
+capture_offset = Vector3(0, 0.15, 0)
+trigger_size = Vector3(0.3, 0.12, 0.2)
+trigger_offset = Vector3(0, 0.05, 0)
+anchor = &"socket_cargo_item"
+
+[node name="CargoDelivery" type="Node" parent="."]
+script = ExtResource("24_cargo_delivery")
+
+[node name="RoverScanner" type="Node" parent="."]
+script = ExtResource("25_scanner")
+
+[node name="CameraRig" type="Node" parent="." unique_id=1203948630]
+script = ExtResource("23_camera_rig")
+
+[node name="Headlights" type="Node3D" parent="." unique_id=1203948640]
+transform = Transform3D(1, 0, 0, 0, 0.9945219, 0.104528464, 0, -0.104528464, 0.9945219, 0, 0.4, -0.47)
+visible = false
+
+[node name="HeadlightL" type="SpotLight3D" parent="Headlights" unique_id=1203948641]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, 0, 0)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 6.0
+light_size = 0.04
+shadow_enabled = true
+spot_range = 35.0
+spot_attenuation = 1.0
+spot_angle = 32.0
+spot_angle_attenuation = 0.6
+
+[node name="HeadlightR" type="SpotLight3D" parent="Headlights" unique_id=1203948642]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, 0, 0)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 6.0
+light_size = 0.04
+shadow_enabled = true
+spot_range = 35.0
+spot_attenuation = 1.0
+spot_angle = 32.0
+spot_angle_attenuation = 0.6

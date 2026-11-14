@@ -1,7 +1,5 @@
 extends UIScreen
 
-const FADE_DURATION: float = 0.5
-
 const GREY: Texture2D = preload("res://res/textures/dev/grey.png")
 const ORANGE: Texture2D = preload("res://res/textures/dev/orange.png")
 
@@ -44,6 +42,11 @@ func _ready() -> void:
 	%Window.modulate.a = 0.0
 	%Close.pressed.connect(_on_close_pressed)
 	%ItemList.item_selected.connect(_show_item)
+	# Choosing a mission clicks; the close button only hovers (closing plays menu_close)
+	%ItemList.item_selected.connect(func(_index: int) -> void: AudioManager.play_ui(&"click"))
+	var close_sound := ButtonSoundComponent.new()
+	close_sound.press_sound = &""
+	%Close.add_child(close_sound)
 
 	%ItemList.clear()
 	for item in ITEMS:
@@ -70,7 +73,7 @@ func _show_item(index: int) -> void:
 func _on_close_pressed():
 	# The screen stays clickable while fading out, so only react in this state.
 	if GameState.state == GameState.State.MISSION_CONSOLE:
-		GameState.change_state_to(GameState.State.IN_GAME)
+		GameState.return_to_game()
 
 
 func fade_in():
@@ -87,10 +90,6 @@ func fade_out():
 func _fade_to(alpha: float) -> Tween:
 	if fade_tween:
 		fade_tween.kill()
-	fade_tween = create_tween()
-	fade_tween.set_ignore_time_scale(true)
-	fade_tween.set_ease(Tween.EASE_IN_OUT)
-	fade_tween.set_trans(Tween.TRANS_CUBIC)
-	fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	fade_tween = create_ui_tween()
 	fade_tween.tween_property(%Window, "modulate:a", alpha, FADE_DURATION)
 	return fade_tween

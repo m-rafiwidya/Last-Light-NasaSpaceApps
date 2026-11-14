@@ -2,19 +2,37 @@ extends UIScreen
 
 var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
 var dialog_boxes: Dictionary
+var fade_tween: Tween = null
 
 
 func _ready() -> void:
 	DialogServer.dialog_played.connect(_on_dialog_played)
 	DialogServer.dialog_ended.connect(_on_dialog_ended)
+	add_child(BoundaryHint.new(false))
 	hide()
 
 
 func _process(_delta: float) -> void:
-	if GameState.player:
-		var is_looking_at_interact_trigger: bool = GameState.player.looking_at_object is InteractTrigger or GameState.player.looking_at_object is RigidBody3D
-		$MarginContainer/CenterContainer/TextureRect.visible = !GameState.player.hide_crosshair and not is_looking_at_interact_trigger
-		$MarginContainer/CenterContainer/TextureRect2.visible = !GameState.player.hide_crosshair and is_looking_at_interact_trigger
+	if is_instance_valid(GameState.player):
+		var player: Player = GameState.player
+		var target: Object = player.looking_at_object
+		var is_looking_at_interact_trigger: bool = is_interactive(target)
+		$MarginContainer/CenterContainer/TextureRect.visible = !player.hide_crosshair and not is_looking_at_interact_trigger
+		$MarginContainer/CenterContainer/TextureRect2.visible = !player.hide_crosshair and is_looking_at_interact_trigger
+		%PartTooltip.show_for(target if not player.hide_crosshair else null, true, target != null and target == player.held_object)
+	else:
+		%PartTooltip.hide()
+
+
+## True when E does something with `target`: a prop, or a trigger (not an empty socket's)
+static func is_interactive(target: Object) -> bool:
+	if target is RigidBody3D:
+		# A rover only where the level lets the player lift one (RoverLevel.player_lifts_rovers)
+		return not (target is Robot and is_instance_valid(GameState.player) and not GameState.player.player_lifts_rovers)
+	if target is InteractTrigger:
+		var socket := (target as Node).get_parent() as HotswapSocket
+		return socket == null or socket.part != null
+	return false
 
 
 func _on_dialog_played(dialog: Dialog):
@@ -36,19 +54,18 @@ func _on_dialog_ended(dialog: Dialog):
 
 func fade_in():
 	show()
-	var main_menu_tween = create_tween()
-	main_menu_tween.set_ignore_time_scale(true)
-	main_menu_tween.set_ease(Tween.EASE_IN_OUT)
-	main_menu_tween.set_trans(Tween.TRANS_CUBIC)
-	main_menu_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	main_menu_tween.tween_property($CanvasModulate, "color", Color(1.0, 1.0, 1.0, 1.0), 0.5)
+	_fade_to(1.0)
 
 
 func fade_out():
-	var main_menu_tween = create_tween()
-	main_menu_tween.set_ignore_time_scale(true)
-	main_menu_tween.set_ease(Tween.EASE_IN_OUT)
-	main_menu_tween.set_trans(Tween.TRANS_CUBIC)
-	main_menu_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	main_menu_tween.tween_property($CanvasModulate, "color", Color(1.0, 1.0, 1.0, 0.0), 0.5)
-	#main_menu_tween.tween_callback(hide)
+	if visible:
+		_fade_to(0.0).tween_callback(hide)
+
+
+# Kills the previous fade so a quick fade_out -> fade_in can't hide the HUD afterwards
+func _fade_to(alpha: float) -> Tween:
+	if fade_tween:
+		fade_tween.kill()
+	fade_tween = create_ui_tween()
+	fade_tween.tween_property($CanvasModulate, "color", Color(1.0, 1.0, 1.0, alpha), FADE_DURATION)
+	return fade_tween

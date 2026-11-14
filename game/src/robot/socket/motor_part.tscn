@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/robot/socket/motor_part.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://coxia3fs4bego" path="res://res/models/rover_kit/motor.glb" id="3_model"]
+
+[node name="MotorPart" instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+part_type = 1
+tint_material = &"rover_dark"
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("3_model")]

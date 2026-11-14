@@ -1,0 +1,5 @@
+#!/bin/sh
+# Compose and render a track: ./track <name>   (list tracks: ./track --list)
+set -e
+cd "$(dirname "$0")"
+exec .venv/bin/python make_track.py "$@"

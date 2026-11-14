@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/robot/socket/hotswap_part.gd" id="1_part"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_part"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_part"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[node name="HotswapPart" type="RigidBody3D"]
+collision_layer = 4
+collision_mask = 79
+mass = 5.0
+script = ExtResource("1_part")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_part")
+
+[node name="Model" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_part")

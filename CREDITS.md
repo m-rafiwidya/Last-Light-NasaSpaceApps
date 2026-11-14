@@ -1,0 +1,77 @@
+# Credits
+
+Third-party assets in this repository and where they come from. NASA imagery is used under
+NASA's media usage guidelines; no endorsement by NASA or ESA is implied.
+
+## Workshop kit
+
+`game/res/models/workshop_kit/`: original, made by this project's scripts; nothing
+third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
+
+## Kite kit
+
+`game/res/models/kite_kit/` and the rover kit's cartridge and cargo mount: original, made by
+this project's scripts from its own rover kit; nothing third-party
+(`game/res/models/kite_kit/PROVENANCE.md`).
+
+## Star map
+
+`game/res/textures/sky/starmap_2020_4k.exr`: the Moon level's sky.
+
+- **Deep Star Maps 2020**, NASA/Goddard Space Flight Center Scientific Visualization Studio
+  (NASA/GSFC SVS), <https://svs.gsfc.nasa.gov/4851/>
+- Gaia DR2: **ESA/Gaia/DPAC**. The map also plots the Hipparcos-2 and Tycho-2 catalogues.
+
+The 4096 x 2048 EXR is unmodified. It was downloaded on 2026-10-08 from the Internet Archive's
+capture of the SVS file URL
+(`https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/starmap_2020_4k.exr`), because SVS
+itself was unreachable that day. Its SHA-1, `fe4831347451db67adac635f7df8263468a15a1d`
+(base32 `7ZEDCNDUKHNWPLNMMNPX36BGGRUKCWQ5`), matches what the archive recorded for the SVS
+file in every capture from 2020 to 2026.
+
+## Earth
+
+`game/res/textures/sky/earth_blue_marble_1024.jpg`: Earth in the Moon level's sky.
+
+- **Blue Marble: Next Generation**, NASA Earth Observatory (Reto Stöckli, NASA Goddard Space
+  Flight Center), December 2004 with topography and bathymetry
+  (`world.topo.bathy.200412.3x5400x2700.jpg`), <https://visibleearth.nasa.gov/images/73909>
+
+Downscaled from 5400 x 2700 to 1024 x 512.
+
+## Moon terrain
+
+`game/res/terrain/moon_apollo12/`: the Moon level's ground at the Apollo 12 landing site, made by
+`tools/terrain/build_moon_terrain.py` (see `tools/terrain/MOON_TERRAIN.md`). The play area is
+the LROC NAC DTM's 2 m posts unchanged (float32, one constant subtracted), except for a graded
+46 x 32 m base; the rest is converted to metres in a local frame with the Moon's curvature and
+resampled. Authored additions (rocks, the graded base) are listed in `terrain.json`
+(`authored_changes`); the untouched posts are kept in `play_measured.f32`.
+
+- **LROC NAC DTM of the Apollo 12 landing site**, `NAC_DTM_APOLLO12_E030S3365` (v1.9, 2 m/post),
+  its confidence map `NAC_DTM_APOLLO12_CONF` and the orthophoto
+  `NAC_DTM_APOLLO12_M120005333_2M`, NASA/GSFC/Arizona State University, LRO-L-LROC-5-RDR-V1.0
+  (volume LROLRC_2001), <https://data.lroc.im-ldi.com/lroc/view_rdr/NAC_DTM_APOLLO12>;
+  Henriksen, M. R., et al. (2017), Extracting accurate and precise topography from LROC narrow
+  angle camera stereo observations, Icarus 283, 122-137, doi:10.1016/j.icarus.2016.05.012.
+  The orthophoto is used only as an approximate brightness pattern (divided by the DTM's
+  shading, blurred), not as albedo.
+- **SLDEM2015** (LOLA and SELENE Terrain Camera, 512 pixels/degree), tile
+  `sldem2015_512_30s_00s_315_360_float` (rows 720-2360 only), NASA Planetary Data System
+  Geosciences Node, <https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/>;
+  Barker, M. K., et al. (2016), A new lunar digital elevation model from the Lunar Orbiter Laser
+  Altimeter and SELENE Terrain Camera, Icarus 273, 346-355, doi:10.1016/j.icarus.2015.07.039
+- **LROC coordinates of lunar anthropogenic features** (28 July 2016) for the LM, the ALSEP and
+  Surveyor 3, LROC Science Operations Team, Arizona State University,
+  <https://www.lroc.asu.edu/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf>
+- **JPL Horizons** (NASA/JPL Solar System Dynamics) for the sun, Earth and the star map's
+  orientation seen from the site at 1969-11-20 05:49 UTC, <https://ssd.jpl.nasa.gov/horizons/>
+
+Every source file's URL, byte count (and byte range) and SHA-256 are recorded in `terrain.json`
+(`sources`), the DTM window and constant in `provenance`.
+
+The south pole site that the level used before (`moon_site01`, removed from the game; its
+pipeline settings remain) came from the LOLA 5 m/pixel south pole landing site DEMs (NASA GSFC
+PGDA product 78; Barker et al. 2021, doi:10.1016/j.pss.2020.105119), the LOLA permanently
+shadowed regions map (PGDA product 90) and the LOLA gridded data records `LDEM_875S_20M` and
+`LDEM_85S_40M` (NASA PDS Geosciences Node).

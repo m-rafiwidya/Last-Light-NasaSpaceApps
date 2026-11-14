@@ -11,7 +11,8 @@ signal dialog_ended(dialog: Dialog)
 signal sequence_finished(sequence: DialogSequence, completed: bool)
 
 const CHARACTERS_PER_SECOND: float = 1000.0 / 60.0
-## Must be longer than the DialogBox hold + fade-out (0.3s) so boxes don't overlap.
+## Pause between the lines of a sequence. Shorter than the DialogBox hold + fade-out,
+## so consecutive lines are on screen together and the HUD stacks them.
 const SEQUENCE_GAP: float = 0.35
 
 ## Bus the voice lines play on. Change to a dedicated bus once the project has a bus layout.

@@ -1,0 +1,5 @@
+tools/blender/previews/
+*.blend1
+__pycache__/
+tools/terrain/raw/
+.DS_Store

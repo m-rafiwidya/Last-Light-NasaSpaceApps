@@ -1,0 +1,123 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/robot_hud/robot_hud.gd" id="1_rhud"]
+[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://d25rgmp1s1quy" path="res://res/textures/ui/crosshair.svg" id="3_cross"]
+[ext_resource type="Texture2D" uid="uid://bm7tx5r1xr823" path="res://res/textures/ui/interaction.svg" id="4_interact"]
+[ext_resource type="Script" path="res://src/ui/robot_hud/friction_circles.gd" id="5_fric"]
+[ext_resource type="Script" path="res://src/ui/part_tooltip/part_tooltip.gd" id="90_tooltip"]
+[ext_resource type="Script" path="res://src/ui/robot_hud/camera_feed.gd" id="6_feed"]
+
+[node name="RobotHUD" type="CanvasLayer"]
+script = ExtResource("1_rhud")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+
+[node name="CameraFeed" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+script = ExtResource("6_feed")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 48
+
+[node name="CenterContainer" type="CenterContainer" parent="MarginContainer"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Crosshair" type="TextureRect" parent="MarginContainer/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+texture = ExtResource("3_cross")
+
+[node name="InteractCrosshair" type="TextureRect" parent="MarginContainer/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+texture = ExtResource("4_interact")
+
+[node name="FrictionCircles" type="Control" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+mouse_filter = 2
+custom_minimum_size = Vector2(288, 470)
+script = ExtResource("5_fric")
+
+[node name="Stats" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+mouse_filter = 2
+
+[node name="View" type="Label" parent="MarginContainer/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "VIEW  --"
+
+[node name="Speed" type="Label" parent="MarginContainer/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "SPEED  --"
+
+[node name="Battery" type="Label" parent="MarginContainer/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "BATTERY  --"
+
+[node name="Arm" type="Label" parent="MarginContainer/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "ARM  --"
+
+[node name="Hint" type="Label" parent="MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 8
+theme_override_font_sizes/font_size = 24
+text = "WASD: drive   Mouse: look   E: pick up / drop   LMB: throw   Esc: exit robot
+R: deploy / stow arm   1-5: arm joint   Z / X: move joint   F: reset upright
+C: camera view   L: headlights   Wheel / two-finger scroll / pinch / = -: zoom (mast camera)"
+
+[node name="ZoomHint" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -600.0
+offset_top = 80.0
+offset_right = 600.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+theme_override_font_sizes/font_size = 28
+text = "No zoom in this view"
+horizontal_alignment = 1
+
+[node name="PartTooltip" type="PanelContainer" parent="." unique_id=1203948640]
+unique_name_in_owner = true
+script = ExtResource("90_tooltip")

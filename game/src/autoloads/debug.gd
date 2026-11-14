@@ -1,5 +1,12 @@
 extends Node
 
+# The rover being driven, set by the Robot when it takes control (read by the robot HUD)
+var current_robot: Robot
+
+## True while the debug console popup is open (set by UIManager). Player and robot
+## controllers ignore input meanwhile, so typing in the console doesn't move them.
+var console_open: bool = false
+
 var debug_console_output: PackedStringArray = [
 	'Debug console for "%s"' % ProjectSettings.get_setting("application/config/name", "Unnamed Project"),
 	'Game started at: %s' % Time.get_datetime_string_from_system()
@@ -20,8 +27,12 @@ func parse_command(input: String):
 		match argv[0].to_lower():
 			"timescale":
 				if argc >= 2:
-					Engine.set_time_scale(float(argv[1]))
-					add_log("Engine timescale set to %s" % argv[1])
+					var value: float = maxf(float(argv[1]), 0.0)
+					GameState.normal_time_scale = value
+					# While paused the time scale is 0; unpausing tweens to the new value
+					if GameState.state != GameState.State.PAUSED:
+						Engine.set_time_scale(value)
+					add_log("Engine timescale set to %s" % value)
 				else:
 					add_log("Not enough parameters!")
 			"quit":
