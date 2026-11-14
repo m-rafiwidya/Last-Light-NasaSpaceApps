@@ -14,6 +14,9 @@ const LEVEL_BUTTON: PackedScene = preload("res://src/ui/level_choice/level_butto
 @export var text_format: String = "%s"
 ## Hide the button of the level that is loaded now (call refresh() when the menu opens)
 @export var hide_current_level: bool = false
+## Sound the buttons play when pressed (AudioManager name): game_start on the main menu,
+## confirm in the pause menu
+@export var press_sound: StringName = &"click"
 
 var _buttons: Dictionary = {}   # level id -> Button
 
@@ -26,6 +29,7 @@ func _ready() -> void:
 		button.name = level_id
 		button.text = text_format % SceneLoader.PLAYABLE_LEVELS[level_id]
 		button.pressed.connect(level_chosen.emit.bind(level_id))
+		(button.get_node("ButtonSoundComponent") as ButtonSoundComponent).press_sound = press_sound
 		add_child(button)
 		_buttons[level_id] = button
 	refresh()

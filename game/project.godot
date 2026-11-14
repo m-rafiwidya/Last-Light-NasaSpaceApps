@@ -21,6 +21,7 @@ SceneLoader="*uid://bp2mjtns8ieao"
 GameState="*uid://vnvi8ie7o54a"
 Debug="*uid://krkr54tekosk"
 DialogServer="*uid://sq6h80gxsxqs"
+AudioManager="*res://src/autoloads/audio_manager.gd"
 
 [display]
 

@@ -131,4 +131,5 @@ metadata/_custom_type_script = "uid://ds0ii545dct55"
 
 [node name="ButtonSoundComponent" type="Node" parent="VBoxContainer/Back" unique_id=2140452148]
 script = ExtResource("3_w37uh")
+press_sound = &"back"
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"

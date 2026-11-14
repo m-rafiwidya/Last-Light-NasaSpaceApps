@@ -42,6 +42,11 @@ func _ready() -> void:
 	%Window.modulate.a = 0.0
 	%Close.pressed.connect(_on_close_pressed)
 	%ItemList.item_selected.connect(_show_item)
+	# Choosing a mission clicks; the close button only hovers (closing plays menu_close)
+	%ItemList.item_selected.connect(func(_index: int) -> void: AudioManager.play_ui(&"click"))
+	var close_sound := ButtonSoundComponent.new()
+	close_sound.press_sound = &""
+	%Close.add_child(close_sound)
 
 	%ItemList.clear()
 	for item in ITEMS:

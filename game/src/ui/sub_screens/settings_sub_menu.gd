@@ -2,8 +2,9 @@ extends MarginContainer
 ## Settings sub-screen. Pressing a tab button (General / Audio / Video / Controls) instantly shows
 ## that tab's list of dummy settings under the tab row. Exactly one tab is always shown
 ## (General by default); pressing the active tab again does nothing.
-## None of the widgets are wired to anything yet - they are placeholders - except Video > Terrain
-## Detail (GraphicsSettings).
+## Most widgets are placeholders; the real ones are Video > Terrain Detail (GraphicsSettings) and
+## Audio > Master / Music / Interface Volume (AudioSettings through AudioManager).
+## Every button, toggle and slider plays its UI sound (ButtonSoundComponent, AudioManager).
 
 const LABEL_MIN_WIDTH := 260.0
 const WIDGET_MIN_WIDTH := 320.0
@@ -55,11 +56,12 @@ func _build_general(rows: VBoxContainer) -> void:
 
 
 func _build_audio(rows: VBoxContainer) -> void:
-	_add_slider(rows, "Master Volume", 0.0, 100.0, 80.0, "%")
-	_add_slider(rows, "Music Volume", 0.0, 100.0, 70.0, "%")
+	_add_volume(rows, "Master Volume", "master")
+	_add_volume(rows, "Music Volume", "music")
+	# Dummies until the game has effects and voice buses
 	_add_slider(rows, "Effects Volume", 0.0, 100.0, 80.0, "%")
 	_add_slider(rows, "Voice Volume", 0.0, 100.0, 90.0, "%")
-	_add_slider(rows, "Interface Volume", 0.0, 100.0, 50.0, "%")
+	_add_volume(rows, "Interface Volume", "interface")
 	_add_check(rows, "Mute When Unfocused", true)
 	_add_option(rows, "Speaker Setup", ["Stereo", "Headphones", "Surround 5.1"])
 
@@ -110,10 +112,12 @@ func _add_check(rows: VBoxContainer, label_text: String, default_value: bool) ->
 	check.focus_mode = Control.FOCUS_NONE
 	check.button_pressed = default_value
 	row.add_child(check)
+	_add_sound(check, &"")
+	check.toggled.connect(AudioManager.play_toggle)
 
 
 func _add_slider(rows: VBoxContainer, label_text: String, min_value: float, max_value: float,
-		default_value: float, suffix: String) -> void:
+		default_value: float, suffix: String) -> HSlider:
 	var row := _make_row(rows, label_text)
 
 	var slider := HSlider.new()
@@ -132,7 +136,23 @@ func _add_slider(rows: VBoxContainer, label_text: String, min_value: float, max_
 	row.add_child(value_label)
 	slider.value_changed.connect(func(value: float) -> void:
 		value_label.text = "%d%s" % [int(value), suffix]
+		AudioManager.play_slider_tick()
 	)
+	return slider
+
+
+## A real volume slider (AudioSettings key "master", "music" or "interface"): applied and saved as
+## it moves, and kept in step (silently) when the other menu's settings (main / pause) change it
+func _add_volume(rows: VBoxContainer, label_text: String, key: String) -> void:
+	var slider := _add_slider(rows, label_text, 0.0, 100.0, AudioSettings.get_volume(key), "%")
+	var value_label: Label = slider.get_parent().get_child(slider.get_index() + 1)
+	slider.value_changed.connect(func(value: float) -> void: AudioManager.set_volume(key, value))
+	var follow := func(changed_key: String, percent: float) -> void:
+		if changed_key == key and not is_equal_approx(slider.value, percent):
+			slider.set_value_no_signal(percent)
+			value_label.text = "%d%%" % int(percent)
+	AudioManager.volume_changed.connect(follow)
+	slider.tree_exiting.connect(func() -> void: AudioManager.volume_changed.disconnect(follow))
 
 
 func _add_option(rows: VBoxContainer, label_text: String, options: Array[String]) -> void:
@@ -143,6 +163,8 @@ func _add_option(rows: VBoxContainer, label_text: String, options: Array[String]
 	for item in options:
 		option.add_item(item)
 	row.add_child(option)
+	_add_sound(option)
+	option.item_selected.connect(func(_index: int) -> void: AudioManager.play_ui(&"click"))
 
 
 # The one real setting so far (GraphicsSettings, saved in user://settings.cfg): the Moon terrain's
@@ -156,8 +178,10 @@ func _add_terrain_detail(rows: VBoxContainer) -> void:
 		option.add_item(item)
 	option.selected = GraphicsSettings.get_terrain_detail()
 	option.item_selected.connect(func(index: int) -> void:
-		GraphicsSettings.set_terrain_detail(index as GraphicsSettings.TerrainDetail))
+		GraphicsSettings.set_terrain_detail(index as GraphicsSettings.TerrainDetail)
+		AudioManager.play_ui(&"click"))
 	row.add_child(option)
+	_add_sound(option)
 	var note := Label.new()
 	note.text = "(next level load)"
 	row.add_child(note)
@@ -172,9 +196,19 @@ func _add_button(rows: VBoxContainer, label_text: String, button_text: String = 
 		button.text = label_text
 		button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		rows.add_child(button)
+		_add_sound(button)
 		return
 
 	var row := _make_row(rows, label_text)
 	button.text = button_text
 	button.custom_minimum_size.x = WIDGET_MIN_WIDTH
 	row.add_child(button)
+	_add_sound(button)
+
+
+## Hover and press sounds for a widget built in code (press_sound empty: the widget plays its own,
+## e.g. a toggle)
+func _add_sound(button: BaseButton, press_sound: StringName = &"click") -> void:
+	var sound := ButtonSoundComponent.new()
+	sound.press_sound = press_sound
+	button.add_child(sound)

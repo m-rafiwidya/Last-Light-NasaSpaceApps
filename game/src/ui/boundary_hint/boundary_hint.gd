@@ -33,6 +33,10 @@ func _process(_delta: float) -> void:
 		hide()
 		return
 	var distance: float = boundary.distance_to_boundary(body.global_position)
+	var was_visible: bool = visible
 	visible = distance < WARN_DISTANCE
+	# A soft notification when the hint appears on the HUD that is showing
+	if visible and not was_visible and is_visible_in_tree():
+		AudioManager.play_ui(&"notification")
 	if visible:
 		text = "Survey area boundary in %d m" % maxi(int(distance), 0)

@@ -146,7 +146,8 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 
 ## UI sound effects
 
-`ui_sounds.py` builds the game's UI sounds in two alternative sets (the user is comparing them):
+`ui_sounds.py` builds the game's UI sounds in two alternative sets. `soft` is the game's set
+(`DEFAULT_SET`); `felt` stays as the alternative:
 `.venv/bin/python ui_sounds.py [soft|felt] [names...]` writes `output/ui_<set>/<name>.wav`
 (48 kHz, 24-bit, stereo, no loops) and `output/ui_<set>/_preview.wav` (every sound in order with
 gaps; the order and times print in the terminal).
@@ -174,6 +175,16 @@ gaps; the order and times print in the terminal).
   −36 dBFS, up to game_start −15). Keep new sounds in that ladder: frequent sounds quietest.
 - Variations: `hover` and `click` have three each (`_1` to `_3`, different scale notes); the game
   should pick one at random per play.
+
+## Into the game
+
+`.venv/bin/python export_to_game.py` copies the finals into the Godot project and imports them:
+the main mix of each track in its `MUSIC` list (now `deep_space_memory`, never a loop test) to
+`game/res/audio/music/` with `loop=true, loop_offset=0` in its `.import`, and the `ui_soft` WAVs
+(not `_preview`) to `game/res/audio/ui/`, removing UI files that no longer exist. Re-render, re-run
+it, and the game picks up the new version. In the game, `AudioManager` (`src/autoloads/`) plays
+them; see the game README's Audio section. New UI sound names also need adding to
+`AudioManager.SOUNDS`.
 
 ## Seamless loops (required for every track)
 

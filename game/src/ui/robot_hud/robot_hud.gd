@@ -80,6 +80,8 @@ func _update_zoom_hint(rig: RoverCamera) -> void:
 	else:
 		%ZoomHint.text = "No zoom on the %s: zooming needs a mast camera" % rig.view_name().to_lower()
 	%ZoomHint.modulate.a = clampf((ZOOM_HINT_TIME - age) / ZOOM_HINT_FADE, 0.0, 1.0)
+	if not %ZoomHint.visible:
+		AudioManager.play_ui(&"error")   # the refused zoom
 	%ZoomHint.show()
 
 

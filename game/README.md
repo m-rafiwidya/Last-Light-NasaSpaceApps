@@ -34,6 +34,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 13. [Known issues / gotchas / TODOs](#13-known-issues--gotchas--todos)
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
 15. [Robot](#15-robot)
+16. [Audio](#16-audio)
 
 ---
 
@@ -123,6 +124,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 | `GameState` | `autoloads/game_state.gd` | Holds the current `State`, emits `state_changed`, controls pause + mouse mode. Holds the reference to the current `player`. |
 | `Debug` | `autoloads/debug.gd` | Stores console log lines and parses console commands. |
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
+| `AudioManager` | `autoloads/audio_manager.gd` | Background music and UI sounds by name (`play_ui`), audio volumes; runs while paused. See [section 16](#16-audio). |
 
 `SceneLoader`, `GameState` are set to `PROCESS_MODE_ALWAYS` so they keep running while the tree is paused. `UIManager` is also `process_mode = 3` (ALWAYS) in its scene.
 
@@ -319,7 +321,7 @@ The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`, with its 
 Drop-in child `Node`s that style their parent `Button`:
 
 - `ButtonResizeComponent`: scales up on hover (elastic tween), back on exit. Sets the button and itself to process while paused.
-- `ButtonSoundComponent`: creates hover/press `AudioStreamPlayer`s on bus `"UI"` at -20 dB. Sound files are not wired up yet (commented TODOs).
+- `ButtonSoundComponent`: hover and press sounds through `AudioManager` (see [section 16](#16-audio)). `press_sound` picks the press sound (`click` by default, e.g. `back` or `menu_open`, empty for none); hover is skipped for disabled buttons and when a menu slides in under a still cursor.
 
 All buttons in the menus use `focus_mode = 0` (no keyboard focus).
 
@@ -917,3 +919,32 @@ The robot is on layers 2 and 3 (collision_layer 6) with mask 71 (world, vehicles
 Instance `robot.tscn` in the level and set its `transform`. The origin is the robot's centre and `RunningGear` ride height is 0.15 m, so leave a bit of height above the ground. Add a `RobotController` node and assign it to the robot's `controller` export in the scene (it must be set before `Robot._ready()`, which scene instancing does).
 
 See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues found while integrating it.
+
+---
+
+## 16. Audio
+
+`AudioManager` (autoload, `PROCESS_MODE_ALWAYS`) plays the music and the UI sounds. The audio itself is made in `game/music/` (see its `CLAUDE.md`); `game/music/` has a `.gdignore`, so Godot only imports the finals copied into `res/audio/` by `game/music/export_to_game.py` (re-render, re-run the script, done).
+
+**Buses** (`default_bus_layout.tres`): `Master`, plus `Music` and `UI`, both sending to `Master`. Dialog and the rover's motor still use `Master`.
+
+**Music:** `res/audio/music/deep_space_memory.ogg` (60 s, imported with `loop=true`, `loop_offset=0`; the end flows into the start, so the loop is seamless) on the `Music` bus. It starts at boot, fades in over 6 s (a tween that ignores `Engine.time_scale`), and as an autoload keeps playing across level changes and while paused.
+
+**UI sounds:** `AudioManager.play_ui(&"name")` plays `res/audio/ui/<name>.wav` on the `UI` bus in a new `AudioStreamPlayer` that frees itself when finished. `hover` and `click` have three variations (`_1` to `_3`) picked at random, never twice in a row, always at their tuned pitch (no random pitch: they are tuned to the music's key). Helpers: `play_hover(button)` (skips disabled buttons, needs real mouse movement in the last 0.15 s and no game state change in the last 0.3 s), `play_toggle(on)`, `play_slider_tick()` (at most one per 0.07 s).
+
+| Sound | Where it plays |
+|---|---|
+| `hover`, `click` | Every menu button, level button, settings tab, settings dropdown and button, mission console button (`ButtonSoundComponent`); choosing a mission in the console list |
+| `game_start` | Main menu **Play <level>** (`LevelChoice.press_sound`) |
+| `confirm` | Pause menu **Switch to <level>** |
+| `menu_open` / `menu_close` | Pause menu and mission console opening / closing (from `GameState.state_changed`); `menu_open` also on **Settings** |
+| `back` | Settings **Back**, **Quit To Menu** |
+| `toggle_on` / `toggle_off` | Settings check buttons |
+| `slider_tick` | Settings sliders |
+| `notification` | The boundary hint appearing on the HUD that is showing (`BoundaryHint`) |
+| `error` | The robot HUD's "No zoom on the ..." refusal |
+
+**Volumes:** Settings > Audio > Master, Music and Interface Volume are real (0-100 %, linear gain; 0 mutes): `AudioManager.set_volume(key, percent)` applies them to the `Master`, `Music` and `UI` buses and saves them in `user://settings.cfg` (section `audio`, next to `GraphicsSettings`) through `AudioSettings` (`src/settings/audio_settings.gd`); the main and pause menus' sliders follow each other via `AudioManager.volume_changed`. Effects and Voice Volume stay dummies until those buses exist.
+
+**Test:** `tests/test_audio.gd`. Headless Godot uses the Dummy audio driver, which plays in real time while `--fixed-fps` runs game time as fast as it can, so the test waits in real time for audio and in game time for tweens.
+

@@ -46,6 +46,7 @@ layout_mode = 2
 size_flags_horizontal = 0
 script = ExtResource("7_levels")
 text_format = "Play %s"
+press_sound = &"game_start"
 
 [node name="Settings" type="Button" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=1821534089]
 layout_mode = 2
@@ -59,6 +60,7 @@ metadata/_custom_type_script = "uid://ds0ii545dct55"
 
 [node name="ButtonSoundComponent" type="Node" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer/Settings" unique_id=657097329]
 script = ExtResource("5_vivct")
+press_sound = &"menu_open"
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
 [node name="Quit" type="Button" parent="MainMenuSubScreen/VBoxContainer/VBoxContainer" unique_id=1845473679]

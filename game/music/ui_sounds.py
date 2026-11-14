@@ -2,7 +2,7 @@
 the music, same reverb character with short tails, no loops, nothing that rings or sounds metallic.
 
 Two alternative sets share the swells (menus, game start) and the error thud:
-  soft: pure sine droplets and pad_sine blooms, warm and round.
+  soft: pure sine droplets and pad_sine blooms, warm and round. The game's set (DEFAULT_SET).
   felt: muted felt piano taps and notes (the memory track's felt piano, with short tails).
 
     .venv/bin/python ui_sounds.py                  # both sets -> output/ui_soft/, output/ui_felt/
@@ -229,6 +229,7 @@ FELT = {
 }
 
 SETS = {"soft": SOFT, "felt": FELT}
+DEFAULT_SET = "soft"   # the set export_to_game.py copies into the game
 ORDER = ["hover_1", "hover_2", "hover_3", "click_1", "click_2", "click_3", "confirm", "back", "error",
          "menu_open", "menu_close", "toggle_on", "toggle_off", "slider_tick", "notification", "game_start"]
 
