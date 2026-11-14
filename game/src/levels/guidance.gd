@@ -194,6 +194,8 @@ func resolve(spec: String) -> Node3D:
 				return null
 			var parts := rest.split("/", true, 1)
 			var node: Variant = rover.get(parts[0])
+			if not node is Node:
+				node = rover.get_node_or_null(parts[0])
 			if node is Node and parts.size() > 1:
 				node = (node as Node).get_node_or_null(parts[1])
 			return node as Node3D
