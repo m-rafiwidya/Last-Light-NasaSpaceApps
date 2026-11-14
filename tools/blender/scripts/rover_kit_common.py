@@ -212,7 +212,7 @@ def save_blend(path: str) -> None:
 
 def render_view(target: bpy.types.Object, path: str, direction: tuple, ortho_scale: float,
                 perspective: bool = False, distance: float = 1.0, focus: tuple = (0.0, 0.0, 0.0),
-                size: int = 640) -> None:
+                size: int = 640, keep_visible: tuple = ()) -> None:
     """Renders `target` alone with Workbench from `direction` (a vector from the target
     toward the camera). Orthographic views fit `ortho_scale` metres; perspective views sit
     `distance` metres away, aimed at `focus` (an offset from the target's origin).
@@ -234,7 +234,9 @@ def render_view(target: bpy.types.Object, path: str, direction: tuple, ortho_sca
     shading.background_type = "VIEWPORT"
     shading.background_color = (0.82, 0.84, 0.88)
 
-    others = [o for o in scene.objects if o.type == "MESH" and o != target and o.parent != target]
+    # Render the target with all its descendants (and `keep_visible`, e.g. a ground plane)
+    shown = {target, *target.children_recursive, *keep_visible}
+    others = [o for o in scene.objects if o.type == "MESH" and o not in shown]
     saved = {o: o.hide_render for o in others}
     for o in others:
         o.hide_render = True
@@ -404,3 +406,79 @@ def world_vertices(obj: bpy.types.Object) -> list:
     bpy.context.view_layer.update()
     m = obj.matrix_world
     return [m @ v.co for v in obj.data.vertices]
+
+
+def recessed_collar(bm, place, w_back: float, w_face: float, radius: float = COLLAR_RADIUS,
+                    sides: int = 8) -> list:
+    """Parent-side connector: a round collar from w_back to w_face (the mating plane) with the
+    keyed recess (plug outline, tab at +v) opening flush at w_face, CONNECTOR_DEPTH deep.
+    `place(u, v, w)` maps to 3D. Returns the faces of the closed solid, normals outward."""
+    toward_back = 1.0 if w_back > w_face else -1.0
+    w_floor = w_face + toward_back * CONNECTOR_DEPTH
+    collar = circle_outline(radius, sides, math.pi / sides)
+    recess = plug_outline()
+    back = [bm.verts.new(place(u, v, w_back)) for u, v in collar]
+    rim = [bm.verts.new(place(u, v, w_face)) for u, v in collar]
+    opening = [bm.verts.new(place(u, v, w_face)) for u, v in recess]
+    floor = [bm.verts.new(place(u, v, w_floor)) for u, v in recess]
+
+    faces = [bm.faces.new(back), bm.faces.new(floor)]
+    for ring_a, ring_b in ((back, rim), (opening, floor)):
+        for k in range(len(ring_a)):
+            n = (k + 1) % len(ring_a)
+            faces.append(bm.faces.new((ring_a[k], ring_a[n], ring_b[n], ring_b[k])))
+    # Ring between the collar rim and the recess opening (the recess stays open)
+    ring_edges = [bm.edges.get((ring[k], ring[(k + 1) % len(ring)])) for ring in (rim, opening)
+                  for k in range(len(ring))]
+    normal = Vector(place(0.0, 0.0, w_face)) - Vector(place(0.0, 0.0, w_back))
+    filled = bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=ring_edges,
+                                     normal=normal.normalized())
+    faces += [g for g in filled["geom"] if isinstance(g, bmesh.types.BMFace)]
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces
+
+
+def keyed_plug(bm, place, w_face: float, w_tip: float) -> list:
+    """Child-side connector: the keyed plug (notch at +v) from the mating plane w_face out to
+    w_tip, open at its base. Returns its faces, normals outward."""
+    faces = prism(bm, plug_outline(), place, w_face, w_tip, cap0=False)
+    origin = Vector(place(0.0, 0.0, w_face))
+    axis = (Vector(place(0.0, 0.0, w_tip)) - origin).normalized()
+
+    def out(f):
+        c = f.calc_center_median() - origin
+        if abs(f.normal.dot(axis)) > 0.9:
+            return axis
+        return c - axis * c.dot(axis)
+    orient(bm, faces, out)
+    return faces
+
+
+def cylinder(bm, place, w0: float, w1: float, radius: float, sides: int = 8) -> list:
+    """Closed round housing between w0 and w1, normals outward."""
+    faces = prism(bm, circle_outline(radius, sides, math.pi / sides), place, w0, w1)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces
+
+
+def thick_polyline(points: list, half_width: float) -> list:
+    """2D outline of a beam of constant width along a polyline (mitred bends, square ends)."""
+    pts = [Vector(p) for p in points]
+
+    def normal(a, b):
+        d = (b - a).normalized()
+        return Vector((-d.y, d.x))
+
+    left, right = [], []
+    for i, p in enumerate(pts):
+        if i == 0:
+            n, scale = normal(pts[0], pts[1]), half_width
+        elif i == len(pts) - 1:
+            n, scale = normal(pts[-2], pts[-1]), half_width
+        else:
+            n1, n2 = normal(pts[i - 1], p), normal(p, pts[i + 1])
+            n = (n1 + n2).normalized()
+            scale = half_width / max(n.dot(n1), 0.3)
+        left.append(p + n * scale)
+        right.append(p - n * scale)
+    return [tuple(v) for v in left + right[::-1]]
