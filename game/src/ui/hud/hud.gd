@@ -1,25 +1,13 @@
 extends UIScreen
 
-var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
-var dialog_boxes: Dictionary
 var fade_tween: Tween = null
 
 
 func _ready() -> void:
-	DialogServer.dialog_played.connect(_on_dialog_played)
-	DialogServer.dialog_ended.connect(_on_dialog_ended)
 	add_child(BoundaryHint.new(false))
-	# Settings > General > Subtitles: the subtitle boxes are still made (and end) while off, just
-	# not shown, so turning it on shows a line that is playing
-	GeneralSettings.section.changed.connect(func(_key: String) -> void: _apply_subtitles())
-	_apply_subtitles()
 	InputBindings.events.changed.connect(_update_hint)
 	_update_hint()
 	hide()
-
-
-func _apply_subtitles() -> void:
-	$DialogBoxContainer.visible = GeneralSettings.subtitles()
 
 
 ## The controls line, with the keys as bound now (InputBindings)
@@ -54,23 +42,6 @@ static func is_interactive(target: Object) -> bool:
 		var socket := (target as Node).get_parent() as HotswapSocket
 		return socket == null or socket.part != null
 	return false
-
-
-func _on_dialog_played(dialog: Dialog):
-	var dialog_box: Control = dialog_box_scene.instantiate()
-	dialog_box.set_text(dialog.get_display_text())
-	$DialogBoxContainer/Boxes.add_child(dialog_box)
-	dialog_box.fade_in()
-	dialog_boxes[dialog.get_instance_id()] = dialog_box
-
-
-func _on_dialog_ended(dialog: Dialog):
-	if not dialog_boxes.has(dialog.get_instance_id()):
-		return
-	var dialog_box = dialog_boxes[dialog.get_instance_id()]
-	dialog_boxes.erase(dialog.get_instance_id())
-	if is_instance_valid(dialog_box):
-		dialog_box.fade_out()
 
 
 func fade_in():

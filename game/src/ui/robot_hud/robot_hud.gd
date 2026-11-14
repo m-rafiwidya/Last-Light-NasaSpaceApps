@@ -1,7 +1,7 @@
 extends UIScreen
 
 ## HUD shown while the robot is being driven (GameState.IN_GAME_ROBOT).
-## The player HUD (crosshair, subtitles) is shown in IN_GAME_PLAYER instead.
+## The player HUD is shown in IN_GAME_PLAYER instead; both carry a SubtitleStack.
 
 
 # How long the "no zoom here" hint stays up after a zoom input in a view without zoom, and

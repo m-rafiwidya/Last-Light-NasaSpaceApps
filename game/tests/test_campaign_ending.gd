@@ -165,6 +165,10 @@ func _run() -> void:
 	_check("[ending] the campaign is marked complete", CS.is_campaign_complete())
 	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(SI.slot_path("slot_1")))
 	_check("[ending] and saved", saved is Dictionary and "campaign_complete" in saved["campaign"]["flags"])
+	var DT: Node = root.get_node("DialogueTriggers")
+	_check("[ending] the trigger system queued the closing lines, saved as played",
+		DT.sequence_for("mission_completed:m3") != null and DS.is_sequence_pending(DT.sequence_for("mission_completed:m3"))
+		and saved is Dictionary and saved["campaign"]["triggers_played"].has("mission_completed:m3|mira_m3_end"))
 	await _ticks(0.3)
 	var camera: Camera3D = root.get_viewport().get_camera_3d()
 	_check("[ending] the IRIS camera cut is current, input off", camera != null and camera.name == "EndingCamera"
@@ -223,6 +227,7 @@ func _run() -> void:
 	_check("[load] the campaign is complete, free play in the workshop", CS.is_campaign_complete()
 		and GS.state == GS.State.IN_GAME_PLAYER and not result.visible)
 	_check("[load] the ending didn't replay", ending_runs == 0 and not level.get_node("MissionDirector").ending.playing)
+	_check("[load] no dialogue replays after loading", not DS.is_playing())
 	_check("[load] IRIS is online", level.get_node("Iris").is_online)
 	_check("[load] recoveries kept", CS.recoveries == 1)
 	level.get_node("Workshop")._on_console_used(GS.player)

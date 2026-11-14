@@ -4,6 +4,7 @@
 [ext_resource type="Theme" uid="uid://be3ngjxfbjuew" path="res://res/computer_theme/computer_theme.tres" id="2_mcthm"]
 [ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="3_mcfnt"]
 [ext_resource type="Script" path="res://src/ui/button_style_components/button_sound_component.gd" id="4_mcsnd"]
+[ext_resource type="PackedScene" path="res://src/ui/subtitle_stack/subtitle_stack.tscn" id="91_subs"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
 bg_color = Color(0.674814, 0.674815, 0.674814, 1)
@@ -188,3 +189,5 @@ text = "CONTROL KITE"
 
 [node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/ControlKite"]
 script = ExtResource("4_mcsnd")
+
+[node name="SubtitleStack" parent="." instance=ExtResource("91_subs")]

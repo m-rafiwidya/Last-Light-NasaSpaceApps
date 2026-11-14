@@ -5,6 +5,7 @@
 [ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_udh2q"]
 [ext_resource type="Texture2D" uid="uid://bm7tx5r1xr823" path="res://res/textures/ui/interaction.svg" id="4_076te"]
 [ext_resource type="Script" path="res://src/ui/part_tooltip/part_tooltip.gd" id="90_tooltip"]
+[ext_resource type="PackedScene" path="res://src/ui/subtitle_stack/subtitle_stack.tscn" id="5_subs"]
 
 [node name="HUD" type="CanvasLayer" unique_id=751782193]
 script = ExtResource("1_ny4e7")
@@ -72,23 +73,7 @@ text = "WASD: move   Shift: sprint   Space: jump   Ctrl: crouch   Mouse: look
 E: use / pick up / drop   LMB: throw   L: helmet light   Esc: pause"
 horizontal_alignment = 2
 
-[node name="DialogBoxContainer" type="PanelContainer" parent="." unique_id=1663830133]
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 320.0
-offset_top = -64.0
-offset_right = -320.0
-offset_bottom = -64.0
-grow_horizontal = 2
-grow_vertical = 0
-theme = ExtResource("2_udh2q")
-
-[node name="Boxes" type="VBoxContainer" parent="DialogBoxContainer" unique_id=1663830134]
-layout_mode = 2
-theme_override_constants/separation = 0
-alignment = 2
+[node name="SubtitleStack" parent="." instance=ExtResource("5_subs")]
 
 [node name="PartTooltip" type="PanelContainer" parent="." unique_id=1203948640]
 unique_name_in_owner = true

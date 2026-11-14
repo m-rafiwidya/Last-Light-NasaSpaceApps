@@ -76,7 +76,8 @@ game/
     │   ├── scene_loader.gd           # level loading + player spawning
     │   ├── game_state.gd             # state machine, pause, mouse mode
     │   ├── debug.gd                  # console log + command parser
-    │   └── dialog_server.gd          # subtitle timing + signals
+    │   ├── dialog_server.gd          # subtitle timing, queue + signals
+    │   └── dialogue_triggers.gd      # story lines on CampaignState events
     ├── audio/                        # gameplay sound observers Sfx attaches: player_sounds.gd, rover_sounds.gd, workshop_sounds.gd
     ├── object_holder/
     │   └── object_holder.gd                  # shared pick up / hold / throw logic for the player and the robot (class ObjectHolder)
@@ -149,6 +150,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
 | `AudioManager` | `autoloads/audio_manager.gd` | Background music and UI sounds by name (`play_ui`), audio volumes; runs while paused. See [section 16](#16-audio). |
 | `Sfx` | `autoloads/sfx.gd` | Gameplay sounds: one-shots (`play`), loops with a limit and ducking, ambience beds; attaches the sound observers in `src/audio/`. Pauses with the game. See [section 16](#16-audio). |
+| `DialogueTriggers` | `autoloads/dialogue_triggers.gd` | Queues `res/story/lines.json` lines on `DialogServer` when a `dialogue_triggers.json` event fires (section 10). |
 | `CampaignState` | `autoloads/campaign_state.gd` | The campaign in memory: current mission, completed objectives, flags and items. Loads `res/story/missions.json` (missions `m1` to `m3` and their objectives, IDs lowercase with dots). Signals `mission_started`, `mission_completed`, `objective_completed`, `flag_changed`; API in `workflow_1.md`. Unknown IDs only warn. `debug_dump()` feeds the `campaign` console command. |
 
 `SceneLoader`, `GameState` are set to `PROCESS_MODE_ALWAYS` so they keep running while the tree is paused. `UIManager` is also `process_mode = 3` (ALWAYS) in its scene.
@@ -379,7 +381,7 @@ The `HUD` below is the **player** HUD, shown only in `IN_GAME_PLAYER`, with its 
 
 - `CanvasModulate` is tweened to fade the whole HUD (alpha 0/1). Both HUDs start hidden, `show()` on `fade_in()` and `hide()` once `fade_out()` finishes; the running fade tween is killed first, so a quick out -> in can't leave the HUD hidden.
 - **Crosshair swap** (every frame): shows `crosshair.svg` normally, `interaction.svg` when `GameState.player.looking_at_object` is an `InteractTrigger` or a `RigidBody3D` (something you can use/pick up). Both hidden while `player.hide_crosshair` is true.
-- **Subtitles**: listens to `DialogServer.dialog_played/ended`, instantiates a `DialogBox` into `DialogBoxContainer/Boxes` (bottom-centre) and fades it out on end. `DialogBoxContainer` is a single themed `PanelContainer` that draws one background behind the whole stack; `Boxes` is a `VBoxContainer` inside it. It is anchored to a zero-height line near the bottom, so it grows upward as boxes are added and collapses to nothing when empty.
+- **Subtitles**: a `SubtitleStack` (`ui/subtitle_stack/`, also in `RobotHUD` and `MissionConsole`) listens to `DialogServer.dialog_played/ended`, instantiates a `DialogBox` into its `Boxes` (bottom-centre) and fades it out on end. Every stack follows every line whether or not its screen is shown, so a line keeps its box across a screen switch; the stack and its boxes ignore the mouse. `SubtitleStack` is a single themed `PanelContainer` that draws one background behind the whole stack; `Boxes` is a `VBoxContainer` inside it. It is anchored to a zero-height line near the bottom, so it grows upward as boxes are added and collapses to nothing when empty.
 - **Part tooltip:** `PartTooltip` (`ui/part_tooltip/`, a small panel next to the crosshair, also in `RobotHUD`) describes what the crosshair is on: a part, loose or mounted (name, what it does, where it mounts, stats, and the E prompt), an empty socket ("Empty: Mast camera goes here") or any other `InteractTrigger` (just its `tooltip`, the E prompt). On foot it reads `Player.looking_at_object`, in the rover's mast view `Robot.looking_at_object`. Names, descriptions and mount hints come from `PartCatalog` (`robot/socket/part_catalog.gd`): to add a part, add an entry there and set the part scene's `catalog_id` (empty = the default for its part type; e.g. the high-grip wheels use `wheel_high_grip`). Stats come from `HotswapPart.get_stat_lines()` (wheel grip and radius, battery charge, motor values).
 - **Cargo and scanning** (IRIS_KIT.md): a `CARGO` line under `BATTERY` names what the cargo mount holds ("CARGO  Diagnostic cartridge", "empty"); the `ARM` line says "delivering cargo" or "cargo loaded: automatic only" (manual arm control is locked while cargo is loaded). `CargoHint` (`ui/rover_hints/`, under the dock hint, same notification sound) is `CargoDelivery.get_hint()` near a port; `ScanHint` (under the crosshair) is `RoverScanner.get_hint()`. Where the level turns the mast pickup off (the Moon), the controls hint reads "E: deliver cargo" instead of "E: pick up / drop   LMB: throw", and the crosshair doesn't light up over loose things.
 - The old `Tooltip` label and a static `DialogBox` node still exist in `hud.tscn` but are hidden and unused.
@@ -786,17 +788,18 @@ Where the level's `player_lifts_rovers` is false (the Moon), a `Robot` is never 
 
 Data (`Resource`s, editable in the inspector):
 
-- `Dialog`: `audio_stream: AudioStream` (voice line, played by `DialogServer`; its length extends the on-screen time), `speaker: String` (empty = narration), `subtitle: String` (multiline) and `min_duration` (seconds, default 1.0). `get_display_text()` returns `"Speaker: subtitle"` (or just the subtitle with no speaker); the HUD shows this until a dedicated speaker UI exists.
+- `Dialog`: `audio_stream: AudioStream` (voice line, played by `DialogServer`; when set, the line lasts exactly its length), `speaker: String` (empty = narration), `subtitle: String` (multiline) and `min_duration` (seconds, default 1.0). `get_display_text()` returns `"Speaker: subtitle"` (or just the subtitle with no speaker); the HUD shows this until a dedicated speaker UI exists.
 - `DialogSequence`: `dialogs: Array[Dialog]`.
 
 `DialogServer` (autoload):
 
-- `play_dialog(dialog) -> bool`: awaitable. Emits `dialog_played`, waits `get_dialog_duration()` (1000 chars/min reading speed, at least the audio length and `min_duration`) on a pausable `SceneTreeTimer`, then emits `dialog_ended`. Returns `true` if it finished, `false` if cancelled or if that same `Dialog` is already playing.
+- `play_dialog(dialog) -> bool`: awaitable. Emits `dialog_played`, waits `get_dialog_duration()` (the audio's length when there is one, else 1000 chars/min reading speed; at least `min_duration`) on a pausable `SceneTreeTimer`, then emits `dialog_ended`. Returns `true` if it finished, `false` if cancelled or if that same `Dialog` is already playing.
 - `play_dialog_sequence(seq) -> bool`: awaitable. Plays each dialog in order with a 0.35s gap (`SEQUENCE_GAP`). The gap is shorter than the DialogBox hold + fade-out, so consecutive lines can be on screen together; the HUD stacks them smoothly. Ignored while another sequence is playing, so re-triggering a trigger can't start overlapping copies. Emits `sequence_finished(seq, completed)`.
+- `queue_sequence(seq)`: plays `seq` after every sequence queued before it (0.35 s apart), so queued lines never overlap; it waits out a sequence started with `play_dialog_sequence`. `is_sequence_pending(seq)` and `queued_duration()` let callers wait for it. Direct `play_dialog` lines (scan reports, refused mounts, `say`) still start at once and stack beside the queued line.
 - Audio: if a `Dialog` has an `audio_stream`, `DialogServer` plays it on an `AudioStreamPlayer` child (bus `AUDIO_BUS`, `Voice`: Settings > Audio > Voice Volume) for the life of the line; it is stopped and freed when the line ends or is cancelled.
-- `stop_all()`: cancels everything. It bumps an internal generation counter, so any waiting coroutine exits when it wakes, and emits `dialog_ended` for active dialogs so the HUD clears. It is called automatically on `SceneLoader.level_unloaded`, so a sequence can no longer continue into the next level or menu.
+- `stop_all()`: cancels everything and clears the queue. It bumps an internal generation counter, so any waiting coroutine exits when it wakes, and emits `dialog_ended` for active dialogs so the HUD clears. It is called automatically on `SceneLoader.level_unloaded`, so a sequence can no longer continue into the next level or menu.
 
-**What happens when dialogs overlap** (there is no queue or priority system yet):
+**What happens when dialogs overlap** (queued sequences never overlap each other):
 
 | Situation | Result |
 |---|---|
@@ -804,13 +807,16 @@ Data (`Resource`s, editable in the inspector):
 | Same `Dialog` instance while it is playing | Second call returns `false` immediately, no signals. |
 | A sequence while another sequence plays | Returns `false` immediately; the running sequence is unaffected. `sequence_finished` is **not** emitted for the rejected one. |
 | A single line during a sequence (or vice versa) | No coordination; they overlap as in the first row. |
+| `queue_sequence` while anything plays | Waits its turn; `sequence_finished` is emitted when it has played. |
 | `stop_all()` / level unload | Everything is cut off, audio stopped, HUD cleared. A running sequence only notices when its current timer wakes, so `sequence_finished(seq, false)` (and the caller's `await`) can arrive late, up to that line's remaining duration. |
 
-Display: `HUD` listens to the two signals and creates/fades a `DialogBox` (`ui/dialog_box/`) inside `DialogBoxContainer/Boxes` (fade in 0.5s; on end, 3.0s hold, fade out 0.5s, `queue_free`).
+Display: each `SubtitleStack` listens to the two signals and creates/fades a `DialogBox` (`ui/dialog_box/`) inside its `Boxes` (fade in 0.5s; on end, 3.0s hold, fade out 0.5s, `queue_free`).
 
-`DialogBox` is a plain `Control` "slot" that the `VBoxContainer` lays out, with a bottom-anchored `Content` (`MarginContainer` + `RichTextLabel`) inside it. It has no background of its own; the HUD's `DialogBoxContainer` panel provides it, so stacked boxes have no gaps. Fades animate a `reveal` property (0 to 1) that drives the slot's `custom_minimum_size.y` and the content's Y scale (pivot at its bottom edge), so sibling boxes slide instead of jumping. Don't put the scaled node directly under a `Container`: containers reset child scale on every re-sort, which is why the content is nested one level down.
+`DialogBox` is a plain `Control` "slot" that the `VBoxContainer` lays out, with a bottom-anchored `Content` (`MarginContainer` + `RichTextLabel`) inside it. It has no background of its own; the `SubtitleStack` panel provides it, so stacked boxes have no gaps. Fades animate a `reveal` property (0 to 1) that drives the slot's `custom_minimum_size.y` and the content's Y scale (pivot at its bottom edge), so sibling boxes slide instead of jumping. Don't put the scaled node directly under a `Container`: containers reset child scale on every re-sort, which is why the content is nested one level down.
 
-Ways to trigger today: the `say <text>` console command (see below), and the `DialogTrigger` in `test_level.tscn`, whose `interacted` signal plays the `intro_dialog` export of `test_level.gd`, a `DialogSequence` authored in `res/dialogs/test_sequence.tres`. Author new sequences the same way: create a `DialogSequence` resource in the inspector, add `Dialog` entries, and export it on the level or NPC script.
+**Story lines** (`DialogueTriggers` autoload): reads `res/story/lines.json` (line id -> `speaker`, `text`, optional `audio`) and `res/story/dialogue_triggers.json` (`on` event, `line` id) and connects to `CampaignState`'s `mission_started`, `objective_completed` and `mission_completed`. An event (`mission_started:<id>`, `objective:<id>`, `mission_completed:<id>`) queues its not yet played lines, in file order, as one `DialogSequence` (`queue_sequence`; `sequence_for(event)` returns it). Each trigger (`"<on>|<line>"`) is recorded with `CampaignState.mark_trigger_played` the moment it is queued, saved as `triggers_played`, so it plays once per campaign and never replays after a load (`load_state` emits nothing; `reset()` clears them). An audio path whose file doesn't exist yet gives a subtitle-only line (at least 3 s). Lines fired outside a gameplay level (a new campaign's `mission_started:m1`, before the Moon loads) wait for `SceneLoader.level_loaded`. `problems()` lists triggers naming a missing line or an unknown event (warned at startup, checked by `tests/test_dialogue_triggers.gd`). The campaign ending waits for `mission_completed:m3`'s sequence; missions.json's `ending.lines` are only a fallback when that event has no trigger. Nothing here changes `GameState`, so the player keeps moving and driving.
+
+Other ways to trigger: the `say <text>` console command (see below), and the `DialogTrigger` in `test_level.tscn`, whose `interacted` signal plays the `intro_dialog` export of `test_level.gd`, a `DialogSequence` authored in `res/dialogs/test_sequence.tres`. Author new sequences the same way: create a `DialogSequence` resource in the inspector, add `Dialog` entries, and export it on the level or NPC script.
 
 ---
 
@@ -898,7 +904,7 @@ Grounded in the current code; useful to know before changing things.
 - **Planned / consider for the final build (settings menu):**
   - Replace the manual `Tab` enum + show/hide loop with a `ButtonGroup` (`toggle_mode = true` on the four tab buttons) so the engine guarantees exactly one tab is selected and highlights the active one. Optionally swap the `Pages` container for a `TabContainer` (`tabs_visible = false`, set `current_tab` from the buttons). Check that `ButtonResizeComponent` and the pressed style in `res://res/theme.tres` look right on toggled buttons.
   - Maybe replace the code-built rows with a reusable row scene (label + widget bound to a setting key).
-- `DialogServer` has no queue: a second sequence started while one is playing is ignored, and individual lines can overlap (`play_dialog` only rejects the same `Dialog` instance twice). See the overlap table in section 10.
+- `play_dialog_sequence` (not `queue_sequence`) is ignored while another sequence is playing, and direct `play_dialog` lines overlap anything (`play_dialog` only rejects the same `Dialog` instance twice). See the overlap table in section 10.
 - `play_dialog` returns `false` for both "cancelled" and "ignored because already playing", and `play_dialog_sequence` treats any `false` as a cancel. If a line of a sequence is already playing standalone (e.g. via `say`), the sequence aborts early with `completed = false`.
 
 **Player**
