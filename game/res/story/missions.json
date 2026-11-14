@@ -4,7 +4,7 @@
 		"IDs are lowercase with dots. A mission is mN, an objective is mN.thing. Objective IDs are unique across all missions.",
 		"objectives: all required for mission_completed. optional_objectives: can be completed but do not count.",
 		"objective_titles: what the console and the rover HUD show for each objective. report: the lines the console's Downlink tab shows once the mission's data is sent.",
-		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
+		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving), hint_from (optional, same syntax as target: the live get_hint(rover) text comes from that node instead of the target, while the highlight and waypoint stay on target) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
 		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat.",
 		"downlink: the console's Downlink tab for this mission. objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
@@ -460,9 +460,22 @@
 			"guidance": {
 				"m3.logger_recovered": [
 					{
-						"text": "Recover the field logger from the far rim",
+						"text": "Empty Kite's cargo mount",
+						"label": "Cargo socket",
+						"target": "kite:CargoSocket/PartCapture",
+						"stuck": "Evan's logger needs the cargo mount free. Leave Kite, pick up whatever rides there and put it on the bench or rack.",
+						"done_when": {
+							"unmounted": "kite:CargoSocket"
+						}
+					},
+					{
+						"text": "Drive to the far logger, stop beside it and press E to load it",
 						"label": "Far logger",
-						"target": "path:FarLogger"
+						"target": "path:FarLogger",
+						"hint_from": "group:field_logger_pickup",
+						"waypoint": true,
+						"key": "interact_use",
+						"stuck": "Park so Kite's cargo mount is within 1.5 m of the logger, stop, then press E."
 					}
 				],
 				"m3.kite_docked": [

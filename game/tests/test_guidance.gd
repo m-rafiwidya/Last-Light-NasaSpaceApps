@@ -67,6 +67,25 @@ func _place(at: Vector3, facing: Vector3) -> void:
 	await _ticks(1.0)
 
 
+class ErrorCounter extends Logger:
+	var count: int = 0
+
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String, _editor_notify: bool,
+			_error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		count += 1
+
+
+func _test_target() -> Node3D:
+	var node := Node3D.new()
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = BoxMesh.new()
+	node.add_child(mesh)
+	node.add_to_group(&"test_guidance_target")
+	level.add_child(node)
+	node.global_position = rover.global_position + Vector3(0.0, 1.0, -5.0)
+	return node
+
+
 func _overlay_count() -> int:
 	var count: int = 0
 	for node in level.find_children("*", "GeometryInstance3D", true, false):
@@ -280,6 +299,49 @@ func _run() -> void:
 	await _ticks(0.3)
 	_check("on again: the step and highlight come back", overlay.step_label.text.ends_with("Open the mission console") and _overlay_count() > 0,
 		overlay.step_label.text)
+
+	# 7. Freed targets and hint_from
+	var errors := ErrorCounter.new()
+	OS.add_logger(errors)
+	var objective: String = CS.current_objective()
+	var saved_steps: Array = guidance.steps(objective)
+	guidance._steps[objective] = [{"text": "Test step", "label": "Test", "target": "group:test_guidance_target",
+		"hint_from": "group:test_guidance_hint"}]
+	var hinter := Node3D.new()
+	var hinter_script := GDScript.new()
+	hinter_script.source_code = "extends Node3D\nfunc get_hint(_rover) -> String:\n\treturn 'hint from elsewhere'\n"
+	hinter_script.reload()
+	hinter.set_script(hinter_script)
+	hinter.add_to_group(&"test_guidance_hint")
+	level.add_child(hinter)
+	var first: Node3D = _test_target()
+	await _ticks(0.3)
+	_check("freed: the target in the step data is highlighted", guidance.target == first and not guidance.highlighted_meshes().is_empty()
+		and not _markers().is_empty(), str(guidance.target))
+	GS.change_state_to(GS.State.IN_GAME_ROBOT)
+	await _ticks(0.2)
+	_check("hint_from: the hint comes from that node, the target keeps the highlight", guidance.step_text() == "hint from elsewhere"
+		and guidance.target == first, guidance.step_text())
+	first.free()
+	await _ticks(0.5)
+	_check("freed: no script errors, nothing left highlighted, target cleared", errors.count == 0 and guidance.target == null
+		and guidance.highlighted_meshes().is_empty() and _markers().is_empty() and not guidance.is_waypoint(),
+		"%d errors, target %s, %d meshes, %d markers" % [errors.count, guidance.target, guidance.highlighted_meshes().size(), _markers().size()])
+	var second: Node3D = _test_target()
+	await _ticks(0.5)
+	_check("freed: a replacement node gets highlighted", guidance.target == second and not guidance.highlighted_meshes().is_empty()
+		and _all_under(guidance.highlighted_meshes(), second) and not _markers().is_empty() and errors.count == 0, "%d errors" % errors.count)
+	hinter.free()
+	await _ticks(0.3)
+	_check("hint_from: a freed hint node: the step's own text, no errors", guidance.step_text() == "Test step" and errors.count == 0,
+		"%s, %d errors" % [guidance.step_text(), errors.count])
+	second.free()
+	await _ticks(0.3)
+	OS.remove_logger(errors)
+	_check("freed: freeing the replacement also raises no errors", errors.count == 0 and guidance.target == null, "%d errors" % errors.count)
+	guidance._steps[objective] = saved_steps
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	await _ticks(0.3)
 
 	# 8. No mission
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)

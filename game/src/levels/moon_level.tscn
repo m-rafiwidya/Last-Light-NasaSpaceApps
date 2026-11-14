@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://src/levels/mission_director.gd" id="40_director"]
 [ext_resource type="Script" path="res://src/levels/guidance.gd" id="42_guidance"]
 [ext_resource type="Script" path="res://src/levels/cold_zone.gd" id="43_cold_zone"]
+[ext_resource type="PackedScene" path="res://src/field/field_logger_pickup.tscn" id="44_logger_pickup"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
 shader = ExtResource("9_sky_shader")
@@ -133,6 +134,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.942, -1.679, -57.165)
 [node name="FarLogger" parent="." instance=ExtResource("37_far_logger")]
 transform = Transform3D(-0.139205, -0.138575, 0.98052, 0.000463191, 0.990151, 0.140002, -0.990263, 0.0199433, -0.13777, 1.81907, -0.690507, -59.2873)
 sleeping = true
+
+[node name="FieldLoggerPickup" parent="." instance=ExtResource("44_logger_pickup")]
 
 [node name="IrisGate" type="Node3D" parent="."]
 

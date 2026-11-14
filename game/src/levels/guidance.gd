@@ -15,9 +15,11 @@ var objective: String = ""
 var index: int = -1
 var stuck_time: float = 0.0
 var target: Node3D = null
+var hint_node: Node3D = null
 var overlay: GuidanceOverlay = null
 var active: bool = false
 
+var _had_target: bool = false
 var _steps: Dictionary = {}
 var _complete_text: Dictionary = {}
 var _highlighted: Array[GeometryInstance3D] = []
@@ -52,6 +54,8 @@ func _set_active(value: bool) -> void:
 	if not value:
 		_clear_highlight()
 		target = null
+		hint_node = null
+		_had_target = false
 		objective = ""
 		index = -1
 		stuck_time = 0.0
@@ -94,12 +98,27 @@ func step_text() -> String:
 	return ("[%s]  %s" % [InputBindings.action_text(StringName(key)), step["text"]]) if key else step["text"]
 
 
-## While driving, the current target's own words (its get_hint(rover)), or "" for none
+## While driving, the hint source's own words (its get_hint(rover)), or "" for none
 func target_hint() -> String:
-	if GameState.state != GameState.State.IN_GAME_ROBOT or not is_instance_valid(target) or not target.has_method("get_hint"):
+	if GameState.state != GameState.State.IN_GAME_ROBOT:
+		return ""
+	var source := hint_source()
+	if source == null or not source.has_method("get_hint"):
 		return ""
 	var rover: Robot = GameState.robot if is_instance_valid(GameState.robot) else _rover()
-	return str(target.call("get_hint", rover)) if rover else ""
+	return str(source.call("get_hint", rover)) if rover else ""
+
+
+## The node whose get_hint() words the step: the step's "hint_from" node, else its target
+func hint_source() -> Node3D:
+	if not enabled():
+		return null
+	var spec: String = current_step().get("hint_from", "")
+	if spec.is_empty():
+		return target if is_instance_valid(target) else null
+	if not is_instance_valid(hint_node):
+		hint_node = resolve(spec)
+	return hint_node if is_instance_valid(hint_node) else null
 
 
 func stuck_text() -> String:
@@ -107,7 +126,7 @@ func stuck_text() -> String:
 
 
 func is_waypoint() -> bool:
-	return current_step().get("waypoint", false) and target != null
+	return current_step().get("waypoint", false) and is_instance_valid(target)
 
 
 func _physics_process(delta: float) -> void:
@@ -127,9 +146,16 @@ func _physics_process(delta: float) -> void:
 		step_changed.emit(objective, index)
 	else:
 		stuck_time += delta
-		if enabled() and (not is_instance_valid(target) and target != null
-				or resolve(current_step().get("target", "")) != target):
+		if enabled() and _target_stale():
 			_refresh_highlight()
+
+
+## The target was freed, or the step data now resolves to a different node
+func _target_stale() -> bool:
+	var wanted: Node3D = resolve(current_step().get("target", ""))
+	if is_instance_valid(target):
+		return wanted != target
+	return _had_target or wanted != null
 
 
 func compute_index(objective_id: String) -> int:
@@ -162,6 +188,10 @@ func is_met(condition: Dictionary) -> bool:
 			"mounted":
 				var socket := resolve(condition["mounted"]) as HotswapSocket
 				if socket == null or socket.part == null:
+					return false
+			"unmounted":
+				var socket := resolve(condition["unmounted"]) as HotswapSocket
+				if socket == null or socket.part != null:
 					return false
 			"player_near":
 				var player: Node3D = GameState.player
@@ -239,6 +269,8 @@ func _rover() -> Robot:
 
 func _refresh_highlight() -> void:
 	_clear_highlight()
+	hint_node = null
+	_had_target = false
 	if not enabled():
 		target = null
 		return
@@ -246,9 +278,11 @@ func _refresh_highlight() -> void:
 	target = resolve(step.get("target", ""))
 	if target == null:
 		return
-	var glow_root := target.get("highlight_node") as Node3D
-	if not is_instance_valid(glow_root):
-		glow_root = target
+	_had_target = true
+	var glow_root: Node3D = target
+	var custom: Variant = target.get("highlight_node")
+	if is_instance_valid(custom) and custom is Node3D:
+		glow_root = custom
 	var meshes: Array[GeometryInstance3D] = []
 	for node in glow_root.find_children("*", "GeometryInstance3D", true, false):
 		var mesh := node as GeometryInstance3D
@@ -321,8 +355,8 @@ func _clear_highlight() -> void:
 
 func _follow_markers() -> void:
 	for item in _follows:
-		var marker: Node3D = item[0]
-		var node: Node3D = item[1]
+		var marker: Variant = item[0]
+		var node: Variant = item[1]
 		if is_instance_valid(marker) and is_instance_valid(node) and node.is_inside_tree():
 			if item[2] == null:
 				marker.global_transform = node.global_transform
@@ -331,7 +365,11 @@ func _follow_markers() -> void:
 
 
 func highlighted_meshes() -> Array[GeometryInstance3D]:
-	return _highlighted
+	var alive: Array[GeometryInstance3D] = []
+	for mesh in _highlighted:
+		if is_instance_valid(mesh):
+			alive.append(mesh)
+	return alive
 
 
 func _exit_tree() -> void:

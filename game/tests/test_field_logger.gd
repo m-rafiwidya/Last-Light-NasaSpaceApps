@@ -72,8 +72,7 @@ func _run() -> void:
 	rover = level.get_node("ReadyRover")
 	logger = level.get_node("FarLogger")
 	cargo = rover.get_node("CargoSocket")
-	pickup = (load(PICKUP_SCENE) as PackedScene).instantiate()
-	level.add_child(pickup)
+	pickup = level.get_node("FieldLoggerPickup")
 	await _ticks(1.0)
 
 	# 1. Setup
