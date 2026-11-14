@@ -1,13 +1,10 @@
 extends UIScreen
 
-const PANEL_IMAGE: Texture2D = preload("res://res/textures/dev/grey.png")
 const ICONS: Array[Texture2D] = [preload("res://res/textures/dev/orange.png"),
 	preload("res://res/textures/dev/grey.png"), preload("res://res/textures/dev/orange.png")]
 
 enum Section {MISSION, KITE, DOWNLINK}
 const SECTIONS: Array[String] = ["Mission", "Kite", "Downlink"]
-const DOWNLINKS: Dictionary = {"m1": "m1.inspection_sent", "m3": "m3.archive_sent"}
-const DOWNLINK_NAMES: Dictionary = {"m1": "inspection", "m3": "archive"}
 const DOWNLINK_TIME: float = 2.5
 const REFRESH_TIME: float = 0.25
 const DONE_COLOR: String = "#3d8f4f"
@@ -81,6 +78,11 @@ func refresh() -> void:
 
 func _show_mission() -> void:
 	var mission := CampaignState.current_mission()
+	if CampaignState.is_campaign_complete():
+		var ending := CampaignState.mission_ending(CampaignState.last_mission())
+		_set_text("Campaign complete", "Every mission is complete. Free play: the workshop and Kite are yours.\n\n%s"
+			% ending.get("next_assignment", ""))
+		return
 	if mission.is_empty():
 		_set_text("No active mission", "Mission control has not assigned a mission yet.")
 		return
@@ -131,21 +133,23 @@ func _show_kite() -> void:
 
 func _show_downlink() -> void:
 	var mission := CampaignState.current_mission()
-	var objective: String = DOWNLINKS.get(mission, "")
+	var downlink := CampaignState.mission_downlink(mission)
+	var objective: String = downlink.get("objective", "")
 	if objective.is_empty():
 		_set_text("Downlink", "Nothing to send for this mission.")
 		return
-	var what: String = DOWNLINK_NAMES[mission]
 	if _sending >= 0.0:
-		_set_text("Downlink", "Sending the %s to Earth...  %d%%" % [what, floori(_sending / DOWNLINK_TIME * 100.0)])
+		_set_text("Downlink", "%s  %d%%" % [downlink.get("progress", "Sending..."), floori(_sending / DOWNLINK_TIME * 100.0)])
 	elif CampaignState.is_objective_done(objective):
 		_set_text("Downlink: report received", CampaignState.mission_report(mission))
-		var rect := TextureRect.new()
-		rect.texture = PANEL_IMAGE
-		rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
-		%Attachments.add_child(rect)
+		var attachment: String = downlink.get("attachment", "")
+		if attachment and ResourceLoader.exists(attachment):
+			var rect := TextureRect.new()
+			rect.texture = load(attachment)
+			rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+			%Attachments.add_child(rect)
 	elif _downlink_ready(mission):
-		_set_text("Downlink", "The %s is stored on the console and ready to send to Earth." % what)
+		_set_text("Downlink", downlink.get("ready", "Ready to send."))
 	else:
 		var waiting := CampaignState.current_objective()
 		_set_text("Downlink", "Nothing to send yet. First: %s." % CampaignState.objective_title(waiting))
@@ -161,15 +165,19 @@ func _update_action() -> void:
 		%Action.disabled = true
 	elif not mission.is_empty() and CampaignState.is_mission_completed(mission) and next:
 		%Action.text = "Start next mission: %s" % CampaignState.mission_title(next)
-	elif section == Section.DOWNLINK and DOWNLINKS.has(mission) and not CampaignState.is_objective_done(DOWNLINKS[mission]):
-		%Action.text = "Send %s" % DOWNLINK_NAMES[mission]
+	elif section == Section.DOWNLINK and _downlink_objective(mission) and not CampaignState.is_objective_done(_downlink_objective(mission)):
+		%Action.text = CampaignState.mission_downlink(mission).get("action", "Send")
 		%Action.disabled = not _downlink_ready(mission)
 	else:
 		%Action.visible = false
 
 
+func _downlink_objective(mission: String) -> String:
+	return CampaignState.mission_downlink(mission).get("objective", "")
+
+
 func _downlink_ready(mission: String) -> bool:
-	var objective: String = DOWNLINKS.get(mission, "")
+	var objective := _downlink_objective(mission)
 	return not objective.is_empty() and CampaignState.current_objective() == objective
 
 
@@ -190,7 +198,7 @@ func _finish_downlink() -> void:
 	_sending = -1.0
 	var mission := CampaignState.current_mission()
 	if _downlink_ready(mission):
-		CampaignState.complete_objective(DOWNLINKS[mission])
+		CampaignState.complete_objective(_downlink_objective(mission))
 	refresh()
 
 

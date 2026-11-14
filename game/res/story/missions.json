@@ -6,9 +6,12 @@
 		"objective_titles: what the console and the rover HUD show for each objective. report: the lines the console's Downlink tab shows once the mission's data is sent.",
 		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, kite:<Robot property>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
-		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat."
+		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat.",
+		"downlink: the console's Downlink tab for this mission. objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
+		"ending (last mission): event (the dialogue_triggers.json event whose lines play in the closing sequence), lines (fallback id/speaker/text used while dialogue_triggers.json has no line for that event) and next_assignment (shown on the result screen).",
+		"placeholder: a guidance step still waiting for its real target (Rafi's field scenes). Search for \"placeholder\" to fill them in."
 	],
-	"content_version": "2026-11-09",
+	"content_version": "2026-11-10",
 	"mission_order": [
 		"m1",
 		"m2",
@@ -194,7 +197,14 @@
 					}
 				]
 			},
-			"complete_guidance": "Mission complete. Open the console to start the next mission."
+			"complete_guidance": "Mission complete. Open the console to start the next mission.",
+			"downlink": {
+				"objective": "m1.inspection_sent",
+				"action": "Send inspection",
+				"progress": "Sending the inspection to Earth...",
+				"ready": "The inspection is stored on the console and ready to send to Earth.",
+				"attachment": "res://res/textures/dev/grey.png"
+			}
 		},
 		{
 			"id": "m2",
@@ -204,8 +214,8 @@
 				"m2.module_loaded",
 				"m2.module_installed",
 				"m2.iris_activated",
-				"m2.telemetry_received",
-				"m2.kite_docked"
+				"m2.kite_docked",
+				"m2.telemetry_received"
 			],
 			"optional_objectives": [
 				"m2.near_sample_collected"
@@ -214,10 +224,132 @@
 				"m2.module_loaded": "Load the radio-power module onto Kite",
 				"m2.module_installed": "Install the module in IRIS",
 				"m2.iris_activated": "Bring IRIS online",
-				"m2.telemetry_received": "Receive IRIS's telemetry",
 				"m2.kite_docked": "Return Kite to the charging pad",
+				"m2.telemetry_received": "Receive IRIS's telemetry at the console",
 				"m2.near_sample_collected": "Optional: collect the near-site sample"
-			}
+			},
+			"report": [
+				"TELEMETRY  IRIS station link restored",
+				"RADIO: transmitting. Live surface and station readings are arriving again.",
+				"STORED DATA: received up to the last crewed field session.",
+				"GAP: the remote field logger on the far rim is not reporting. Its record is missing from the archive.",
+				"Next: recover the field logger (M3)."
+			],
+			"downlink": {
+				"objective": "m2.telemetry_received",
+				"action": "Receive telemetry",
+				"progress": "Receiving IRIS's telemetry...",
+				"ready": "IRIS is online and in range of the workshop antenna. Its telemetry is ready to receive."
+			},
+			"guidance": {
+				"m2.module_loaded": [
+					{
+						"text": "Load the radio-power module onto Kite",
+						"label": "",
+						"target": "",
+						"placeholder": "TODO Thursday: target for the module cargo (Rafi)"
+					}
+				],
+				"m2.module_installed": [
+					{
+						"text": "Drive to IRIS and install the module in its cradle",
+						"label": "",
+						"target": "",
+						"placeholder": "TODO Thursday: target for the module cradle (Rafi)"
+					}
+				],
+				"m2.iris_activated": [
+					{
+						"text": "Bring IRIS online",
+						"label": "",
+						"target": "",
+						"placeholder": "TODO Thursday: target for IRIS activation (Rafi)"
+					}
+				],
+				"m2.kite_docked": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Kite is still out at IRIS. Open the console and press CONTROL KITE to drive it back.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
+						"label": "",
+						"target": "",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive back onto the charging pad and stop",
+						"label": "Charging pad",
+						"target": "path:Workshop/Parts/ws_pad_01",
+						"waypoint": true,
+						"stuck": "Follow the marker into the bay. The dock hint at the top tells you how far to go; stop when it says Charging."
+					}
+				],
+				"m2.telemetry_received": [
+					{
+						"text": "Leave Kite",
+						"label": "",
+						"target": "",
+						"key": "ui_cancel",
+						"done_when": {
+							"not_state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Look at the console and press E.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Open the Downlink tab",
+						"label": "",
+						"target": "",
+						"stuck": "Downlink is the third section in the console's list on the left.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							],
+							"console_section": "downlink"
+						}
+					},
+					{
+						"text": "Press Receive telemetry",
+						"label": "",
+						"target": "",
+						"stuck": "The button is under the Downlink text."
+					}
+				],
+				"m2.near_sample_collected": [
+					{
+						"text": "Optional: collect the near-site sample",
+						"label": "",
+						"target": "",
+						"placeholder": "TODO Thursday: target for the near sample site (Rafi)"
+					}
+				]
+			},
+			"complete_guidance": "Mission complete. Open the console to start the next mission."
 		},
 		{
 			"id": "m3",
@@ -233,6 +365,120 @@
 				"m3.logger_recovered": "Recover Evan's logger from the far rim",
 				"m3.kite_docked": "Return Kite to the charging pad",
 				"m3.archive_sent": "Downlink the archive from the console"
+			},
+			"report": [
+				"ARCHIVE  IRIS field record complete",
+				"STATION: IRIS online, observations received.",
+				"FIELD LOGGER: recovered from the far rim, records intact.",
+				"LAST RECORD: the earlier crew's final field entry, logged by Evan, is now part of the archive.",
+				"The field archive is complete."
+			],
+			"downlink": {
+				"objective": "m3.archive_sent",
+				"action": "Send archive",
+				"progress": "Sending the archive to Earth...",
+				"ready": "The field logger's records are copied to the console. The archive is ready to send to Earth."
+			},
+			"guidance": {
+				"m3.logger_recovered": [
+					{
+						"text": "Recover the field logger from the far rim",
+						"label": "",
+						"target": "",
+						"placeholder": "TODO Thursday: target for the field logger (Rafi)"
+					}
+				],
+				"m3.kite_docked": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Kite is still out at the far rim. Open the console and press CONTROL KITE to drive it back.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
+						"label": "",
+						"target": "",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive back onto the charging pad and stop",
+						"label": "Charging pad",
+						"target": "path:Workshop/Parts/ws_pad_01",
+						"waypoint": true,
+						"stuck": "Follow the marker into the bay. The dock hint at the top tells you how far to go; stop when it says Charging."
+					}
+				],
+				"m3.archive_sent": [
+					{
+						"text": "Leave Kite",
+						"label": "",
+						"target": "",
+						"key": "ui_cancel",
+						"done_when": {
+							"not_state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Look at the console and press E.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Open the Downlink tab",
+						"label": "",
+						"target": "",
+						"stuck": "Downlink is the third section in the console's list on the left.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							],
+							"console_section": "downlink"
+						}
+					},
+					{
+						"text": "Press Send archive",
+						"label": "",
+						"target": "",
+						"stuck": "The button is under the Downlink text."
+					}
+				]
+			},
+			"complete_guidance": "Campaign complete. Free play: the workshop and Kite are yours.",
+			"ending": {
+				"event": "mission_completed:m3",
+				"lines": [
+					{
+						"id": "hana_m3_end",
+						"speaker": "Hana",
+						"text": "That's Evan's last record, the one he never got to send. He left everything ready for someone to finish. Thank you."
+					},
+					{
+						"id": "mira_m3_end",
+						"speaker": "Mira",
+						"text": "Kite recovered, IRIS online, archive received. I'm closing the field report. Good work out there."
+					}
+				],
+				"next_assignment": "Next assignment: Mars field rotation. Briefing pending."
 			}
 		}
 	]
