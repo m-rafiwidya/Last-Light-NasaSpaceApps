@@ -61,7 +61,7 @@ func _run() -> void:
 	_check("TEAM: four name rows with university and country", team.size() == 4 and team[0]["name"] == "FAHD"
 		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[3]["name"] == "SATINIZE")
 	var data: Array = by_title.get("REAL DATA", [])
-	_check("REAL DATA: five sources, lines kept", data.size() == 5 and "\n" in data[2]["text"]
+	_check("REAL DATA: six sources, lines kept", data.size() == 6 and "\n" in data[2]["text"]
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
 	_check("A GAME BY: the studio and the event", by_title.get("A GAME BY", [{}])[0].get("name", "") == "TANDBORSTE"
 		and (by_title["A GAME BY"][0]["sub"] as String).contains("NASA Space Apps Challenge 2026"))

@@ -420,6 +420,48 @@ content_margin_left = 7.2
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_d1j7m"]
 
+[sub_resource type="FontVariation" id="FontVariation_ptitle"]
+base_font = ExtResource("1_rjahq")
+spacing_glyph = 14
+
+[sub_resource type="FontVariation" id="FontVariation_tipname"]
+base_font = ExtResource("1_rjahq")
+spacing_glyph = 4
+
+[sub_resource type="FontVariation" id="FontVariation_locked"]
+base_font = ExtResource("1_rjahq")
+spacing_glyph = 10
+
+[sub_resource type="FontVariation" id="FontVariation_spaced5"]
+base_font = ExtResource("2_4u6yw")
+spacing_glyph = 5
+
+[sub_resource type="FontVariation" id="FontVariation_spaced4"]
+base_font = ExtResource("2_4u6yw")
+spacing_glyph = 4
+
+[sub_resource type="FontVariation" id="FontVariation_spaced2"]
+base_font = ExtResource("2_4u6yw")
+spacing_glyph = 2
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ptab"]
+content_margin_left = 4.8
+content_margin_top = 12.0
+content_margin_right = 4.8
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tip"]
+content_margin_left = 24.0
+content_margin_top = 21.6
+content_margin_right = 24.0
+content_margin_bottom = 21.6
+bg_color = Color(0.039215688, 0.039215688, 0.050980393, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.20392157, 0.20392157, 0.22745098, 1)
+
 [resource]
 default_font = SubResource("FontVariation_84cso")
 default_font_size = 20
@@ -669,6 +711,7 @@ UIColor/colors/line_2 = Color(0.10980392, 0.10980392, 0.1254902, 1)
 UIColor/colors/line_3 = Color(0.16470589, 0.16470589, 0.18039216, 1)
 UIColor/colors/mars = Color(0.78431374, 0.39215687, 0.22745098, 1)
 UIColor/colors/moon = Color(0.7882353, 0.76862746, 0.73333335, 1)
+UIColor/colors/ok = Color(0.24705882, 0.7254902, 0.3137255, 1)
 UIColor/colors/muted = Color(0.5411765, 0.5294118, 0.5137255, 1)
 UIColor/colors/panel = Color(0.105882354, 0.105882354, 0.12156863, 1)
 UIColor/colors/panel_hover = Color(0.14901961, 0.14901961, 0.16862746, 1)
@@ -737,3 +780,56 @@ UnderlineButtonPrimary/styles/focus = SubResource("StyleBoxEmpty_61hie")
 UnderlineButtonPrimary/styles/hover = SubResource("StyleBoxEmpty_tkcwm")
 UnderlineButtonPrimary/styles/normal = SubResource("StyleBoxEmpty_tavvc")
 UnderlineButtonPrimary/styles/pressed = SubResource("StyleBoxEmpty_d1j7m")
+LabelLockHint/base_type = &"Label"
+LabelLockHint/colors/font_color = Color(0.5411765, 0.5294118, 0.5137255, 1)
+LabelLockHint/font_sizes/font_size = 14
+LabelLockHint/fonts/font = SubResource("FontVariation_spaced2")
+LabelLocked/base_type = &"Label"
+LabelLocked/colors/font_color = Color(0.70980394, 0.69803923, 0.6745098, 1)
+LabelLocked/font_sizes/font_size = 19
+LabelLocked/fonts/font = SubResource("FontVariation_locked")
+LabelPlanetSubtitle/base_type = &"Label"
+LabelPlanetSubtitle/colors/font_color = Color(0.5411765, 0.5294118, 0.5137255, 1)
+LabelPlanetSubtitle/font_sizes/font_size = 14
+LabelPlanetSubtitle/fonts/font = SubResource("FontVariation_spaced5")
+LabelPlanetTitle/base_type = &"Label"
+LabelPlanetTitle/colors/font_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+LabelPlanetTitle/font_sizes/font_size = 31
+LabelPlanetTitle/fonts/font = SubResource("FontVariation_ptitle")
+LabelTipBadge/base_type = &"Label"
+LabelTipBadge/colors/font_color = Color(0.24705882, 0.7254902, 0.3137255, 1)
+LabelTipBadge/font_sizes/font_size = 13
+LabelTipBadge/fonts/font = SubResource("FontVariation_spaced4")
+LabelTipKey/base_type = &"Label"
+LabelTipKey/colors/font_color = Color(0.5411765, 0.5294118, 0.5137255, 1)
+LabelTipKey/font_sizes/font_size = 14
+LabelTipKey/fonts/font = SubResource("FontVariation_84cso")
+LabelTipName/base_type = &"Label"
+LabelTipName/colors/font_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+LabelTipName/font_sizes/font_size = 20
+LabelTipName/fonts/font = SubResource("FontVariation_tipname")
+LabelTipNote/base_type = &"Label"
+LabelTipNote/colors/font_color = Color(0.70980394, 0.69803923, 0.6745098, 1)
+LabelTipNote/constants/line_spacing = 8
+LabelTipNote/font_sizes/font_size = 14
+LabelTipNote/fonts/font = SubResource("FontVariation_84cso")
+LabelTipValue/base_type = &"Label"
+LabelTipValue/colors/font_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+LabelTipValue/font_sizes/font_size = 14
+LabelTipValue/fonts/font = SubResource("FontVariation_84cso")
+PlanetTab/base_type = &"Button"
+PlanetTab/colors/font_color = Color(0.5411765, 0.5294118, 0.5137255, 1)
+PlanetTab/colors/font_focus_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+PlanetTab/colors/font_hover_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+PlanetTab/colors/font_hover_pressed_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+PlanetTab/colors/font_pressed_color = Color(0.9254902, 0.9137255, 0.8901961, 1)
+PlanetTab/constants/outline_size = 0
+PlanetTab/font_sizes/font_size = 14
+PlanetTab/fonts/font = SubResource("FontVariation_x5sv6")
+PlanetTab/styles/disabled = SubResource("StyleBoxEmpty_ptab")
+PlanetTab/styles/focus = SubResource("StyleBoxEmpty_ptab")
+PlanetTab/styles/hover = SubResource("StyleBoxEmpty_ptab")
+PlanetTab/styles/normal = SubResource("StyleBoxEmpty_ptab")
+PlanetTab/styles/pressed = SubResource("StyleBoxEmpty_ptab")
+TipPanel/base_type = &"PanelContainer"
+TipPanel/styles/panel = SubResource("StyleBoxFlat_tip")

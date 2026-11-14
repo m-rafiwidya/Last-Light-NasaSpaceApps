@@ -2,7 +2,7 @@ extends SceneTree
 ## Main menu: boots the game and checks the launch (no loading screen, black until the opening
 ## sequence), the opening sequence (plays on the first menu only, any key skips it, F11 doesn't,
 ## PLAY is focused after it), keyboard navigation, PLAY's level list, the Moon (click emits
-## moon_clicked, drag turns it, it only renders while the menu is up), PLAY opening its popup
+## moon_clicked and opens the planet explorer, drag turns it, it only renders while the menu is up), PLAY opening its popup
 ## (tests/test_play_popup.gd covers the popup itself), that the menu backdrop is
 ## the empty level, not test_level, and the display mode setting (saved; the settings file is
 ## restored afterwards).
@@ -153,6 +153,11 @@ func _run() -> void:
 	_mouse_button(centre, false)
 	await process_frame
 	_check("clicking the Moon emits moon_clicked", clicked[0] == 1)
+	# It opens the planet explorer (tests/test_planet_explorer.gd covers it); Esc comes back
+	_check("clicking the Moon opens the planet explorer", menu.is_explorer_open())
+	await _key(KEY_ESCAPE)
+	await _seconds(0.5)
+	_check("Esc closes it, PLAY has focus again", not menu.is_explorer_open() and play.has_focus())
 	var lon_before: float = moon.lon
 	_mouse_button(centre, true)
 	var motion := InputEventMouseMotion.new()

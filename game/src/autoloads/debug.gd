@@ -72,6 +72,13 @@ func parse_command(input: String):
 				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.SAVE_DIR])
 			"clearsaves":
 				add_log("Removed %d fake saves" % SaveIndex.clear_fake_saves())
+			"unlockall":
+				# Unlocks every planet in the planet explorer until the game quits (testing)
+				PlanetData.unlock_all = true
+				var explorer: PlanetExplorer = get_tree().root.find_child("PlanetExplorer", true, false)
+				if explorer:
+					explorer.refresh_locks()
+				add_log("All planets unlocked")
 			"fullbright":
 				var viewport = get_viewport()
 				if viewport.debug_draw != Viewport.DEBUG_DRAW_UNSHADED:
