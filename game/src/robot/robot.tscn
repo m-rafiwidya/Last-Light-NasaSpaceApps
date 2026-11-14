@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://c5pjveyc6065i" path="res://src/robot/components/running_gear.tscn" id="4_6b27f"]
 [ext_resource type="PackedScene" uid="uid://6lqw13v7axa8" path="res://src/robot/socket/hotswap_socket.tscn" id="20_socket"]
 [ext_resource type="PackedScene" uid="uid://dy5tit5s5tomt" path="res://res/models/rover_kit/chassis.glb" id="21_chassis"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_visuals.gd" id="22_visuals"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 bounce = 0.5
@@ -132,3 +133,6 @@ anchor = &"socket_wheel_middle_R"
 accepts_any_type = false
 
 [node name="Body" parent="." unique_id=1203948573 instance=ExtResource("21_chassis")]
+
+[node name="Visuals" type="Node3D" parent="." unique_id=1203948574]
+script = ExtResource("22_visuals")

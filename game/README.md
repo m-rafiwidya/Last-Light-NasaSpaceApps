@@ -598,6 +598,7 @@ Grounded in the current code; useful to know before changing things.
 
 - The player is still alive (frozen, input locked) while the robot is driven, and the robot is also in the world while the player walks around (it just coasts to a stop).
 - `InteractTrigger`s can't be used while driving (they rely on the `Player` raycast); Esc is the only way out.
+- The suspension rays start 4 cm above the rover origin (about 14 cm above the ground at rest), so a vertical step taller than that is invisible to the wheels: the ray starts inside it and reports no hit. Ramps and smaller steps work. The chassis (30 cm clearance) still collides with anything taller.
 - `robot.tscn` quirks inherited from `openwheel`: `WheelFront`/`WheelBack` markers are unused; `Robot.controller` is typed `RobotController` and is not set in `robot.tscn`, so every level that instances the robot must assign it (the test level does).
 - The robot's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
 
@@ -682,7 +683,8 @@ Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7,
 ├── Pivot            Node3D, yaw (at 0, 1, -0.2)
 │   └── Camera3D     first-person camera, pitch (FOV 90)
 │       └── RayCast3D  3 m pickup ray, mask 53, collides with areas
-└── EngineSound      AudioStreamPlayer3D + components/engine_sound.gd (procedural motor whir)
+├── EngineSound      AudioStreamPlayer3D + components/engine_sound.gd (procedural motor whir)
+└── Visuals          Node3D + kit/rover_visuals.gd (RoverVisuals): visual rocker-bogie linkage, see 15.3c
 ```
 
 ### 15.3 Simulation (`Robot._integrate_forces`)
@@ -718,6 +720,15 @@ Each wheel can be a swappable `WheelPart` (`socket/wheel_part.gd`, a `HotswapPar
 
 ### 15.3b Motor sound (`components/engine_sound.gd`)
 A procedural electric-motor whir through an `AudioStreamGenerator` (22.05 kHz), generated per frame from `Robot.motor_angular_velocity` and `Robot.motor_torque`. Pitch follows motor speed (70 to 650 Hz across 0 to no-load speed), loudness follows speed plus load (silent when parked), and load adds upper harmonics and controller (PWM) whine. It also adds an inharmonic gear whine and a little noise. All of it is tunable through exports on the node (the scene sets `volume = 0.2`).
+
+### 15.3c Visual linkage (`kit/rover_visuals.gd`, `RoverVisuals`)
+Visual only; nothing here touches the physics. At `_ready` it builds each side's rocker, bogie and two steer brackets from the rover kit GLBs (`res/models/rover_kit/`), chained through their socket empties from the chassis's `socket_rocker_<side>` anchor. Every physics frame, after the `Robot` (`process_physics_priority = 10`), it reads the physics wheel centres (`Robot.wheel_centers`) and:
+- sets each bogie's world angle from its middle and rear wheel heights, and the rocker angle as the best fit for the front wheel and the bogie pivot;
+- clamps the rocker to +-10 degrees and the bogie to +-15 degrees (relative to the rocker), the range the kit was clearance-checked for (`tools/blender/ROVER_KIT.md` 5); widen only after re-running that check;
+- turns the steer brackets by each wheel's steering angle (front with the steering, rear counter-steering);
+- moves each mounted `WheelPart` onto its hub socket (bracket or bogie, so it carries the steering and the linkage tilt) and spins its `Model` from the wheel speed; a part keeps its unspun rotation when it leaves the socket.
+
+Because the linkage is rigid and the six physics wheels are independent springs, a visual wheel can sit a few cm off its physics contact: 1 mm on flat ground, up to 33 mm over an abrupt 8 cm step, up to 41 mm up a 15 cm ramp. The placeholder wheel is a plain cylinder, so its spin is not visible until the kit wheel model replaces it.
 
 ### 15.4 Cameras
 The robot has a single **first-person camera** that looks and picks things up like the player's (the follow / bumper modes and the `camera` input action were removed). The layout mirrors the player: `Pivot` (yaw, at (0, 1, -0.2) in the robot's local space: 1 m up, ahead of the cockpit) -> `Camera3D` (pitch, FOV 90, near 0.001, far 500) -> `RayCast3D` (3 m, collides with areas, mask 53). `Robot._physics_process` sets `camera.rotation.x = controller.camera_altitude` and `pivot.rotation.y = controller.camera_azimuth`, so the view is relative to the robot body and turns with it. Mouse look is read by `RobotController._unhandled_input` (same sensitivity formula as the player) and only while `IN_GAME_ROBOT`; `GameState` captures the mouse in that state.

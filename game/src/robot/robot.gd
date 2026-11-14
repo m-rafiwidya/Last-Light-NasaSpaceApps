@@ -68,6 +68,8 @@ var motor_angular_velocity: float = 0.0
 var motor_torque: float = 0.0
 
 var wheel_sockets: Dictionary = {}
+# Physics wheel centre (robot space) per RunningGear.Wheel, updated every physics frame. Read by RoverVisuals
+var wheel_centers: Dictionary = {}
 
 # Power state
 # Mounted battery / motor parts, null while their sockets are empty. Read by robot_hud.gd
@@ -197,9 +199,10 @@ func _update_power_parts() -> void:
 		battery = battery_socket.part as BatteryPart
 
 
-# Reads the radius and grip of each mounted WheelPart into the running gear and moves the
-# part to where the running gear says its wheel is (hanging from the suspension),
-# turned by the wheel's steering angle.
+# Reads the radius and grip of each mounted WheelPart into the running gear, records where
+# the running gear says each wheel centre is (hanging from the suspension) in wheel_centers,
+# and moves the mounted part there, turned by the wheel's steering angle. RoverVisuals then
+# moves the parts onto the visual linkage.
 # An empty socket falls back to the running gear's default wheel_radius and grip 1.
 func _update_wheel_parts() -> void:
 	var inverse_basis: Basis = global_transform.basis.inverse()
@@ -212,8 +215,6 @@ func _update_wheel_parts() -> void:
 		var radius: float = wheel_part.radius if wheel_part else running_gear.wheel_radius
 		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
 		properties[RunningGear.WheelProperty.GRIP] = wheel_part.grip if wheel_part else 1.0
-		if not wheel_part:
-			continue
 
 		# Height of the ground under the wheel in robot space. Without contact the
 		# suspension is fully extended, i.e. at the end of the suspension ray.
@@ -223,6 +224,9 @@ func _update_wheel_parts() -> void:
 
 		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
 		wheel_position.y = ground_height + radius
+		wheel_centers[wheel] = wheel_position
+		if not wheel_part:
+			continue
 		wheel_part.global_position = to_global(wheel_position)
 
 		# Steer about the chassis' up axis, starting from the mount point's orientation
