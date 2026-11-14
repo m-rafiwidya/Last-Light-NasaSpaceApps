@@ -17,10 +17,24 @@ func _process(_delta: float) -> void:
 		%Speed.text = "SPEED  %4.1f m/s" % Debug.current_robot.linear_velocity.length()
 		var looking_at = Debug.current_robot.looking_at_object
 		looking_at_prop = looking_at is InteractTrigger or looking_at is RigidBody3D
+		_update_battery_label(Debug.current_robot)
 	else:
 		%Speed.text = "SPEED  --"
+		%Battery.text = "BATTERY  --"
 	%Crosshair.visible = not looking_at_prop
 	%InteractCrosshair.visible = looking_at_prop
+
+
+func _update_battery_label(robot: Robot) -> void:
+	var battery: BatteryPart = robot.battery
+	if not battery:
+		%Battery.text = "BATTERY  none" if robot.require_battery else "BATTERY  --"
+		%Battery.modulate = Color(1.0, 0.4, 0.3) if robot.require_battery else Color.WHITE
+		return
+	var fraction: float = battery.get_charge_fraction()
+	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power]
+	# Turn red when the battery is low enough that the motor starts to sag
+	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
 
 
 func fade_in():

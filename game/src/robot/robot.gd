@@ -21,6 +21,16 @@ extends RigidBody3D
 @export var rear_right_socket: HotswapSocket
 @export_group("")
 
+# Sockets for the motor and the battery. A mounted MotorPart replaces the engine's
+# torque / speed values, a mounted BatteryPart supplies (and runs out of) charge.
+@export_group("Power Sockets")
+@export var motor_socket: HotswapSocket
+@export var battery_socket: HotswapSocket
+# When true the motor only gets voltage while a charged battery is mounted.
+# When false an empty battery socket behaves as an unlimited supply (for testing).
+@export var require_battery: bool = true
+@export_group("")
+
 # Single fixed gear, used for both forward and reverse. The engine is rigidly
 # coupled to the driven wheels (no clutch).
 @export var gear_ratio: float = 1.0
@@ -47,6 +57,15 @@ var motor_torque: float = 0.0
 var differential_angular_velocity: float = 0.0
 
 var wheel_sockets: Dictionary = {}
+
+# Power state
+# Mounted battery / motor parts, null while their sockets are empty. Read by robot_hud.gd
+var battery: BatteryPart = null
+var motor_part: MotorPart = null
+# Fraction (0..1) of the controller's input that reaches the motor as voltage this step
+var supply_voltage_factor: float = 1.0
+# Electrical power (W) the motor drew this step
+var electrical_power: float = 0.0
 
 # Object pickup (shared with the player, see ObjectHolder)
 var holder: ObjectHolder
@@ -109,9 +128,26 @@ func _physics_process(delta: float) -> void:
 
 	holder.update(delta)
 	_update_wheel_parts()
+	_update_power_parts()
 
 	camera.rotation.x = controller.camera_altitude
 	pivot.rotation.y = controller.camera_azimuth
+
+
+# Picks up the mounted motor and battery. The motor's values are copied into the
+# engine only when the mounted part changes; the battery is read directly.
+# An empty motor socket falls back to the engine's built-in values.
+func _update_power_parts() -> void:
+	var new_motor: MotorPart = null
+	if motor_socket:
+		new_motor = motor_socket.part as MotorPart
+	if new_motor != motor_part:
+		motor_part = new_motor
+		engine.use_motor_part(motor_part)
+
+	battery = null
+	if battery_socket:
+		battery = battery_socket.part as BatteryPart
 
 
 # Reads the radius of each mounted WheelPart into the running gear and moves the
@@ -167,12 +203,22 @@ func _step_drivetrain(step: float) -> void:
 	var combined_gear_ratio: float = gear_ratio * final_drive
 
 	motor_angular_velocity = differential_angular_velocity * combined_gear_ratio
-	motor_torque = engine.get_motor_torque(motor_angular_velocity, controller.desired_speed)
+
+	# The battery limits the voltage: none (or empty) means no drive, a nearly empty
+	# one sags. The motor then draws energy from it in proportion to voltage * torque.
+	supply_voltage_factor = _get_supply_voltage_factor()
+	var voltage: float = controller.desired_speed * supply_voltage_factor
+	motor_torque = engine.get_motor_torque(motor_angular_velocity, voltage)
 	var drive_torque: float = motor_torque * combined_gear_ratio
 
-	# Resistance on the driven wheels: rolling resistance plus tyre reaction torque
+	electrical_power = engine.get_electrical_power(motor_torque, voltage)
+	if battery:
+		battery.drain(electrical_power * step / 3600.0)
+
+	# Resistance on the driven wheels: rolling resistance plus tyre reaction torque.
+	# The rolling resistance acts at the average radius of the mounted driven wheels.
 	var driven_wheel_resistance_torque: float = (
-		rolling_resistance_force * running_gear.wheel_radius *
+		rolling_resistance_force * _get_driven_wheel_radius() *
 		clamp(differential_angular_velocity * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0)
 	)
 
@@ -183,13 +229,26 @@ func _step_drivetrain(step: float) -> void:
 	var total_drivetrain_inertia: float = (
 		differential_inertia +
 		transmission_inertia * final_drive * final_drive +
-		engine.inertia * combined_gear_ratio * combined_gear_ratio
+		engine.rotor_inertia * combined_gear_ratio * combined_gear_ratio
 	)
 	for wheel in DRIVEN_WHEELS:
 		driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
 		total_drivetrain_inertia += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
 
 	differential_angular_velocity += (drive_torque - driven_wheel_resistance_torque) / total_drivetrain_inertia * step
+
+# 0..1 multiplier on the motor voltage, from the mounted battery's charge
+func _get_supply_voltage_factor() -> float:
+	if battery:
+		return battery.get_voltage_factor()
+	return 0.0 if require_battery else 1.0
+
+# Average effective radius (m) of the driven wheels, set from the mounted WheelParts
+func _get_driven_wheel_radius() -> float:
+	var total: float = 0.0
+	for wheel in DRIVEN_WHEELS:
+		total += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.EFFECTIVE_RADIUS]
+	return total / DRIVEN_WHEELS.size()
 
 # Applies suspension load and ground contact force for each wheel in contact
 func _apply_wheel_forces(state) -> void:
