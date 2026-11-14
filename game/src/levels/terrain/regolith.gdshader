@@ -21,6 +21,9 @@ render_mode specular_disabled;
 //   surface normal instead of the detail normals (shadow hiding: regolith shows no relief lit from
 //   behind you); the detail normals that face away from both the light and the eye otherwise
 //   speckled the far edge of a helmet light's pool black.
+// - Tyre tracks (tyre_tracks.gdshaderinc, the play tier only: TyreTracks binds it): compacted
+//   ground a little darker and smoother (less detail relief), the prints' depth, grousers and
+//   berms through the normals.
 
 uniform vec3 albedo_color : source_color = vec3(0.47, 0.46, 0.44);
 uniform float albedo_variation = 0.18;
@@ -58,6 +61,8 @@ uniform sampler2D site_brightness : filter_linear, repeat_disable, hint_default_
 uniform bool use_site_brightness = false;
 uniform float site_brightness_half = 512.0;
 uniform float site_brightness_range = 0.3;
+
+#include "res://src/effects/tyre_tracks/tyre_tracks.gdshaderinc"
 
 // Detail relief: the noise period (m) and amplitude (m) of each octave, each fitted to the RMS height
 // and RMS slope of one octave band of the pipeline's spectrum (1-0.5, 0.5-0.25, 0.25-0.125 and
@@ -231,6 +236,10 @@ void fragment() {
 			albedo *= 1.0 + site_brightness_range * (texture(site_brightness, buv).r * 2.0 - 1.0);
 		}
 	}
+	// Tyre tracks: compacted ground is darker
+	float footprint = sqrt(abs(determinant(mat2(dFdx(p.xz), dFdy(p.xz)))));
+	vec4 tracks = tyre_tracks(p.xz, footprint);
+	albedo *= 1.0 - tracks_darkening * tracks.w;
 	ALBEDO = albedo;
 	ROUGHNESS = 1.0;
 
@@ -238,20 +247,23 @@ void fragment() {
 	// it would only alias into flicker). The pixel's size on the ground is the square root of its
 	// footprint's area: at grazing angles the footprint's long side, along the line of sight, would
 	// drop the relief 15 m away while it is still sharp across it. Faded over a wide range, so the
-	// shadows thin out with distance rather than stop
+	// shadows thin out with distance rather than stop. Compacted ground (a track) keeps 30% of it
 	detail_sun = 1.0;
+	vec2 slope = tracks.yz;
 	float distance_fade = 1.0 - smoothstep(detail_fade_distance * 0.5, detail_fade_distance, length(VERTEX));
 	if (distance_fade > 0.0) {
-		float footprint = sqrt(abs(determinant(mat2(dFdx(p.xz), dFdy(p.xz)))));
 		vec4 w = vec4(1.0) - smoothstep(DETAIL_PERIODS * 0.15, DETAIL_PERIODS * 0.6, vec4(footprint));
-		w *= detail_strength * distance_fade;
+		w *= detail_strength * distance_fade * (1.0 - 0.7 * tracks.w);
 		vec2 q = p.xz;
 		vec3 h = detail_height_gradient(q, w);
-		vec3 bumped = normalize(world_normal - vec3(h.y, 0.0, h.z));
-		NORMAL = normalize((VIEW_MATRIX * vec4(bumped, 0.0)).xyz);
+		slope += h.yz;
 		if (detail_shadows && sun_visible > 0.0) {
 			detail_sun = mix(1.0, detail_sun_visible(q, h.x, w, world_normal), smoothstep(0.5, 0.8, world_normal.y));
 		}
+	}
+	if (slope != vec2(0.0)) {
+		vec3 bumped = normalize(world_normal - vec3(slope.x, 0.0, slope.y));
+		NORMAL = normalize((VIEW_MATRIX * vec4(bumped, 0.0)).xyz);
 	}
 }
 

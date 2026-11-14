@@ -19,7 +19,8 @@ extends SceneTree
 ##     30 fps), for A/B phases in one run when the window can't keep the focus; `decor_ab` measures
 ##     only the decor's cost: three off/on pairs in the bay and three on the apron; `dust_ab` only
 ##     the wheel dust's (WheelDust): three off/on pairs each in the chase and the mast view, the
-##     rover circling at full throttle on open ground; append `surface_effects=low` for Low)
+##     rover circling at full throttle on open ground; append `surface_effects=low` for Low;
+##     `tracks_ab` the tyre tracks' (TyreTracks): 25 s of circling to lay them, then the same pairs)
 
 const SECONDS: float = 12.0
 const WARM_UP: float = 2.0
@@ -92,6 +93,12 @@ func _run() -> void:
 
 	var rover: Node = level.get_node("ReadyRover")
 	var workshop: Node3D = level.get_node("Workshop")
+	if args.has("tracks_ab"):
+		if "headlights_on" in rover:
+			rover.headlights_on = args.get("lights") != "off"
+		await _tracks_ab(level, workshop, rover, 3)
+		quit()
+		return
 	if args.has("dust_ab"):
 		if "headlights_on" in rover:
 			rover.headlights_on = args.get("lights") != "off"
@@ -220,6 +227,40 @@ func _dust_ab(level: Node, workshop: Node3D, rover: Node, rounds: int) -> void:
 	dust.set_active(true)
 	if field:
 		field.visible = true
+
+
+## The tyre tracks' cost (TyreTracks): the rover circling at full throttle on open ground (as
+## _dust_ab) for 25 s to lay tracks, then `rounds` off/on pairs in the chase and the mast view while
+## it goes on circling over them. Off: the ground doesn't draw them and nothing is printed or drawn
+## into the tiles (the dust stays on throughout).
+func _tracks_ab(level: Node, workshop: Node3D, rover: Node, rounds: int) -> void:
+	var tracks: Node = level.get_node_or_null("TyreTracks")
+	if tracks == null:
+		print("TRACKS none in the level (surface_effects off?)")
+		return
+	var at: Vector3 = workshop.to_global(Vector3(0.0, 0.0, -30.0))
+	at.y = level.get_node("Terrain").height_at(at.x, at.z) + 0.3
+	rover.global_transform = Transform3D(workshop.global_basis, at)
+	rover.linear_velocity = Vector3.ZERO
+	GS.drive(rover)
+	Input.action_press("move_forward")
+	Input.action_press("move_left", 0.6)
+	var started: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < 25000:
+		await process_frame
+	print("TRACKS setting %s, %d points in the log (%.1f MB), %d fine tiles held of %d, textures %.1f MB" % [
+		["high", "low", "off"][GraphicsSettings.get_surface_effects()], tracks.track_log.point_count(),
+		tracks.track_log.memory_bytes() / 1048576.0, tracks.map.tiles.size(), tracks.map.fine_cap, tracks.map.texture_bytes() / 1048576.0])
+	var rig: Node = rover.get_node("CameraRig")
+	for view in [CHASE, MAST]:
+		rig._switch(view)
+		for k in 2 * rounds:
+			var on: bool = k % 2 == 1
+			tracks.set_active(on)
+			await _measure("%s, tracks %s" % ["chase" if view == CHASE else "mast", "on" if on else "off"])
+	Input.action_release("move_forward")
+	Input.action_release("move_left")
+	tracks.set_active(true)
 
 
 func _measure(phase: String) -> void:
