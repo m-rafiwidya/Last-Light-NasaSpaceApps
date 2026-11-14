@@ -2,7 +2,7 @@ extends SceneTree
 ## Main menu: boots the game and checks the launch (no loading screen, black until the opening
 ## sequence), the opening sequence (plays on the first menu only, any key skips it, F11 doesn't,
 ## PLAY is focused after it), keyboard navigation, PLAY's level list, the Moon (click emits
-## moon_clicked, drag turns it, it only renders while the menu is up), PLAY opening its popup
+## moon_clicked and opens the planet explorer, drag turns it, it only renders while the menu is up), PLAY opening its popup
 ## (tests/test_play_popup.gd covers the popup itself), that the menu backdrop is
 ## the empty level, not test_level, and the display mode setting (saved; the settings file is
 ## restored afterwards).
@@ -18,11 +18,17 @@ extends SceneTree
 var GS: Node
 var SL: Node
 var failures: int = 0
+var _had_settings: bool = false
+var _saved_settings: String = ""
 var shot_dir: String = ""
 var measure: bool = false
 
 
 func _initialize() -> void:
+	# [ui] last_planet is written to the real settings file: put it back when done
+	_had_settings = FileAccess.file_exists(SettingsSection.PATH)
+	if _had_settings:
+		_saved_settings = FileAccess.get_file_as_string(SettingsSection.PATH)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_dir = arg.trim_prefix("--shot=")
@@ -88,6 +94,7 @@ func _run() -> void:
 		await process_frame
 	if GS.state != GS.State.MAIN_MENU:
 		_check("the main menu comes up", false)
+		_restore_settings()
 		quit(1)
 		return
 	for i in 30:
@@ -153,6 +160,11 @@ func _run() -> void:
 	_mouse_button(centre, false)
 	await process_frame
 	_check("clicking the Moon emits moon_clicked", clicked[0] == 1)
+	# It opens the planet explorer (tests/test_planet_explorer.gd covers it); Esc comes back
+	_check("clicking the Moon opens the planet explorer", menu.is_explorer_open())
+	await _key(KEY_ESCAPE)
+	await _seconds(0.5)
+	_check("Esc closes it, PLAY has focus again", not menu.is_explorer_open() and play.has_focus())
 	var lon_before: float = moon.lon
 	_mouse_button(centre, true)
 	var motion := InputEventMouseMotion.new()
@@ -190,6 +202,19 @@ func _run() -> void:
 	root.size = original_size
 	await process_frame
 	await process_frame
+
+	# The globe shows the saved planet; a locked one falls back to the Moon
+	PlanetData.unlock_all = false
+	UiSettings.set_last_planet(&"mars")
+	menu.fade_in()
+	_check("a locked saved planet falls back to the Moon", moon.planet_id == &"moon")
+	PlanetData.unlock_all = true
+	menu.fade_in()
+	_check("an unlocked saved planet is shown", moon.planet_id == &"mars")
+	PlanetData.unlock_all = false
+	UiSettings.set_last_planet(&"moon")
+	menu.fade_in()
+	_check("back to the Moon", moon.planet_id == &"moon")
 
 	if not shot_dir.is_empty():
 		var hover := InputEventMouseMotion.new()
@@ -252,6 +277,7 @@ func _run() -> void:
 	_check("back on the menu: PLAY has focus", play.has_focus())
 
 	print("DONE %d failures" % failures)
+	_restore_settings()
 	quit(1 if failures else 0)
 
 
@@ -338,3 +364,12 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 	event.position = at
 	event.global_position = at
 	Input.parse_input_event(event)
+
+
+func _restore_settings() -> void:
+	if _had_settings:
+		var file := FileAccess.open(SettingsSection.PATH, FileAccess.WRITE)
+		file.store_string(_saved_settings)
+		file.close()
+	elif FileAccess.file_exists(SettingsSection.PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SettingsSection.PATH))

@@ -4,13 +4,19 @@ extends Button
 
 ## 48 px (x 1.2) square back button with a left chevron. Same component for the planet
 ## explorer, the Play popups and anything else that goes back. Place it at (67, 58) for the
-## design's (56, 48).
+## design's (56, 48). With pointing_right it is the explorer's next-planet button (the same
+## square, the chevron mirrored).
 
 const DESIGN_POSITION: Vector2 = Vector2(67.0, 58.0)
 const SIZE: float = 57.6
 ## Chevron from the design SVG (24 viewBox drawn at 20 px, path M15 5 l-7 7 7 7), x 1.2
 const CHEVRON: PackedVector2Array = [Vector2(3.0, -7.0), Vector2(-4.0, 0.0), Vector2(3.0, 7.0)]
 const STROKE: float = 1.8
+
+@export var pointing_right: bool = false:
+	set(value):
+		pointing_right = value
+		queue_redraw()
 
 
 func _init() -> void:
@@ -31,5 +37,5 @@ func _draw() -> void:
 	var centre: Vector2 = size / 2.0
 	var points := PackedVector2Array()
 	for p in CHEVRON:
-		points.append(centre + p)
+		points.append(centre + (Vector2(-p.x, p.y) if pointing_right else p))
 	draw_polyline(points, color, STROKE, true)

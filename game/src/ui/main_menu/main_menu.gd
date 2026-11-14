@@ -5,10 +5,14 @@ extends UIScreen
 ## The first time it opens per launch it plays the opening sequence (OpeningSequence).
 ## PLAY opens the PlayPopup (no save file / the save list) over the blurred menu; SETTINGS opens
 ## the settings screen (SettingsSubMenu) the same way, the Moon still turning behind the blur.
+## The globe shows the planet last viewed in the explorer (UiSettings.last_planet, the Moon if it is
+## locked). Clicking it opens the planet explorer (PlanetExplorer) on the starfield: the menu's items
+## and Moon fade out (the Moon stops rendering) until the explorer's back button or Esc.
 
 enum SubScreen{
 	MAIN_MENU,
-	SETTINGS
+	SETTINGS,
+	EXPLORER
 }
 
 ## The astronaut's float loop: 7 s, ease-in-out between keys (design px x 1.2, degrees)
@@ -19,12 +23,15 @@ const FLOAT_KEYS: Array = [
 	[Vector2(-7.2, -12.0), 0.5],
 ]
 const FLOAT_PERIOD: float = 7.0
+## The menu's items and Moon fade out / in around the planet explorer
+const EXPLORER_FADE: float = 0.3
 
 var sub_screen: SubScreen = SubScreen.MAIN_MENU
 
 var _shown: bool = false
 var _background_tween: Tween
 var _float_tween: Tween
+var _sub_tween: Tween
 
 @onready var _sub: Control = $MainMenuSubScreen
 @onready var _background: Control = $Background
@@ -35,6 +42,7 @@ var _float_tween: Tween
 @onready var _quit: Button = %Quit
 @onready var _popup: PlayPopup = %PlayPopup
 @onready var _settings_screen: SettingsSubMenu = $SettingsSubMenu
+@onready var _explorer: PlanetExplorer = %PlanetExplorer
 
 
 func _ready() -> void:
@@ -44,6 +52,7 @@ func _ready() -> void:
 	_quit.pressed.connect(_on_quit_pressed)
 	_settings_screen.back_requested.connect(_on_back_pressed)
 	_moon.moon_clicked.connect(_on_moon_clicked)
+	_explorer.back_requested.connect(_close_explorer)
 	_intro.finished.connect(_on_intro_finished)
 	# The mouse and keyboard/gamepad share one highlight: hovering an item focuses it
 	for button in _menu_buttons():
@@ -63,7 +72,7 @@ func _menu_buttons() -> Array[Button]:
 
 
 func _on_play_pressed() -> void:
-	if not _shown or _popup.is_open or _settings_screen.is_open:
+	if not _shown or _popup.is_open or _settings_screen.is_open or _explorer.is_open:
 		return
 	# The menu and the Moon stay on screen (blurred) but take no mouse or focus
 	_set_menu_interactive(false)
@@ -86,12 +95,44 @@ func is_popup_open() -> bool:
 
 
 func _on_moon_clicked() -> void:
-	# TODO(UI prompt 5): open the planet explorer on the Moon
-	pass
+	if not _shown or _popup.is_open or _settings_screen.is_open or _explorer.is_open or _intro.playing:
+		return
+	sub_screen = SubScreen.EXPLORER
+	_set_menu_interactive(false)
+	_fade_sub(0.0)
+	_explorer.open(_moon.planet_id)
+
+
+## The explorer's back button or Esc
+func _close_explorer() -> void:
+	if not _explorer.is_open:
+		return
+	sub_screen = SubScreen.MAIN_MENU
+	UiSettings.set_last_planet(_explorer.current_planet().id)
+	_explorer.close()
+	_moon.set_planet(PlanetData.menu_planet())
+	_moon.set_active(true)
+	_fade_sub(1.0)
+	_set_menu_interactive(true)
+	_play.grab_focus()
+
+
+func is_explorer_open() -> bool:
+	return _explorer.is_open
+
+
+## Fades the menu's items and Moon; faded out, the Moon stops rendering
+func _fade_sub(alpha: float) -> void:
+	if _sub_tween:
+		_sub_tween.kill()
+	_sub_tween = create_ui_tween()
+	_sub_tween.tween_property(_sub, "modulate:a", alpha, EXPLORER_FADE)
+	if alpha == 0.0:
+		_sub_tween.tween_callback(_moon.set_active.bind(false))
 
 
 func _on_settings_pressed() -> void:
-	if not _shown or _popup.is_open or _settings_screen.is_open:
+	if not _shown or _popup.is_open or _settings_screen.is_open or _explorer.is_open:
 		return
 	sub_screen = SubScreen.SETTINGS
 	_set_menu_interactive(false)
@@ -115,6 +156,11 @@ func fade_in() -> void:
 	sub_screen = SubScreen.MAIN_MENU
 	_popup.close(false)
 	_settings_screen.close(false)
+	_explorer.close(false)
+	_moon.set_planet(PlanetData.menu_planet())
+	if _sub_tween:
+		_sub_tween.kill()
+	_sub.modulate.a = 1.0
 	_set_menu_interactive(true)
 	_sub.show()
 	_set_live(true)
@@ -139,6 +185,7 @@ func fade_out() -> void:
 	_intro.skip()
 	_popup.close()
 	_settings_screen.close(false)
+	_explorer.close()
 	slide_to(_sub, -SLIDE_DISTANCE)
 	_background_tween = create_ui_tween()
 	_background_tween.tween_property(_background, "modulate:a", 0.0, FADE_DURATION)

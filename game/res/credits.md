@@ -14,10 +14,10 @@ TANDBORSTE | Made for the NASA Space Apps Challenge 2026
 
 ### TEAM
 
-FAHD | Institut Teknologi Bandung · Indonesia
-RAFI WIDYA PRATAMA | Universiti Malaya · Malaysia
-FAIQ | Monash University · Australia
-SATINIZE | National University of Singapore · Singapore
+FAHD MUHAMMAD ZAHID | Institut Teknologi Bandung · Indonesia
+MUHAMMAD RAFI WIDYATAMA | Universiti Malaya · Malaysia
+FAIQ HAIDAR DZIKRULLAH SATRIAWAN | Monash University · Australia
+RAYHAN SATRIO ADI NURDJAMAN | National University of Singapore · Singapore
 
 ### REAL DATA
 
@@ -33,6 +33,9 @@ Gaia data: ESA/Gaia/DPAC
 
 Earth
 NASA Blue Marble
+
+Mars
+USGS Astrogeology · NASA Viking Orbiter global colour mosaic
 
 Sun, Earth and sky positions
 NASA JPL Horizons

@@ -1,0 +1,79 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/planet_explorer/planet_globe.gd" id="1_script"]
+[ext_resource type="Shader" path="res://src/ui/main_menu/menu_moon.gdshader" id="2_shader"]
+[ext_resource type="Texture2D" path="res://res/textures/moon/lroc_color_4k.jpg" id="3_albedo"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_globe"]
+render_priority = 0
+shader = ExtResource("2_shader")
+shader_parameter/albedo_map = ExtResource("3_albedo")
+shader_parameter/light_dir = Vector3(-0.5, 0.42, 0.76)
+shader_parameter/ambient = 0.1
+shader_parameter/terminator_softness = 0.15
+shader_parameter/brightness = 1.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_globe"]
+radius = 1.0
+height = 2.0
+radial_segments = 128
+rings = 64
+
+[sub_resource type="Gradient" id="Gradient_glow"]
+offsets = PackedFloat32Array(0, 0.889, 0.928, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0.35, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_glow"]
+gradient = SubResource("Gradient_glow")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[node name="Globe" type="Control"]
+custom_minimum_size = Vector2(768, 768)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 768.0
+offset_bottom = 768.0
+script = ExtResource("1_script")
+
+[node name="Container" type="SubViewportContainer" parent="."]
+layout_mode = 0
+offset_right = 768.0
+offset_bottom = 768.0
+mouse_filter = 2
+stretch = true
+
+[node name="Viewport" type="SubViewport" parent="Container"]
+own_world_3d = true
+transparent_bg = true
+handle_input_locally = false
+msaa_3d = 2
+size = Vector2i(768, 768)
+render_target_update_mode = 0
+
+[node name="Camera" type="Camera3D" parent="Container/Viewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
+projection = 1
+size = 2.0
+near = 1.0
+far = 20.0
+
+[node name="Pivot" type="Node3D" parent="Container/Viewport"]
+
+[node name="Sphere" type="MeshInstance3D" parent="Container/Viewport/Pivot"]
+mesh = SubResource("SphereMesh_globe")
+material_override = SubResource("ShaderMaterial_globe")
+
+[node name="Glow" type="TextureRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = -30.72
+offset_top = -30.72
+offset_right = 798.72
+offset_bottom = 798.72
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_glow")
+expand_mode = 1

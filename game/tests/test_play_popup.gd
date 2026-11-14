@@ -148,6 +148,10 @@ func _run() -> void:
 	await _mouse_to(play)   # (the cursor ends up off the Moon)
 	await _click(root.get_final_transform() * (moon.get_global_transform() * Vector2(700.0, 700.0)))
 	_check("after closing: the Moon takes clicks again", clicked[0] == 1)
+	# That click opened the planet explorer; Esc returns to the menu
+	await _key(KEY_ESCAPE)
+	await _seconds(0.5)
+	_check("the planet explorer closes again", not menu.is_explorer_open())
 
 	# 2. The save list
 	DBG.parse_command("fakesaves")

@@ -58,10 +58,10 @@ func _run() -> void:
 	for section in sections:
 		by_title[section["title"]] = section["entries"]
 	var team: Array = by_title.get("TEAM", [])
-	_check("TEAM: four name rows with university and country", team.size() == 4 and team[0]["name"] == "FAHD"
-		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[3]["name"] == "SATINIZE")
+	_check("TEAM: four name rows with university and country", team.size() == 4 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
+		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[3]["name"] == "RAYHAN SATRIO ADI NURDJAMAN")
 	var data: Array = by_title.get("REAL DATA", [])
-	_check("REAL DATA: five sources, lines kept", data.size() == 5 and "\n" in data[2]["text"]
+	_check("REAL DATA: six sources, lines kept", data.size() == 6 and "\n" in data[2]["text"]
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
 	_check("A GAME BY: the studio and the event", by_title.get("A GAME BY", [{}])[0].get("name", "") == "TANDBORSTE"
 		and (by_title["A GAME BY"][0]["sub"] as String).contains("NASA Space Apps Challenge 2026"))
@@ -80,7 +80,7 @@ func _run() -> void:
 	_check("the `credits` command opens it on the main menu", credits.visible and credits.rolling and not credits.ended)
 	var texts: PackedStringArray = _labels(credits.get_node("%Roll"))
 	_check("the roll shows the title and every section", "LAST LIGHT" in texts and "TEAM" in texts and "REAL DATA" in texts
-		and "SPECIAL THANKS" in texts and "[YOUR SPECIAL THANKS]" in texts and "RAFI WIDYA PRATAMA" in texts, str(texts.size()))
+		and "SPECIAL THANKS" in texts and "[YOUR SPECIAL THANKS]" in texts and "MUHAMMAD RAFI WIDYATAMA" in texts, str(texts.size()))
 	_check("SKIP shown, the ending not", credits.get_node("%Skip").visible and not credits.get_node("%End").visible)
 
 	# --- The roll: 48 s, linear -------------------------------------------------------------
@@ -88,6 +88,12 @@ func _run() -> void:
 	var screen_height: float = credits.get_node("%Root").size.y
 	_check("the roll starts below the screen and is taller than it", absf(column.position.y - screen_height) < 40.0
 		and column.size.y > screen_height, "%.0f of %.0f" % [column.size.y, screen_height])
+	var widest: float = 0.0
+	for label: Label in credits.get_node("%Roll").find_children("*", "Label", true, false):
+		if label.text == "RAYHAN SATRIO ADI NURDJAMAN" or label.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN":
+			widest = maxf(widest, label.get_minimum_size().x)
+	_check("the longest team names fit on the screen", widest > 0.0 and widest < credits.get_node("%Root").size.x - 80.0,
+		"%.0f of %.0f" % [widest, credits.get_node("%Root").size.x])
 	_check("it takes 48 s", is_equal_approx(credits.ROLL_TIME, 48.0))
 	var y0: float = column.position.y
 	var f0: int = Engine.get_process_frames()

@@ -56,6 +56,8 @@ var intro_brightness: float = 1.0:
 		intro_brightness = value
 		_apply_brightness()
 
+## The planet shown (PlanetData id): the Moon, or the last one viewed in the planet explorer
+var planet_id: StringName = &"moon"
 var lat: float = START_LAT
 var lon: float = START_LON
 
@@ -68,6 +70,8 @@ var _frame_drag: Vector2 = Vector2.ZERO
 ## Angular velocity (lon, lat per second) carried on after a drag
 var _velocity: Vector2 = Vector2.ZERO
 var _idle: float = 0.0
+## The atmosphere's rim glow (Mars, Earth; none for the Moon), the board's ring as in PlanetGlobe
+var _glow: TextureRect
 
 @onready var _container: SubViewportContainer = $Container
 @onready var _viewport: SubViewport = $Container/Viewport
@@ -84,8 +88,20 @@ func _ready() -> void:
 	resized.connect(_fit_viewport)
 	get_tree().root.size_changed.connect(_apply_layout)
 	get_tree().root.size_changed.connect(_fit_viewport)
+	_glow = TextureRect.new()
+	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_glow.texture = GradientTexture2D.new()
+	_glow.texture.gradient = Gradient.new()
+	_glow.texture.width = 512
+	_glow.texture.height = 512
+	_glow.texture.fill = GradientTexture2D.FILL_RADIAL
+	_glow.texture.fill_from = Vector2(0.5, 0.5)
+	_glow.texture.fill_to = Vector2(1.0, 0.5)
+	add_child(_glow)
 	_apply_layout()
 	_fit_viewport()
+	_set_glow(Color(0, 0, 0, 0))
 	_apply_rotation()
 	_apply_brightness()
 
@@ -125,6 +141,10 @@ func _fit_viewport() -> void:
 	_container.size = (size * pixels).round()
 	# Scaled back so it covers the control exactly (the rounding above would leave up to half a pixel)
 	_container.scale = size / _container.size
+	if _glow:
+		var reach: float = disc_radius() * PlanetGlobe.GLOW_OUTER
+		_glow.position = disc_centre() - Vector2.ONE * reach
+		_glow.size = Vector2.ONE * reach * 2.0
 
 
 ## Renders, turns and shows only while active; the menu turns it off when it hides. Inactive means
@@ -196,6 +216,24 @@ func _process(delta: float) -> void:
 	if _idle > IDLE_DELAY:
 		lon += (SPIN_HOVER if _hovered else SPIN) * delta
 	_apply_rotation()
+
+
+## Shows another planet's colour map on the same globe (size, light, spin and hover unchanged)
+func set_planet(id: StringName) -> void:
+	var index: int = PlanetData.index_of(id)
+	if index < 0 or id == planet_id:
+		return
+	planet_id = id
+	_material.set_shader_parameter(&"albedo_map", load(PlanetData.PLANETS[index].map))
+	_set_glow(PlanetData.PLANETS[index].atmosphere)
+
+
+func _set_glow(color: Color) -> void:
+	_glow.visible = color.a > 0.0
+	var inner: float = PlanetGlobe.GLOW_INNER / PlanetGlobe.GLOW_OUTER
+	var gradient: Gradient = (_glow.texture as GradientTexture2D).gradient
+	gradient.offsets = PackedFloat32Array([0.0, inner, inner + (1.0 - inner) * PlanetGlobe.GLOW_PEAK, 1.0])
+	gradient.colors = PackedColorArray([Color(color, 0.0), Color(color, 0.0), color, Color(color, 0.0)])
 
 
 ## The facing point (lat, lon) turned towards the camera (+Z)
