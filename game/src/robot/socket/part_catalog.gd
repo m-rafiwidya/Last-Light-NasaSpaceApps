@@ -45,7 +45,7 @@ const ENTRIES: Dictionary = {
 	},
 	"cartridge": {
 		"name": "Diagnostic cartridge",
-		"description": "Kite's fault-log reader. The rover's arm delivers it to Kite's service port.",
+		"description": "IRIS's fault-log reader. Kite's arm delivers it to IRIS's service port.",
 		"mounts": "Rides on the rover's cargo mount, on the deck",
 	},
 }

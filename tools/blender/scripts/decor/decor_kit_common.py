@@ -101,9 +101,9 @@ EXTERIOR = [
 CABLE_PATH = [(2.60, FACADE + 0.10, 0.55), (2.60, FACADE + 0.10, 0.12), (2.62, FACADE + 0.16, 0.0),
               (2.85, 4.45, 0.0), (3.05, 4.85, 0.0), (3.30, 4.95, 0.0), (3.42, 4.78, 0.0), (3.45, 4.62, 0.0)]
 TRACKS = {
-    # The way out: straight from the ramp's end, then bending right towards Kite (10 degrees right)
+    # The way out: straight from the ramp's end, then bending right towards IRIS (10 degrees right)
     "track1": [(-0.5, 6.5), (-0.5, 9.0), (-0.3, 10.8), (0.2, 12.6), (0.9, 14.6), (1.6, 16.5)],
-    # The way in (older): from Kite's side onto the entry lane
+    # The way in (older): from IRIS's side onto the entry lane
     "track2": [(1.2, 16.5), (0.1, 14.6), (-1.2, 12.6), (-2.0, 10.6), (-2.2, 8.5), (-2.2, 6.5)],
     # An old loop across the apron
     "track3": [(4.5, 7.0), (3.0, 9.4), (1.0, 11.0), (-1.5, 11.6), (-4.0, 11.0), (-5.5, 9.4)],

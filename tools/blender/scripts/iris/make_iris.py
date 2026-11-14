@@ -1,24 +1,25 @@
-"""Generates Kite, the disabled rover (A05, KITE_KIT.md 6, 7), with its service port bracket, poses
-it on the Apollo 12 terrain, checks the cartridge delivery against it (KITE_KIT.md 2, 8) and renders
-previews.
+"""Generates the IRIS placeholder (A07, IRIS_KIT.md 6, 7): a body box, a 3 m mast with an indicator
+and the service port bracket, on the Apollo 12 terrain where the port's pose is the one the delivery
+was tuned to; checks the cartridge delivery against it (IRIS_KIT.md 2, 8) and renders previews.
+The final IRIS model (about 2 x 1.5 x 1.3 m, ASSET_PLAN.md A07) replaces it later.
 
-    blender -b --factory-startup -P tools/blender/scripts/kite/make_kite.py [-- --previews DIR | --no-previews]
+    blender -b --factory-startup -P tools/blender/scripts/iris/make_iris.py [-- --previews DIR | --no-previews]
 
-Writes tools/blender/parts/kite/kite.blend, game/res/models/kite_kit/kite.glb and previews in
-tools/blender/previews/kite/. Needs the rover kit's .blend files (with cargo_mount and cartridge)
+Writes tools/blender/parts/iris/iris.blend, game/res/models/iris_kit/iris.glb and previews in
+tools/blender/previews/iris/. Needs the rover kit's .blend files (with cargo_mount and cartridge)
 and game/res/terrain/moon_apollo12/play.f32.
 
-Kite's frame: the rover frame, the GLB root on the ground under Kite's origin (Godot places it on
-the terrain there, turned to KITE_YAW_DEG). The damaged pose, its tilt on the terrain and the
-height are baked under the root:
-    rear-left wheel off (lying 1.4 m behind and left, half buried), rear-left bracket bent, the
-    left bogie down on its stub; mast bent 12 degrees, head panned and drooped; antenna stuck;
-    arm sheared at the shoulder; no motor
-    kite_port          the service port bracket on the front: box centre (0.08, 0.70), top z 0.46
-                       (Kite frame), opening 0.28 x 0.17 m, 0.08 deep, a 10 mm lead-in
-    kite_status_light  strip and dome on the port (ws_status)
-    socket_cartridge, anchor_cartridge_seated  under kite_port
-    colliders: body, five wheels, the fallen wheel, the port
+IRIS's frame: the rover frame (ground at z -0.10), the GLB root on the ground under IRIS's origin
+(Godot places it on the terrain there, turned to IRIS_YAW_DEG). The tilt and height on the terrain
+(PORT_POSE) are baked under the root:
+    iris_body          1.0 x 1.2 x 0.5 m above the ground, a skirt into it; front face at y 0.45
+    iris_mast          3 m above the ground, at the body's rear-left corner
+    iris_indicator     a box on the mast's top (ws_status), lit with the port's status light
+    iris_port          the service port bracket on the front: box centre (0.08, 0.70), top z 0.46
+                       (rover frame), opening 0.28 x 0.17 m, 0.08 deep, a 10 mm lead-in
+    iris_status_light  strip and dome on the port (ws_status)
+    socket_cartridge, anchor_cartridge_seated  under iris_port
+    colliders: body, port
 """
 
 import itertools
@@ -29,7 +30,7 @@ import sys
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 HERE = os.path.dirname(__file__)
 sys.path.append(os.path.join(HERE, ".."))
@@ -39,13 +40,13 @@ import make_arm as arm_kit  # noqa: E402
 import make_power_antenna_motor as pam  # noqa: E402
 import workshop_kit_common as ws  # noqa: E402
 
-PARTS_DIR = os.path.join(kit.REPO_ROOT, "tools", "blender", "parts", "kite")
-EXPORT_DIR = os.path.join(kit.REPO_ROOT, "game", "res", "models", "kite_kit")
+PARTS_DIR = os.path.join(kit.REPO_ROOT, "tools", "blender", "parts", "iris")
+EXPORT_DIR = os.path.join(kit.REPO_ROOT, "game", "res", "models", "iris_kit")
 PLAY = os.path.join(kit.REPO_ROOT, "game", "res", "terrain", "moon_apollo12", "play.f32")
 
-# KITE_KIT.md 7
-KITE_XZ = (-204.0, 136.0)
-KITE_YAW_DEG = 140.4                 # Godot rotation about Y: Kite's front faces azimuth 219.6
+# IRIS_KIT.md 7
+IRIS_XZ = (-204.0, 136.0)
+IRIS_YAW_DEG = 140.4                 # Godot rotation about Y: IRIS's front faces azimuth 219.6
 GROUND_Z = -0.10                     # the rover frame's ground at rest
 
 PORT_CENTRE = Vector((0.08, 0.70))
@@ -54,12 +55,24 @@ PORT_BOX = (0.17, 0.12, 0.12)        # half x, half y, height
 # 0.28 x 0.17 m, 0.08 deep: the cartridge (0.262 m with its end grips, 0.154 with its stripe) with
 # 9 mm a side, plus the 10 mm lead-in
 OPENING = (0.14, 0.085, 0.08)        # half x, half y, depth
-SEAT_GAP = 0.006                     # released 6 mm above the port floor (Kite tilts the port up to 3 mm across), then snapped onto the seat
+SEAT_GAP = 0.006                     # released 6 mm above the port floor (the port tilts up to 3 mm across), then snapped onto the seat
 LEAD_IN = 0.01
-FALLEN_WHEEL = Vector((-1.0, -1.4))
+# The port bracket's pose under the root (location, rotation w x y z): the pose the delivery, the
+# approach route and tests/test_iris.gd were tuned to (it was solved on the terrain for the
+# disabled rover this spot held before)
+PORT_POSE = ((0.067931, 0.691832, 0.559296), (0.99987638, 0.00872574, -0.01308914, -0.00011423))
+# The placeholder body (rover frame) and mast
+BODY_X = (-0.50, 0.50)
+BODY_Y = (-0.75, 0.45)
+BODY_HEIGHT = 0.50
+SKIRT = 0.15                         # below the ground, for the terrain's slope under the box
+MAST_XY = (-0.38, -0.63)
+MAST_HEIGHT = 3.0
+MAST_RADIUS = 0.035
+INDICATOR = 0.10
 
-BUDGET = 7000
-# The delivery (KITE_KIT.md 8): parking window from the rescuer's arm yaw axis to the port
+BUDGET = 3000
+# The delivery (IRIS_KIT.md 8): parking window from the rescuer's arm yaw axis to the port
 YAW_AXIS = Vector((-0.12, 0.53))
 WINDOW_D = (0.45, 0.57)
 WINDOW_BEARING = (-18.0, 13.0)
@@ -83,88 +96,32 @@ def terrain(x: float, z: float) -> float:
     return float(h[r0 + 1, c0 + 1] + (h[r0 + 1, c0] - h[r0 + 1, c0 + 1]) * (1 - fc) + (h[r0, c0 + 1] - h[r0 + 1, c0 + 1]) * (1 - fr))
 
 
-def kite_to_world(p) -> tuple:
-    """Kite frame (x, y) to Godot world (x, z)."""
-    t = math.radians(KITE_YAW_DEG)
+def iris_to_world(p) -> tuple:
+    """IRIS frame (x, y) to Godot world (x, z)."""
+    t = math.radians(IRIS_YAW_DEG)
     a, c = p[0], -p[1]
-    return (KITE_XZ[0] + a * math.cos(t) + c * math.sin(t), KITE_XZ[1] - a * math.sin(t) + c * math.cos(t))
+    return (IRIS_XZ[0] + a * math.cos(t) + c * math.sin(t), IRIS_XZ[1] - a * math.sin(t) + c * math.cos(t))
 
 
-H0 = terrain(*KITE_XZ)
+H0 = terrain(*IRIS_XZ)
 
 
 def ground_local(x: float, y: float) -> float:
-    """Terrain height under a Kite-frame point, relative to the ground under Kite's origin."""
-    return terrain(*kite_to_world((x, y))) - H0
+    """Terrain height under an IRIS-frame point, relative to the ground under IRIS's origin."""
+    return terrain(*iris_to_world((x, y))) - H0
 
 
-# --- Building Kite -----------------------------------------------------------------------------
+# --- Building IRIS -----------------------------------------------------------------------------
 
-def build_damaged_rover() -> dict:
-    scene = pam.assemble()
-    arm = scene["arm"]
-    doomed = {o for key in ("yaw", "upper", "forearm", "wrist", "tool") for o in [arm[key]] + list(arm[key].children_recursive)}
-    doomed |= {scene["motor"], *scene["motor"].children_recursive}
-    for o in doomed:
-        bpy.data.objects.remove(o)
-    left = scene["sides"]["L"]
-    # The rear-left wheel comes off; its bracket is bent outward and down
-    wheel = left["rear_wheel"]
-    kit.parent_keep_transform(wheel, scene["chassis"])
-    wheel.parent = None
-    wheel.matrix_world = Matrix.Identity(4)
-    left["rear_bracket"].rotation_euler = (math.radians(-15.0), 0.0, math.radians(-25.0))
-    # Mast bent towards the rear-left; head panned and drooped; antenna stuck
-    scene["mast_base"].rotation_euler = (math.radians(8.5), math.radians(-8.5), 0.0)
-    pam.pose_mast_head(scene, 70.0, -30.0)
-    pam.pose_antenna(scene, 160.0, 50.0)
-    bpy.context.view_layer.update()
-    scene["fallen_wheel"] = wheel
-    return scene
-
-
-def contact_points(scene: dict) -> list:
-    """Each remaining wheel's lowest point and the bent bracket's lowest point (rover frame)."""
-    pts = []
-    for side in ("L", "R"):
-        parts = scene["sides"][side]
-        for key in ("front_wheel", "middle_wheel", "rear_wheel"):
-            if side == "L" and key == "rear_wheel":
-                continue
-            c = parts[key].matrix_world.translation
-            pts.append(Vector((c.x, c.y, c.z - 0.15)))
-    verts = kit.world_vertices(scene["sides"]["L"]["rear_bracket"])
-    low = min(verts, key=lambda v: v.z)
-    pts.append(low)
-    return pts
-
-
-def solve_pose(scene: dict) -> tuple:
-    """Left bogie / rocker angles and the whole body's roll, pitch and height that put the five
-    wheels and the bent bracket's stub on the terrain: nothing more than 10 mm in it, the gaps
-    as small as possible. Returns (rocker, bogie, roll, pitch, dz, gaps)."""
-    left = scene["sides"]["L"]
-    best = None
-    for rocker, bogie in itertools.product(np.arange(-10.0, 10.1, 2.0), np.arange(0.0, 15.1, 1.5)):
-        pam.rb.pose(left, rocker, bogie, 0.0)
-        pts = contact_points(scene)
-        for roll, pitch in itertools.product(np.arange(-6.0, 6.01, 0.5), np.arange(-6.0, 6.01, 0.5)):
-            rot = Matrix.Rotation(math.radians(pitch), 3, "X") @ Matrix.Rotation(math.radians(roll), 3, "Y")
-            moved = [rot @ p for p in pts]
-            ground = [ground_local(p.x, p.y) for p in moved]
-            dz = max(g - p.z for p, g in zip(moved, ground))       # lift until nothing is in the ground
-                                                                      # (root frame: ground under the origin at 0)
-            gaps = [p.z + dz - g for p, g in zip(moved, ground)]
-            score = sum(gaps)
-            if best is None or score < best[0]:
-                best = (score, rocker, bogie, roll, pitch, dz, gaps)
-    _, rocker, bogie, roll, pitch, dz, gaps = best
-    pam.rb.pose(left, rocker, bogie, 0.0)
-    return rocker, bogie, roll, pitch, dz, gaps
+def tilt_matrix() -> Matrix:
+    """Rover frame to IRIS's root frame: what puts the port (origin at its top centre) on PORT_POSE."""
+    loc, rot = PORT_POSE
+    port_world = Matrix.Translation(loc) @ Quaternion(rot).to_matrix().to_4x4()
+    return port_world @ Matrix.Translation((-PORT_CENTRE.x, -PORT_CENTRE.y, -PORT_TOP))
 
 
 def build_port() -> bpy.types.Object:
-    """The service port bracket in the Kite frame (before the body's tilt)."""
+    """The service port bracket in the IRIS frame (before the body's tilt)."""
     bm = bmesh.new()
     cx, cy = PORT_CENTRE
     hx, hy, h = PORT_BOX
@@ -187,113 +144,77 @@ def build_port() -> bpy.types.Object:
         ws.quad(bm, [(mid[k][0], mid[k][1], z1 - LEAD_IN), (mid[n][0], mid[n][1], z1 - LEAD_IN),
                      (inner[n][0], inner[n][1], z1 - 2 * LEAD_IN), (inner[k][0], inner[k][1], z1 - 2 * LEAD_IN)], 2, (0, 0, 1))
     ws.floor_quad(bm, (cx - ox, cx + ox), (cy - oy, cy + oy), zf + 0.001, 1)                 # dark floor
-    # Struts back to Kite's front face
+    # Struts back to the body's front face
     for x in (cx - 0.08, cx + 0.08):
         ws.box(bm, (x - 0.015, x + 0.015), (0.45, cy - hy), (z0 + 0.02, z0 + 0.07), 0)
-    port = ws.make_object("kite_port", bm, ["ws_frame", "ws_dark", "ws_accent"], origin=(cx, cy, PORT_TOP))
+    port = ws.make_object("iris_port", bm, ["ws_frame", "ws_dark", "ws_accent"], origin=(cx, cy, PORT_TOP))
     bm = bmesh.new()
     ws.trim(bm, (cx - 0.10, cx + 0.10), (cy + hy, cy + hy + 0.005), (z1 - 0.06, z1 - 0.03), 0, "-y")
     ws.dome(bm, (cx + hx - 0.04, cy - hy + 0.04, z1 - LEAD_IN), 0.025, 0, 8)
-    ws.make_object("kite_status_light", bm, ["ws_status"], parent=port)
+    ws.make_object("iris_status_light", bm, ["ws_status"], parent=port)
     ws.add_empty(port, "socket_cartridge", (cx, cy, PORT_TOP))
     ws.add_empty(port, "anchor_cartridge_seated", (cx, cy, PORT_TOP - depth + SEAT_GAP))
-    ws.collision_box(port, "kite_port", (cx - hx, cx + hx), (cy - hy, cy + hy), (z0, z1))
+    ws.collision_box(port, "iris_port", (cx - hx, cx + hx), (cy - hy, cy + hy), (z0, z1))
     return port
 
 
-def cylinder_collider(name: str, centre: Vector, axis: Vector, radius: float, half: float) -> bpy.types.Object:
+def build_iris(port) -> bpy.types.Object:
+    """The body box with its collider, the mast and indicator, and the port, tilted onto the
+    terrain under one root."""
+    tilt = tilt_matrix()
     bm = bmesh.new()
-    kit.cylinder(bm, lambda u, v, w: (u, v, w), -half, half, radius, 12)
-    obj = kit.mesh_object(name + "-convcolonly", bm, [])
-    z = Vector((0, 0, 1))
-    obj.matrix_world = Matrix.Translation(centre) @ z.rotation_difference(axis).to_matrix().to_4x4()
-    obj.display_type = "WIRE"
-    obj.hide_render = True
-    return obj
-
-
-def bake_kite(scene: dict, port, pose: tuple) -> bpy.types.Object:
-    """Copies Kite's visible meshes under one root with clean names, the tilt and height baked;
-    removes everything else."""
-    rocker, bogie, roll, pitch, dz, gaps = pose
-    # Rover frame (ground at z -0.10) to Kite's root frame (ground under its origin at 0): the
-    # solved tilt, then the lift that rests it on the terrain
-    tilt = (Matrix.Translation((0.0, 0.0, dz)) @ Matrix.Rotation(math.radians(pitch), 4, "X") @
-            Matrix.Rotation(math.radians(roll), 4, "Y"))
-    root = bpy.data.objects.new("kite", None)
+    ws.box(bm, BODY_X, BODY_Y, (GROUND_Z - SKIRT, GROUND_Z + BODY_HEIGHT), 0)
+    body = ws.make_object("iris_body", bm, ["ws_panel"], origin=(0.0, 0.0, GROUND_Z))
+    ws.collision_box(body, "iris_body", BODY_X, BODY_Y, (GROUND_Z - SKIRT, GROUND_Z + BODY_HEIGHT))
+    bm = bmesh.new()
+    mx, my = MAST_XY
+    kit.cylinder(bm, lambda u, v, w: (mx + u, my + v, w), GROUND_Z + BODY_HEIGHT, GROUND_Z + MAST_HEIGHT, MAST_RADIUS, 12)
+    ws.make_object("iris_mast", bm, ["ws_frame"], origin=(mx, my, GROUND_Z + BODY_HEIGHT), parent=body)
+    bm = bmesh.new()
+    h = INDICATOR / 2.0
+    ws.box(bm, (mx - h, mx + h), (my - h, my + h), (GROUND_Z + MAST_HEIGHT, GROUND_Z + MAST_HEIGHT + INDICATOR), 0)
+    ws.make_object("iris_indicator", bm, ["ws_status"], origin=(mx, my, GROUND_Z + MAST_HEIGHT), parent=body)
+    root = bpy.data.objects.new("iris", None)
     bpy.context.scene.collection.objects.link(root)
-    names = {scene["chassis"]: "kite_chassis", scene["mast_base"]: "kite_mast", scene["mast_head"]: "kite_mast_head",
-             scene["mast_camera"]: "kite_mast_camera", scene["antenna"]: "kite_antenna",
-             scene["antenna_dish"]: "kite_antenna_dish", scene["power_unit"]: "kite_power_unit",
-             scene["arm"]["mount"]: "kite_arm_stub"}
-    for side in ("L", "R"):
-        for key, label in (("rocker", "rocker"), ("bogie", "bogie"), ("front_bracket", "bracket_front"),
-                           ("rear_bracket", "bracket_rear"), ("front_wheel", "wheel_front"), ("middle_wheel", "wheel_middle"),
-                           ("rear_wheel", "wheel_rear")):
-            obj = scene["sides"][side].get(key)
-            if obj is not None and not (side == "L" and key == "rear_wheel"):
-                names[obj] = "kite_%s_%s" % (label, side)
-    keep = []
-    for src, name in names.items():
-        dup = bpy.data.objects.new(name, src.data)
-        bpy.context.scene.collection.objects.link(dup)
-        dup.matrix_world = tilt @ src.matrix_world
-        keep.append(dup)
-    # The fallen wheel: on its side behind and left, half buried
-    fw = scene["fallen_wheel"]
-    g = ground_local(*FALLEN_WHEEL)
-    fallen = bpy.data.objects.new("kite_wheel_fallen", fw.data)
-    bpy.context.scene.collection.objects.link(fallen)
-    fallen.matrix_world = (Matrix.Translation((FALLEN_WHEEL.x, FALLEN_WHEEL.y, g + 0.124 - 0.05)) @
-                           Matrix.Rotation(math.radians(90), 4, "Y") @ Matrix.Rotation(math.radians(20), 4, "X"))
-    keep.append(fallen)
-    port.matrix_world = tilt @ port.matrix_world
-    keep.append(port)
-    # Colliders: the body box, the five wheels, the fallen wheel (the port carries its own)
-    bm = bmesh.new()
-    kit.box(bm, (-0.25, 0.25), (-0.45, 0.45), (0.20, 0.44))
-    body = kit.mesh_object("kite_body-convcolonly", bm, [])
-    body.matrix_world = tilt.copy()
-    body.display_type, body.hide_render = "WIRE", True
-    colliders = [body]
-    for src, name in names.items():
-        if name.startswith("kite_wheel_"):
-            c = (tilt @ src.matrix_world).translation
-            axis = (tilt @ src.matrix_world).to_3x3() @ Vector((1, 0, 0))
-            colliders.append(cylinder_collider(name + "_col_shape", c, axis, 0.15, 0.12))
-    colliders.append(cylinder_collider("kite_wheel_fallen_shape", fallen.matrix_world.translation,
-                                       fallen.matrix_world.to_3x3() @ Vector((1, 0, 0)), 0.15, 0.12))
-    for o in keep + colliders:
-        if o is port:
-            continue
+    for o in (body, port):
+        o.matrix_world = tilt @ o.matrix_world
+        bpy.context.view_layer.update()
         kit.parent_keep_transform(o, root)
-    kit.parent_keep_transform(port, root)
-    # Everything else goes
-    wanted = {root, *root.children_recursive}
-    for o in [o for o in bpy.data.objects if o not in wanted]:
-        bpy.data.objects.remove(o)
     return root
+
+
+def body_ground_gaps(root) -> tuple:
+    """The body's bottom below the ground (smallest, m) and its top above it (smallest, m), at its
+    corners and edge middles."""
+    tilt = tilt_matrix()
+    buried, height = 1e9, 1e9
+    for x, y in itertools.product((BODY_X[0], 0.0, BODY_X[1]), (BODY_Y[0], 0.0, BODY_Y[1])):
+        bottom = tilt @ Vector((x, y, GROUND_Z - SKIRT))
+        top = tilt @ Vector((x, y, GROUND_Z + BODY_HEIGHT))
+        buried = min(buried, ground_local(bottom.x, bottom.y) - bottom.z)
+        height = min(height, top.z - ground_local(top.x, top.y))
+    return buried, height
 
 
 # --- Delivery checks ---------------------------------------------------------------------------
 
-def port_in_kite(root) -> tuple:
-    """The port's top centre and its axes (x, z) in the Kite frame, after the tilt."""
+def port_in_iris(root) -> tuple:
+    """The port's top centre and its axes (x, z) in the IRIS frame, after the tilt."""
     sock = next(o for o in root.children_recursive if o.name == "socket_cartridge")
     port = sock.parent
     return sock.matrix_world.translation.copy(), port.matrix_world.to_3x3() @ Vector((1, 0, 0)), port.matrix_world.to_3x3() @ Vector((0, 0, 1))
 
 
-def rescuer_pose(port_kite: Vector, d: float, bearing_deg: float, heading_offset_deg: float) -> Matrix:
-    """Where Kite goes in the rescuer's frame (the rescuer at the origin, facing +Y) so that the
-    port is d from the rescuer's yaw axis at the bearing. The rescuer faces Kite nose to nose,
+def rescuer_pose(port_iris: Vector, d: float, bearing_deg: float, heading_offset_deg: float) -> Matrix:
+    """Where IRIS goes in the rescuer's frame (the rescuer at the origin, facing +Y) so that the
+    port is d from the rescuer's yaw axis at the bearing. The rescuer faces IRIS head on,
     turned by heading_offset."""
     b = math.radians(bearing_deg)
     target = Vector((YAW_AXIS.x - d * math.sin(b), YAW_AXIS.y + d * math.cos(b)))   # bearing + = left (-X)
     yaw = math.radians(180.0 + heading_offset_deg)
     rot = Matrix.Rotation(yaw, 4, "Z")
-    p = rot @ Vector((port_kite.x, port_kite.y, 0.0))
-    # Kite's ground under its origin vs the rescuer's: the terrain at the parking spot
+    p = rot @ Vector((port_iris.x, port_iris.y, 0.0))
+    # IRIS's ground under its origin vs the rescuer's: the terrain at the parking spot
     dz = H0 - terrain(-205.1, 137.3)
     return Matrix.Translation((target.x - p.x, target.y - p.y, GROUND_Z + dz)) @ rot
 
@@ -333,12 +254,12 @@ def run_delivery_checks(rows: list, previews) -> int:
     mount.location = (-0.125, 0.20, 0.44)
     cart = arm_kit.load("cartridge.blend", "cartridge")
     cart.location = (-0.125, 0.20, 0.505)
-    kite_root = kit.append_objects(os.path.join(PARTS_DIR, "kite.blend"), ["kite"])[0]
+    iris_root = kit.append_objects(os.path.join(PARTS_DIR, "iris.blend"), ["iris"])[0]
     bpy.context.view_layer.update()
-    port_top, port_x, port_z = port_in_kite(kite_root)
-    kite_meshes = [o for o in kite_root.children_recursive if o.type == "MESH" and "convcolonly" not in o.name]
-    port_obj = next(o for o in kite_meshes if o.name.startswith("kite_port"))
-    kite_other = [o for o in kite_meshes if o is not port_obj and not o.name.startswith("kite_status")]
+    port_top, port_x, port_z = port_in_iris(iris_root)
+    iris_meshes = [o for o in iris_root.children_recursive if o.type == "MESH" and "convcolonly" not in o.name]
+    port_obj = next(o for o in iris_meshes if o.name.startswith("iris_port"))
+    iris_other = [o for o in iris_meshes if o is not port_obj and not o.name.startswith("iris_status")]
     moving = [arm[k] for k in ("yaw", "upper", "forearm", "wrist", "tool")]
     rover_parts = [o for o in [scene["chassis"], *scene["chassis"].children_recursive]
                    if o.type == "MESH" and "convcolonly" not in o.name and o not in moving and o is not cart]
@@ -356,7 +277,7 @@ def run_delivery_checks(rows: list, previews) -> int:
     for d, bearing, turn in itertools.product((WINDOW_D[0], sum(WINDOW_D) / 2, WINDOW_D[1]),
                                               (WINDOW_BEARING[0], 0.0, WINDOW_BEARING[1]), (-10.0, 0.0, 10.0)):
         place = rescuer_pose(port_top, d, bearing, turn)
-        kite_root.matrix_world = place
+        iris_root.matrix_world = place
         bpy.context.view_layer.update()
         where = "d %.2f, bearing %+.0f, heading %+.0f" % (d, bearing, turn)
         top = place @ port_top
@@ -402,8 +323,8 @@ def run_delivery_checks(rows: list, previews) -> int:
             in_stroke = i >= len(samples)
             arm_tree = arm_kit.world_bvh(moving)
             cart_tree = arm_kit.world_bvh([cart])
-            note("arm vs Kite", arm_kit.gap(arm_tree, arm_kit.world_bvh(kite_other + [port_obj])), where)
-            note("cartridge vs Kite (not the port)", arm_kit.gap(cart_tree, arm_kit.world_bvh(kite_other)), where)
+            note("arm vs IRIS", arm_kit.gap(arm_tree, arm_kit.world_bvh(iris_other + [port_obj])), where)
+            note("cartridge vs IRIS (not the port)", arm_kit.gap(cart_tree, arm_kit.world_bvh(iris_other)), where)
             if not in_stroke:
                 note("cartridge vs port before the stroke", arm_kit.gap(cart_tree, arm_kit.world_bvh([port_obj])), where)
                 note("cartridge vs the rescuer (not the mount, after leaving it)",
@@ -424,13 +345,13 @@ def run_delivery_checks(rows: list, previews) -> int:
                             where, i - len(samples), bestp[0] * 1000, tuple(round(c, 4) for c in inv @ bestp[1]), tuple(round(c, 4) for c in inv @ bestp[2])))
             note("cartridge above the ground", min(v.z for v in kit.world_vertices(cart)) - GROUND_Z, where)
             note("arm above the ground", min(min(v.z for v in kit.world_vertices(o)) for o in moving) - GROUND_Z, where)
-        # The rescuer's wheels and body against Kite
-        note("rescuer wheels and body vs Kite (footprint, needs 150 mm)",
-             arm_kit.gap(arm_kit.world_bvh(wheels + [scene["chassis"]]), arm_kit.world_bvh(kite_meshes)), where)
+        # The rescuer's wheels and body against IRIS
+        note("rescuer wheels and body vs IRIS (footprint, needs 150 mm)",
+             arm_kit.gap(arm_kit.world_bvh(wheels + [scene["chassis"]]), arm_kit.world_bvh(iris_meshes)), where)
         if previews and d == sum(WINDOW_D) / 2 and bearing == 0.0 and turn == 0.0:
             kit.set_preview_colors(True)
             ws.set_preview_colors(True)
-            keep = tuple(kite_meshes) + (cart, mount)
+            keep = tuple(iris_meshes) + (cart, mount)
             for name, joints in (("approach", approach), ("seated", stroke[-1])):
                 arm_kit.pose_arm(arm, joints)
                 cart.matrix_world = tool.matrix_world @ rel
@@ -458,47 +379,45 @@ def run_delivery_checks(rows: list, previews) -> int:
 # --- Main --------------------------------------------------------------------------------------
 
 def main() -> None:
-    previews = kit.preview_dir("kite")
+    previews = kit.preview_dir("iris")
     rows = []
     failures = 0
-    scene = build_damaged_rover()
-    pose = solve_pose(scene)
-    rocker, bogie, roll, pitch, dz, gaps = pose
-    rows.append("pose on the terrain: left rocker %+.0f, left bogie %+.1f deg; body roll %+.1f, pitch %+.1f deg; lift %+.3f m" % (
-        rocker, bogie, roll, pitch, dz))
-    rows.append("contact gaps (5 wheels, bent bracket's stub), mm: %s" % ", ".join("%.0f" % (g * 1000.0) for g in gaps))
-    ok = min(gaps) >= -0.0005 and max(gaps) <= 0.04
-    failures += 0 if ok else 1
-    rows.append("everything rests on the ground (none in it, none over 40 mm above)%s" % ("" if ok else "  FAIL"))
     port = build_port()
-    root = bake_kite(scene, port, pose)
+    root = build_iris(port)
     bpy.context.view_layer.update()
+    buried, height = body_ground_gaps(root)
+    ok = buried >= 0.02 and height >= BODY_HEIGHT - 0.06
+    failures += 0 if ok else 1
+    rows.append("body: skirt %.0f mm in the ground at least, top %.0f mm above it at least%s" % (
+        buried * 1000.0, height * 1000.0, "" if ok else "  FAIL"))
     tris = sum(kit.triangle_count(o) for o in root.children_recursive if o.type == "MESH" and "convcolonly" not in o.name)
     ok = tris <= BUDGET
     failures += 0 if ok else 1
-    rows.append("Kite: %d triangles (budget %d)%s" % (tris, BUDGET, "" if ok else "  FAIL"))
-    top, _, _ = port_in_kite(root)
-    rows.append("port's top centre in the Kite frame (tilted): (%.3f, %.3f, %.3f), %.3f m above the ground under it" % (
+    rows.append("IRIS: %d triangles (budget %d)%s" % (tris, BUDGET, "" if ok else "  FAIL"))
+    top, _, _ = port_in_iris(root)
+    rows.append("port's top centre in the IRIS frame (tilted): (%.3f, %.3f, %.3f), %.3f m above the ground under it" % (
         top.x, top.y, top.z, top.z - ground_local(top.x, top.y)))
     for o in [root] + list(root.children_recursive):
         kit.check_export_name(o.name)
     os.makedirs(PARTS_DIR, exist_ok=True)
-    kit.save_blend(os.path.join(PARTS_DIR, "kite.blend"))
+    kit.save_blend(os.path.join(PARTS_DIR, "iris.blend"))
     ws.rk.GODOT_IMPORT_SCRIPT = ws.GODOT_IMPORT_SCRIPT
-    kit.export_part(root, os.path.join(EXPORT_DIR, "kite.glb"))
-    gx, gz = KITE_XZ
-    rows.append("Godot: Kite root at (%.2f, %.3f, %.2f), rotation y %.1f deg" % (gx, H0, gz, KITE_YAW_DEG))
+    kit.export_part(root, os.path.join(EXPORT_DIR, "iris.glb"))
+    gx, gz = IRIS_XZ
+    rows.append("Godot: IRIS root at (%.2f, %.3f, %.2f), rotation y %.1f deg" % (gx, H0, gz, IRIS_YAW_DEG))
     if previews:
         kit.set_preview_colors(True)
         ws.set_preview_colors(True)
-        for name, d in (("approach", (-0.5, 1.0, 0.45)), ("above", (0.0, 0.0, 1.0)), ("port_side", (0.9, 0.7, 0.35)),
+        for name, d in (("approach", (-0.5, 1.0, 0.45)), ("side", (1.0, 0.0, 0.0)), ("front", (0.0, 1.0, 0.0)),
                         ("rear_left", (-0.8, -1.0, 0.5))):
-            kit.render_view(root, os.path.join(previews, "kite_%s.png" % name), d, 3.4, name != "above", 6.5, (0.0, -0.2, 0.35))
+            kit.render_view(root, os.path.join(previews, "iris_%s.png" % name), d, 3.8, name in ("approach", "rear_left"),
+                            8.0, (0.0, -0.1, 1.4))
+        kit.render_view(root, os.path.join(previews, "iris_port_close.png"), (0.9, 0.7, 0.35), 1.6, True, 4.0, (0.08, 0.70, 0.40))
         kit.set_preview_colors(False)
         ws.set_preview_colors(False)
     failures += run_delivery_checks(rows, previews)
     rows.append("ALL CHECKS OK" if failures == 0 else "%d CHECK FAILURES" % failures)
-    print("\n".join("KITE_KIT kite " + r for r in rows))
+    print("\n".join("IRIS_KIT iris " + r for r in rows))
 
 
 if __name__ == "__main__":

@@ -36,13 +36,13 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 <span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 500; color: #8A8783; animation-delay: .05s">Mission 1 · First sortie</span>
 <span class="ll-item" style="font-family: Michroma, sans-serif; font-size: 26px; line-height: 1; letter-spacing: 16px; padding-left: 16px; animation-delay: .15s">MISSION COMPLETE</span>
 <div class="ll-rule"></div>
-<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">Kite is back online.</span>
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">IRIS is back online.</span>
 
 <div class="ll-item" style="display: flex; margin-top: 30px; animation-delay: .8s">
 <div class="ll-stat"><b>{{time}}</b><span>Mission time</span></div>
 <div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{dist}}</b><span>Distance driven</span></div>
 <div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{battery}}</b><span>Battery used</span></div>
-<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>ROOK returned to the pad</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>Kite returned to the pad</span></div>
 </div>
 
 <div class="ll-item" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 30px; animation-delay: 1.2s">
@@ -62,13 +62,13 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 <span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 500; color: #8A8783; animation-delay: .05s">Mission 1 · First sortie</span>
 <span class="ll-item" style="font-family: Michroma, sans-serif; font-size: 26px; line-height: 1; letter-spacing: 16px; padding-left: 16px; animation-delay: .15s">MISSION COMPLETE</span>
 <div class="ll-rule"></div>
-<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">Kite is back online.</span>
+<span class="ll-item" style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB; animation-delay: .5s">IRIS is back online.</span>
 
 <div class="ll-item" style="display: flex; margin-top: 30px; animation-delay: .8s">
 <div class="ll-stat"><b>{{time}}</b><span>Mission time</span></div>
 <div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{dist}}</b><span>Distance driven</span></div>
 <div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{battery}}</b><span>Battery used</span></div>
-<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>ROOK returned to the pad</span></div>
+<div class="ll-stat" style="border-left: 1px solid rgba(236,233,227,.12)"><b>{{back}}</b><span>Kite returned to the pad</span></div>
 </div>
 
 <div class="ll-item" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 30px; animation-delay: 1.2s">
@@ -119,7 +119,7 @@ class Component extends DCLogic {
       dist: back ? '312 m' : '163 m',
       battery: back ? '41%' : '72%',
       back: back ? 'Yes' : 'No',
-      radio: back ? 'Clean work, operator. Kite’s talking to us again, and ROOK’s home with charge to spare.' : 'Kite’s back, but ROOK ran dry out there. We’ll tow it in. Mind the battery next time.',
+      radio: back ? 'Clean work, operator. IRIS’s talking to us again, and Kite’s home with charge to spare.' : 'IRIS’s back, but Kite ran dry out there. We’ll tow it in. Mind the battery next time.',
       setBg: this.setBg, replay: this.replay
     };
   }

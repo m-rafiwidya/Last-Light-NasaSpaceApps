@@ -2,10 +2,10 @@ class_name RoverScanner
 
 extends Node
 
-## Scanning with the mast camera (tools/blender/KITE_KIT.md 6.3): while this rover is driven in
+## Scanning with the mast camera (tools/blender/IRIS_KIT.md 6.3): while this rover is driven in
 ## the mast view, a ray from the camera's centre (RANGE m, the world and vehicle layers) that stays
-## on a node in the "scan_target" group (Kite) for HOLD seconds scans it: the target's
-## mark_scanned(rover), and its scan_report as a "Rover:" subtitle. Off the target for more than
+## on a node in the "scan_target" group (IRIS) for HOLD seconds scans it: the target's
+## mark_scanned(rover), and its scan_report as a "Kite:" subtitle. Off the target for more than
 ## GRACE seconds starts over. get_hint() feeds the robot HUD's ScanHint.
 
 const RANGE: float = 30.0
@@ -54,7 +54,7 @@ func _physics_process(delta: float) -> void:
 			_done_name = found.get("scan_name")
 			_done_time = SHOW_DONE
 			var line := Dialog.new()
-			line.speaker = "Rover"
+			line.speaker = "Kite"
 			line.subtitle = found.get("scan_report")
 			line.min_duration = 6.0
 			DialogServer.play_dialog(line)

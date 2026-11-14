@@ -157,7 +157,7 @@ func _show_refusal(candidate: HotswapPart, problem: String) -> void:
 	if now - _last_refusal_message_frame >= interval_frames:
 		_last_refusal_message_frame = now
 		var dialog := Dialog.new()
-		dialog.speaker = "Rover"
+		dialog.speaker = "Kite"
 		dialog.subtitle = "Can't mount this %s: %s" % [candidate.get_display_name().to_lower(), problem]
 		dialog.min_duration = 3.0
 		DialogServer.play_dialog(dialog)

@@ -20,7 +20,7 @@ The room can have the physical-console feel of the team's bunker-simulator inspi
 | P0 / A02 | Charging/service pad | Approximately 4 × 3 m; fit the current rover | Dock trigger and visible charger connection/status | R3, existing rover |
 | P0 / A03 | Mission console | Desk approximately 1.2 × 0.65 × 0.9 m | One screen for Godot UI, visible interact prompt | R3 |
 | P0 / A04 | Parts rack and labels | Wall rack approximately 2.5 × 0.5 × 1.8 m | Parts are separate selectable objects; readable labels | Existing parts |
-| P0 / A05 | Disabled Kite rover | Reuse ROOK model, with a damaged/parked variant | Scan target and cartridge socket; never controllable | R4, existing rover |
+| P0 / A05 | Kite, the player's rover | Reuse the existing rover model (no separate disabled-rover prop; the old one is retired, its scan target and cartridge socket moved to IRIS) | Controllable; stored/operational states | R4, existing rover |
 | P0 / A06 | Diagnostic cartridge | Approximately 0.25 × 0.15 × 0.08 m | Separate mesh, pickup anchor, simple collision | Original design |
 | P0 / A07 | Navigation/dock markers | Signs approximately 0.4 m wide | Base/route legibility; avoid collision clutter | Original design |
 | P0 / A08 | Existing lunar terrain + collision | Use the declared source scale | Rover and loose-object contact | R1 |

@@ -19,7 +19,7 @@ func _ready() -> void:
 	add_child(DockHint.new())
 	add_child(CargoHint.new())
 	add_child(ScanHint.new())
-	# CARGO under BATTERY: what the cargo mount holds (KITE_KIT.md 5.3)
+	# CARGO under BATTERY: what the cargo mount holds (IRIS_KIT.md 5.3)
 	_cargo_label = Label.new()
 	_cargo_label.name = "Cargo"
 	_cargo_label.add_theme_font_size_override("font_size", 32)

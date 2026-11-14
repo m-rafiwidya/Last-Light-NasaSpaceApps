@@ -1,7 +1,7 @@
-"""Generates the diagnostic cartridge (A06, KITE_KIT.md 4), a rover kit part, checks it and renders
+"""Generates the diagnostic cartridge (A06, IRIS_KIT.md 4), a rover kit part, checks it and renders
 previews.
 
-    blender -b --factory-startup -P tools/blender/scripts/kite/make_cartridge.py [-- --previews DIR | --no-previews]
+    blender -b --factory-startup -P tools/blender/scripts/iris/make_cartridge.py [-- --previews DIR | --no-previews]
 
 Writes tools/blender/parts/cartridge.blend, game/res/models/rover_kit/cartridge.glb and previews in
 tools/blender/previews/cartridge/.
@@ -132,7 +132,7 @@ def main() -> None:
                             (0.0, 0.0, 0.04))
         kit.set_preview_colors(False)
     rows.append("ALL CHECKS OK" if failures == 0 else "%d CHECK FAILURES" % failures)
-    print("\n".join("KITE_KIT cartridge " + r for r in rows))
+    print("\n".join("IRIS_KIT cartridge " + r for r in rows))
 
 
 if __name__ == "__main__":

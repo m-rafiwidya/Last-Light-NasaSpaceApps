@@ -76,7 +76,7 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 <div class="ll-toast" role="status" style="position: absolute; left: 0; right: 0; top: 124px; display: flex; justify-content: center">
 <div style="display: flex; align-items: center; gap: 12px; padding: 9px 22px; background: rgba(14, 14, 17, .82); clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); font-size: 14px">
 <span style="width: 7px; height: 7px; border-radius: 50%; background: #ECE9E3"></span>
-<span>Kite scanned. Damage report added to the console.</span>
+<span>IRIS scanned. Damage report added to the console.</span>
 </div>
 </div>
 </sc-if>
@@ -91,7 +91,7 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 
 <aside aria-label="Objectives" style="position: absolute; right: 44px; top: 36px; width: 330px; display: flex; flex-direction: column; gap: 12px">
 <span class="ll-cap">Mission 1 · First sortie</span>
-<span style="font-size: 18px; font-weight: 600; line-height: 1.3">Deliver the diagnostic cartridge to Kite</span>
+<span style="font-size: 18px; font-weight: 600; line-height: 1.3">Deliver the diagnostic cartridge to IRIS</span>
 <div style="display: flex; flex-direction: column; gap: 9px; margin-top: 2px">
 <sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
 <div class="ll-step" style="color: {{s.color}}">
@@ -118,9 +118,9 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 <span style="position: absolute; left: 22px; top: 22px; width: 4px; height: 4px; border-radius: 50%; background: #ECE9E3"></span>
 </div>
 
-<section aria-label="ROOK status" style="position: absolute; left: 44px; bottom: 40px; width: 300px; display: flex; flex-direction: column; gap: 12px">
+<section aria-label="Kite status" style="position: absolute; left: 44px; bottom: 40px; width: 300px; display: flex; flex-direction: column; gap: 12px">
 <div style="display: flex; align-items: baseline; justify-content: space-between">
-<span style="font-family: Michroma, sans-serif; font-size: 13px; letter-spacing: 6px">ROOK</span>
+<span style="font-family: Michroma, sans-serif; font-size: 13px; letter-spacing: 6px">Kite</span>
 <span class="ll-cap">Mast camera</span>
 </div>
 <div style="display: flex; align-items: center; gap: 12px">
@@ -139,16 +139,16 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 
 <div style="position: absolute; left: 0; right: 0; bottom: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px">
 <div style="display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 600"><span class="ll-key big">E</span>Insert cartridge</div>
-<span class="ll-cap">In position at Kite’s port</span>
+<span class="ll-cap">In position at IRIS’s port</span>
 </div>
 
 <div style="position: absolute; right: 44px; bottom: 40px; display: flex; flex-direction: column; align-items: flex-end; gap: 14px">
 <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 18px; background: rgba(14, 14, 17, .7); border-left: 2px solid #ECE9E3">
 <span class="ll-cap" style="font-size: 11px">New control</span>
 <span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600"><span class="ll-key">R</span>Deploy the arm</span>
-<span class="ll-cap">Reach Kite’s port without leaving ROOK</span>
+<span class="ll-cap">Reach IRIS’s port without leaving Kite</span>
 </div>
-<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #B5B2AC"><span class="ll-key">F</span>Leave ROOK</span>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #B5B2AC"><span class="ll-key">F</span>Leave Kite</span>
 </div>
 </sc-if>
 
@@ -158,19 +158,19 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 <section aria-label="Operator" style="position: absolute; left: 44px; bottom: 40px; display: flex; flex-direction: column; gap: 6px">
 <span style="font-family: Michroma, sans-serif; font-size: 13px; letter-spacing: 6px">WORKSHOP</span>
 <span class="ll-cap">Holding <span style="color: #ECE9E3">{{holding}}</span></span>
-<span class="ll-cap">ROOK docked <span style="color: #ECE9E3">charging 72%</span></span>
+<span class="ll-cap">Kite docked <span style="color: #ECE9E3">charging 72%</span></span>
 </section>
 
 <sc-if value="{{pickPrompt}}" hint-placeholder-val="{{true}}">
 <div style="position: absolute; left: 0; right: 0; top: 486px; display: flex; flex-direction: column; align-items: center; gap: 6px">
 <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><span class="ll-key">E</span>Pick up</div>
 <span style="font-size: 14px">Diagnostic cartridge</span>
-<span class="ll-cap">Carry it to ROOK’s cargo mount</span>
+<span class="ll-cap">Carry it to Kite’s cargo mount</span>
 </div>
 </sc-if>
 <sc-if value="{{drivePrompt}}" hint-placeholder-val="{{false}}">
 <div style="position: absolute; left: 0; right: 0; top: 486px; display: flex; flex-direction: column; align-items: center; gap: 6px">
-<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><span class="ll-key">E</span>Drive ROOK</div>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600"><span class="ll-key">E</span>Drive Kite</div>
 <span class="ll-cap">Battery 72% · cartridge loaded</span>
 </div>
 </sc-if>
@@ -189,7 +189,7 @@ a{color:#8A8783}a:hover{color:#ECE9E3}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Driving ROOK&quot;,&quot;On foot&quot;],&quot;default&quot;:&quot;Driving ROOK&quot;},&quot;objectiveStep&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 Load cartridge&quot;,&quot;2 Drive to Kite&quot;,&quot;3 Scan Kite&quot;,&quot;4 Insert cartridge&quot;,&quot;Complete&quot;],&quot;default&quot;:&quot;1 Load cartridge&quot;},&quot;alert&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Kite scanned&quot;,&quot;Boundary warning&quot;,&quot;Low battery&quot;,&quot;None&quot;],&quot;default&quot;:&quot;Kite scanned&quot;},&quot;onFootPrompt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Pick up cartridge&quot;,&quot;Drive ROOK&quot;],&quot;default&quot;:&quot;Drive ROOK&quot;},&quot;radio&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true},&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Driving Kite&quot;,&quot;On foot&quot;],&quot;default&quot;:&quot;Driving Kite&quot;},&quot;objectiveStep&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 Load cartridge&quot;,&quot;2 Drive to IRIS&quot;,&quot;3 Scan IRIS&quot;,&quot;4 Insert cartridge&quot;,&quot;Complete&quot;],&quot;default&quot;:&quot;1 Load cartridge&quot;},&quot;alert&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;IRIS scanned&quot;,&quot;Boundary warning&quot;,&quot;Low battery&quot;,&quot;None&quot;],&quot;default&quot;:&quot;IRIS scanned&quot;},&quot;onFootPrompt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Pick up cartridge&quot;,&quot;Drive Kite&quot;],&quot;default&quot;:&quot;Drive Kite&quot;},&quot;radio&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true},&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900}}">
 class Component extends DCLogic {
   drawStars(cv) {
     var ctx = cv.getContext('2d');
@@ -240,11 +240,11 @@ class Component extends DCLogic {
   renderVals() {
     this.ensure();
     var st = this.state || {}, p = this.props;
-    var driving = (p.mode || 'Driving ROOK') === 'Driving ROOK';
-    var alert = p.alert || 'Kite scanned', low = alert === 'Low battery' && driving, foot = p.onFootPrompt || 'Pick up cartridge';
-    var opts = ['1 Load cartridge', '2 Drive to Kite', '3 Scan Kite', '4 Insert cartridge', 'Complete'];
-    var step = opts.indexOf(p.objectiveStep || '3 Scan Kite'); if (step < 0) step = 2;
-    var texts = ['Load the cartridge onto ROOK', 'Drive out to Kite', 'Scan Kite with the mast camera', 'Insert the cartridge'];
+    var driving = (p.mode || 'Driving Kite') === 'Driving Kite';
+    var alert = p.alert || 'IRIS scanned', low = alert === 'Low battery' && driving, foot = p.onFootPrompt || 'Pick up cartridge';
+    var opts = ['1 Load cartridge', '2 Drive to IRIS', '3 Scan IRIS', '4 Insert cartridge', 'Complete'];
+    var step = opts.indexOf(p.objectiveStep || '3 Scan IRIS'); if (step < 0) step = 2;
+    var texts = ['Load the cartridge onto Kite', 'Drive out to IRIS', 'Scan IRIS with the mast camera', 'Insert the cartridge'];
     var steps = texts.map(function (t, i) {
       return {
         text: t, done: i < step, current: i === step, todo: i > step,
@@ -268,20 +268,20 @@ class Component extends DCLogic {
       clock: st.clock || '00:14:32',
       speed: st.speed || '2.4',
       steps: steps,
-      target: step >= 4 ? 'Return to the workshop' : step === 0 ? 'ROOK' : 'Kite',
+      target: step >= 4 ? 'Return to the workshop' : step === 0 ? 'Kite' : 'IRIS',
       targetDist: step >= 4 ? '148 m' : step === 0 ? 'in the bay' : driving ? '6 m' : '151 m',
-      infoAlert: alert === 'Kite scanned',
+      infoAlert: alert === 'IRIS scanned',
       warnAlert: alert === 'Boundary warning' || low,
       warnText: alert === 'Boundary warning' ? 'Survey area boundary in 12 m. Turn back.' : 'Battery low. About 120 m of range left, the charging pad is 148 m away.',
       batPct: low ? '18%' : '72%',
       batRange: low ? '~120 m left' : '~220 m left',
       batColor: low ? '#E5484D' : '#ECE9E3',
       battery: Array.from({ length: 10 }, function (_, i) { return { cls: 'll-seg' + (low ? (i < 2 ? ' low' : '') : (i < 7 ? ' on' : '')) }; }),
-      pickPrompt: foot !== 'Drive ROOK',
-      drivePrompt: foot === 'Drive ROOK',
+      pickPrompt: foot !== 'Drive Kite',
+      drivePrompt: foot === 'Drive Kite',
       holding: 'nothing',
       radio: p.radio !== false,
-      radioText: driving ? 'Kite’s port is on its left flank, ROOK. Bring the arm round slowly.' : 'Morning, operator. The cartridge is on the bench. Get it onto ROOK and we’ll head out.',
+      radioText: driving ? 'IRIS’s port is on its left flank, Kite. Bring the arm round slowly.' : 'Morning, operator. The cartridge is on the bench. Get it onto Kite and we’ll head out.',
       ticks: ticks, labels: labels, marks: marks,
       setBg: this.setBg, setStrip: this.setStrip, setHeading: this.setHeading
     };

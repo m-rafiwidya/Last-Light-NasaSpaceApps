@@ -59,4 +59,4 @@ Tandborste
 
 ### CLOSING NOTE
 
-The Apollo 12 site, Surveyor 3 and the sky are recreated from real NASA data for the second moonwalk of Apollo 12, November 1969. The workshop, ROOK, Kite and their mission are fiction.
+The Apollo 12 site, Surveyor 3 and the sky are recreated from real NASA data for the second moonwalk of Apollo 12, November 1969. The workshop, Kite, IRIS and their mission are fiction.

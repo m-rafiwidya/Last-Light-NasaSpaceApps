@@ -2,7 +2,7 @@ class_name CargoDelivery
 
 extends Node
 
-## The rover's automatic cargo delivery (tools/blender/KITE_KIT.md 8): with cargo on the cargo
+## The rover's automatic cargo delivery (tools/blender/IRIS_KIT.md 8): with cargo on the cargo
 ## mount, parked in a CargoPort's window, E has the arm latch the cargo, carry it over, lower it
 ## straight down into the port and stow again. Visual only: the arm has no collision, the cargo
 ## rides it frozen and the port takes it by script.
@@ -160,21 +160,21 @@ func get_hint() -> String:
 	if target == null or part == null or not target.fits(part):
 		return ""
 	if target.needs_scan():
-		return "Scan Kite first (mast camera)"
+		return "Scan IRIS first (mast camera)"
 	if _latch() == null:
 		return "Mount the arm tool turret"
 	var m: Dictionary = measure(target)
 	var middle: float = (WINDOW_D.x + WINDOW_D.y) / 2.0
 	if m["bearing"] > WINDOW_BEARING.y:
-		return "Kite's port: turn %d degrees left" % ceili(m["bearing"] - WINDOW_BEARING.y)
+		return "IRIS's port: turn %d degrees left" % ceili(m["bearing"] - WINDOW_BEARING.y)
 	if m["bearing"] < WINDOW_BEARING.x:
-		return "Kite's port: turn %d degrees right" % ceili(WINDOW_BEARING.x - m["bearing"])
+		return "IRIS's port: turn %d degrees right" % ceili(WINDOW_BEARING.x - m["bearing"])
 	if m["d"] > WINDOW_D.y:
-		return "Kite's port: %.2f m closer" % (m["d"] - middle)
+		return "IRIS's port: %.2f m closer" % (m["d"] - middle)
 	if m["d"] < WINDOW_D.x:
-		return "Kite's port: back up %.2f m" % (middle - m["d"])
+		return "IRIS's port: back up %.2f m" % (middle - m["d"])
 	if m["approach"].is_empty() or m["seated"].is_empty():
-		return "Kite's port is out of the arm's reach from here"
+		return "IRIS's port is out of the arm's reach from here"
 	if robot.linear_velocity.length() > STOPPED_SPEED:
 		return "Stop here"
 	return "In position: press E to insert the cartridge"

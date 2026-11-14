@@ -2,7 +2,7 @@ class_name ScanHint
 
 extends Label
 
-## "SCANNING  KITE  60%" / "SCANNED  KITE" under the crosshair while the driven rover's mast camera
+## "SCANNING  IRIS  60%" / "SCANNED  IRIS" under the crosshair while the driven rover's mast camera
 ## holds on a scan target (RoverScanner).
 
 

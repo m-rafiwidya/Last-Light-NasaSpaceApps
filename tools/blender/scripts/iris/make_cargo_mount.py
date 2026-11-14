@@ -1,7 +1,7 @@
-"""Generates the rover's cargo mount (ROVER_KIT.md 9, KITE_KIT.md 5), checks it on the complete rover
+"""Generates the rover's cargo mount (ROVER_KIT.md 9, IRIS_KIT.md 5), checks it on the complete rover
 with the cartridge loaded, and renders previews.
 
-    blender -b --factory-startup -P tools/blender/scripts/kite/make_cargo_mount.py [-- --previews DIR | --no-previews]
+    blender -b --factory-startup -P tools/blender/scripts/iris/make_cargo_mount.py [-- --previews DIR | --no-previews]
 
 Writes tools/blender/parts/cargo_mount.blend, game/res/models/rover_kit/cargo_mount.glb and previews
 in tools/blender/previews/cargo_mount/. Needs every other rover kit part's .blend and cartridge.blend.
@@ -167,7 +167,7 @@ def main() -> None:
         arm_kit.pose_arm(scene["arm"], arm_kit.STOWED)
         kit.set_preview_colors(False)
     rows.append("ALL CHECKS OK" if failures == 0 else "%d CHECK FAILURES" % failures)
-    print("\n".join("KITE_KIT cargo_mount " + r for r in rows))
+    print("\n".join("IRIS_KIT cargo_mount " + r for r in rows))
 
 
 if __name__ == "__main__":

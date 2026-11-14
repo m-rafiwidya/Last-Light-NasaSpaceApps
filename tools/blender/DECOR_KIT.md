@@ -89,7 +89,7 @@ content is two NASA photographs (section 6), credited on the cards and in `CREDI
 | Rule | How it's kept |
 |---|---|
 | **Nothing blocks the walkways, the dock, the bay door or the rover's U-turn** | Every decor footprint goes into `make_layout.py`'s checks: the rover's entry lane, U-turn, dock zone and way out, the 1.0 m walkway and 0.8 m pinch rules, and the player capsule at every walkway point. Each footprint is checked from the floor to its top, **whether or not it has collision**. A piece that fails gets moved, not the rule relaxed. No decor goes inside the keep-clear zone (x -3.6 to +1.0, y -2.85 to +3.8), on the pad, in the door's swing, or in the exterior rover lane (4.1). |
-| **Decor can't be picked up and has no tooltip** | Decor is static: `MeshInstance3D`s, plus `StaticBody3D` boxes where it has collision. It never uses `RigidBody3D`, `InteractTrigger`, `HotswapPart` or `CargoPort`, and it's never in the groups `scan_target`, `charging_pad`, `kite` or `cargo_port`. The HUD only lights the crosshair, and `PartTooltip` only describes something, for a `RigidBody3D` or an `InteractTrigger` (game README 6.6), so looking at decor shows the plain crosshair and no panel. |
+| **Decor can't be picked up and has no tooltip** | Decor is static: `MeshInstance3D`s, plus `StaticBody3D` boxes where it has collision. It never uses `RigidBody3D`, `InteractTrigger`, `HotswapPart` or `CargoPort`, and it's never in the groups `scan_target`, `charging_pad`, `iris` or `cargo_port`. The HUD only lights the crosshair, and `PartTooltip` only describes something, for a `RigidBody3D` or an `InteractTrigger` (game README 6.6), so looking at decor shows the plain crosshair and no panel. |
 | **Decor never hides a mission part or trigger** | Decor stays outside every `InteractTrigger` box by at least 5 cm. The one exception is the mug and tablet on the console desk, inside `trigger_console`: looking at them shows the console's own prompt, which is right because they sit on the console. The player's interact ray hits layer 1, so a decor collider must not cross the line from any walkway point to any reach target in `make_layout.py` (rack slots, console, charger, restock button, door panel, the rover's sockets). That check is added. |
 | **Nothing reads as a mission part** | Decor doesn't reuse a rover-kit mesh or a part name. The spare wheel (3.2) is a different, older design: larger, open-spoked and worn. It hangs on a wall hook with a "NOT FOR FITTING" tag, far from the rack. No decor label names a rover part. |
 | **Simple or no collision** | At most one box per floor-standing piece, with `-convcolonly` like the workshop kit: layer 1, mask 0. Wall-mounted, desk-top, flat and floor-decal pieces get none (4.3). |
@@ -188,7 +188,7 @@ N2's states match `charging_pad.gd`'s lights, so the note also helps the player.
 
 Nothing stands in **x -4.0 to +2.0 (the door plus 1 m each side), from the facade (y 4.0) to the
 apron's end (y 16.5)**: the door's swing, the ramp, the way out and the way back in. The rover
-returns from Kite slightly from +X (Kite is 10 degrees right of straight out), so the larger
+returns from IRIS slightly from +X (IRIS is 10 degrees right of straight out), so the larger
 pieces go on the west flank. `trigger_door_auto` (x -4 to +2, y 1 to 9) holds only the cable
 reel's footprint edge, and the reel isn't on the rover layer, so the door doesn't react to it.
 
@@ -200,7 +200,7 @@ reel's footprint edge, and the reel isn't on the rover layer, so the door doesn'
 | XR | `dc_cable_reel` | east flank, (3.60, 4.60), axle along X | one box | the same mesh as REEL1 |
 | XJ | `dc_junction_box` | facade, east of the door, x 2.60, z 0.60 to 1.10 (0.40 x 0.20 x 0.50) | none | a pale box, a dark gland and an amber "POWER OUT" plate |
 | XW | `dc_cable_run` | from XJ down the wall, then along the ground to XR with one slack loop | none | 0.03 m flat-sided cable, about 12 segments, each snapped to the ground (4.3) |
-| TR1 | tyre tracks, the way out | from the ramp's end (y 6.4) along x -1.0 to y 9, curving towards Kite's bearing to the apron's end | none | Godot `Decal`s (4.4) |
+| TR1 | tyre tracks, the way out | from the ramp's end (y 6.4) along x -1.0 to y 9, curving towards IRIS's bearing to the apron's end | none | Godot `Decal`s (4.4) |
 | TR2 | tyre tracks, the way in (older) | along x -2.2, the entry lane, from the apron into the door | none | fainter |
 | TR3 | tyre tracks, an old loop | across the apron at an angle, about 8 m long | none | faintest; dropped first (section 9) |
 
@@ -407,7 +407,7 @@ Those cover every item in the request.
 - Exterior pieces rest within 2 cm of the ground in both levels, and nothing exterior is inside
   `trigger_door_auto`'s rover detection.
 - The labels on the decor fit their plates.
-- `tests/test_kite.gd` still passes (the drive out to Kite crosses the apron).
+- `tests/test_iris.gd` still passes (the drive out to IRIS crosses the apron).
 
 **Frame rate:** section 8.
 
