@@ -256,8 +256,8 @@ func _m3_part_checks(stock: Node3D) -> void:
 	_check("the far logger's two labels: Caveat in pen blue, on top facing up and underneath facing down, each fits its plate", ok, detail)
 	# The thermal kit's deck sockets (THERMAL type, one catalog entry each): each takes only its own part,
 	# the cargo mount neither; mounted, each sits at its origin on the deck (rover frame, ROVER_KIT.md 10)
-	var sockets: Dictionary = {"thermal_cover": [rover.find_child("ThermalCoverSocket", true, false), Vector3(0.1225, 0.44, 0.02)],
-		"thermal_heater": [rover.find_child("HeaterSocket", true, false), Vector3(0.12, 0.44, -0.225)]}
+	var sockets: Dictionary = {"thermal_cover": [rover.find_child("ThermalCoverSocket", true, false), Vector3(0.1225, 0.44, 0.045)],
+		"thermal_heater": [rover.find_child("HeaterSocket", true, false), Vector3(0.1, 0.44, 0.375)]}
 	var cargo_socket = rover.find_child("CargoSocket", true, false)
 	var kit_parts: Dictionary = {}
 	for id in sockets:

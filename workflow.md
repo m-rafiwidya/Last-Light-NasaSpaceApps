@@ -47,7 +47,7 @@ Before you merge, check that:
 4. Unfinished features are hidden or harmless, not crashing.
 5. New scripts have their `.uid` files committed. Open the project in the Godot editor once so it creates them. If they're missing, each person's editor makes its own and they clash.
 
-Two tests, `test_cursor` and `test_terrain`, were already failing before this workflow started. Don't worry about those, but don't let any other test break.
+Four tests, `test_cursor`, `test_terrain`, `test_level_switch` and `test_player_body`, were already failing before this workflow started (the last three because the rack now holds 19 parts and there's a new `THERMAL` part type). Don't worry about those, but don't let any other test break.
 
 ## Rules for Claude Code
 
@@ -87,6 +87,26 @@ func has_item(id: String) -> bool
 
 The script lives at `game/src/autoloads/campaign_state.gd`. It also has `debug_dump()`, which is only for the debug console, so don't use it in gameplay code.
 
+It also has read-only helpers for UI and dialogue:
+
+```gdscript
+func mission_title(id: String) -> String
+func mission_objectives(id: String, include_optional := false) -> PackedStringArray
+func objective_title(id: String) -> String
+func current_objective() -> String
+func is_mission_completed(id: String) -> bool
+func next_mission(id: String) -> String
+func mission_report(id: String) -> String
+```
+
+### Scan targets
+
+Anything Kite can scan is a node in group `scan_target` with `@export var target_id: String`, `scan_name`, `scan_report`, `is_scanned`, `mark_scanned(rover)` and `signal scanned(rover: Robot)`. The easiest way is to extend `ScanTarget` (`src/levels/scan_target.gd`). The mission director turns scans into objectives by `target_id`, so `"iris_panel"` completes `m1.iris_scanned`. Rafi: `Iris` needs `target_id = "iris_panel"`, and then Fahd deletes the temporary `IrisPanelPlaceholder`.
+
+### Other hooks
+
+`ChargingPad` has `signal docked(rover: Robot)` and `is_docked()`. The `MissionDirector` node in the Moon level (group `mission_director`) emits `recovery_started` and `recovery_finished` when Kite's battery goes flat and it gets recovered, which is useful for radio lines.
+
 For example, when the player finishes repairing IRIS, Rafi's code calls `CampaignState.complete_objective("m2.iris_activated")` and `CampaignState.set_flag("iris_online")`. It doesn't need to know what happens next.
 
 ### Testing without playing through
@@ -114,7 +134,7 @@ A mission completes when all its required objectives are done. Optional objectiv
 
 ### Mission data
 
-Missions, their objectives and their order live in `game/res/story/missions.json`. Fahd owns this file.
+Missions, their objectives and their order live in `game/res/story/missions.json`, along with each mission's `objective_titles` and end-of-mission `report`. Fahd owns this file.
 
 ### Dialogue data
 

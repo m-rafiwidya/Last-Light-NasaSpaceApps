@@ -505,20 +505,32 @@ func _socket_checks() -> void:
 	var rover = SL.current_scene.get_node("ReadyRover")
 	var workshop = SL.current_scene.get_node("Workshop")
 	var sockets: Array = rover.find_children("*", "HotswapSocket", true, false)
-	var spare_cartridge: RigidBody3D = workshop.rack_stock.get_node_or_null("Slot17")
+	var docked: Transform3D = rover.global_transform
+	var spares: Array = workshop.rack_stock.get_children() + (workshop.bench_stock.get_children() if workshop.bench_stock else [])
 	for socket in sockets:
 		var reached: Array = []
 		var lost: Array = []
 		for crouched in [false, true]:
 			var stance: String = "crouched" if crouched else "standing"
+			rover.global_transform = docked
+			rover.linear_velocity = Vector3.ZERO
+			rover.angular_velocity = Vector3.ZERO
 			player.global_position = rover.global_position + rover.global_basis.x * 1.4 + Vector3.UP * 0.05
 			await _ticks(0.3)
 			var part = socket.part
 			if part:
 				socket.get_trigger().interact(player)
-			elif spare_cartridge and socket.accepted_type == 6:
-				part = spare_cartridge
-				player.holder.pickup(part)
+			else:
+				for spare in spares:
+					if spare.has_method("is_mounted") and not spare.is_mounted() and socket.accepts_type(spare):
+						part = spare
+						break
+				if part:
+					# Fetched from behind the workshop's partition, a spare jams in its window
+					part.global_position = player.camera.global_position + Vector3.UP * -0.4
+					part.linear_velocity = Vector3.ZERO
+					player.holder.pickup(part)
+					await _ticks(0.5)
 			if not part or player.holder.held_object != part:
 				lost.append("%s: no part to try" % stance)
 				continue
@@ -543,7 +555,7 @@ func _socket_checks() -> void:
 			if player.want_to_crouch:
 				player._on_controller_crouch(false)
 				await _ticks(0.9)
-		var type_name: String = ["wheel", "motor", "battery", "mast head", "arm tool", "antenna", "cargo"][socket.accepted_type] if not socket.accepts_any_type else "any"
+		var type_name: String = ["wheel", "motor", "battery", "mast head", "arm tool", "antenna", "cargo", "thermal"][socket.accepted_type] if not socket.accepts_any_type else "any"
 		_check("sockets: %s (%s) takes its part from the hands, %s" % [socket.name, type_name, " and ".join(reached) if reached else "never"],
 			not reached.is_empty(), "; ".join(lost))
 
