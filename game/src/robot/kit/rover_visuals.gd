@@ -50,6 +50,12 @@ const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
 const CAMERA_PITCH_LIMIT: float = deg_to_rad(90.0)
 const CAMERA_SLIDE_MAX: float = 0.06
 const CAMERA_SLIDE_START: float = deg_to_rad(65.0)
+# Mast camera zoom: vertical field of view from MAST_FOV_MAX (no zoom) down to MAST_FOV_MIN
+# (5.7x magnification), changed by MAST_ZOOM_STEP per wheel notch and eased towards
+const MAST_FOV_MAX: float = 90.0
+const MAST_FOV_MIN: float = 20.0
+const MAST_ZOOM_STEP: float = 0.8
+const MAST_ZOOM_RATE: float = 12.0
 const MAST_TILT_AXIS_HEIGHT: float = 0.10
 const PIVOT_CAMERA_FORWARD: float = 0.07
 
@@ -116,6 +122,9 @@ var _arm_nodes: Dictionary = {}
 var mast_pan: float = 0.0
 var mast_tilt: float = 0.0
 var camera_extra_pitch: float = 0.0
+## Mast camera field of view (degrees): where it is easing to, and now
+var mast_fov_target: float = MAST_FOV_MAX
+var mast_fov: float = MAST_FOV_MAX
 var _mast_top: Node3D = null
 var _posed_head: HotswapPart = null
 
@@ -132,6 +141,7 @@ func _ready() -> void:
 	_build_mast_and_arm()
 	apply_arm_pose()
 	robot.controller.arm_toggle.connect(_on_arm_toggle)
+	robot.controller.zoom.connect(_on_zoom)
 	_mast_top = find_child("socket_mast_head", true, false) as Node3D
 
 
@@ -413,6 +423,19 @@ func _update_mast_head() -> void:
 	else:
 		return
 	robot.pivot.global_transform = mast_view_transform(on_head, camera_extra_pitch)
+	mast_fov = lerpf(mast_fov, mast_fov_target, 1.0 - exp(-MAST_ZOOM_RATE * get_physics_process_delta_time()))
+	robot.camera.fov = mast_fov
+	# Same screen distance turns the view by the same fraction of the field of view
+	robot.controller.look_scale = mast_fov / MAST_FOV_MAX
+
+
+func _on_zoom(steps: int) -> void:
+	mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, MAST_FOV_MAX)
+
+
+## Mast camera magnification relative to the unzoomed field of view (1.0 = no zoom)
+func mast_zoom() -> float:
+	return tan(deg_to_rad(MAST_FOV_MAX) / 2.0) / tan(deg_to_rad(mast_fov) / 2.0)
 
 
 ## The mast camera's transform: `on_head` (pivot_camera) pitched by `extra_pitch` about its own

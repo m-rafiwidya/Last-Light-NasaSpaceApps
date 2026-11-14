@@ -18,6 +18,8 @@ signal primary(value: bool)
 signal arm_toggle
 ## F: put the rover back upright where it is (press only)
 signal reset_requested
+## Mouse wheel: +1 per notch zooming in, -1 zooming out
+signal zoom(steps: int)
 
 ## The Robot this controller drives (set by the Robot)
 var robot: Node = null
@@ -33,8 +35,10 @@ var steer: float = 0.0
 ## relative to the robot body.
 var camera_azimuth: float = 0.0
 var camera_altitude: float = 0.0
-## Limit (radians) of camera_altitude either way. The Robot sets it to the mast head's tilt range.
+## Limit (radians) of camera_altitude either way, set by the Robot
 var altitude_limit: float = PI / 2.0
+## Mouse look sensitivity multiplier; lowered while the camera is zoomed in
+var look_scale: float = 1.0
 
 ## Arm joint picked with 1-5 (1 = J1 yaw .. 5 = J5 tool turret)
 var arm_joint: int = 2
@@ -59,8 +63,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y), -altitude_limit, altitude_limit)
-		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x), 2.0 * PI)
+		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y) * look_scale, -altitude_limit, altitude_limit)
+		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x) * look_scale, 2.0 * PI)
+	elif event.is_action_pressed("camera_zoom_in"):
+		zoom.emit(1)
+	elif event.is_action_pressed("camera_zoom_out"):
+		zoom.emit(-1)
 
 
 func _physics_process(delta: float) -> void:
