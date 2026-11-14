@@ -1,4 +1,374 @@
-# Moon terrain plan
+# Moon terrain
+
+Two sites, newest first:
+- **Apollo 12 (built, in the Moon level):** decisions and what the build found first, then the
+  plan as approved.
+- **South pole, LOLA Site01 (built, retired from the level):** the rest of this file, kept as
+  history. Its settings file still builds it, byte for byte.
+
+# Apollo 12 terrain
+
+## There is no starter pack
+
+`ASSET_BRIEF.md` describes a `Tandborste-NASA-Moon-Terrain-Starter.zip` (a 257 x 257 crop at
+2 m, 36.322 m of relief, float heights and metadata). **It doesn't exist:** the teammate doesn't
+have it, and it isn't on this machine. So the brief's starter-pack details (the crop and its span)
+don't apply. Used instead: the public product that pack would have come from, the LROC NAC DTM
+`NAC_DTM_APOLLO12_E030S3365` (v1.9) and its 2 m orthophoto `NAC_DTM_APOLLO12_M120005333_2M`. The
+brief's principles are kept:
+- **Exact float heights and scale:** the play tier is the DTM's posts, float32, minus one
+  constant, at 2 m.
+- **Provenance:** product, version, file hash, pixel window and constant are in `terrain.json`
+  `provenance`; the untouched posts are in `play_measured.f32`.
+- **Authored changes recorded separately:** in `terrain.json` `authored_changes`.
+- **The orthophoto isn't albedo:** it's used only as an approximate brightness pattern.
+
+(The 36.322 m figure matched no 512 m window containing the LM: see section 0 of the plan.)
+
+## Decisions (approved 2026-10-09)
+
+1. **Play area 1 km**, placed to hold the landing site, Surveyor 3 and the whole EVA 2 route.
+2. **Sun at the EVA 2 midpoint** (1969-11-20 05:49 UTC, 16.7 degrees), and **the star map aligned
+   for that moment**.
+3. **No procedural craters** (and no procedural roughness in the heights).
+4. Raw downloads live in `tools/terrain/raw/`.
+5. The Terrain Detail menu label stays as it is: the settings menu belongs to the UI work.
+
+## As built
+
+- **Play tier:** DTM posts lines 551-1063, samples 1601-2113 (0-based), 513 x 513, centre post
+  (807, 1857) at 3.01546 S, 336.57478 E. Heights are the DTM minus -1422.590 m (that post's own
+  value), so the centre is 0 and the range is -24.3 to +6.7 m. Posts go at (2 * column, height,
+  2 * row) with X east and Z south, float32 (`play.f32`), with no curvature, as the brief asks.
+- **What's in it:** the LM at (+100.7, -80.8), the ALSEP at (+9.8, -171.8), Surveyor 3 at
+  (+218.8, +22.3), Head crater's floor at (-37, -42), Bench (-138, +136), Surveyor crater's floor
+  (+155, +23), Halo about (+180, +176). Sharp is about 450 m west of Surveyor 3 and about 400 m from the
+  LM (LROC), roughly (-230, +60); the build didn't pin it down exactly.
+- **Slopes** inside the boundary, 4 m baseline: 2.3% over 15 degrees, 0.11% over 25, 0.012%
+  over 30, max 32.4.
+- **Confidence map over the window:** 7.2% "suspicious" (value 3), the rest correlated (10-14).
+  No shadowed, interpolated or edited posts.
+- **Authored changes** (`authored_changes`):
+  - the base, 46 x 32 m at (-300, +252), graded to its mean plane (0.46 degrees; 813 posts, at
+    most 0.215 m);
+  - 9619 seeded procedural rocks of 0.1-1.5 m (instances, not in the heightmap; the 1709 of
+    0.2 m and up collide).
+  - Nothing else touches the measured ground. `test_terrain.gd` checks that the collision is
+    `play.f32` bit for bit, and that it equals `play_measured.f32` outside the base.
+- **Shading only, never collision:**
+  - the regolith shader's sub-metre relief (normals and their small shadows);
+  - the procedural albedo mottling;
+  - the site brightness map. It's the orthophoto divided by the DTM's Lommel-Seeliger shading
+    under the image's own sun (37.9 degrees up at azimuth 273.3, from Horizons at the image time),
+    normalised, blurred to 8 m and limited to +-30% (5-95%: 0.96-1.15). It shows Surveyor crater's
+    halo, the LM's blast zone and fresh craters' haloes. Shading from relief smaller than the DTM
+    resolves stays in it.
+- **Ring:**
+  - near 8 m to +-4 km (the DTM where it has data, feathered over 100 m into SLDEM2015);
+  - mid 64 m to +-32.8 km (SLDEM2015, only rows 720-2360 fetched by byte range, 151 MB of the
+    tile's 1.4 GB);
+  - both with the exact conversion (curvature included). SLDEM2015 against the DTM: offset
+    +0.29 m, RMS 1.7-1.9 m. No far tier: the mare's horizon is 2.6 km away.
+  - The flat play tier sits 7.5 cm above the curved ring at the middle of its edge and 15 cm at
+    the corners; the 2 m skirt hides it.
+- **Boundary** at +-500 m, the same system as before. The camera far plane is 50 km.
+- **Sun and sky** (JPL Horizons, observer at the play centre, mean-Earth frame like the LROC
+  coordinates):
+  - the sun 16.72 degrees up at azimuth 90.62; 99.7% of the play area is lit;
+  - Earth 61.30 up at 90.24, 1.92 degrees across, 14% lit, longitude 225 E facing the site;
+  - the star map rotation is fitted to the sun and Earth (3 arcsec), and checked with Jupiter
+    (0.6") and Mars (12");
+  - zenith RA 164.8, Dec +3.1; north celestial pole 3.1 degrees up at azimuth 338.9.
+- **Preservation:** NASA's 2011 recommendations give a 75 m artifact boundary (the figure stated
+  for Apollo 11; the PDF's site table couldn't be extracted here). The test drive keeps at least
+  75 m from the LM, the ALSEP and Surveyor 3 (closest 104 m), and the base is over 225 m from all
+  three.
+- **Pipeline:** `site_type` "equirectangular" in `build_moon_terrain.py`, with:
+  - PDS3 readers (`LrocDTM`, `SldemBand`) and byte-range fetching;
+  - an `ephemeris` block (Horizons, cached in `raw/`);
+  - `site_brightness`;
+  - detail switches (`detail.roughness`, `detail.craters`).
+  - The polar path was rebuilt into a scratch folder: every heightmap, rock and horizon file was
+    identical to what was committed.
+
+### Measured (MacBook Pro M4, 1920x1080, Godot 4.7.2, `tools/measure_moon_fps.gd`)
+
+| | 1 km Apollo 12 | South pole (earlier) |
+|---|---|---|
+| Load, first (meshes not cached) | 2.68 s from the menu: data and collision 83 ms, 568 chunks in 2.0 s | about 4.5 s |
+| Load, later | 0.79-0.82 s (0.5 s of it the loading screen's fade); meshes 0.12-0.15 s | 1-2.5 s |
+| Memory over the main menu | +25 MB static, +137 MB video | not measured |
+| Chase camera, vsync off | 141-144 fps (7.0 ms), p99 12-14 ms, worst 16-19 ms | 122-146 fps |
+| On foot / facing the rover with both lights | 120-136 / 120-137 fps | |
+| Triangles drawn per frame (with shadow passes) | about 5.3 M | |
+
+The mast camera phase lost the window's focus in every run (the game caps an unfocused window at
+30 fps), so it has no clean number. The memory figures cover the whole level (rover, parts, sky),
+not just the terrain.
+
+### Not done yet
+
+- Re-rendering the windowed previews: sky, terrain and helmet light. The tools are retargeted.
+- The mission console's site map from the orthophoto. That console belongs to the UI work.
+- The Terrain Detail menu labels still say 0.5 m / 1 m.
+- Lower star visibility for a sunlit exposure: `star_brightness` is unchanged.
+
+# Apollo 12 switch: the plan as approved
+
+Research done on 2026-10-09, before the build. The decisions above override this plan where they
+differ: a 1 km area, positioned as described, and no starter pack.
+
+## 0. The starter pack (it turned out not to exist)
+
+The plan was written expecting `tools/terrain/raw/Tandborste-NASA-Moon-Terrain-Starter.zip`. One
+finding from that time still stands:
+
+- **The brief's crop may not contain the landing site.** The brief gives the crop 257 x 257 samples
+  at 2 m with a 36.322 m vertical range. In the LROC DTM (v1.9, below), every 257 x 257 window that
+  contains the LM has a range of 12.5 to 31.0 m. Windows with a 36.32 m range exist, but the nearest
+  is centred about 1.1 km north of the LM.
+
+## 1. Source data and loading the heights
+
+**Original product:** LROC NAC DTM `NAC_DTM_APOLLO12_E030S3365` (PDS volume LROLRC_2001, v1.9,
+Henriksen et al. 2017, doi:10.1016/j.icarus.2016.05.012). Stereo images M120005333 and M120012135
+(L/R), taken on 2010-02-05.
+
+| | |
+|---|---|
+| Format | PDS3 IMG, float32 little-endian (`PC_REAL`), 2468 x 1367 samples, 13,504,896 bytes |
+| Projection | equirectangular, true scale at 3.0 S, sphere 1737.4 km, 2.000 m/px |
+| Extent | 2.962-3.052 S, 336.452-336.615 E: **4.94 x 2.73 km** |
+| Heights | metres above the 1737.4 km sphere: -1461.2 to -1406.9 m. The DTM gives -1422.0 at the LM and -1432.5 at Surveyor 3; LROC's list gives -1422 and -1433 |
+| Accuracy | tied to 19 LOLA tracks with 1.31 m RMS; SOCET SET precision 0.8 m |
+| No data | 4.33% (outside the stereo overlap, at the edges); none within 1.1 km of the LM |
+| Confidence map (`_CONF`) | 0 no data, 3 suspicious, 10-14 correlated (no 1/2/4/15 here). Within 256 m of the LM: 6.9% suspicious, 1.0% value 10, the rest 11-14 |
+| Orthophotos | the two image pairs at 0.5 m (9873 x 5465, int16, 103 MB each) and at 2 m |
+
+**Loading (reusing `build_moon_terrain.py`):**
+1. **Verify the pack.** Read the pack's float binary and metadata as they are. Find the crop's
+   pixel window in the PDS DTM by exact match, and check that the heights equal the DTM minus the
+   pack's stated constant, to float rounding. Record the pack's file names, sha256 hashes, the
+   window, the constant and the product IDs in `terrain.json` under `provenance`. Report whether the
+   LM and Surveyor 3 are inside the crop.
+2. **Play tier as the brief says.** Sample (column c, row r) goes at `(2c, h[r,c], 2r)`: X east,
+   Z south, rows along +Z, the same axes the game uses now. No resampling, no height scaling, no
+   curvature correction (the heights are local metres on purpose).
+   - Store it as **float32** (`play.f32`), not 16-bit, so the values stay exact (1 MB for 1 km).
+   - Mesh triangles keep Jolt's diagonal, so the measured mesh is the collision mesh (`test_terrain`
+     check 2).
+   - If the play area is larger than the crop (section 8), the extra samples come from the same PDS
+     DTM with the same constant subtracted. Inside the crop's footprint they must equal the pack's
+     floats, which proves it's one pipeline, not two.
+3. **Code changes.** Add a projection type (equirectangular next to the existing polar
+   stereographic) for `LocalFrame` and the ring conversion. Add readers for the pack and for PDS
+   float IMGs. `fetch` learns byte ranges (section 2). New settings file
+   `tools/terrain/moon_apollo12.json`, output in `game/res/terrain/moon_apollo12/`.
+
+**Detail: what's measured, what's shading, what collides.** `terrain.json` gets an `authored_changes`
+list, and the README and CREDITS repeat it.
+
+| Layer | Source | Visible | Collision | Status |
+|---|---|---|---|---|
+| Measured surface | the pack's 2 m floats (plus the PDS DTM past the crop) | yes | **yes** | NASA-derived, unmodified |
+| Sub-metre relief in `regolith.gdshader` (normals and small shadows) | procedural | yes | **no** | shading only |
+| Albedo mottling, crater freshness | procedural, plus the orthophoto (section 3) | yes | no | shading only |
+| Rocks of 0.2 m and up | procedural instances, seeded | yes | **yes**, convex | authored, listed with their seed |
+| Graded workshop and pad footprints | flattened to their mean plane | yes | **yes** | authored; the area and largest height change are recorded |
+| Small craters and roughness below the DTM's resolution | procedural | — | — | **not added by default**; only with approval, as a separate delta file listed as authored |
+
+The DTM resolves craters down to about 6-10 m (3-5 posts). Driving on 2 m facets is smooth, and the
+shader relief supplies the look up close. The current "rover-scale detail in the heightmap" step
+(LOLA section 2.4) stays in the code but is switched off for this site.
+
+## 2. Ring to the horizon, and the boundary
+
+From 2 m up on a flat mare the horizon is only about **2.6 km** away, and ground 30 km out is hidden
+unless it stands over 260 m high. Nearby mare relief stays within tens of metres. Lansberg's rim is
+about 125 km away, under 4.5 km of curvature. So the skyline is close, and this ring is much smaller
+than the south pole's.
+
+| Tier | Source | Spacing | Reach from the play centre |
+|---|---|---|---|
+| play | the pack plus the PDS DTM (section 1) | 2 m | 512 m or 1 km square (section 8) |
+| near | the same NAC DTM | 8 m | to the DTM's edges, which are uneven around the LM: 1.1 km E, 1.2 km S, 1.5 km N, 3.8 km W |
+| mid | **SLDEM2015** (LOLA plus Kaguya TC, NASA GSFC LOLA team, PDS), 512 px/deg (59 m) | 64 m | +-32 km |
+| far | the same | 512 m | only if the build's horizon check shows it ever sets the skyline; dropped otherwise |
+
+- **SLDEM2015:** tile `sldem2015_512_30s_00s_315_360_float.img` (1,415,577,600 bytes, float32 km
+  above 1737.4 km, simple cylindrical). That breaks the 1 GB rule, but the server accepts byte
+  ranges and rows are 92,160 bytes, so `fetch` downloads only rows 1029-2053 (+-1 degree of
+  latitude, **94 MB**), checks the byte count and records sha256. LDEM_512 (LOLA only) has gaps
+  between tracks at the equator, so SLDEM2015 is the better choice.
+- **Joins:** the near tier uses the DTM wherever it has data and SLDEM2015 elsewhere, with a 100 m
+  feather. SLDEM2015 is calibrated to the DTM (offset and RMS, with failure limits, the same way
+  `PolarDEM.calibrate` works).
+- **Curvature:** ring tiers get the exact conversion (LOLA section 2.2) in the equirectangular
+  projection. The play tier stays flat as delivered, so at its edge it sits 2 cm (512 m) or 7.5 cm
+  (1 km) above the curved ring. The skirt hides this, and it's recorded.
+- **Boundary:** the same system as now: walls on layer 7, survey stakes, the HUD warning within
+  20 m, `LostZone`. `boundary_half_size` becomes 240 m (512 m area) or 500 m (1 km). Past the wall
+  the ground is still the measured 2 m surface out to the play tier's edge, then the 8 m DTM.
+- **Camera far plane:** 200 km becomes about 40 km.
+
+## 3. Surface: procedural, orthophoto, or a mix
+
+The orthophotos were taken with the sun **37-38 degrees up in the west** (azimuth 273; Horizons, at
+the image times). At that height almost nothing casts a shadow: only slopes over 53 degrees facing
+east would, and the mare has none over 33 degrees at 4 m. What's baked in is mostly **shading**:
+east-facing slopes darker, west-facing slopes brighter, and small boulders and pits that the DTM
+can't resolve.
+
+| Option | Pros | Cons |
+|---|---|---|
+| A. Procedural regolith only (as now) | consistent under any sun | loses the real site's look: Surveyor crater's halo, the LM's blast zone, the tracks |
+| B. Orthophoto as the colour, sun matched to it (37 degrees from the west) | the real image, its shading consistent with the light | not the Apollo 12 sun; the image isn't albedo (brief) |
+| **C. Mix (recommended)** | real brightness patterns under the Apollo 12 sun | the albedo is approximate |
+
+How C works: divide the 0.5 m orthophoto by the DTM's own shading under the image's sun, blur the
+result to about 8 m, and use it as a gentle multiplier on the procedural albedo. Procedural detail
+stays below that scale. Shading from slopes smaller than the DTM resolves remains in it, so the
+records call it "approximate, not calibrated albedo", as the brief asks. The unmodified orthophoto is
+also used **as a site image**: the mission console's map and the historical card. The brief says to
+use the matching source crop for the surface image; C does, through the normalisation.
+
+## 4. Sun, Earth and stars for this site
+
+Horizons, observer at the LM (336.5781 E, 3.0128 S, -1.422 km), airless apparent az/el (azimuth from
+north towards east; the game's convention, degrees from -Z towards +X with -Z north, gives the same
+numbers). EVA values are interpolated from the 2-hour table.
+
+| Moment (UTC) | Sun elevation | Sun azimuth |
+|---|---|---|
+| Landing, 1969-11-19 06:54 | **5.1** | 91.2 |
+| EVA 1, 11:32-15:28 | 7.5-9.5 | 91.0 |
+| EVA 2, 1969-11-20 03:54-07:44 (Surveyor 3 visit) | **15.8-17.7** | 90.6 |
+| Liftoff, 14:26 | 21.1 | 90.5 |
+| Orthophotos, 2010-02-05 10:34 / 12:28 | 37.9 / 36.9 | 273.3 / 273.2 |
+
+- **Earth during the stay:** azimuth 87.3-91.1 (east, behind the rising sun), **61.3-61.4 degrees
+  up**, 1.93 degrees across. At landing it was 56 degrees from the sun and 22% lit, a thick crescent.
+  `LunarSky` already lights Earth with the `Sun` light, so its phase follows.
+- **Options:** landing (5.1 degrees, shadows 11 times as long as the object), EVA 1 (about 8.5),
+  **EVA 2's midpoint (16.7, recommended)**, or the orthophoto sun (only with surface option B). EVA 2
+  keeps strong directional shadows, about 3.3 times the object's length, and a readable workshop
+  exterior. It's the moment the crew walked to Surveyor 3. The sun is from the east, so shadows
+  point west. All the Apollo 12 options are lunar morning; a real low *evening* sun at this site
+  would need a different date.
+- **Star map: align it.** `LunarSky.world_to_equatorial()` assumes the south pole (south ecliptic
+  pole overhead). It gets replaced by a rotation stored in `terrain.json`. The pipeline fits it from
+  Horizons' ICRF RA/Dec plus az/el for the sun and Earth at the chosen moment. Tested at landing, it
+  puts the sun and Earth within 4.6 arcsec and predicts Jupiter (1.7") and Mars (10.9"), which
+  weren't used in the fit. The NASA SVS star map is in the same ICRF/J2000 frame, so no precession
+  correction is needed. At landing the zenith is RA 153.0, Dec +7.5, and the celestial north pole is
+  7.5 degrees up at azimuth 340.7. The README names the moment the sky shows instead of claiming a
+  general alignment. Horizons replies are cached in `raw/`, so rebuilds work offline.
+- **Pipeline:** `choose_sun` (permanently shadowed crater) and `choose_earth` (libration range) give
+  way to an `ephemeris` block in the settings file (one UTC moment). Horizon maps stay; their first
+  azimuth is still the sun's.
+- **Exposure and fill:** `exposure_for_elevation` / `fill_for_elevation` were tuned at 1.5-9
+  degrees. They need checking in renders at 16.7.
+
+## 5. Surveyor 3
+
+LROC coordinates (Wagner et al. 2016 list): LM 3.0128 S, 336.5781 E; Surveyor 3 3.0162 S,
+336.5820 E. **Surveyor 3 is 157 m from the LM: 118 m east, 103 m south**, on the inner east wall of
+Surveyor crater (about 200 m across, LM on its north-west rim). It's inside a 512 m square centred on
+the LM (138 m from its east edge) and inside 1 km. Whether it's inside the **starter crop** waits on
+the zip (section 0). The ALSEP central station is 128 m north-west of the LM.
+
+Preservation: R7 points to NASA's 2011 recommendations for Apollo sites. The workshop, the pad and
+the routes go outside the boundaries those set around the LM and Surveyor 3 (exact radii to be
+checked). The historic hardware isn't modelled now; markers are optional.
+
+## 6. What depends on the south pole site, and what replaces it
+
+| Depends on the pole | Replacement |
+|---|---|
+| `test_terrain.gd` check 3: permanently shadowed crater floor dark, base and pad lit | the sun at the configured moment: base and pad lit, and the lit share of the play area equals the pipeline's value |
+| `test_terrain.gd` check 5: the drive into the shadowed crater, `ROUTE` | base, then past the LM's preservation boundary, Surveyor crater's rim, down to the Surveyor 3 viewpoint and out, then Head crater's rim. Same wheel checks |
+| `test_terrain.gd` checks 1-2, 4: layout, mesh = collision at base / pad / crater, boundary | same checks at the new spots and boundary size |
+| `test_moon_sky.gd`: south ecliptic pole overhead, Canopus 75.8 up, ecliptic on the horizon, north celestial pole -66.56 | sun, Earth and Jupiter drawn at their Horizons directions (within 0.1 degree); north celestial pole at the computed az/el; "sun where the pipeline chose it" reads the new `terrain.json` |
+| `moon_level.tscn`: sun 2.1 / 200, `earth_direction`, spawn / base / pad / rover / pile positions, `camera_far` | from the new `terrain.json` and a new flat-spot survey |
+| `LunarSky`: south-pole basis, `forward_ecliptic_longitude`, the "1.5 degrees max" sun comments | the stored rotation |
+| `tools/render_sky_previews.gd` (Canopus check, `ROVER_AT`), `render_terrain_previews.gd` (`BASE`, `CRATER`), `render_helmet_light.gd` (`CRATER`) | new spots; the sky check uses a bright star the new rotation puts in view |
+| Terrain Detail setting: Low = every other 0.5 m sample | 2 m data has nothing to halve: Low keeps the measured mesh and collision and only turns off the relief's shadows, which it already does. The menu row lives in `settings_sub_menu.gd` (UI); any label change gets coordinated with the session working on UI |
+| Hard shadows (chosen against penumbra through the crater rim at 2.1 degrees) | keep for now; re-check at 16.7 |
+| README Moon sections, `CREDITS.md` (LOLA / PGDA) | LROC NAC DTM, orthophotos, SLDEM2015, Horizons |
+
+These don't depend on the site and only need re-running: `test_rover_landing`, `test_level_gravity`
+and `test_parking` (they build their own floors), `test_level_switch`, `test_wheel_contact`,
+`test_straight_line`.
+
+## 7. The south pole terrain
+
+Agreed: **keep the pipeline code and this history, and remove the data from the Moon level.**
+- The polar path keeps working: `moon_site01.json` stays as a second settings file and a regression
+  check on the generalised code.
+- `game/res/terrain/moon_site01/` (17 MB) is deleted from the game. It rebuilds exactly from the
+  settings file, the seed and the raw files. The raw files (about 760 MB, gitignored, local only) can
+  go whenever you like.
+- I see no reason to keep the data in the level. No other scene or test uses it once section 6 is
+  done.
+
+## 8. 512 m or 1 km at the same 2 m spacing
+
+**Yes, the original DTM covers far more:** 4.94 x 2.73 km, about 51 times the crop's area, with no
+data gaps within 1.1 km of the LM. A 1 km square centred on the LM fits with 600 m to spare on the
+nearest (east) edge.
+
+Measured on the DTM, squares centred on the LM (slopes over a 4 m baseline):
+
+| | 512 m (257 x 257) | 1 km (513 x 513) |
+|---|---|---|
+| Relief | 21.4 m | 31.6 m |
+| Slopes over 15 / 25 / 30 degrees | 3.1% / 0.23% / 0.03%, max 32.4 | 2.4% / 0.10% / 0.01%, max 32.4 |
+| "Suspicious" confidence | 6.9% | 7.3% |
+| LM, ALSEP, Surveyor 3, Surveyor crater (200 m), Block (on its rim), Halo (south of it) | yes | yes |
+| Head crater (about 100 m, centre 134 m W) | yes, close to the west edge | yes |
+| Bench crater (about 68 m, centre 227 m W / 211 m S) | cut by the edge | yes |
+| Sharp crater (EVA 2's farthest point, about 400 m SW) | no | yes: **the whole EVA 2 traverse** (1.3 km loop) |
+| Other craters in the square | none of 40 m or more whole | a 150 m crater 353 m east, an 80 m one 487 m south-south-east |
+| A 450 m subdued crater centred 520 m W / 262 m N (possibly Middle Crescent, EVA 1's farthest stop; not confirmed) | no | mostly outside; reaching it means moving the centre about 250 m west |
+| Play-tier samples / triangles | 66k / 131k | 263k / 525k |
+| Height data (float32) | 0.26 MB | 1.05 MB |
+| Mesh memory with LODs (*estimate*) | about 3 MB | about 13 MB |
+| First load, play tier (*estimate*) | well under 1 s | about 1 s |
+| Frame rate (*estimate*) | no difference expected | no difference expected |
+
+Crater positions are from the DTM; diameters come from the hillshade and published values. The names
+follow NASA's descriptions (Head west, Bench and Sharp south-west, Halo south, Block on Surveyor's
+north-east rim). An exact traverse-map check is still to do, since the NASA traverse PDF didn't
+download.
+
+How the estimates were scaled: today's play tier is 2049 x 2049 (4.2M samples, about 150 MB of baked
+meshes, first load 4.5 s). Both options are 16 times (512 m) or 4 times (1 km) smaller. On the M4,
+0.5 m and 1 m ground already ran at the same speed (LOLA section 7: the cost isn't in the terrain's
+triangles). Both get measured with `measure_moon_fps.gd` before you decide.
+
+Gameplay: at 2 m/s on foot, 512 m takes 4 minutes to cross; 1 km takes 8. A 512 m area holds the
+first-milestone workshop and pad easily. 1 km also leaves room for the second sortie's IRIS station
+some distance away, and every place the Apollo 12 crew walked except EVA 1's farthest stop.
+**Recommendation: 1 km**, if the team doesn't need the play area to be the 512 m crop itself. It's
+the same NASA data at the same spacing and still costs a quarter of today's terrain. **The size
+won't change without your approval.**
+
+## 9. Order of work, once approved
+
+1. Put the zip in `raw/`. Verify it against the PDS DTM (section 1, step 1) and report the crop's
+   position, its constant, and whether the LM and Surveyor 3 are inside.
+2. Pipeline: projection type, readers, byte-range fetch, ephemeris block and star rotation, the
+   `authored_changes` / `provenance` records, previews. Build `moon_apollo12`. Rebuild `moon_site01`
+   to check the polar path still matches.
+3. Game: `MoonTerrain` reads `play.f32` and the new tiers; `LunarSky` uses the stored rotation; new
+   positions in `moon_level.tscn`; delete `moon_site01` data.
+4. Surface option C, plus the console map image.
+5. Tests and tools from section 6; frame-rate and loading measurements for both sizes (section 8);
+   README, CREDITS.
+
+---
+
+# History: south pole terrain plan (LOLA Site01)
 
 Replace the Moon level's flat 512 m placeholder (`game/src/levels/moon_level.tscn`, `Ground`) with real
 lunar south pole terrain: a 1 km x 1 km play area at real scale (1 unit = 1 m), a coarser ring of real

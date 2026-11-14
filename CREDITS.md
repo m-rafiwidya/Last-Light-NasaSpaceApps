@@ -30,18 +30,37 @@ Downscaled from 5400 x 2700 to 1024 x 512.
 
 ## Moon terrain
 
-`game/res/terrain/moon_site01/`: the Moon level's ground, made by `tools/terrain/build_moon_terrain.py`
-(see `tools/terrain/MOON_TERRAIN.md`) from NASA Lunar Reconnaissance Orbiter LOLA data. The game
-data are converted (to metres in a local frame, with the Moon's curvature), resampled and, in the
-play area, given procedural small craters, roughness and rocks; the large-scale shape is NASA's.
+`game/res/terrain/moon_apollo12/`: the Moon level's ground at the Apollo 12 landing site, made by
+`tools/terrain/build_moon_terrain.py` (see `tools/terrain/MOON_TERRAIN.md`). The play area is
+the LROC NAC DTM's 2 m posts unchanged (float32, one constant subtracted), except for a graded
+46 x 32 m base; the rest is converted to metres in a local frame with the Moon's curvature and
+resampled. Authored additions (rocks, the graded base) are listed in `terrain.json`
+(`authored_changes`); the untouched posts are kept in `play_measured.f32`.
 
-- **LOLA 5 m/pixel south pole landing site DEMs**, Site01 "Connecting ridge", NASA Goddard Space
-  Flight Center Planetary Geodesy Data Archive (PGDA), <https://pgda.gsfc.nasa.gov/products/78>;
-  Barker, M. K., et al. (2021), Improved LOLA elevation maps for south pole landing sites,
-  Planetary and Space Science 203, 105119, doi:10.1016/j.pss.2020.105119
-- **LOLA permanently shadowed regions, 20 m/pixel** (`LPSR_80S_20MPP_ADJ`), NASA GSFC PGDA,
-  <https://pgda.gsfc.nasa.gov/products/90>
-- **LOLA gridded data records** `LDEM_875S_20M` and `LDEM_85S_40M`, NASA Planetary Data System
-  Geosciences Node, <https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/>
+- **LROC NAC DTM of the Apollo 12 landing site**, `NAC_DTM_APOLLO12_E030S3365` (v1.9, 2 m/post),
+  its confidence map `NAC_DTM_APOLLO12_CONF` and the orthophoto
+  `NAC_DTM_APOLLO12_M120005333_2M`, NASA/GSFC/Arizona State University, LRO-L-LROC-5-RDR-V1.0
+  (volume LROLRC_2001), <https://data.lroc.im-ldi.com/lroc/view_rdr/NAC_DTM_APOLLO12>;
+  Henriksen, M. R., et al. (2017), Extracting accurate and precise topography from LROC narrow
+  angle camera stereo observations, Icarus 283, 122-137, doi:10.1016/j.icarus.2016.05.012.
+  The orthophoto is used only as an approximate brightness pattern (divided by the DTM's
+  shading, blurred), not as albedo.
+- **SLDEM2015** (LOLA and SELENE Terrain Camera, 512 pixels/degree), tile
+  `sldem2015_512_30s_00s_315_360_float` (rows 720-2360 only), NASA Planetary Data System
+  Geosciences Node, <https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/>;
+  Barker, M. K., et al. (2016), A new lunar digital elevation model from the Lunar Orbiter Laser
+  Altimeter and SELENE Terrain Camera, Icarus 273, 346-355, doi:10.1016/j.icarus.2015.07.039
+- **LROC coordinates of lunar anthropogenic features** (28 July 2016) for the LM, the ALSEP and
+  Surveyor 3, LROC Science Operations Team, Arizona State University,
+  <https://www.lroc.asu.edu/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf>
+- **JPL Horizons** (NASA/JPL Solar System Dynamics) for the sun, Earth and the star map's
+  orientation seen from the site at 1969-11-20 05:49 UTC, <https://ssd.jpl.nasa.gov/horizons/>
 
-Every source file's URL, byte count and SHA-256 are recorded in `terrain.json` (`sources`).
+Every source file's URL, byte count (and byte range) and SHA-256 are recorded in `terrain.json`
+(`sources`), the DTM window and constant in `provenance`.
+
+The south pole site that the level used before (`moon_site01`, removed from the game; its
+pipeline settings remain) came from the LOLA 5 m/pixel south pole landing site DEMs (NASA GSFC
+PGDA product 78; Barker et al. 2021, doi:10.1016/j.pss.2020.105119), the LOLA permanently
+shadowed regions map (PGDA product 90) and the LOLA gridded data records `LDEM_875S_20M` and
+`LDEM_85S_40M` (NASA PDS Geosciences Node).
