@@ -1,10 +1,10 @@
 # Game music: style guide and pipeline
 
 Every track for this game follows this file. The game is a calm space exploration game. Every
-track belongs to exactly one of three moods (Galaxy, Wilds, Journey), declared at the top of the
-track file as `MOOD = "galaxy"`, `"wilds"` or `"journey"` (the pipeline refuses tracks without
-one). Pick the mood from where the track plays, then follow that mood's section and the shared
-rules.
+track belongs to exactly one of three moods: Deep Space (the main style), Wilds or Journey. The
+mood is declared at the top of the track file as `MOOD = "deep_space"`, `"wilds"` or `"journey"`
+(the pipeline refuses tracks without one). Pick the mood from where the track plays, then follow
+that mood's section and the shared rules.
 
 ## Originality (all moods)
 
@@ -14,26 +14,42 @@ rules.
   closely imitate a melody, hook or recognisable rhythm from an existing song, including the
   reference games.
 
-## Mood 1: Galaxy (hub, menus, safe areas)
+## Mood 1: Deep Space (main style)
 
-Feel: magical, floating, wonder at something vast. Inspired by the feel of Super Mario Galaxy:
-orchestral, sparkling, spacious, gently playful.
+Feel: calm, empty, mysterious, slightly magical, liminal: floating alone somewhere very large and
+very quiet. Reference feel: Brian Eno's *Apollo: Atmospheres and Soundtracks*.
 
-| Instrument     | kit name                    | GM program (GeneralUser GS)      | Typical role                   |
-|----------------|-----------------------------|----------------------------------|--------------------------------|
-| Celesta        | `celesta`                   | 8 Celeste                        | Lead melody, sparkles          |
-| Harp           | `harp`                      | 46 Orchestral Harp               | Waltz arpeggios, rolled chords |
-| Glockenspiel   | `glockenspiel`              | 9 Glockenspiel                   | Sparse accents, octave above   |
-| Strings        | `strings` / `strings_slow`  | 48 Fast Strings / 49 Slow Strings | Pads, bass, swells, answers   |
-| Soft choir pad | `choir` / `choir_pad`       | 52 Concert Choir / 91 Space Voice | Long held chords, low in mix  |
+All sounds come from the synthesis engine (`synth.py`), never the soundfont. The stem/instrument
+name picks the voice (a voice name, or a voice name plus `_suffix` for extra stems, e.g.
+`pad_high`):
 
-- Harmony: Lydian mode (major scale with a raised 4th: C Lydian = C D E F# G A B). Let the #4
-  be heard. Major 7th, add9 and maj7#11 chords, and the Lydian II major chord over the tonic
-  (D/C). Good motions: Imaj7 ↔ II/I vamps, Imaj7 → vim7 → Vmaj7 → iiim7 → IIadd9. Avoid strong
-  V7 → I cadences, diminished tension and minor-key drama. Phrases may end on the 9th or #11.
-- Tempo: 70–90 BPM, often a 3/4 waltz (harp or low strings on beat 1, light harp/celesta on
-  2–3); 4/4 for variety.
-- Reference example: `tracks/first_light.py`.
+| Voice      | Sound                                                       | Role                                      |
+|------------|-------------------------------------------------------------|-------------------------------------------|
+| `pad`      | Detuned saws, slow attack/release, lowpass slowly breathing | Main chord bed                            |
+| `pad_sine` | Detuned sine layers, glassier                               | High, quiet colour layer                  |
+| `drone`    | Very low sustained tone, slow beating, drift and swell      | Foundation, often a pedal through the loop |
+| `bell`     | Soft FM bell, long decay, echo                              | Sparse twinkles                           |
+| `chime`    | Higher, glassier, shorter FM chime                          | Even sparser, highest sparkle             |
+| `texture`  | Very quiet band-passed noise (note pitch = band centre)     | Distant wind, held under everything       |
+
+- Effects are built into each voice (`fx_chain` in `synth.py`): a huge synthetic hall on
+  everything, octave-up shimmer on pads and bells, slow chorus on pads, soft echo on bells, and a
+  very slight pitch wobble for the hazy, liminal feel. Tune voices and effects in `synth.py`,
+  not per track.
+- Never: choir, orchestral or acoustic instruments, drums or percussion, fast rhythms, arpeggiator
+  patterns, or a clear hummable melody. Bells are isolated notes, not tunes.
+- Harmony: slow chord changes, every 8–16 seconds; pads crossfade through their long releases.
+  Suspended and open chords (sus2, sus4, add9, open fifths, major 7th or 9th without the third),
+  often over a drone pedal. Use Lydian (raised 4th, e.g. E F# G# A# B C# D#) for the magical
+  moments. Leave things unresolved: no cadences, and the loop never "arrives".
+- Space and silence: lots of room between events. Bells and chimes are a handful per minute, at
+  irregular times. Evolve very slowly with `song.swell(..., cc=74)` (pad brightness) and `cc=11`
+  (volume) over tens of seconds.
+- Timing: write at `Song(60, 4)`, so one beat is one second and one bar is 4 seconds; a chord
+  every 2–4 bars. Loops of about 1–3 minutes.
+- Velocities: pads 50–80, drone 50–90, bells 30–60, texture 40–70. Voice gains in `synth.py`
+  already set the balance between them.
+- Reference: `tracks/deep_space_demo.py` (engine demo, every voice).
 
 ## Mood 2: Wilds (exploring planets)
 
@@ -91,8 +107,9 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 - Nothing harsh: no sharp attacks stacked in the same register, no distortion, synth leads,
   brass stabs or drum kits; keep bells sparse and soft. `render.py` already softens highs
   (−3 dB shelf above 8 kHz).
-- Large hall reverb on everything: `render.py` renders FluidSynth dry and applies the hall
-  (`hall()`) with pedalboard. Tune it there, not per track.
+- Large reverb on everything. Deep Space voices have theirs built in (`synth.py`); soundfont
+  instruments (Wilds, Journey) are rendered dry by FluidSynth and get the hall (`hall()` in
+  `render.py`).
 - Loudness: the mix is normalised to −20 LUFS (peaks capped at −1 dBFS), and the same gain is
   applied to every stem. Override per track with `./track <name> --lufs N` only if needed
   (e.g. a very sparse Wilds track may need a lower target so its piano notes aren't too loud).
@@ -116,9 +133,14 @@ Time: a singable wind melody over light, rhythmic accompaniment.
 - `tracks/<name>.py` (snake_case): composition only. It sets `MOOD` and defines `compose() -> Song` using
   `tracks/kit.py` (bars/beats timing, `PROGRAMS`, `scale()` with `LYDIAN`, `notes`, `chord`,
   `sustain` for tied pads, `swell` for CC11) and ends with
-  `if __name__ == "__main__": kit.main(compose)`. `tracks/first_light.py` is the reference example.
+  `if __name__ == "__main__": kit.main(compose)`. `tracks/deep_space_demo.py` is the reference example.
 - Each `song.instrument(name)` is one MIDI track and one stem. Instruments with the same name
-  share a stem, e.g. name both celesta and glockenspiel `"bells"` for a combined stem.
+  share a stem (e.g. two `"pad"` instruments).
+- Stems whose name is a synth voice (`pad`, `pad_sine`, `drone`, `bell`, `chime`, `texture`, or
+  one of those plus `_suffix`) are synthesised by `synth.py` with their effects; any other name
+  is a soundfont instrument (`PROGRAMS`, `DRUM_KITS` in `kit.py`) rendered by FluidSynth. In the
+  synth, CC11 is volume and CC74 brightness (64 = neutral), and every LFO is snapped to whole
+  cycles per loop, so modulation continues seamlessly across the loop point.
 - `render.py <file.mid>` renders any multi-track MIDI. It writes to `output/<name>/`:
   - `<name>.mid`: the composition (written by `kit.main`).
   - `<name>.ogg`: the full loop mix (48 kHz stereo Vorbis), the file for the game.

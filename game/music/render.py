@@ -2,9 +2,11 @@
 
     .venv/bin/python render.py output/<name>/<name>.mid [--out DIR] [--lufs -20]
 
-Per stem (MIDI tracks grouped by track name): FluidSynth renders it dry with GeneralUser GS,
-pedalboard adds the hall, and everything after the loop end (held notes, releases, reverb tail)
-is folded back onto the start, so the end of the loop flows into its beginning. The mix is the sum
+Per stem (MIDI tracks grouped by track name): stems named after a synth voice ("pad", "drone",
+"bell", ... see synth.py) are synthesised with their own effects; any other stem is rendered dry by
+FluidSynth with GeneralUser GS and gets the pedalboard hall. Then everything after the loop end
+(held notes, releases, reverb tail) is folded back onto the start, so the end of the loop flows
+into its beginning. The mix is the sum
 of the stems; one gain sets the mix to the loudness target and is applied to every stem.
 
 Loop length: a "loop_end" MIDI text event (tracks/kit.py Song.loop), otherwise the last note end
@@ -22,6 +24,8 @@ import pedalboard
 import pretty_midi
 import pyloudnorm
 import soundfile as sf
+
+import synth
 
 HERE = Path(__file__).resolve().parent
 SOUNDFONT = HERE / "soundfonts" / "GeneralUser-GS.sf2"
@@ -113,15 +117,21 @@ def render(midi_path, out_dir=None, target_lufs=TARGET_LUFS):
         if inst.notes:
             groups.setdefault(stem_name(inst), []).append(inst)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        dry = {stem: render_dry(pm, insts, Path(tmp), stem) for stem, insts in groups.items()}
-
-    length = max(loop_len, max(len(a) for a in dry.values())) + round(TAIL_SECONDS * SAMPLE_RATE)
+    tail = round(TAIL_SECONDS * SAMPLE_RATE)
     wet = {}
-    for stem, audio in dry.items():
-        padded = np.zeros((length, 2), dtype=np.float32)
-        padded[:len(audio)] = audio
-        wet[stem] = hall()(padded, SAMPLE_RATE)
+    with tempfile.TemporaryDirectory() as tmp:
+        for stem, insts in groups.items():
+            voice = synth.voice_for(stem)
+            if voice:
+                wet[stem] = synth.render_stem(insts, voice, SAMPLE_RATE, loop_len / SAMPLE_RATE)
+                continue
+            dry = render_dry(pm, insts, Path(tmp), stem)
+            padded = np.zeros((max(loop_len, len(dry)) + tail, 2), dtype=np.float32)
+            padded[:len(dry)] = dry
+            wet[stem] = hall()(padded, SAMPLE_RATE)
+
+    length = max(len(w) for w in wet.values())
+    wet = {stem: np.pad(w, ((0, length - len(w)), (0, 0))) for stem, w in wet.items()}
     tail_end = max(np.nonzero(np.abs(w).max(axis=1) > SILENCE)[0][-1] for w in wet.values()) + 1
     stems = {stem: fold(w[:tail_end], loop_len) for stem, w in wet.items()}
     mix = sum(stems.values())

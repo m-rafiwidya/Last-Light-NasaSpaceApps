@@ -2,12 +2,17 @@
 
 A track file defines `compose() -> Song` and ends with `if __name__ == "__main__": kit.main(compose)`.
 Each `song.instrument(name, ...)` becomes one MIDI track; render.py makes one stem per name
-(instruments sharing a name are rendered into the same stem).
+(instruments sharing a name are rendered into the same stem). Names of synth voices ("pad",
+"pad_sine", "drone", "bell", "chime", "texture", or one of those plus "_suffix") are synthesised
+by synth.py; other names are soundfont instruments from PROGRAMS / DRUM_KITS.
 """
 import sys
 from pathlib import Path
 
 import pretty_midi
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import synth  # noqa: E402
 
 # General MIDI programs (0-based) in GeneralUser GS for the game's palette (see CLAUDE.md moods).
 PROGRAMS = {
@@ -44,7 +49,7 @@ LYDIAN = (0, 2, 4, 6, 7, 9, 11)
 IONIAN = (0, 2, 4, 5, 7, 9, 11)
 DORIAN = (0, 2, 3, 5, 7, 9, 10)
 MIXOLYDIAN = (0, 2, 4, 5, 7, 9, 10)
-MOODS = ("galaxy", "wilds", "journey")
+MOODS = ("deep_space", "wilds", "journey")
 
 LOOP_END_TEXT = "loop_end"
 OUTPUT = Path(__file__).resolve().parent.parent / "output"
@@ -78,11 +83,14 @@ class Song:
         return (bar * self.beats_per_bar + beat) * 60.0 / self.bpm
 
     def instrument(self, name, program=None):
-        """Add a MIDI track; `program` defaults to PROGRAMS[name], or DRUM_KITS[name] for a drum
-        track (notes are then PERC sounds)."""
+        """Add a MIDI track. A synth voice name gets a similar GM program, only for previewing the
+        MIDI elsewhere; otherwise `program` defaults to PROGRAMS[name], or DRUM_KITS[name] for a
+        drum track (notes are then PERC sounds)."""
         drum = name in DRUM_KITS
+        voice = synth.voice_for(name)
         if program is None:
-            program = DRUM_KITS[name] if drum else PROGRAMS[name]
+            program = (synth.VOICES[voice]["preview"] if voice
+                       else DRUM_KITS[name] if drum else PROGRAMS[name])
         inst = pretty_midi.Instrument(program=program, is_drum=drum, name=name)
         self.midi.instruments.append(inst)
         return inst
