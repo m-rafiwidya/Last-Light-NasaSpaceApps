@@ -219,6 +219,19 @@ func _run() -> void:
 	await _key(KEY_ESCAPE)
 	_check("Esc closes it, PLAY has focus again", not menu.is_popup_open() and play.has_focus())
 
+	# Dragged and still hovered (the hover scale grows it past its corner), then into a level: no part of
+	# the Moon stays on screen
+	_mouse_button(centre, true)
+	var motion2 := InputEventMouseMotion.new()
+	var drag2: Vector2 = root.get_final_transform().basis_xform(Vector2(-150.0, 40.0))
+	motion2.position = centre + drag2
+	motion2.global_position = motion2.position
+	motion2.relative = drag2
+	Input.parse_input_event(motion2)
+	await process_frame
+	_mouse_button(centre + drag2, false)
+	moon._set_hovered(true)
+	await _seconds(0.3)
 	# Into a level: the menu stops rendering; back to the menu: no second opening sequence
 	SL.load_scene("test_level")
 	if not await _wait_state(GS.State.IN_GAME_PLAYER, "test_level"):
@@ -226,13 +239,16 @@ func _run() -> void:
 	await _seconds(1.0)
 	_check("in game: the Moon's viewport doesn't render", not moon.is_active())
 	_check("in game: menu background hidden", not menu.get_node("Background").visible)
+	_check("in game: the Moon is hidden (not just not rendering), at rest", not moon.visible and not moon.is_visible_in_tree()
+		and moon.scale == Vector2.ONE and not menu.get_node("MainMenuSubScreen").visible,
+		"visible %s, scale %s" % [moon.visible, moon.scale])
 	SL.load_scene("main_menu")
 	if not await _wait_state(GS.State.MAIN_MENU):
 		_check("back to the menu", false)
 	await process_frame
 	await process_frame
 	_check("no opening sequence the second time", not menu.is_intro_playing())
-	_check("back on the menu: the Moon renders again", moon.is_active())
+	_check("back on the menu: the Moon renders again", moon.is_active() and moon.is_visible_in_tree())
 	_check("back on the menu: PLAY has focus", play.has_focus())
 
 	print("DONE %d failures" % failures)

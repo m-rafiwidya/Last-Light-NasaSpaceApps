@@ -332,7 +332,7 @@ its bottom edge, on the partition's centre plane (x 2.10).
 | Console (A03) | desk x 2.15 to 2.80, y -0.9 to +0.3, against the partition | the operator stands at x about 3.2 and looks west over the screen, through the window, at the docked rover |
 | `spawn_player` | (3.8, 2.0, 0.0), facing -X | |
 | Operator light | `light_operator` (3.4, 0.0, 2.95) | |
-| `anchor_bench` | (4.2, 2.6, 0.9) | kept free for the second sortie's A11 bench; nothing is modelled now |
+| `anchor_bench` | (4.2, 2.6, 0.9) | the sample bench (`ws_sample_bench`, 0.70 x 0.40 m, tray top at 0.90 m; IRIS_KIT.md 4.1) stands here: the scoop and two sample containers lie on its tray at `slot_sample_a`, `slot_sample_b`, `slot_sample_scoop`. Placed by `Workshop`, not by `ws_layout` |
 
 Clearance: console front (2.80) to east wall (4.8) is **2.00 m**: 0.8 m to stand at the console
 and 1.2 m to walk behind the operator.
@@ -446,7 +446,7 @@ shelf at y -3.55.
 | `slot_14` | 2 | -0.35 | arm tool turret | upright |
 | `slot_15` | 2 | +0.25 | antenna | upright, dish up |
 | `slot_16` | 2 | +0.80 | light battery (`power_unit_light`, on its side like `slot_12`); A10 module goes elsewhere | |
-| `slot_17`, `slot_18` | 3 | -0.60, +0.40 | empty (A06 cartridges later) | |
+| `slot_17`, `slot_18` | 3 | -0.60, +0.40 | cartridge; radio-power module (`radio_module`, lying flat, 0.134 m deep on the 0.14 m the shelf leaves) | upright / flat |
 
 **Labels.** One plate per group of slots, on the rail under them. Godot puts a `Label3D` 2 mm in
 front of each plate (crisp at any distance, and the text can change).
@@ -461,7 +461,7 @@ front of each plate (crisp at any distance, and the text can change).
 | `label_06` | -0.62 to -0.05 | 2 | TOOL TURRET |
 | `label_07` | -0.05 to +0.53 | 2 | ANTENNA |
 | `label_08` | +0.53 to +1.10 | 2 | SPARE |
-| `label_09` | -1.30 to +1.10 | 3 | CARTRIDGES |
+| `label_09` | -1.30 to +1.10 | 3 | CARTRIDGES AND MODULE |
 
 - Plates are 0.12 m tall. Gaps between plates are 0.02 m.
 - **Text cap height 65 mm**: 35 px at 1.0 m, 23 px at 1.5 m and 18 px at 2.0 m on a 1080p

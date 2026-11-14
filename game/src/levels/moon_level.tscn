@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_base.glb" id="32_sign"]
 [ext_resource type="PackedScene" path="res://src/iris/iris.tscn" id="33_iris"]
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_route.glb" id="34_route_sign"]
+[ext_resource type="PackedScene" path="res://res/models/iris_kit/sample_site_near.glb" id="35_sample_site"]
 [ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
@@ -111,6 +112,12 @@ text = "BASE"
 
 [node name="Iris" parent="." instance=ExtResource("33_iris")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+
+[node name="SampleSiteNear" parent="." instance=ExtResource("35_sample_site")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+
+[node name="SampleSitePost" parent="." instance=ExtResource("31_post")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -207.89, -3.256, 135.76)
 
 [node name="IrisGate" type="Node3D" parent="."]
 

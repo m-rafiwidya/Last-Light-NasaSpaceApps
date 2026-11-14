@@ -116,6 +116,7 @@ func fade_in() -> void:
 	_popup.close(false)
 	_settings_screen.close(false)
 	_set_menu_interactive(true)
+	_sub.show()
 	_set_live(true)
 	if _background_tween:
 		_background_tween.kill()
@@ -142,6 +143,7 @@ func fade_out() -> void:
 	_background_tween = create_ui_tween()
 	_background_tween.tween_property(_background, "modulate:a", 0.0, FADE_DURATION)
 	_background_tween.tween_callback(_background.hide)
+	_background_tween.tween_callback(_sub.hide)
 	_background_tween.tween_callback(_set_live.bind(false))
 
 

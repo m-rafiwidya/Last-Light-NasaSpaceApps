@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: the workshop (tools/blender/WORKSHOP_KIT.md) in the Moon level, then in the
 ## test level.
-##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 17
+##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 18
 ##      parts on their slots, at rest; every label fits its plate at 50-65 mm caps.
 ##   2. Reach: from where the player stands (console, between the rover and the rack, the
 ##      charger), a ray from the eye reaches the console, the restock button, rack parts, the
@@ -147,7 +147,7 @@ func _layout_checks() -> void:
 		var aabb_centre: Vector3 = _visual_centre(part)
 		worst_slot = maxf(worst_slot, Vector2(aabb_centre.x - slot.x, aabb_centre.z - slot.z).length())
 		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
-	_check("the rack holds its 17 parts (with the cartridge and the light battery)", stock.get_child_count() == 17, "%d" % stock.get_child_count())
+	_check("the rack holds its 18 parts (with the cartridge, the light battery and the radio module)", stock.get_child_count() == 18, "%d" % stock.get_child_count())
 	var batteries: Array = []
 	for part in stock.get_children():
 		if part.has_method("drain"):  # a BatteryPart (named by method: the class needs the autoloads)
@@ -158,6 +158,26 @@ func _layout_checks() -> void:
 	_check("the rack holds two batteries with distinct Wh, kg and catalog entries", named,
 		", ".join(batteries.map(func(b): return "%s %.0f Wh %.1f kg" % [b.get_catalog_id(), b.capacity, b.mass])))
 	_check("rack parts on their slots, at rest", worst_slot < 0.06 and fastest < 0.01, "farthest %.3f m off its slot, fastest %.3f m/s" % [worst_slot, fastest])
+	var modules: Array = stock.get_children().filter(func(p): return p.get_catalog_id() == "radio_module")
+	var on_shelf: bool = modules.size() == 1 and modules[0].mass >= 10.0 \
+		and absf(workshop.to_local(_visual_centre(modules[0])).y - (workshop.anchors["slot_18"].y + 0.055)) < 0.03
+	_check("the rack holds the radio module (12 kg) lying flat on the top shelf", on_shelf,
+		"%d module(s)" % modules.size() + ("" if modules.is_empty() else ", %.1f kg, centre y %.3f vs slot %.3f" % [modules[0].mass, workshop.to_local(_visual_centre(modules[0])).y, workshop.anchors["slot_18"].y]))
+	var bench: Node3D = workshop.bench_stock
+	var bench_ok: bool = bench != null and bench.get_child_count() == 3
+	var bench_detail: String = ""
+	if bench_ok:
+		var origin: Vector3 = workshop.sample_bench.position
+		var ids: Array = []
+		for part in bench.get_children():
+			var c: Vector3 = workshop.to_local(_visual_centre(part))
+			ids.append(part.get_catalog_id())
+			bench_ok = bench_ok and absf(c.x - origin.x) < 0.30 and absf(c.z - origin.z) < 0.16 and c.y > 0.90 and c.y < 1.05 \
+				and (part as RigidBody3D).linear_velocity.length() < 0.01
+			bench_detail += " %s (%.2f, %.2f, %.3f)" % [part.name, c.x - origin.x, c.z - origin.z, c.y]
+		ids.sort()
+		bench_ok = bench_ok and ids == ["sample_container", "sample_container_far", "sample_scoop"]
+	_check("the sample bench's tray holds the scoop and the two containers, at rest", bench_ok, bench_detail)
 	var fit := true
 	var detail := ""
 	for label in workshop.labels:

@@ -127,15 +127,24 @@ func _fit_viewport() -> void:
 	_container.scale = size / _container.size
 
 
-## Renders and turns only while active; the menu turns it off when it hides
+## Renders, turns and shows only while active; the menu turns it off when it hides. Inactive means
+## gone: hidden (the sliding sub-screen it sits in is only moved a fixed 1920 px aside, which leaves a
+## strip of it on screen on a wider window or while it is scaled up by hover), no SubViewport updates,
+## and every drag / hover / inertia / intro state reset so nothing is left half-way.
 func set_active(active: bool) -> void:
+	visible = active
 	_viewport.render_target_update_mode = (
 		SubViewport.UPDATE_ALWAYS if active else SubViewport.UPDATE_DISABLED)
 	set_process(active)
 	if not active:
 		_dragging = false
 		_velocity = Vector2.ZERO
-		_set_hovered(false)
+		_frame_drag = Vector2.ZERO
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		if _hover_tween:
+			_hover_tween.kill()
+		_hovered = false
+		_set_hover_amount(0.0)
 
 
 func is_active() -> bool:

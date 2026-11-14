@@ -51,6 +51,9 @@ const TEXTS: Dictionary = {
 @export var scan_name: String = "IRIS"
 @export_multiline var scan_report: String = "IRIS. Research station, silent: no signal on any band. Diagnostic port open on its front bracket."
 
+## The seated module's turn about up, from the cartridge's pose (see module_seat_transform)
+const MODULE_SEAT_TURN: float = PI / 2.0
+
 var is_scanned: bool = false
 var has_cartridge: bool = false
 var is_online: bool = false
@@ -100,6 +103,16 @@ func _ready() -> void:
 	port.global_transform = socket.global_transform.orthonormalized()
 	port.seat = model.find_child("anchor_cartridge_seated", true, false) as Node3D
 	port.cargo_inserted.connect(_on_cargo_inserted)
+
+
+## Where a seated radio-power module's origin goes, and how it lies (IRIS_KIT.md 4.1, 6.2.1): the module's
+## long side (its X) runs along the socket's long side, which is along IRIS's side (Blender Y, Godot -Z),
+## so the module turns 90 degrees about up from the cartridge's pose. The kit's empties don't turn, so the
+## turn is here.
+func module_seat_transform() -> Transform3D:
+	var seat: Transform3D = module_seat.global_transform.orthonormalized()
+	seat.basis = seat.basis * Basis(Vector3.UP, MODULE_SEAT_TURN)
+	return seat
 
 
 ## Online: the indicator lit and the antenna tracking; offline: dark and parked. `instant` skips

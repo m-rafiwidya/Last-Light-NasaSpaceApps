@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://res/models/rover_kit/radio_module.glb" id="2_model"]
+
+[node name="RadioModulePart" instance=ExtResource("1_base")]
+mass = 12.0
+part_type = 6
+catalog_id = "radio_module"
+tint_material = &"rover_body"
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("2_model")]
