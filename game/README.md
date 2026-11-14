@@ -73,7 +73,7 @@ game/
     │   └── dialog_server.gd          # subtitle timing + signals
     ├── car/
     │   ├── car.tscn / car.gd                 # RigidBody3D vehicle sim (class Car)
-    │   ├── car_controller.gd                 # keyboard input -> control_value + shift/camera signals (class CarController)
+    │   ├── car_controller.gd                 # keyboard input -> desired_speed/steer vars + camera signal (class CarController)
     │   └── components/                       # engine.gd/.tscn (CarEngine), running_gear.gd/.tscn (RunningGear)
     ├── dialog/
     │   ├── dialog.gd                 # Resource: one subtitle line (+ future audio)
@@ -531,12 +531,9 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
-| `clutch` | Shift (car) |
-| `shift_up` / `shift_down` | E / Q (car) |
 | `camera` | C (car: toggle follow / bumper camera) |
-| `handbrake` | Space (car; **defined but not read by any code yet**) |
 
-The car shares the player's movement actions: `move_forward` = throttle, `move_backward` = brake, `move_left` / `move_right` = steering. The remaining car-only actions (`clutch`, `shift_up/down`, `camera`, `handbrake`) overlap with some player keys (Shift, E, Space). That's harmless today because only one of car/player exists at a time, and each controller only reads its own actions.
+The car shares the player's movement actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering. The only car-only action is `camera`.
 
 ### Collision layers (bit value in parentheses)
 
@@ -596,7 +593,7 @@ Grounded in the current code; useful to know before changing things.
 - `InteractTrigger`s and the mission console trigger can't be used while driving (they rely on the `Player` raycast).
 - `car.tscn` quirks inherited from `openwheel`: the `Model` node is `visible = false` (the car is invisible, only the collision/camera exist); there are two nodes named `FollowCamera` (a `Camera3D` at the root and a `Marker3D` under `FollowCameraPivot`); `WheelFront`/`WheelBack` markers are unused; `Car.controller` is typed `CarController` but is not set in the scene, so it **must** be assigned from code.
 - The car's `Debug.parse_command` hooks from `openwheel` (`setaccel`, `hitcar`) were not ported.
-- The `handbrake` action is declared but nothing handles it.
+
 
 **Repo hygiene**
 - `project.godot` `config/name` is still `"Game"` and the main menu title label reads `"New Game Project"`.
@@ -642,16 +639,16 @@ In `SceneLoader._setup_level()`, call either `_setup_player(spawn_point)` or `_s
 
 ## 15. Car
 
-Files: `src/car/car.tscn`, `car.gd` (`class_name Car`), `car_controller.gd` (`class_name CarController`), `components/engine.gd` (`CarEngine`), `components/running_gear.gd` (`RunningGear`). The sim was ported from the `openwheel` project, and `car.gd` is identical to the original.
+Files: `src/car/car.tscn`, `car.gd` (`class_name Car`), `car_controller.gd` (`class_name CarController`), `components/engine.gd` (`CarEngine`), `components/running_gear.gd` (`RunningGear`). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
 
 **Status:** `SceneLoader._setup_level()` temporarily spawns the car instead of the player (see [section 7](#7-scene-loading)). Everything else (HUD, pause, state machine) works as before.
 
 ### 15.1 Design split
 Same idea as the player: the **controller** is *intent*, the **car** is *body*.
 
-- **`CarController`** (`car_controller.gd`) = intent. Reads the keyboard and exposes `control_value` dictionary (`ACCELERATE`, `BRAKE`, `CLUTCH`, `STEER`, `GEAR`; values 0..1, steer -1..1) plus signals `shift_up`, `shift_down`, `toggle_camera` (each emitted with `true` on press, `false` on release, like `PlayerController`). The `Car` connects to them in `_ready()`.
-- It polls `Input` in `_physics_process` using the player's actions (`move_forward` -> throttle, `move_backward` -> brake, `move_left/right` -> steer, plus `clutch`), moves each control value toward its target with `move_toward` (steer 2.0/s, throttle/brake/clutch 4.0/s), and emits the signals on press/release. While locked, only releases are emitted. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the pedals ease off and steering re-centres.
-- `Car` only uses `control_value` and the signals, so an AI or replay controller exposing the same interface could be swapped in.
+- **`CarController`** (`car_controller.gd`) = intent. Reads the keyboard and exposes plain variables, like `PlayerController`: `desired_speed` (fraction of the car's max speed: -1 full speed backward .. 1 full speed forward, 0 = stop) and `steer` (-1 left .. 1 right), plus the `toggle_camera` signal (emitted with `true` on press, `false` on release). The `Car` reads the variables directly and connects to the signal in `_ready()`.
+- It polls `Input` in `_physics_process` using the player's actions (`move_forward` / `move_backward` -> desired speed via `get_axis`, `move_left/right` -> steer), moves each value toward its target with `move_toward` (steer 2.0/s, desired speed 2.0/s), and emits the signal on press/release. While locked, only releases are emitted. Like `PlayerController`, input only counts while `GameState.state == IN_GAME`, and the first tick after unlocking is ignored. When locked the targets are zero, so the desired speed eases to 0 (the car slows down) and steering re-centres.
+- `Car` only uses `desired_speed`, `steer` and the signal, so an AI or replay controller exposing the same interface could be swapped in.
 
 ### 15.2 Scene structure (`car.tscn`, root `Car`)
 ```
@@ -669,12 +666,12 @@ Car (RigidBody3D, car.gd)  mass 800, layer 2, mask 7, COM (0,0.5,0), can_sleep=f
 
 ### 15.3 Simulation (`Car._integrate_forces`)
 Every physics step:
-1. `_sync_driven_wheels_and_get_brake_torque`: forces the driven wheels (rear-left, rear-right) to the differential speed and sums their brake torque.
-2. `RunningGear.simulate_suspensions`: per wheel, ray-casts down (mask layer 1) from the wheel position. Computes spring + damper load, then slip ratio / slip angle and a Pacejka magic-formula tyre force (longitudinal + lateral), plus wheel torque that spins the wheel.
-3. `_step_drivetrain`: gets engine torque from `CarEngine` (torque curve, rev limiter), passes it through a clutch (capacity 621, driven by the clutch pedal) and gearbox (`gear_ratios[current_gear] * final_drive`, gear 0 = reverse, starts in gear 1), and integrates engine and differential speeds. Undriven (front) wheels are only braked.
+1. `_sync_driven_wheels`: forces the driven wheels (rear-left, rear-right) to the differential speed.
+2. `RunningGear.simulate_suspensions(state, steer)`: per wheel, ray-casts down (mask layer 1) from the wheel position. Computes spring + damper load, then slip ratio / slip angle and a Pacejka magic-formula tyre force (longitudinal + lateral), plus wheel torque that spins the wheel.
+3. `_step_drivetrain`: the engine is rigidly coupled to the driven wheels through one fixed ratio (`gear_ratio * final_drive`), so engine speed follows wheel speed (clamped between idle and redline). The controller input is a **desired speed** (`desired_speed * Car.max_speed`, 20 units/s). A proportional controller turns the error against the car's current forward speed into a -1..1 throttle (full torque at `speed_control_band` = 4 units/s of error). Torque comes from `CarEngine` (torque curve, rev limiter) scaled by `abs(throttle)`, and its sign drives the wheels forward or backward, so a negative error (including no input) slows the car down by driving against its motion. Only the differential speed is integrated.
 4. `_apply_wheel_forces`: applies suspension load at the wheel offset and tyre force at the contact point.
 
-Gears are changed via the controller's `shift_up` / `shift_down` signals (clamped to the `gear_ratios` array). It is a **manual gearbox with a clutch**; starting from rest needs the clutch handled and a gear selected.
+There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward and `S` drives backward.
 
 ### 15.4 Cameras
 `Car._process` handles both: **follow** camera (6 m behind, height depends on pitch; hold right mouse and drag to orbit, auto re-aligns after a timeout) and **bumper** camera. The `toggle_camera` signal (`camera` action, C) toggles between them; since it comes from the controller, it is ignored outside `IN_GAME`. The player's camera isn't used, so the car cameras must be `current`; the follow camera is `current` by default.

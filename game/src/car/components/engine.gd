@@ -10,18 +10,15 @@ extends Node
 @export var inertia: float = 0.2
 
 var is_disabled: bool = false
-# var disable_period: float = 0.1
-# var disable_timer: float = 0.0
 
-func get_engine_torque(engine_angular_velocity, controller, delta) -> float:
+
+## Torque the engine produces at the given speed. `throttle` is 0..1; the
+## rev limiter cuts torque between the upper and lower redline.
+func get_engine_torque(engine_angular_velocity: float, throttle: float) -> float:
 	if engine_angular_velocity >= upper_redline and not is_disabled:
 		is_disabled = true
 	if engine_angular_velocity <= lower_redline and is_disabled:
 		is_disabled = false
-	var target_engine_angular_velocity: float = 0.0
-	if not is_disabled:
-		target_engine_angular_velocity = idle_speed + (upper_redline - idle_speed) * controller.control_value[CarController.ControlValue.ACCELERATE]
-	# else:
-	# 	disable_timer -= delta
-	var engine_torque: float = peak_torque * torque_curve.sample(engine_angular_velocity / upper_redline) * sign(target_engine_angular_velocity - engine_angular_velocity)
-	return engine_torque
+	if is_disabled:
+		return 0.0
+	return peak_torque * torque_curve.sample(engine_angular_velocity / upper_redline) * throttle

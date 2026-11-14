@@ -9,7 +9,7 @@
 bounce = 0.5
 
 [sub_resource type="Curve" id="Curve_gkkdu"]
-_data = [Vector2(0, 0.540521), 0.0, 0.170761, 0, 0, Vector2(0.693333, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.914138), -0.649141, 0.0, 0, 0]
+_data = [Vector2(0, 0.8956521), 0.0, 0.170761, 0, 0, Vector2(0.693333, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.914138), -0.649141, 0.0, 0, 0]
 point_count = 3
 
 [sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_2vce4"]

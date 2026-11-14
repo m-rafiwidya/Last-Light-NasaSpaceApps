@@ -6,27 +6,22 @@ extends RigidBody3D
 @export var running_gear: RunningGear
 @export var engine: CarEngine
 
-@export var gear_ratios: Array[float] = [
-	-2.00,  # Reverse gear
-	2.07,
-	1.56,
-	1.20,
-	0.95,
-	0.77,
-	0.63
-]
+# Single fixed gear, used for both forward and reverse. The engine is rigidly
+# coupled to the driven wheels (no clutch).
+@export var gear_ratio: float = 1.56
 @export var final_drive: float = 4.26
-@export var clutch_torque_capacity: float = 621.0
-@export var clutch_engagement_rate: float = 5.0
-@export var brake_capacity: float = 1500.0
+# Top speed in both directions, in units per second. The controller's input is a
+# fraction of this (1 = full speed forward, -1 = full speed backward, 0 = stop).
+@export var max_speed: float = 20.0
+# Speed error (units/s) at which the drivetrain applies full torque. Smaller
+# values chase the target speed harder; larger values are gentler.
+@export var speed_control_band: float = 4.0
 var transmission_inertia: float = 0.5
 var differential_inertia: float = 0.5
 
 const DRIVEN_WHEELS: Array = [RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT]
-const BRAKE_SLIP_GAIN: float = 5.0
 
 # Drivetrain state
-var current_gear: int = 1
 var engine_angular_velocity: float = 0.0
 var differential_angular_velocity: float = 0.0
 
@@ -48,24 +43,10 @@ func _ready() -> void:
 	$FollowCamera.set_as_top_level(true)
 	Debug.current_car = self
 	running_gear.update_wheel_properties()
-	controller.shift_up.connect(_on_controller_shift_up)
-	controller.shift_down.connect(_on_controller_shift_down)
 	controller.toggle_camera.connect(_on_controller_toggle_camera)
 
 
 # Controller signals
-func _on_controller_shift_up(value: bool) -> void:
-	if value and current_gear < gear_ratios.size() - 1:
-		current_gear += 1
-		running_gear.update_wheel_properties()
-
-
-func _on_controller_shift_down(value: bool) -> void:
-	if value and current_gear > 0:
-		current_gear -= 1
-		running_gear.update_wheel_properties()
-
-
 func _on_controller_toggle_camera(value: bool) -> void:
 	if not value:
 		return
@@ -105,62 +86,56 @@ func _process(delta) -> void:
 
 
 func _integrate_forces(state) -> void:
-	var brake_torque: float = _sync_driven_wheels_and_get_brake_torque(state.step)
-	running_gear.simulate_suspensions(state, controller)
-	_step_drivetrain(state.step, brake_torque)
+	_sync_driven_wheels()
+	running_gear.simulate_suspensions(state, controller.steer)
+	_step_drivetrain(state)
 	_apply_wheel_forces(state)
 
-# Brake torque for a single wheel, scaled by brake input and a speed-based ramp
-# so the brake doesn't flip the wheel's direction at near-zero speed.
-func _wheel_brake_torque(wheel: RunningGear.Wheel, step: float) -> float:
-	return brake_capacity * controller.control_value[CarController.ControlValue.BRAKE] * \
-			clamp(running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] * step * BRAKE_SLIP_GAIN, -1.0, 1.0)
-
 # Forces driven wheels to the differential speed (can be unstable at low speeds)
-# and returns the combined brake torque acting on them.
-func _sync_driven_wheels_and_get_brake_torque(step: float) -> float:
-	var brake_torque: float = 0.0
+func _sync_driven_wheels() -> void:
 	for wheel in DRIVEN_WHEELS:
 		running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] = differential_angular_velocity
-		brake_torque += _wheel_brake_torque(wheel, step)
-	return brake_torque
 
-# Integrates engine and differential speeds through the clutch. Also brakes
-# the undriven wheels directly, since they aren't part of the drivetrain.
-func _step_drivetrain(step: float, brake_torque: float) -> void:
-	var engine_output_torque = engine.get_engine_torque(engine_angular_velocity, controller, step)
-	var driven_wheel_resistance_torque = brake_torque
+# Integrates the differential speed. The engine is rigidly coupled to the driven
+# wheels through the single gear, so its speed follows the wheels (never below
+# idle). The controller input is a desired speed: the drivetrain applies torque
+# proportional to the error between it and the current forward speed, so it
+# accelerates toward the target, and brakes (engine braking) when the target is
+# lower, including when there is no input.
+func _step_drivetrain(state) -> void:
+	var step: float = state.step
+	var combined_gear_ratio: float = gear_ratio * final_drive
+
+	var forward_speed: float = state.linear_velocity.dot(-state.transform.basis.z)
+	var target_speed: float = controller.desired_speed * max_speed
+	# -1..1: how hard to push, and in which direction
+	var throttle: float = clamp((target_speed - forward_speed) / speed_control_band, -1.0, 1.0)
+
+	engine_angular_velocity = clamp(
+		abs(differential_angular_velocity) * combined_gear_ratio,
+		engine.idle_speed,
+		engine.upper_redline
+	)
+	var engine_output_torque: float = engine.get_engine_torque(engine_angular_velocity, abs(throttle))
+	var drive_torque: float = engine_output_torque * combined_gear_ratio * sign(throttle)
+
+	# Resistance from the tyres on the driven wheels
+	var driven_wheel_resistance_torque: float = 0.0
 
 	# Inertia seen at the differential/wheel speed. The transmission output shaft
 	# spins at final_drive times wheel speed, so its inertia is reflected by
-	# final_drive squared. Only driven wheels are coupled to the drivetrain.
-	var total_drivetrain_inertia = differential_inertia + transmission_inertia * final_drive * final_drive
-	for wheel in RunningGear.Wheel.values():
-		if wheel in DRIVEN_WHEELS:
-			driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
-			total_drivetrain_inertia += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
-		else:
-			var free_wheel_resistance_torque = _wheel_brake_torque(wheel, step)
-			running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] -= free_wheel_resistance_torque / running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA] * step
+	# final_drive squared; the engine by the combined ratio squared. Only driven
+	# wheels are coupled to the drivetrain.
+	var total_drivetrain_inertia: float = (
+		differential_inertia +
+		transmission_inertia * final_drive * final_drive +
+		engine.inertia * combined_gear_ratio * combined_gear_ratio
+	)
+	for wheel in DRIVEN_WHEELS:
+		driven_wheel_resistance_torque += running_gear.wheel_states[wheel][RunningGear.WheelState.TORQUE]
+		total_drivetrain_inertia += running_gear.wheel_properties[wheel][RunningGear.WheelProperty.INERTIA]
 
-	# Clutch simulation parameters and calculations
-	var combined_gear_ratio = gear_ratios[current_gear] * final_drive
-	var clutch_speed_difference: float = engine_angular_velocity - differential_angular_velocity * combined_gear_ratio
-	var clutch_engagement_factor: float = 1.0 - controller.control_value[CarController.ControlValue.CLUTCH]
-
-	# Calculate clutch torque based on engagement and speed difference
-	var max_clutch_torque: float = clutch_torque_capacity * clutch_engagement_factor * \
-								clamp(abs(clutch_speed_difference) * step * clutch_engagement_rate, 0.0, 1.0)
-	var max_transferable_torque: float = max(abs(engine_output_torque), abs(driven_wheel_resistance_torque))
-	var actual_clutch_torque: float = sign(clutch_speed_difference) * min(max_transferable_torque, max_clutch_torque)
-
-	# Update engine and differential angular velocities
-	var engine_acceleration = (engine_output_torque - actual_clutch_torque) / engine.inertia * step
-	var differential_acceleration = (actual_clutch_torque * combined_gear_ratio - driven_wheel_resistance_torque) / \
-								(total_drivetrain_inertia) * step
-
-	engine_angular_velocity += engine_acceleration
-	differential_angular_velocity += differential_acceleration
+	differential_angular_velocity += (drive_torque - driven_wheel_resistance_torque) / total_drivetrain_inertia * step
 
 # Applies suspension load and ground contact force for each wheel in contact
 func _apply_wheel_forces(state) -> void:
