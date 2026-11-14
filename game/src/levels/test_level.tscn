@@ -15,6 +15,8 @@
 [ext_resource type="PackedScene" path="res://src/robot/socket/arm_tool_part.tscn" id="25_arm_tool"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/antenna_part.tscn" id="26_antenna"]
 [ext_resource type="PackedScene" path="res://src/workshop/workshop.tscn" id="30_workshop"]
+[ext_resource type="Script" path="res://src/effects/tyre_tracks/track_floor.gd" id="40_trackfloor"]
+[ext_resource type="Shader" path="res://src/effects/tyre_tracks/track_floor.gdshader" id="41_trackfloorshader"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6o3kl"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -99,9 +101,11 @@ cell_height = 0.1
 agent_height = 2.0
 agent_radius = 0.8
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_t1chq"]
-albedo_texture = ExtResource("1_br53r")
-uv1_triplanar = true
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_trackfloor"]
+resource_local_to_scene = true
+shader = ExtResource("41_trackfloorshader")
+shader_parameter/albedo_texture = ExtResource("1_br53r")
+shader_parameter/tracks_darkening = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_45v6v"]
 albedo_texture = ExtResource("2_7hvae")
@@ -195,12 +199,14 @@ libraries/ = SubResource("AnimationLibrary_qc03e")
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=1523328076]
 navigation_mesh = SubResource("NavigationMesh_iynu6")
 
-[node name="CSGBox3D" type="CSGBox3D" parent="NavigationRegion3D" unique_id=908363993]
+[node name="CSGBox3D" type="CSGBox3D" parent="NavigationRegion3D" unique_id=908363993 groups=["dusty_ground"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-material_override = SubResource("StandardMaterial3D_t1chq")
+layers = 1025
+material_override = SubResource("ShaderMaterial_trackfloor")
 use_collision = true
 collision_mask = 0
 size = Vector3(128, 1, 128)
+script = ExtResource("40_trackfloor")
 
 [node name="CSGCombiner3D" type="CSGCombiner3D" parent="NavigationRegion3D" unique_id=1727802787]
 material_override = SubResource("StandardMaterial3D_45v6v")

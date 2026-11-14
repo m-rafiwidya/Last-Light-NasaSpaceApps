@@ -64,6 +64,7 @@ var _build_started: int = 0
 func _ready() -> void:
 	add_to_group(&"loading_content")
 	add_to_group(&"play_boundary")
+	add_to_group(&"tyre_tracks_surface")
 	var started: int = Time.get_ticks_msec()
 	meta = JSON.parse_string(FileAccess.get_file_as_string(data_dir.path_join("terrain.json")))
 	boundary_half_size = meta["boundary_half_size"]
@@ -77,7 +78,10 @@ func _ready() -> void:
 	rocks.build(self, data_dir.path_join(meta["rocks"]["file"]), meta["rocks"]["collision_min_size"], not _visual())
 	if _visual():
 		_make_materials()
-		rocks.set_material(materials["play"])
+		# The rocks' own copy of the play tier's material: no tyre tracks on them (TyreTracks only
+		# binds the play tier's)
+		materials["rocks"] = materials["play"].duplicate()
+		rocks.set_material(materials["rocks"])
 		_build_stakes()
 		_start_meshes()
 	else:
@@ -92,6 +96,19 @@ func _visual() -> bool:
 
 func is_ready_to_play() -> bool:
 	return is_content_ready
+
+
+## Tyre tracks (TyreTracks): the play tier's square, drawn by its material (not the rocks')
+func tyre_tracks_area() -> Rect2:
+	var half: float = tiers[0]["half"]
+	return Rect2(-half, -half, 2.0 * half, 2.0 * half)
+
+
+func tyre_tracks_materials() -> Array[ShaderMaterial]:
+	var out: Array[ShaderMaterial] = []
+	if materials.has("play"):
+		out.append(materials["play"])
+	return out
 
 
 # --- Data ---------------------------------------------------------------------------------------
@@ -187,6 +204,8 @@ func _build_collision() -> void:
 	var play: Dictionary = tiers[0]
 	var body := StaticBody3D.new()
 	body.name = "Ground"
+	# The wheels throw dust from it (WheelDust)
+	body.add_to_group(WheelDust.DUSTY_GROUP)
 	body.collision_layer = 1
 	body.collision_mask = 0
 	var shape := CollisionShape3D.new()
@@ -387,6 +406,9 @@ func _flush_meshes(limit: int) -> int:
 		instance.mesh = mesh_from_chunk(entry[3])
 		instance.material_override = materials[t["name"]]
 		instance.layers = 1 << (RENDER_LAYER - 1)
+		# The play area is what the wheels' dust lands on (WheelDust's collision field)
+		if entry[0] == 0:
+			instance.layers |= 1 << (WheelDust.GROUND_RENDER_LAYER - 1)
 		# The sun's cascades only reach 500 m: beyond the near tier the horizon map shades instead
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if entry[0] <= 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)
