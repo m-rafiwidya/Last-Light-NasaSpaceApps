@@ -24,6 +24,9 @@ uniform float albedo_variation = 0.18;
 uniform float slope_brightening = 0.25;
 uniform float detail_strength = 1.0;
 uniform float detail_fade_distance = 60.0;
+// The detail relief's own shadows (MoonTerrain turns them off at Terrain Detail Low: they cost
+// 0.5-1.2 ms a frame)
+uniform bool detail_shadows = true;
 uniform float opposition_strength = 0.5;
 uniform float opposition_width = 0.08;
 
@@ -231,7 +234,7 @@ void fragment() {
 		vec3 h = detail_height_gradient(q, w);
 		vec3 bumped = normalize(world_normal - vec3(h.y, 0.0, h.z));
 		NORMAL = normalize((VIEW_MATRIX * vec4(bumped, 0.0)).xyz);
-		if (sun_visible > 0.0) {
+		if (detail_shadows && sun_visible > 0.0) {
 			detail_sun = mix(1.0, detail_sun_visible(q, h.x, w, world_normal), smoothstep(0.5, 0.8, world_normal.y));
 		}
 	}

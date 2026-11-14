@@ -116,6 +116,11 @@ func _run() -> void:
 	var expected: int = 1025 if low else 2049
 	_check("collision: the play tier at the configured detail", heightmap.map_width == expected and heightmap.map_depth == expected,
 		"%d x %d" % [heightmap.map_width, heightmap.map_depth])
+	# Headless runs build no materials: build them as a window would, to check the setting
+	if terrain.materials.is_empty():
+		terrain._make_materials()
+	var detail_shadows: bool = terrain.materials["play"].get_shader_parameter("detail_shadows")
+	_check("the ground detail's own shadows off at Low, on otherwise", detail_shadows == not low, "detail_shadows %s" % detail_shadows)
 	await _ticks(4.0)
 	for item in [["player", GS.player, 0.0, 1.2], ["rover", rover, 0.0, 0.35]]:
 		var body: Node3D = item[1]

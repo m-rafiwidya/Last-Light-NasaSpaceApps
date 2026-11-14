@@ -267,9 +267,12 @@ func _build_stakes() -> void:
 
 func _make_materials() -> void:
 	var horizons: Dictionary = meta["horizons"]
+	var low: bool = GraphicsSettings.get_terrain_detail() == GraphicsSettings.TerrainDetail.LOW
 	for t in tiers:
 		var m := ShaderMaterial.new()
 		m.shader = material_shader
+		# Low is for weaker GPUs: no shadows from the regolith's detail relief, only its normals
+		m.set_shader_parameter("detail_shadows", not low)
 		var h: Dictionary = horizons["tiers"][t["name"]]
 		for k in h["files"].size():
 			m.set_shader_parameter("horizon_%d" % k, load(data_dir.path_join(h["files"][k])))
