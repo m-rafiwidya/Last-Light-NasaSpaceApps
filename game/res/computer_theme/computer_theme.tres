@@ -1,10 +1,10 @@
-[gd_resource type="Theme" load_steps=20 format=3 uid="uid://be3ngjxfbjuew"]
+[gd_resource type="Theme" format=3 uid="uid://be3ngjxfbjuew"]
 
-[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="1_r7e3g"]
-[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-BoldItalic.ttf" id="2_7h2l0"]
+[ext_resource type="FontFile" uid="uid://cftbdwth34xu5" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="1_r7e3g"]
+[ext_resource type="FontFile" uid="uid://cuwnaakf0fpa0" path="res://res/fonts/IBMPlexMono-BoldItalic.ttf" id="2_7h2l0"]
 [ext_resource type="StyleBox" uid="uid://dj8d7j1itsiti" path="res://res/computer_theme/outset_panel.tres" id="2_gc3xw"]
-[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Italic.ttf" id="3_gc3xw"]
-[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Regular.ttf" id="4_rvara"]
+[ext_resource type="FontFile" uid="uid://cfnfe3r7vqhp0" path="res://res/fonts/IBMPlexMono-Italic.ttf" id="3_gc3xw"]
+[ext_resource type="FontFile" uid="uid://1xs7qbrfdhyn" path="res://res/fonts/IBMPlexMono-Regular.ttf" id="4_rvara"]
 [ext_resource type="StyleBox" uid="uid://b5ussrgw1r8c" path="res://res/computer_theme/inset_panel.tres" id="5_lan6a"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gc3xw"]
