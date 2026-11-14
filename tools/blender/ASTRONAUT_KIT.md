@@ -2,7 +2,8 @@
 
 One low-poly, flat-shaded astronaut in a modern hard-armour EVA suit, built by script, with a
 simple skeleton made by the same script. It is **posed, never animated**, and ships in the two
-static uses below. It is also **ready for Mixamo later**: T-pose, one combined mesh, real scale,
+static uses below. (Exception, on the `exp/fp-body` branch: the player's own first-person body,
+section 13, is animated.) It is also **ready for Mixamo later**: T-pose, one combined mesh, real scale,
 FBX export. Same conventions as `ROVER_KIT.md` and `WORKSHOP_KIT.md` unless this file says
 otherwise.
 
@@ -467,3 +468,70 @@ Honest list, roughest first:
 5. **Reference image.** `tools/blender/reference/private/suit_reference.jpg` isn't in the repo
    yet. The folder is now in `.gitignore`. Drop it in if you want me to check proportions
    against its general style before modelling.
+
+---
+
+## 13. First-person body (experiment, branch `exp/fp-body`)
+
+The same suit as the player's own body: looking down, the player sees the suit, legs and boots;
+the helmet is never drawn for the player's camera but still casts its shadow. Approved
+2026-10-10 with: hold parts about 0.6 m out (0.45 m from the eye in the hands), the suit scaled to
+1.71 m rather than moving the camera, and the glove pass below.
+
+- **Gloves (as built).** Armoured gauntlets: rounded octagonal finger and thumb segments with
+  dark grip tips, a hard back plate and a dark knuckle guard. 600 triangles a glove (was 240);
+  the suit is 4,678 (cap 5,000). Every check of sections 10 and the as-built list passes again
+  (seated hands 21 mm from the console), and the T-pose, seated and rack previews were re-checked.
+- **Generator.** `tools/blender/scripts/astronaut/make_astronaut_anims.py` builds the mesh and rig
+  with `make_astronaut.py`, keys the clips, checks them and exports
+  `game/res/models/astronaut_kit/astronaut_fp.glb`: the Skeleton3D with two skinned meshes,
+  `astronaut_body` and `astronaut_helmet` (helmet, visor, ridge, lamp pods and the neck ring), and
+  the clips. Source `tools/blender/parts/astronaut/astronaut_fp.blend`; previews (side and
+  three-quarter strips of every clip) in `tools/blender/previews/astronaut_fp/<clip>/`.
+- **Scale.** The game scales the suit to 0.95 (1.71 m), so its eyes are at the player's 1.5 m
+  camera. The clips are authored full size; a clip made at speed v plays at 0.95 v.
+- **Clips** (keyed at 120 fps; Godot imports them at 120 with its animation optimizer off, since
+  at 30 or 60 the joints' in-between blends let planted boots wobble):
+
+  | Clip | Length | Notes |
+  |---|---|---|
+  | `idle` | 4 s loop | weight shift and two breaths; arms 17 degrees out (the rack pose's clearance) |
+  | `walk` | 0.67 s loop | 2.0 m/s, 0.67 m steps, 56% planted, hips up to 12 mm below standing, 3 degree lean |
+  | `sprint` | 0.6 s loop | 3.0 m/s, 0.9 m steps, 40% planted (a flight phase), 6 degree lean |
+  | `crouch_idle` | 2 s loop | deep squat, eye 0.77 m (the crouched camera is 0.75 m: section 13.1) |
+  | `crouch_walk` | 0.9 s loop | 1.0 m/s, 0.45 m steps, 60% planted, boots flat |
+  | `turn_step` | 0.8 s loop | stepping on the spot while the lower body turns |
+  | `air_rise`, `air_apex`, `air_fall` | poses | blended by vertical speed over take-off speed |
+  | `land` | pose | the deepest moment of a heavy landing; the game scales it by impact speed |
+
+  Every gait starts with the left heel strike. A gait's legs come from foot paths: in stance a boot
+  rolls over its heel edge, lies flat, then rolls over its toe edge while travelling back at
+  exactly the clip's speed; the swing is a Hermite curve that leaves and lands at that speed. The
+  hips sit as high as the planted legs allow (98.5% of full reach), which gives the walk its bob.
+  The upper body is posed from tables like sections 6.2 and 7: arms swing from the shoulder
+  bearings with the elbows nearly fixed, the chest stays square (the spine takes back the
+  pelvis's yaw), little spine bend.
+- **Checks** (every run; all pass): a planted sole point moves at most 1.9 mm between frames in
+  the world (body moving at the clip's speed), never goes into the ground; no part inside
+  another on sampled frames of every clip (section 10's check); the crouch's eye within 5 cm of
+  0.75 m. Each clip's average eye position ahead of the origin is printed for the game
+  (`PlayerBody.CLIP_EYE`).
+
+### 13.1 Rough spots, and how they are kept intentional
+
+1. **The crouch is a deep squat.** Crouched, the player's eye is 0.75 m over the ground (the capsule
+   shrinks round its centre and the player sinks 0.5 m), so a 1.71 m suit has to fold well past
+   what a hard suit can: boots wide, knees turned out, the chest about 60 degrees forward between
+   the knees, arms hanging inside them. The waist bearing presses into the tops of the thighs
+   (the one accepted overlap, crouch clips only). From the player's camera that fold is under the
+   chest and out of view. Going into the crouch, the boots slide back about 0.3 m over the 0.5 s
+   the camera drops, because the head stays where the camera is.
+2. **Gloves** are still blocks next to a sculpted hand. They only show open, gently curled or
+   closed round a part, never finger by finger.
+3. **Grips** are on the sides of the part's collision box, so on round parts the palms float a few
+   millimetres off; the thick gauntlets and dark palms hide it.
+4. **Strafing** turns the legs to the way the player moves and twists the suit at the waist
+   bearing (a real rotating joint on a hard suit) up to 90 degrees; walking backwards plays the
+   walk in reverse.
+5. **Feet on slopes:** no foot IK yet; on steep Moon ground the boots sit a little into or above it.
+
