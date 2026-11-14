@@ -309,8 +309,8 @@ func _build_doors() -> void:
 
 func _build_triggers() -> void:
 	console_trigger = _make_trigger("ConsoleTrigger", anchors["trigger_console"], Vector3(0.6, 0.6, 1.2),
-			'Press "E" to drive the rover')
-	console_trigger.interacted.connect(_on_console_interacted)
+			'Press "E" to use the mission console')
+	console_trigger.interacted.connect(_on_console_used)
 	door_panel_trigger = _make_trigger("BayDoorTrigger", anchors["trigger_bay_door"], Vector3(0.4, 0.5, 0.2),
 			'Press "E" to open the bay door')
 	door_panel_trigger.interacted.connect(_on_door_panel_interacted)
@@ -419,11 +419,12 @@ func _build_console_screen() -> void:
 	box.add_theme_constant_override("separation", 14)
 	viewport.add_child(box)
 	for item in [["SERVICE BAY CONSOLE", 30, Color(0.95, 0.68, 0.25)], ["", 34, Color(0.75, 0.95, 0.85)],
-			["", 34, Color(0.75, 0.95, 0.85)], ["", 34, Color(0.75, 0.95, 0.85)], ["E  DRIVE THE ROVER", 30, Color(0.95, 0.68, 0.25)]]:
+			["", 34, Color(0.75, 0.95, 0.85)], ["", 34, Color(0.75, 0.95, 0.85)], ["E  MISSION CONSOLE", 30, Color(0.95, 0.68, 0.25)]]:
 		var line := Label.new()
 		line.text = item[0]
 		line.add_theme_font_size_override("font_size", item[1])
 		line.add_theme_color_override("font_color", item[2])
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(line)
 		_screen_lines.append(line)
 	add_child(viewport)
@@ -453,6 +454,8 @@ func _update_screen() -> void:
 	_screen_lines[1].text = state
 	_screen_lines[2].text = battery
 	_screen_lines[3].text = "BAY DOOR  " + ("OPEN" if door_open >= 1.0 else "CLOSED" if door_open <= 0.0 else "MOVING")
+	var objective := CampaignState.current_objective()
+	_screen_lines[4].text = ("NEXT  " + CampaignState.objective_title(objective).to_upper()) if objective else "E  MISSION CONSOLE"
 
 
 func _build_rack_stock() -> void:
@@ -573,9 +576,29 @@ func _is_inside(world_point: Vector3) -> bool:
 	return absf(p.x) < HALF_X and absf(p.z) < HALF_Z
 
 
+func _on_console_used(player: Player) -> void:
+	if GameState.state != GameState.State.IN_GAME_PLAYER:
+		return
+	_stand_at_console(player)
+	GameState.change_state_to(GameState.State.MISSION_CONSOLE)
+
+
+## The mission console's Control Kite: drive `rover` from the console
+func drive_from_console(player: Player) -> void:
+	if GameState.state == GameState.State.MISSION_CONSOLE:
+		GameState.return_to_game()
+	_on_console_interacted(player)
+
+
 func _on_console_interacted(player: Player) -> void:
 	if not is_instance_valid(rover) or GameState.state != GameState.State.IN_GAME_PLAYER:
 		return
+	_stand_at_console(player)
+	GameState.drive(rover)
+	operator.visible = true
+
+
+func _stand_at_console(player: Player) -> void:
 	# Stand the player at the console, facing the screen, before handing over: leaving the rover
 	# brings the view back here
 	var stand := to_global(anchors["anchor_operator"])
@@ -587,8 +610,6 @@ func _on_console_interacted(player: Player) -> void:
 	# unrotated)
 	if player.controller:
 		player.controller.camera_azimuth = world_yaw
-	GameState.drive(rover)
-	operator.visible = true
 
 
 func _on_door_panel_interacted(_player: Player) -> void:

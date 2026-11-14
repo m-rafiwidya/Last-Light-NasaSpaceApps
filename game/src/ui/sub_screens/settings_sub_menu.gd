@@ -236,6 +236,7 @@ func _build_general(rows: VBoxContainer) -> void:
 	_add_hidden(rows, "Camera Shake")
 	_add_section_toggle(rows, t, "Show Tooltips", general, "show_tooltips")
 	_add_section_toggle(rows, t, "Show FPS Counter", general, "show_fps")
+	_add_section_toggle(rows, t, "Show Guidance", general, "guidance")
 	_add_reset(rows, t, "RESET TO DEFAULTS", general.reset)
 
 

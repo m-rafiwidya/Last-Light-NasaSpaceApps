@@ -3,11 +3,17 @@
 		"Missions, their order and their objectives for CampaignState (autoload). Owned by Fahd.",
 		"IDs are lowercase with dots. A mission is mN, an objective is mN.thing. Objective IDs are unique across all missions.",
 		"objectives: all required for mission_completed. optional_objectives: can be completed but do not count.",
+		"objective_titles: what the console and the rover HUD show for each objective. report: the lines the console's Downlink tab shows once the mission's data is sent.",
+		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, kite:<Robot property>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
 		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat."
 	],
 	"content_version": "2026-11-09",
-	"mission_order": ["m1", "m2", "m3"],
+	"mission_order": [
+		"m1",
+		"m2",
+		"m3"
+	],
 	"missions": [
 		{
 			"id": "m1",
@@ -19,7 +25,176 @@
 				"m1.kite_docked",
 				"m1.inspection_sent"
 			],
-			"optional_objectives": []
+			"optional_objectives": [],
+			"objective_titles": {
+				"m1.kite_prepared": "Fit a battery to Kite",
+				"m1.iris_scanned": "Scan IRIS's service panel with the mast camera",
+				"m1.kite_docked": "Return Kite to the charging pad",
+				"m1.inspection_sent": "Downlink the inspection from the console"
+			},
+			"report": [
+				"DIAGNOSIS  IRIS service panel S-1",
+				"J1 RADIO PWR: no supply. The radio-power module has failed.",
+				"J2 DATA: intact. Stored observations readable.",
+				"J3 HEATER: nominal.",
+				"Next: fit a replacement radio-power module (M2)."
+			],
+			"guidance": {
+				"m1.kite_prepared": [
+					{
+						"text": "Pick up a battery from the parts rack",
+						"label": "Battery",
+						"target": "path:Workshop/RackStock/Slot12",
+						"key": "interact_use",
+						"stuck": "The rack is the shelving on the bay's wall. Look at the battery and press E.",
+						"done_when": {
+							"holding_part": "battery"
+						}
+					},
+					{
+						"text": "Drop the battery into Kite's rear battery socket",
+						"label": "Battery socket",
+						"target": "kite:battery_socket/PartCapture",
+						"key": "interact_use",
+						"stuck": "Walk to Kite's rear, look at the glowing box and press E to let go of the battery over it."
+					}
+				],
+				"m1.iris_scanned": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "The console is behind the glass partition, facing the bay. Look at it and press E.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
+						"label": "",
+						"target": "",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive Kite to IRIS",
+						"label": "IRIS",
+						"target": "scan:iris_panel",
+						"waypoint": true,
+						"stuck": "Follow the marker. IRIS is about 150 m from the base, past the marker posts.",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							],
+							"near": "scan:iris_panel",
+							"distance": 20
+						}
+					},
+					{
+						"text": "Switch to the mast camera",
+						"label": "Service panel",
+						"target": "scan:iris_panel",
+						"key": "camera_next",
+						"waypoint": true,
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							],
+							"near": "scan:iris_panel",
+							"distance": 20,
+							"view": "mast"
+						}
+					},
+					{
+						"text": "Hold the crosshair on IRIS's service panel",
+						"label": "Service panel",
+						"target": "scan:iris_panel",
+						"waypoint": true,
+						"stuck": "Aim at the glowing panel on IRIS's front, below the antenna, and keep still until the scan reaches 100%. Headlights: L."
+					}
+				],
+				"m1.kite_docked": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Kite is still out at IRIS. Open the console and press CONTROL KITE to drive it back.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
+						"label": "",
+						"target": "",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive back onto the charging pad and stop",
+						"label": "Charging pad",
+						"target": "path:Workshop/Parts/ws_pad_01",
+						"waypoint": true,
+						"stuck": "Follow the marker into the bay. The dock hint at the top tells you how far to go; stop when it says Charging."
+					}
+				],
+				"m1.inspection_sent": [
+					{
+						"text": "Leave Kite",
+						"label": "",
+						"target": "",
+						"key": "ui_cancel",
+						"done_when": {
+							"not_state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "Look at the console and press E.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Open the Downlink tab",
+						"label": "",
+						"target": "",
+						"stuck": "Downlink is the third section in the console's list on the left.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							],
+							"console_section": "downlink"
+						}
+					},
+					{
+						"text": "Press Send inspection",
+						"label": "",
+						"target": "",
+						"stuck": "The button is under the Downlink text."
+					}
+				]
+			},
+			"complete_guidance": "Mission complete. Open the console to start the next mission."
 		},
 		{
 			"id": "m2",
@@ -34,7 +209,15 @@
 			],
 			"optional_objectives": [
 				"m2.near_sample_collected"
-			]
+			],
+			"objective_titles": {
+				"m2.module_loaded": "Load the radio-power module onto Kite",
+				"m2.module_installed": "Install the module in IRIS",
+				"m2.iris_activated": "Bring IRIS online",
+				"m2.telemetry_received": "Receive IRIS's telemetry",
+				"m2.kite_docked": "Return Kite to the charging pad",
+				"m2.near_sample_collected": "Optional: collect the near-site sample"
+			}
 		},
 		{
 			"id": "m3",
@@ -45,7 +228,12 @@
 				"m3.kite_docked",
 				"m3.archive_sent"
 			],
-			"optional_objectives": []
+			"optional_objectives": [],
+			"objective_titles": {
+				"m3.logger_recovered": "Recover Evan's logger from the far rim",
+				"m3.kite_docked": "Return Kite to the charging pad",
+				"m3.archive_sent": "Downlink the archive from the console"
+			}
 		}
 	]
 }

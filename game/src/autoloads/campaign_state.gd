@@ -10,6 +10,7 @@ const MISSIONS_PATH: String = "res://res/story/missions.json"
 var _missions: Dictionary = {}
 var _mission_order: PackedStringArray = []
 var _objective_mission: Dictionary = {}
+var _objective_titles: Dictionary = {}
 
 var _current: String = ""
 var _done_objectives: Dictionary = {}
@@ -33,6 +34,41 @@ func start_mission(id: String) -> void:
 
 func current_mission() -> String:
 	return _current
+
+
+func mission_title(id: String) -> String:
+	return _missions[id]["title"] if _missions.has(id) else id
+
+
+func mission_objectives(id: String, include_optional: bool = false) -> PackedStringArray:
+	if not _missions.has(id):
+		return PackedStringArray()
+	var list: Array = _missions[id]["objectives"] + (_missions[id]["optional_objectives"] if include_optional else [])
+	return PackedStringArray(list)
+
+
+func objective_title(id: String) -> String:
+	return _objective_titles.get(id, id)
+
+
+func current_objective() -> String:
+	for objective in mission_objectives(_current):
+		if not _done_objectives.has(objective):
+			return objective
+	return ""
+
+
+func is_mission_completed(id: String) -> bool:
+	return _done_missions.has(id)
+
+
+func next_mission(id: String) -> String:
+	var index: int = _mission_order.find(id)
+	return _mission_order[index + 1] if index >= 0 and index + 1 < _mission_order.size() else ""
+
+
+func mission_report(id: String) -> String:
+	return _missions[id]["report"] if _missions.has(id) else ""
 
 
 func complete_objective(id: String) -> void:
@@ -126,6 +162,7 @@ func _load_missions() -> void:
 	_missions.clear()
 	_mission_order.clear()
 	_objective_mission.clear()
+	_objective_titles.clear()
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(MISSIONS_PATH))
 	if not (data is Dictionary and data.get("missions") is Array):
 		push_warning("CampaignState: cannot read missions from %s" % MISSIONS_PATH)
@@ -136,7 +173,12 @@ func _load_missions() -> void:
 		var id: String = entry["id"]
 		var required: Array = _strings(entry.get("objectives"))
 		var optional: Array = _strings(entry.get("optional_objectives"))
-		_missions[id] = {"objectives": required, "optional_objectives": optional}
+		_missions[id] = {"objectives": required, "optional_objectives": optional,
+			"title": str(entry.get("title", id)), "report": "\n".join(_strings(entry.get("report")))}
+		var titles: Variant = entry.get("objective_titles")
+		if titles is Dictionary:
+			for objective in titles:
+				_objective_titles[str(objective)] = str(titles[objective])
 		_mission_order.append(id)
 		for objective in required + optional:
 			_objective_mission[objective] = id

@@ -11,6 +11,8 @@ extends Node3D
 ## 20 mm under the belly; while it's up the battery charges (BatteryPart.add_charge). It never
 ## touches the rover's physics: the probe has no collision.
 
+signal docked(rover: Robot)
+
 enum State {IDLE, ON_PAD, ALIGNING, CHARGING, FULL, FAULT}
 
 const DOCK_ZONE: float = 0.4
@@ -91,6 +93,7 @@ func _find_rover() -> Robot:
 
 func _physics_process(delta: float) -> void:
 	_time += delta
+	var was_docked: bool = is_docked()
 	rover = _find_rover()
 	var target_xz := Vector2.ZERO
 	var raise := false
@@ -131,9 +134,15 @@ func _physics_process(delta: float) -> void:
 		_probe_xz = _probe_xz.move_toward(target_xz, PROBE_SLIDE_SPEED * delta)
 	if probe:
 		probe.position = Vector3(_probe_xz.x, PROBE_RISE * smoothstep(0.0, 1.0, _probe_up), _probe_xz.y)
+	if is_docked() and not was_docked:
+		docked.emit(rover)
 	_update_lights()
 	if charger_trigger:
 		charger_trigger.tooltip = "Charger: " + get_status_text()
+
+
+func is_docked() -> bool:
+	return rover != null and (state == State.CHARGING or state == State.FULL)
 
 
 ## Height of the probe's top above the floor (m)

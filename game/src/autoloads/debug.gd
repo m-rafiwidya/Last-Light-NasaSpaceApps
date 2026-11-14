@@ -116,6 +116,10 @@ func parse_command(input: String):
 					add_log("Flag %s: %s" % [argv[1], CampaignState.has_flag(argv[1])])
 				else:
 					add_log("Usage: flag <name> [true|false]")
+			"guidance":
+				if argc >= 2:
+					GeneralSettings.section.set_value("guidance", argv[1].to_lower() not in ["false", "0", "off"])
+				add_log("Guidance: %s" % ("on" if GeneralSettings.guidance() else "off"))
 			"campaign":
 				for line in CampaignState.debug_dump():
 					_log_and_print(line)

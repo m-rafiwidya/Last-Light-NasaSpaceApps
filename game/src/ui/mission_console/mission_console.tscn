@@ -58,7 +58,7 @@ size_flags_horizontal = 3
 theme_override_colors/default_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxEmpty_title")
 bbcode_enabled = true
-text = "[b][wave amp=16 freq=8]Macrohard Inhear 9000[/wave][/b]"
+text = "[b]MISSION CONSOLE[/b]"
 fit_content = true
 vertical_alignment = 1
 
@@ -89,7 +89,7 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
 layout_mode = 2
-text = "You've got mail!"
+text = "Sections"
 
 [node name="ItemList" type="ItemList" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
 unique_name_in_owner = true
@@ -159,12 +159,32 @@ bbcode_enabled = true
 [node name="HBoxContainer" type="HBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
 layout_mode = 2
 
-[node name="Button" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+[node name="DownlinkProgress" type="ProgressBar" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+max_value = 1.0
+
+[node name="Action" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 theme_override_font_sizes/font_size = 32
-text = "Start This Job"
+text = "Send inspection"
 
-[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Button"]
+[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Action"]
+script = ExtResource("4_mcsnd")
+
+[node name="ControlKite" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 40
+text = "CONTROL KITE"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/ControlKite"]
 script = ExtResource("4_mcsnd")
