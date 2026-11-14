@@ -2,25 +2,14 @@
 
 [ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/robot/socket/motor_part.gd" id="2_script"]
-
-[sub_resource type="CylinderShape3D" id="Shape_motor"]
-height = 0.5
-radius = 0.18
-
-[sub_resource type="CylinderMesh" id="Mesh_motor"]
-top_radius = 0.18
-bottom_radius = 0.18
-height = 0.5
+[ext_resource type="PackedScene" uid="uid://coxia3fs4bego" path="res://res/models/rover_kit/motor.glb" id="3_model"]
 
 [node name="MotorPart" instance=ExtResource("1_base")]
 script = ExtResource("2_script")
 part_type = 1
 display_name = "Motor"
-tint = Color(0.8, 0.45, 0.1, 1)
-mount_offset = Vector3(0, 0.25, 0)
-
-[node name="CollisionShape3D" parent="." index="0"]
-shape = SubResource("Shape_motor")
 
 [node name="Model" parent="." index="1"]
-mesh = SubResource("Mesh_motor")
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("3_model")]
