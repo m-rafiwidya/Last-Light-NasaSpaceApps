@@ -2,7 +2,7 @@ class_name CargoHint
 
 extends Label
 
-## The driven rover's cargo delivery hint (CargoDelivery.get_hint(): "Kite's port: 0.30 m closer",
+## The driven rover's cargo delivery hint (CargoDelivery.get_hint(): "IRIS's port: 0.30 m closer",
 ## "In position: press E to insert the cartridge", ...), on the robot HUD under the dock hint.
 
 

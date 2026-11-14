@@ -14,11 +14,11 @@ asset sections below stay the full provenance record.
 `game/res/models/workshop_kit/`: original, made by this project's scripts; nothing
 third-party (`game/res/models/workshop_kit/PROVENANCE.md`).
 
-## Kite kit
+## IRIS kit
 
-`game/res/models/kite_kit/` and the rover kit's cartridge and cargo mount: original, made by
-this project's scripts from its own rover kit; nothing third-party
-(`game/res/models/kite_kit/PROVENANCE.md`).
+`game/res/models/iris_kit/` and the rover kit's cartridge and cargo mount: original, made by
+this project's scripts (the IRIS placeholder, its port, the rover kit parts); nothing third-party
+(`game/res/models/iris_kit/PROVENANCE.md`).
 
 ## Astronaut kit
 

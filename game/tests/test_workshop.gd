@@ -548,9 +548,9 @@ func _decor_checks() -> void:
 	var bodies: int = 0
 	for node in decor.find_children("*", "Node", true, false):
 		# (game classes by name: this script compiles before the game's autoloads exist)
-		if node is RigidBody3D or node is Area3D or _has_class(node, ["InteractTrigger", "HotswapPart", "CargoPort", "Robot", "Kite"]):
+		if node is RigidBody3D or node is Area3D or _has_class(node, ["InteractTrigger", "HotswapPart", "CargoPort", "Robot", "Iris"]):
 			bad.append(String(node.name))
-		for group in ["scan_target", "charging_pad", "kite", "cargo_port", "workshop"]:
+		for group in ["scan_target", "charging_pad", "iris", "cargo_port", "workshop"]:
 			if node.is_in_group(group):
 				bad.append("%s in %s" % [node.name, group])
 		if node is CollisionObject3D:

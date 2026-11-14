@@ -8,7 +8,7 @@ Design reference for the game's menus, screens and HUD. The boards in `boards/` 
 - `{{name}}` holes, `<sc-if>` and `<sc-for>` are the design tool's templating. `sc-if` means "shown when true", `sc-for` means "repeat for each item". `data-props` at the bottom lists the preview toggles (for example `saveFile`, `mode`, `alert`); they show the states a screen must support.
 - `/_blob/bb123daca0826d320dc695b61684775a` in the boards is `assets/astronaut-logo.svg`.
 - Canvas drawing code (starfield, the JS globe) is a stand-in. Implement those natively in Godot (see "Godot notes").
-- **All text on the boards is placeholder.** Names, mission titles, objectives and radio lines come from `game/docs/STORY_SCRIPT.md` and `game/docs/examples/MISSIONS.json`. In particular the HUD, Console and Complete boards were drawn before the final story: "ROOK" there means the player's rover, which is **Kite**; "Kite" as a destination there means **IRIS**; "diagnostic cartridge" means the mission's cargo (for example the replacement radio-power module).
+- **All text on the boards is placeholder.** Names, mission titles, objectives and radio lines come from `game/docs/STORY_SCRIPT.md` and `game/docs/examples/MISSIONS.json`. In particular the HUD, Console and Complete boards were drawn before the final story; their names are now updated (the player's rover is **Kite**, the destination **IRIS**), but "diagnostic cartridge" means the mission's cargo (for example the replacement radio-power module).
 
 ## Design tokens
 
@@ -52,7 +52,7 @@ Common sizes at 1600 × 900 (scale proportionally):
 | Loading fact | Michroma 30, line height 1.55, spacing 1 |
 | Pause items / underline buttons | Michroma 15, spacing 6 to 8 |
 | Solid button | Michroma 13, spacing 5 |
-| HUD section heading (ROOK/KITE, WORKSHOP) | Michroma 13, spacing 6 |
+| HUD section heading (KITE, WORKSHOP) | Michroma 13, spacing 6 |
 | Body / HUD values | Exo 2 14 to 20, weight 500 or 600 |
 | Captions | Exo 2 12 to 15, weight 500, muted |
 | Settings rows | IBM Plex Mono 12, spacing 1 |

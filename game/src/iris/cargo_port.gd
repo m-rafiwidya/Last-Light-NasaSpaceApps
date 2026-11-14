@@ -2,7 +2,7 @@ class_name CargoPort
 
 extends Node3D
 
-## A service port that a rover's arm can lower cargo into (tools/blender/KITE_KIT.md 6.2, 8). Sits
+## A service port that a rover's arm can lower cargo into (tools/blender/IRIS_KIT.md 6.2, 8). Sits
 ## on the port's top centre (socket_cartridge), its axes the port's: X along the opening's long
 ## side, Y up. CargoDelivery on a rover finds ports in the "cargo_port" group.
 

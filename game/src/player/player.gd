@@ -78,7 +78,7 @@ var jump_height: float = JUMP_HEIGHT
 ## the level sets it (SceneLoader). The Moon raises it so a walk still stops within a metre.
 var ground_friction: float = FRICTION
 ## Whether the player can pick up and throw a rover here (the level's player_lifts_rovers: the
-## test level's sandbox yes, the Moon no; KITE_KIT.md 10)
+## test level's sandbox yes, the Moon no; IRIS_KIT.md 10)
 var player_lifts_rovers: bool = true
 
 

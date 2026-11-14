@@ -7,7 +7,7 @@ extends Node3D
 ## running gear's wheel states and never writes anything the physics uses.
 ##
 ## A wheel sprays only while it stands loaded on dusty ground (a body in the group `dusty_ground`:
-## the Moon terrain's Ground, the test level's floor; not the workshop floor, rocks, Kite, ramps or
+## the Moon terrain's Ground, the test level's floor; not the workshop floor, rocks, IRIS, ramps or
 ## other rovers). How much: the tread's speed plus SLIP_WEIGHT times its slip speed (the tread
 ## sliding over the ground, along and across), over FULL_SPRAY_SPEED, times the wheel's load over
 ## its share of the rover's weight; nothing under MIN_SPEED, so nothing from a parked rover.

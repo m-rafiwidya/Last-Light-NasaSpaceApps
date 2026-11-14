@@ -1,17 +1,17 @@
 extends SceneTree
-## Renders Kite and the cargo delivery in the Moon level into tools/previews/kite/ (repo root), to
-## check them in the game's lighting (tools/blender/KITE_KIT.md). Needs a window (not --headless):
+## Renders IRIS and the cargo delivery in the Moon level into tools/previews/iris/ (repo root), to
+## check them in the game's lighting (tools/blender/IRIS_KIT.md). Needs a window (not --headless):
 ##
-##     Godot --path game -s res://tools/render_kite_previews.gd --resolution 1920x1080
+##     Godot --path game -s res://tools/render_iris_previews.gd --resolution 1920x1080
 ##
-## Shots: Kite from the approach gate; the mast view scanning it (HUD on); the rover parked in the
+## Shots: IRIS from the approach gate; the mast view scanning it (HUD on); the rover parked in the
 ## delivery window, chase camera (HUD on, the "In position" hint); the arm carrying the cartridge
-## over, and the stroke into the port, from beside them; Kite afterwards, its light green. Prints a
+## over, and the stroke into the port, from beside them; IRIS afterwards, its light green. Prints a
 ## MEASURE line per shot: the mean brightness (0-1) of the middle of the screen and the share of
 ## nearly black pixels in it.
 
-const OUT_DIR: String = "res://../tools/previews/kite"
-const APPROACH := Vector2(0.637, -0.771)     # the heading into Kite (azimuth 39.6)
+const OUT_DIR: String = "res://../tools/previews/iris"
+const APPROACH := Vector2(0.637, -0.771)     # the heading into IRIS (azimuth 39.6)
 const YAW_AXIS := Vector2(-0.12, 0.53)       # the arm's yaw axis (right, forward) from the rover's origin
 const PARK_D: float = 0.51
 
@@ -19,7 +19,7 @@ var GS: Node
 var SL: Node
 var level: Node3D
 var rover: RigidBody3D
-var kite: Node3D
+var iris: Node3D
 var side_camera: Camera3D
 
 
@@ -81,9 +81,9 @@ func _aim_mast_at(world_point: Vector3) -> void:
 	rover.controller.camera_altitude = atan2(d.y, Vector2(d.x, d.z).length())
 
 
-## Puts the rover down `back` m behind its parking spot, heading into Kite
+## Puts the rover down `back` m behind its parking spot, heading into IRIS
 func _place_rover(back: float) -> void:
-	var port := Vector2(kite.port.global_position.x, kite.port.global_position.z)
+	var port := Vector2(iris.port.global_position.x, iris.port.global_position.z)
 	var right := Vector2(-APPROACH.y, APPROACH.x)
 	var spot: Vector2 = port - APPROACH * (PARK_D + YAW_AXIS.y + back) - right * YAW_AXIS.x
 	var basis := Basis.looking_at(Vector3(APPROACH.x, 0.0, APPROACH.y), Vector3.UP)
@@ -106,7 +106,7 @@ func _run() -> void:
 	while not (GS.state == GS.State.IN_GAME_PLAYER and SL.current_level_id == "moon_level"):
 		await process_frame
 	level = SL.current_scene
-	kite = level.get_node("Kite")
+	iris = level.get_node("Iris")
 	rover = level.get_node("ReadyRover")
 	side_camera = Camera3D.new()
 	side_camera.fov = 50.0
@@ -114,24 +114,24 @@ func _run() -> void:
 	rover.get_node("CargoSocket").mount(level.get_node("Workshop").rack_stock.get_node("Slot17"))
 	await _frames(30)
 
-	# Kite from the approach gate (the gate's posts in front)
+	# IRIS from the approach gate (the gate's posts in front)
 	_huds(false)
-	var gate: Vector3 = (level.get_node("KiteGate/PostLeft").global_position + level.get_node("KiteGate/PostRight").global_position) / 2.0
+	var gate: Vector3 = (level.get_node("IrisGate/PostLeft").global_position + level.get_node("IrisGate/PostRight").global_position) / 2.0
 	var back := Vector3(-APPROACH.x, 0.0, -APPROACH.y)
-	_side_view(gate.x + back.x * 4.0, gate.z + back.z * 4.0, 1.6, kite.global_position + Vector3.UP * 0.3)
+	_side_view(gate.x + back.x * 4.0, gate.z + back.z * 4.0, 1.6, iris.global_position + Vector3.UP * 0.3)
 	await _frames(60)
-	await _shot("kite_from_gate")
+	await _shot("iris_from_gate")
 
 	# Scanning: 12 m out, mast view, HUD on
 	_place_rover(11.5)
 	GS.drive(rover)
 	await _frames(120)
 	rover.get_node("CameraRig")._switch(1)
-	_aim_mast_at(kite.global_position + Vector3.UP * 0.35)
+	_aim_mast_at(iris.global_position + Vector3.UP * 0.35)
 	_huds(true)
 	await _frames(70)                        # about half the 1.5 s hold
 	await _shot("mast_scanning")
-	while not kite.is_scanned:
+	while not iris.is_scanned:
 		await process_frame
 	await _frames(10)
 	await _shot("mast_scanned")
@@ -143,23 +143,23 @@ func _run() -> void:
 	rover.controller.camera_altitude = 0.0
 	rover.get_node("CameraRig")._switch(0)
 	await _frames(60)
-	var m: Dictionary = rover.get_node("CargoDelivery").measure(kite.port)
+	var m: Dictionary = rover.get_node("CargoDelivery").measure(iris.port)
 	print("PLACE rover at %s heading %s, port at %s, d %.3f bearing %+.1f, hint \"%s\"" % [rover.global_position,
-		-rover.global_basis.z, kite.port.global_position, m["d"], m["bearing"], rover.get_node("CargoDelivery").get_hint()])
+		-rover.global_basis.z, iris.port.global_position, m["d"], m["bearing"], rover.get_node("CargoDelivery").get_hint()])
 	await _shot("parked_chase_hint")
 	_huds(false)
-	var pair: Vector3 = (rover.global_position + kite.global_position) / 2.0
+	var pair: Vector3 = (rover.global_position + iris.global_position) / 2.0
 	var side := Vector3(-APPROACH.y, 0.0, APPROACH.x)
 	_side_view(pair.x + side.x * 3.0 - APPROACH.x * 2.0, pair.z + side.z * 3.0 - APPROACH.y * 2.0, 3.5, pair)
 	await _shot("parked_above")
 	side_camera.current = false
 	rover.camera.current = true
 
-	# The delivery, from beside it (Kite's right, looking across)
+	# The delivery, from beside it (IRIS's right, looking across)
 	var delivery: Node = rover.get_node("CargoDelivery")
 	print("PLACE E starts the delivery: %s" % delivery.handle_interact())
 	_huds(false)
-	var port: Vector3 = kite.port.global_position
+	var port: Vector3 = iris.port.global_position
 	var across := Vector3(-APPROACH.y, 0.0, APPROACH.x)          # the rover's right
 	var mid: Vector3 = port - Vector3(APPROACH.x, 0.0, APPROACH.y) * 0.45
 	_side_view(mid.x + across.x * 2.2, mid.z + across.z * 2.2, 0.9, mid + Vector3.UP * 0.45)
@@ -178,8 +178,8 @@ func _run() -> void:
 	_side_view(mid.x + across.x * 2.2, mid.z + across.z * 2.2, 0.9, mid + Vector3.UP * 0.45)
 	await _shot("delivered_side")
 	_side_view(port.x + APPROACH.x * 1.2 + across.x * 0.8, port.z + APPROACH.y * 1.2 + across.z * 0.8, 1.2, port)
-	await _shot("kite_green_light")
-	print("RESULT kite previews: scanned %s, cartridge in %s" % [kite.is_scanned, kite.has_cartridge])
+	await _shot("iris_green_light")
+	print("RESULT iris previews: scanned %s, cartridge in %s" % [iris.is_scanned, iris.has_cartridge])
 	quit()
 
 

@@ -53,7 +53,7 @@ SOCKETS = {
     "socket_power": (0.00, -HALF_L, 0.36),
     "socket_antenna": (-0.15, -0.25, DECK_Z),
     # Under the stowed arm's turret: the only deck patch the arm reaches pointing straight down
-    # (ROVER_KIT.md 9, KITE_KIT.md 5)
+    # (ROVER_KIT.md 9, IRIS_KIT.md 5)
     "socket_cargo": (-0.125, 0.20, DECK_Z),
 }
 for _side, _sign in (("L", -1.0), ("R", 1.0)):

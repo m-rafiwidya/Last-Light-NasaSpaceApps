@@ -260,7 +260,7 @@ func _attach(target: Node, observer: Node) -> void:
 
 func _watch_socket(socket: HotswapSocket) -> void:
 	if socket.accepted_type == HotswapPart.PartType.CARGO:
-		return                          # the Kite delivery gets its own sounds later
+		return                          # the IRIS delivery gets its own sounds later
 	socket.part_mounted.connect(func(_part: HotswapPart) -> void: play(&"part_seat", socket))
 	socket.part_unmounted.connect(func(part: HotswapPart) -> void:
 		_released_part = part

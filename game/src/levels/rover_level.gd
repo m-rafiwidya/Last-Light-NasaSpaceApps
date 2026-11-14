@@ -36,7 +36,7 @@ extends Node3D
 ## bump stop, so landings off crater rims at 4-6 m/s don't bottom out (tests/test_rover_landing.gd)
 @export var rover_suspension: Dictionary = {}
 ## Whether a driven rover's mast camera picks things up, holds and throws them here. The Moon
-## turns it off: there the rover only carries what's on its cargo mount (KITE_KIT.md 10)
+## turns it off: there the rover only carries what's on its cargo mount (IRIS_KIT.md 10)
 @export var rover_pickup: bool = true
 ## Whether the player on foot can pick up and throw a rover here (the test level's sandbox: yes;
 ## the Moon: no)

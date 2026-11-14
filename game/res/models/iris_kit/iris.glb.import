@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c2g47jp18benw"
-path="res://.godot/imported/kite.glb-35fdf9078e7c993bdbbfcc4bcfc3cf7a.scn"
+uid="uid://8j1blnlnq78t"
+path="res://.godot/imported/iris.glb-304df868d44a4e7a7f53d38778429c66.scn"
 
 [deps]
 
-source_file="res://res/models/kite_kit/kite.glb"
-dest_files=["res://.godot/imported/kite.glb-35fdf9078e7c993bdbbfcc4bcfc3cf7a.scn"]
+source_file="res://res/models/iris_kit/iris.glb"
+dest_files=["res://.godot/imported/iris.glb-304df868d44a4e7a7f53d38778429c66.scn"]
 
 [params]
 

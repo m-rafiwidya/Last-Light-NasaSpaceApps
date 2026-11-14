@@ -430,7 +430,7 @@ Swappable variants keep to their slot's budget.
 
 ---
 
-## 9. Cargo mount (KITE_KIT.md, approved 2026-10-09)
+## 9. Cargo mount (IRIS_KIT.md, approved 2026-10-09)
 
 - **Chassis:** a new empty **`socket_cargo` (-0.125, 0.20, 0.44)** on the deck, under the stowed
   arm's turret.
@@ -451,4 +451,4 @@ Swappable variants keep to their slot's budget.
 - **Arm with cargo:** manual arm control is off while the cargo mount holds something. The empty
   mount joins `make_arm.py`'s full-range clearance check as an obstacle.
 - **Budget:** cargo_mount 120 triangles (the kit total goes from 6,308 to 6,428, under 8,000).
-- **`rover_gold`:** also used for the cartridge's stripe (KITE_KIT.md 4), if approved.
+- **`rover_gold`:** also used for the cartridge's stripe (IRIS_KIT.md 4), if approved.

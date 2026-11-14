@@ -112,7 +112,7 @@ class Component extends DCLogic {
       if (self.bar) self.bar.style.width = (eased * 100).toFixed(2) + '%';
       var pct = Math.round(eased * 100) + '%';
       var fact = Math.floor(el / 7) + (st.factBase || 0);
-      var stage = p < 0.3 ? 'LOADING TERRAIN' : p < 0.6 ? 'PREPARING THE WORKSHOP' : p < 0.9 ? 'WAKING UP ROOK' : 'ALMOST THERE';
+      var stage = p < 0.3 ? 'LOADING TERRAIN' : p < 0.6 ? 'PREPARING THE WORKSHOP' : p < 0.9 ? 'WAKING UP KITE' : 'ALMOST THERE';
       if (pct !== st.pct || stage !== st.stage || (p >= 1) !== !!st.done || fact !== st.factTick) {
         self.setState({ pct: pct, stage: stage, done: p >= 1, factTick: fact });
       }

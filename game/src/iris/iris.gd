@@ -1,25 +1,25 @@
-class_name Kite
+class_name Iris
 
 extends Node3D
 
-## Kite, the disabled survey rover (A05, tools/blender/KITE_KIT.md 6): a static scene of the rover
-## kit's meshes in a damaged pose (res/models/kite_kit/kite.glb, from make_kite.py), never a
-## Robot, so it can't be driven, pushed or picked up. The mast camera scans it (RoverScanner, group
-## "scan_target"); its service port (a CargoPort) takes the diagnostic cartridge from a rover's
-## arm (CargoDelivery). The port's status light: red blink until the cartridge is in, amber while
-## it's read, then green.
+## IRIS, the research station (A07, tools/blender/IRIS_KIT.md 6): a static scene, for now the
+## placeholder (res/models/iris_kit/iris.glb, from make_iris.py: body box, mast with an indicator,
+## service port), never a Robot, so it can't be driven, pushed or picked up. The mast camera scans
+## it (RoverScanner, group "scan_target"); its service port (a CargoPort) takes the diagnostic
+## cartridge from a rover's arm (CargoDelivery). The port's status light and the mast's indicator:
+## red blink until the cartridge is in, amber while it's read, then green.
 
 signal scanned(rover: Robot)
 signal cartridge_inserted(cartridge: HotswapPart, rover: Robot)
 
-const MODEL: PackedScene = preload("res://res/models/kite_kit/kite.glb")
+const MODEL: PackedScene = preload("res://res/models/iris_kit/iris.glb")
 const READ_TIME: float = 3.0
-# Dust: Kite's kit materials, lighter, greyer and rougher
+# Dust: the rover kit's materials, lighter, greyer and rougher (none on the placeholder)
 const DUST: Color = Color(0.56, 0.53, 0.48)
 const DUST_AMOUNT: float = 0.35
 
-@export var scan_name: String = "KITE"
-@export_multiline var scan_report: String = "Kite. Survey rover, disabled: drive unit failed, arm lost, rear-left wheel off. Diagnostic port open on its front bracket."
+@export var scan_name: String = "IRIS"
+@export_multiline var scan_report: String = "IRIS. Research station, silent: no signal on any band. Diagnostic port open on its front bracket."
 
 var is_scanned: bool = false
 var has_cartridge: bool = false
@@ -32,21 +32,22 @@ var _light := StandardMaterial3D.new()
 
 func _ready() -> void:
 	add_to_group(&"scan_target")
-	add_to_group(&"kite")
+	add_to_group(&"iris")
 	var model: Node3D = MODEL.instantiate()
 	model.name = "Model"
 	add_child(model)
 	_dust(model)
-	# Kite's colliders on layer 2 (vehicles): rovers bump into it, but their wheels' ground check
+	# IRIS's colliders on layer 2 (vehicles): rovers bump into it, but their wheels' ground check
 	# (layers 1, 3) and the arm's ground check (layer 1) don't take it for the ground
 	for body in model.find_children("*", "StaticBody3D", true, false):
 		(body as StaticBody3D).collision_layer = 2
 		(body as StaticBody3D).collision_mask = 0
 	_light.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_light.emission_enabled = true
-	var light := model.find_child("kite_status_light", true, false) as GeometryInstance3D
-	if light:
-		light.material_override = _light
+	for light_name in ["iris_status_light", "iris_indicator"]:
+		var light := model.find_child(light_name, true, false) as GeometryInstance3D
+		if light:
+			light.material_override = _light
 	var socket := model.find_child("socket_cartridge", true, false) as Node3D
 	port = CargoPort.new()
 	port.name = "CargoPort"
@@ -74,7 +75,7 @@ func _dust(model: Node) -> void:
 			m.set_surface_override_material(i, dusty[source])
 
 
-## Called by RoverScanner when a rover's mast camera has held on Kite long enough
+## Called by RoverScanner when a rover's mast camera has held on IRIS long enough
 func mark_scanned(rover: Robot) -> void:
 	if is_scanned:
 		return

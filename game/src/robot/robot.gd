@@ -333,7 +333,7 @@ func is_aiming() -> bool:
 func _on_controller_interact(value: bool) -> void:
 	if not value:
 		return
-	# Cargo delivery first (KITE_KIT.md 8): E in a port's window
+	# Cargo delivery first (IRIS_KIT.md 8): E in a port's window
 	var delivery := get_node_or_null("CargoDelivery") as CargoDelivery
 	if delivery and delivery.handle_interact():
 		return
