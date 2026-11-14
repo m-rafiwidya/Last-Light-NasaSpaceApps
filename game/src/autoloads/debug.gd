@@ -20,6 +20,12 @@ func add_log(message: String):
 	debug_console_output.append(entry)
 
 
+## Adds the message to the console and prints it to the Godot output log
+func _log_and_print(message: String) -> void:
+	print(message)
+	add_log(message)
+
+
 func parse_command(input: String):
 	var argv: PackedStringArray = input.split(" ", false)
 	var argc: int = argv.size()
@@ -72,6 +78,18 @@ func parse_command(input: String):
 				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.SAVE_DIR])
 			"clearsaves":
 				add_log("Removed %d fake saves" % SaveIndex.clear_fake_saves())
+			"saves":
+				# Lists the save metadata files (SaveIndex.list_saves) in the console and the output log
+				_log_and_print("Saves folder: %s" % ProjectSettings.globalize_path(SaveIndex.SAVE_DIR))
+				var saves: Array[SaveSlotInfo] = SaveIndex.list_saves()
+				if saves.is_empty():
+					_log_and_print("No save files in %s/" % SaveIndex.SAVE_DIR)
+				for info in saves:
+					_log_and_print("%s | %s | %s | %s | %d%% | autosave %s | %s" % [
+						info.slot_id, SaveIndex.mission_title(info.mission_id), SaveIndex.format_date(info.saved_at),
+						SaveIndex.format_play_time(info.play_time_sec), roundi(info.story_progress * 100.0),
+						"yes" if info.is_autosave else "no",
+						ProjectSettings.globalize_path(SaveIndex.SAVE_DIR.path_join(info.slot_id + SaveIndex.META_SUFFIX))])
 			"unlockall":
 				# Unlocks every planet in the planet explorer until the game quits (testing)
 				PlanetData.unlock_all = true

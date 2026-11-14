@@ -823,6 +823,7 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `testlevel` | loads the test level (it is no longer on the main menu) |
 | `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
 | `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |
+| `saves` | lists `SaveIndex.list_saves()` in the console and the output log: the saves folder's absolute path, then one line per save (slot id, mission title, saved at DD/MM/YYYY HH:MM, play time, progress %, autosave yes/no, metadata file path), or `No save files in user://saves/` |
 | `unlockall` | unlocks Mars and Earth in the planet explorer until the game quits (`PlanetData.unlock_all`) |
 
 | anything else | logs `Unknown command "..."` |
