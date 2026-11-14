@@ -34,7 +34,7 @@ ambient_light_color = Color(0.62, 0.68, 0.8, 1)
 ambient_light_energy = 0.04
 reflected_light_source = 2
 tonemap_mode = 4
-tonemap_exposure = 5.85
+tonemap_exposure = 2.0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(0.72, 0.72, 0.7, 1)
@@ -54,7 +54,7 @@ ground_friction = 1.6
 earth_direction = Vector3(0.7054, 0.0698, -0.7054)
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.9396926, -0.008952, -0.3419787, 0, 0.9996573, -0.026177, 0.3420201, -0.024594, -0.9395707, 0, 0, 0)
+transform = Transform3D(0.9396926, -0.0534691, 0.3378186, 0, 0.9876883, 0.1564345, -0.3420201, -0.1469051, 0.9281479, 0, 0, 0)
 light_energy = 2.0
 light_angular_distance = 0.53
 shadow_enabled = true
@@ -69,6 +69,7 @@ directional_shadow_max_distance = 500.0
 environment = SubResource("Environment_moon")
 script = ExtResource("8_lunar_sky")
 sun = NodePath("../Sun")
+sun_elevation = 9.0
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 5)
