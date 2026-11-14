@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://6lqw13v7axa8"]
+
+[ext_resource type="Script" uid="uid://c43iwjqa2pe81" path="res://src/robot/socket/hotswap_socket.gd" id="1_socket"]
+[ext_resource type="Script" uid="uid://b3epixqjbcndx" path="res://src/interact_trigger/interact_trigger.gd" id="2_trigger"]
+
+[sub_resource type="StandardMaterial3D" id="Material_base"]
+albedo_color = Color(0.15, 0.55, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+size = Vector3(0.5, 0.1, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_trigger"]
+size = Vector3(0.5, 0.8, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_capture"]
+size = Vector3(0.5, 0.6, 0.5)
+
+[node name="HotswapSocket" type="Node3D" unique_id=1524296194]
+script = ExtResource("1_socket")
+
+[node name="Base" type="MeshInstance3D" parent="." unique_id=754433764]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+visible = false
+material_override = SubResource("Material_base")
+mesh = SubResource("BoxMesh_base")
+
+[node name="InteractTrigger" type="Area3D" parent="." unique_id=958865562]
+collision_layer = 16
+collision_mask = 0
+monitoring = false
+script = ExtResource("2_trigger")
+tooltip = ""
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="InteractTrigger" unique_id=2056064871]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_trigger")
+disabled = true
+
+[node name="PartCapture" type="Area3D" parent="." unique_id=1457148894]
+collision_layer = 0
+collision_mask = 4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PartCapture" unique_id=1086714124]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("BoxShape3D_capture")
+debug_color = Color(0.94, 0, 0.6, 0.42)
+
+[node name="MountPoint" type="Marker3D" parent="." unique_id=1944839217]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)

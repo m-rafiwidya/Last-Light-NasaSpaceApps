@@ -12,6 +12,15 @@ extends RigidBody3D
 @export var camera: Camera3D
 @export var raycast: RayCast3D
 
+# Sockets that hold the wheel parts. Each wheel is placed by the running gear
+# (suspension travel) and takes its radius from the mounted WheelPart.
+@export_group("Wheel Sockets")
+@export var front_left_socket: HotswapSocket
+@export var front_right_socket: HotswapSocket
+@export var rear_left_socket: HotswapSocket
+@export var rear_right_socket: HotswapSocket
+@export_group("")
+
 # Single fixed gear, used for both forward and reverse. The engine is rigidly
 # coupled to the driven wheels (no clutch).
 @export var gear_ratio: float = 1.0
@@ -37,6 +46,8 @@ var motor_angular_velocity: float = 0.0
 var motor_torque: float = 0.0
 var differential_angular_velocity: float = 0.0
 
+var wheel_sockets: Dictionary = {}
+
 # Object pickup (shared with the player, see ObjectHolder)
 var holder: ObjectHolder
 # Held object or whatever the pickup ray is aiming at (used by the robot HUD crosshair)
@@ -46,6 +57,12 @@ var looking_at_object: Node3D = null
 func _ready() -> void:
 	Debug.current_robot = self
 	running_gear.update_wheel_properties()
+	wheel_sockets = {
+		RunningGear.Wheel.FRONT_LEFT: front_left_socket,
+		RunningGear.Wheel.FRONT_RIGHT: front_right_socket,
+		RunningGear.Wheel.REAR_LEFT: rear_left_socket,
+		RunningGear.Wheel.REAR_RIGHT: rear_right_socket,
+	}
 
 	# The robot is on the props layer, so the pickup ray must not pick up the robot itself
 	raycast.add_exception(self)
@@ -91,9 +108,37 @@ func _physics_process(delta: float) -> void:
 	looking_at_object = holder.held_object if holder.held_object else raycast.get_collider()
 
 	holder.update(delta)
+	_update_wheel_parts()
 
 	camera.rotation.x = controller.camera_altitude
 	pivot.rotation.y = controller.camera_azimuth
+
+
+# Reads the radius of each mounted WheelPart into the running gear and moves the
+# part to where the running gear says its wheel is (hanging from the suspension).
+# An empty socket falls back to the running gear's default wheel_radius.
+func _update_wheel_parts() -> void:
+	var inverse_basis: Basis = global_transform.basis.inverse()
+	for wheel in wheel_sockets:
+		var properties: Dictionary = running_gear.wheel_properties[wheel]
+		var wheel_part: WheelPart = null
+		if wheel_sockets[wheel]:
+			wheel_part = wheel_sockets[wheel].part as WheelPart
+
+		var radius: float = wheel_part.radius if wheel_part else running_gear.wheel_radius
+		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
+		if not wheel_part:
+			continue
+
+		# Height of the ground under the wheel in robot space. Without contact the
+		# suspension is fully extended, i.e. at the end of the suspension ray.
+		var ground_height: float = -properties[RunningGear.WheelProperty.RIDE_HEIGHT]
+		if running_gear.wheel_states[wheel][RunningGear.WheelState.IN_CONTACT]:
+			ground_height = (inverse_basis * running_gear.wheel_states[wheel][RunningGear.WheelState.CONTACT_POINT]).y
+
+		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
+		wheel_position.y = ground_height + radius
+		wheel_part.global_position = to_global(wheel_position)
 
 
 func _integrate_forces(state) -> void:
