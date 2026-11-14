@@ -195,8 +195,9 @@ libraries/ = SubResource("AnimationLibrary_qc03e")
 [node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=1523328076]
 navigation_mesh = SubResource("NavigationMesh_iynu6")
 
-[node name="CSGBox3D" type="CSGBox3D" parent="NavigationRegion3D" unique_id=908363993]
+[node name="CSGBox3D" type="CSGBox3D" parent="NavigationRegion3D" unique_id=908363993 groups=["dusty_ground"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+layers = 1025
 material_override = SubResource("StandardMaterial3D_t1chq")
 use_collision = true
 collision_mask = 0

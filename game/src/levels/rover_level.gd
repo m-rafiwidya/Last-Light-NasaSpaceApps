@@ -7,6 +7,9 @@ extends Node3D
 ##   <Rover>Trigger       an InteractTrigger next to each Robot child <Rover>: E drives that rover
 ##   PartsPile            loose HotswapParts, recorded as the level starts
 ##   RespawnPartsTrigger  E clears the loose pile parts and lays out the recorded pile again
+## Every rover gets its wheel dust (WheelDust) unless GraphicsSettings.surface_effects is Off; the
+## level's dusty ground (group `dusty_ground`, render layer WheelDust.GROUND_RENDER_LAYER) is what
+## it sprays from and lands on.
 
 
 ## Gravity in this level (m/s^2), applied by SceneLoader as the level loads: Earth's 9.8 (the
@@ -62,6 +65,18 @@ func _ready() -> void:
 		_pile.record($PartsPile)
 	if has_node("RespawnPartsTrigger"):
 		$RespawnPartsTrigger.interacted.connect(_on_respawn_parts_trigger_interacted)
+	_add_surface_effects()
+
+
+# Wheel dust on every rover, and the field its grains land on
+func _add_surface_effects() -> void:
+	var setting: GraphicsSettings.SurfaceEffects = GraphicsSettings.get_surface_effects()
+	if setting == GraphicsSettings.SurfaceEffects.OFF:
+		return
+	var low: bool = setting == GraphicsSettings.SurfaceEffects.LOW
+	for rover in find_children("*", "Robot", true, false):
+		rover.add_child(WheelDust.new(low))
+	WheelDust.add_ground_collider(self, low)
 
 
 ## Take control of the trigger's rover. Esc (ui_cancel, handled by UIManager) hands control

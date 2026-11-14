@@ -187,6 +187,8 @@ func _build_collision() -> void:
 	var play: Dictionary = tiers[0]
 	var body := StaticBody3D.new()
 	body.name = "Ground"
+	# The wheels throw dust from it (WheelDust)
+	body.add_to_group(WheelDust.DUSTY_GROUP)
 	body.collision_layer = 1
 	body.collision_mask = 0
 	var shape := CollisionShape3D.new()
@@ -387,6 +389,9 @@ func _flush_meshes(limit: int) -> int:
 		instance.mesh = mesh_from_chunk(entry[3])
 		instance.material_override = materials[t["name"]]
 		instance.layers = 1 << (RENDER_LAYER - 1)
+		# The play area is what the wheels' dust lands on (WheelDust's collision field)
+		if entry[0] == 0:
+			instance.layers |= 1 << (WheelDust.GROUND_RENDER_LAYER - 1)
 		# The sun's cascades only reach 500 m: beyond the near tier the horizon map shades instead
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if entry[0] <= 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)
