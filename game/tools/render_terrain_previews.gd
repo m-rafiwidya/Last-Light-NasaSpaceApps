@@ -35,7 +35,10 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
+# Back in front first: another window can take the focus during a run, and an unfocused
+# window's frames come out stale or black
 func _frames(count: int) -> void:
+	DisplayServer.window_move_to_foreground()
 	for i in count:
 		await process_frame
 

@@ -31,7 +31,7 @@ background_mode = 2
 sky = SubResource("Sky_moon")
 ambient_light_source = 2
 ambient_light_color = Color(0.62, 0.68, 0.8, 1)
-ambient_light_energy = 0.04
+ambient_light_energy = 0.0094
 reflected_light_source = 2
 tonemap_mode = 4
 tonemap_exposure = 2.0
@@ -45,7 +45,7 @@ script = ExtResource("1_level")
 gravity = 1.62
 jump_height = 1.2
 ground_friction = 1.6
-earth_direction = Vector3(-0.061048, 0.001404, -0.998134)
+earth_direction = Vector3(-0.060714, 0.104528, -0.992667)
 camera_far = 200000.0
 rover_suspension = {
 "front_spring_stiffness": 440.8,
@@ -57,9 +57,9 @@ rover_suspension = {
 }
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.9396926, -0.0534691, 0.3378186, 0, 0.9876883, 0.1564345, -0.3420201, -0.1469051, 0.9281479, 0, 0, 0)
+transform = Transform3D(0.9396926, 0.01253289, -0.3417904, -0, 0.9993284, 0.03664371, 0.3420201, -0.03443382, 0.9390615, 0, 0, 0)
 light_energy = 2.0
-light_angular_distance = 0.53
+light_angular_distance = 0.0
 shadow_enabled = true
 shadow_bias = 0.03
 shadow_normal_bias = 1.0
@@ -72,8 +72,8 @@ directional_shadow_max_distance = 500.0
 environment = SubResource("Environment_moon")
 script = ExtResource("8_lunar_sky")
 sun = NodePath("../Sun")
-sun_elevation = 9.0
-sun_azimuth = 39.0
+sun_elevation = 2.1
+sun_azimuth = 200.0
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -334.5, 51, -294.2)

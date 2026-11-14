@@ -1,7 +1,7 @@
 {
 	"name": "moon_site01",
 	"description": "LOLA Site01 'Connecting ridge' (between Shackleton and de Gerlache), lunar south pole. See tools/terrain/MOON_TERRAIN.md.",
-	"generated": "2026-10-08 17:54",
+	"generated": "2026-10-08 23:44",
 	"generator": "tools/terrain/build_moon_terrain.py moon_site01.json",
 	"seed": 20261008,
 	"centre": {
@@ -59,24 +59,24 @@
 	],
 	"horizons": {
 		"azimuths_degrees": [
-			39.0,
-			61.5,
-			84.0,
-			106.5,
-			129.0,
-			151.5,
-			174.0,
-			196.5,
-			219.0,
-			241.5,
-			264.0,
-			286.5,
-			309.0,
-			331.5,
-			354.0,
-			16.5
+			200.0,
+			222.5,
+			245.0,
+			267.5,
+			290.0,
+			312.5,
+			335.0,
+			357.5,
+			20.0,
+			42.5,
+			65.0,
+			87.5,
+			110.0,
+			132.5,
+			155.0,
+			177.5
 		],
-		"first_azimuth": 39.0,
+		"first_azimuth": 200.0,
 		"step_degrees": 22.5,
 		"encoding": "degrees = -10.0 + byte / 255 * 60.0",
 		"azimuth_convention": "degrees from -Z towards +X",
@@ -178,14 +178,26 @@
 		]
 	},
 	"sun": {
-		"elevation": 9.0,
-		"azimuth": 39.0,
-		"floor_margin_degrees": 0.22,
-		"base_margin_degrees": 3.12,
+		"elevation": 2.1,
+		"azimuth": 200.0,
+		"floor_margin_degrees": 0.55,
+		"base_margin_degrees": 1.06,
 		"azimuths_that_work": [
 			[
-				32.0,
-				45.0
+				145.0,
+				146.0
+			],
+			[
+				176.0,
+				276.0
+			],
+			[
+				278.0,
+				305.0
+			],
+			[
+				307.0,
+				318.0
 			]
 		],
 		"kept_dark_psr_hectares": [
@@ -203,19 +215,20 @@
 			0.04
 		],
 		"floor_lit_fraction_at_best": 0.0,
-		"play_area_lit_fraction": 0.354
+		"all_psr_lit_fraction": 0.0,
+		"play_area_lit_fraction": 0.77
 	},
 	"earth": {
 		"azimuth": -3.5,
-		"elevation": 0.08043360710144043,
+		"elevation": 6.0,
 		"direction": [
-			-0.06104847937939887,
-			0.0014038308120774081,
-			-0.9981338148888225
+			-0.060714109247670824,
+			0.10452846326765347,
+			-0.9926669115595445
 		],
 		"horizon_degrees": -2.4195663928985596,
-		"sun_separation_degrees": 43.2,
-		"lit_fraction": 0.136,
+		"sun_separation_degrees": 155.2,
+		"lit_fraction": 0.954,
 		"horizon_by_azimuth": {
 			"-8.0": -1.91,
 			"-7.5": -1.96,

@@ -603,17 +603,27 @@ def choose_sun(cfg, frame, world, psr_path):
 	if not ok:
 		sys.exit(f"sun at {el} deg: no azimuth keeps the floor dark and the base lit")
 	best = max(ok)
+	if "azimuth" in s:
+		# A chosen azimuth (the settings file's) instead of the one with the most margin: it must still work
+		chosen = [r for r in rows if r[1] == float(s["azimuth"])]
+		if not chosen or chosen[0] not in ok:
+			sys.exit(f"sun at {el} deg, azimuth {s['azimuth']}: the floor isn't dark or the base and pad aren't lit")
+		best = chosen[0]
 	# How much of the play area the chosen sun lights (every 16 m, at the ground)
 	ax = np.arange(-cfg["boundary_half_size"] + 8, cfg["boundary_half_size"], 16.0)
 	AX, AZ = np.meshgrid(ax, ax)
 	AX, AZ = AX.ravel(), AZ.ravel()
 	lit_area = float((horizon_angles(world, AX, AZ, world.height(AX, AZ) + 0.05, [best[1]], start=16.0)[0] < el).mean())
-	log(f"sun at {el} deg: {len(ok)} azimuths keep the floor dark and the base lit (margin {s['margin_degrees']} deg); best {best[1]:.0f}: floor horizon at least {best[2] + el + sun_radius:.2f} deg, base horizon at most {el - sun_radius - best[3]:.1f} deg; {lit_area * 100:.0f}% of the play area in sunlight")
+	# Every permanently shadowed patch, not just the big ones: the share of their points the top of the sun reaches
+	all_x = np.concatenate([p["X"] for p in patches]); all_z = np.concatenate([p["Z"] for p in patches])
+	all_h = horizon_angles(world, all_x, all_z, world.height(all_x, all_z), [best[1]], start=2.0)[0]
+	all_lit = float((all_h < el + sun_radius).mean())
+	log(f"sun at {el} deg: {len(ok)} azimuths keep the floor dark and the base lit (margin {s['margin_degrees']} deg); {'chosen' if 'azimuth' in s else 'best'} {best[1]:.0f}: floor horizon at least {best[2] + el + sun_radius:.2f} deg, base horizon at most {el - sun_radius - best[3]:.1f} deg; {lit_area * 100:.0f}% of the play area in sunlight; {all_lit * 100:.1f}% of all shadowed patches' points see the sun")
 	good = [r[1] for r in ok]
 	return {"elevation": el, "azimuth": best[1], "floor_margin_degrees": round(best[2], 2), "base_margin_degrees": round(best[3], 2),
 		"azimuths_that_work": runs(good), "kept_dark_psr_hectares": [round(p["hectares"], 2) for p in big],
 		"all_psr_hectares": [round(p["hectares"], 2) for p in patches],
-		"floor_lit_fraction_at_best": round(best[4], 4), "play_area_lit_fraction": round(lit_area, 3)}
+		"floor_lit_fraction_at_best": round(best[4], 4), "all_psr_lit_fraction": round(all_lit, 4), "play_area_lit_fraction": round(lit_area, 3)}
 
 
 def runs(values):
@@ -633,6 +643,11 @@ def choose_earth(cfg, world, spots, sun):
 	hz = horizon_angles(world, np.array([float(base[0])]), np.array([float(base[2])]), np.array([base[1] + 1.0]), az % 360.0, start=2.0)[:, 0]
 	best = int(np.argmin(hz))
 	elevation = min(e["elevation_range"][1], float(hz[best]) + e["clearance_degrees"] + 1.0)
+	if "elevation" in e:
+		# A chosen height within the libration range (the settings file's), clear of the skyline
+		elevation = float(e["elevation"])
+		if not e["elevation_range"][0] <= elevation <= e["elevation_range"][1] or elevation - float(hz[best]) < e["clearance_degrees"]:
+			sys.exit(f"Earth at {elevation} deg: outside the libration range or under the skyline ({float(hz[best]):.1f} deg)")
 	visible = elevation - float(hz[best])
 	a, el = math.radians(az[best]), math.radians(elevation)
 	direction = [math.sin(a) * math.cos(el), math.sin(el), -math.cos(a) * math.cos(el)]

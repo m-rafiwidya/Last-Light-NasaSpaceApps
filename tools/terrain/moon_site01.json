@@ -66,6 +66,6 @@
 		"landing_pad": [-246, -357]
 	},
 	"boundary_half_size": 500,
-	"sun": {"elevation": 9.0, "keep_dark_psr_min_hectares": 5.0, "margin_degrees": 0.0},
-	"earth": {"azimuth_range": [-8.0, 8.0], "elevation_range": [-7.1, 6.2], "clearance_degrees": 1.5}
+	"sun": {"elevation": 2.1, "azimuth": 200.0, "keep_dark_psr_min_hectares": 5.0, "margin_degrees": 0.0},
+	"earth": {"azimuth_range": [-8.0, 8.0], "elevation_range": [-7.1, 6.2], "clearance_degrees": 1.5, "elevation": 6.0}
 }

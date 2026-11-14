@@ -16,13 +16,26 @@ says otherwise.
    setting (Settings > Video > Terrain Detail, saved in user://settings.cfg; also
    `-- terrain_detail=low`). Low uses every other sample for both mesh and collision, so the wheels
    always stand on what is drawn.
-3. **Sun 9 degrees up, azimuth 39.** Only azimuths 32 to 45 keep all of the 7.9 ha permanently
-   shadowed crater's floor dark with the base and pad lit; 39 has the most margin (the floor's
-   lowest horizon 9.49 degrees against 9.27 for the top of the sun, the base and pad's highest
-   4.6-5.6 against 8.73). The ground to the north-east is higher, so at this sun only 35% of the
-   play area is in direct sunlight (95% at the old azimuth 160). Earth from this site sits near
-   longitude 0's direction: azimuth -3.5, 0.1 degrees up, 2.5 degrees above the skyline seen from
-   the base, 43 degrees from the sun, so a 14% crescent.
+3. **Sun 2.1 degrees up, azimuth 200; Earth 6 degrees up** (replaces 9 degrees at azimuth 39,
+   below). 2.1 is the real sun's highest at this site (1.54 degrees of axial tilt plus 0.63 from
+   the pole, highest towards azimuth 225), so the permanently shadowed crater stays dark for the
+   real reason: its floor's lowest horizon is 2.92 degrees against 2.37 for the top of the sun, no
+   point of any shadowed patch in the play area sees it, the base and pad's highest horizon is
+   0.8, and 77% of the play area is in direct sunlight. Earth from this site sits near longitude
+   0's direction: azimuth -3.5; at 6 degrees up (the top of its libration from here, -7.1 to 6.2)
+   it is 8.4 degrees above the skyline seen from the base, 155 degrees from the sun, so 95% lit.
+   Both are pinned in `moon_site01.json` (`sun.azimuth`, `earth.elevation`); without them the
+   pipeline picks the azimuth with the most margin and puts Earth 2.5 degrees over the skyline,
+   and with them it checks the floor stays dark, the base and pad lit and Earth clear of the
+   skyline. With a sun this low about half the ground near you is in the small shadows of the
+   sub-metre relief (the regolith shader carries this pipeline's roughness spectrum on below the
+   mesh: game README, Moon terrain).
+
+   *Before:* 9 degrees up at azimuth 39, for visibility. At that height only azimuths 32 to 45
+   kept all of the 7.9 ha floor dark with the base and pad lit (the floor's lowest horizon 9.49
+   against 9.27 for the top of the sun); the higher ground to the north-east left only 35% of the
+   play area in sunlight, and Earth, 0.1 degrees up and 43 degrees from the sun, was a 14% crescent
+   on the skyline.
 4. **Parked rover creep: fixed first** (commit "Parked rover and loose parts hold still on
    slopes"): tyre static friction, Coulomb rolling resistance, an automatic brake; loose parts get
    regolith rolling resistance.
@@ -41,6 +54,11 @@ says otherwise.
   of them), 9427 rocks (1668 of 0.2 m and up with collision). Inside the boundary 2.8% of the
   ground is over 25 degrees, 0.63% over 30, 0.014% over 40 (max 51 at 0.5 m).
 - **Horizon maps** start at the sun's azimuth, so the sun's own direction needs no interpolation.
+  After a rebuild, reimport them (`Godot --headless --path game --import`): the game doesn't
+  reimport changed PNGs, and old maps with a new `terrain.json` shade the wrong terrain.
+- **Sun at 2.1 degrees** (decision 3): the sun light casts hard shadows. Godot's soft shadows widen
+  with the caster's distance past what the nearest cascade covers, and with the sun's real 0.53
+  degrees 70% of the sunlight came through the crater's rim onto parts on its floor.
 - **Camera far plane** 200 km on the Moon (`RoverLevel.camera_far`); near planes grow to far / 10^7
   (2 cm here): with 1 mm Godot's light culler failed every frame.
 - **Loading:** meshes are built by low-priority worker tasks that only compute arrays (no
@@ -351,7 +369,7 @@ a compromise for a 1 km map).
   160 (the level's current sun)**, 0-1% at 0, 100 and 220. See decision 2.
 - **Earth:** from this site Earth is towards longitude 0, which is stereographic +y, so the game's -Z
   (azimuth 0), within the libration range of about 7 degrees in elevation (often low, sometimes below
-  the ridge). `RoverLevel.earth_direction` should move from azimuth 45 to about 0 to match the site.
+  the ridge). The level uses azimuth -3.5 at 6 degrees up (decision 3).
 
 ---
 

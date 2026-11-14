@@ -59,6 +59,13 @@ signal sun_changed
 	set(value):
 		auto_exposure = value
 		_update()
+## Sets the environment's ambient (fill) energy from the sun's height (see fill_for_elevation):
+## the fill stands for light scattered off sunlit ground, so it falls with the sunlight on it and
+## shadows stay as dark beside sunlit ground at any sun height; off, the environment's own stays
+@export var auto_fill: bool = true:
+	set(value):
+		auto_fill = value
+		_update()
 
 ## Earth's tilt: the angle between the ecliptic and the celestial equator
 const OBLIQUITY: float = deg_to_rad(23.44)
@@ -69,6 +76,9 @@ const OBLIQUITY: float = deg_to_rad(23.44)
 const REFERENCE_EXPOSURE: float = 2.0
 const EXPOSURE_ELEVATION: float = 9.0
 const EXPOSURE_COMPENSATION: float = 0.6
+## auto_fill: the ambient energy with the sun at EXPOSURE_ELEVATION (shadows nearly black: an
+## eighth of flat sunlit ground)
+const REFERENCE_FILL: float = 0.04
 
 
 ## World direction (unit) at an azimuth and elevation in degrees
@@ -113,6 +123,12 @@ static func exposure_for_elevation(elevation: float) -> float:
 	return REFERENCE_EXPOSURE * pow(ratio, EXPOSURE_COMPENSATION)
 
 
+## Ambient (fill) energy for a sun `elevation` degrees up: 0.04 at 9 degrees, in proportion to the
+## sunlight on flat ground (0.0094 at 2.1)
+static func fill_for_elevation(elevation: float) -> float:
+	return REFERENCE_FILL * sin(deg_to_rad(maxf(elevation, 0.0))) / sin(deg_to_rad(EXPOSURE_ELEVATION))
+
+
 func sun_direction() -> Vector3:
 	return sky_direction(sun_azimuth, sun_elevation)
 
@@ -125,6 +141,8 @@ func _update() -> void:
 	sun_changed.emit()
 	if auto_exposure and environment:
 		environment.tonemap_exposure = exposure_for_elevation(sun_elevation)
+	if auto_fill and environment:
+		environment.ambient_light_energy = fill_for_elevation(sun_elevation)
 	var sky_material := environment.sky.sky_material as ShaderMaterial if environment and environment.sky else null
 	if sky_material == null:
 		return

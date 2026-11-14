@@ -116,6 +116,15 @@ func _check_sky(sky: Node, level: Node) -> void:
 	_check("exposure 2.0 at 9 deg, about 5.9 at 1.5 deg",
 		is_equal_approx(sky.exposure_for_elevation(9.0), 2.0) and absf(sky.exposure_for_elevation(1.5) - 5.85) < 0.05,
 		"%.2f / %.2f" % [sky.exposure_for_elevation(9.0), sky.exposure_for_elevation(1.5)])
+	_check("fill follows the sun's height", is_equal_approx(sky.environment.ambient_light_energy, sky.fill_for_elevation(sky.sun_elevation)),
+		"%.4f" % sky.environment.ambient_light_energy)
+	_check("fill 0.04 at 9 deg, in proportion to the sunlight on flat ground",
+		is_equal_approx(sky.fill_for_elevation(9.0), 0.04) and absf(sky.fill_for_elevation(2.1) / 0.04 - sin(deg_to_rad(2.1)) / sin(deg_to_rad(9.0))) < 0.001,
+		"%.4f / %.4f" % [sky.fill_for_elevation(9.0), sky.fill_for_elevation(2.1)])
+	# Godot's soft shadows widen with the caster's distance past what the nearest cascade covers:
+	# with 0.53 degrees, 70% of the sun came through the crater's rim onto parts on its floor
+	_check("the sun casts hard shadows (a distant rim must shade what stands under it)", is_zero_approx(sun.light_angular_distance),
+		"light_angular_distance %.2f" % sun.light_angular_distance)
 
 	var material: ShaderMaterial = sky.environment.sky.sky_material
 	var shader_earth: Vector3 = material.get_shader_parameter("earth_direction")

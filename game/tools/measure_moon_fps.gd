@@ -89,10 +89,14 @@ func _run() -> void:
 
 
 func _measure(phase: String) -> void:
+	# Back in front: another window can take the focus during a run, and the game caps an
+	# unfocused window at 30 fps (frames measured unfocused are counted and reported)
+	DisplayServer.window_move_to_foreground()
 	var start: int = Time.get_ticks_usec()
 	while Time.get_ticks_usec() - start < WARM_UP * 1e6:
 		await process_frame
 	var frame_times: Array[float] = []
+	var unfocused: int = 0
 	var last: int = Time.get_ticks_usec()
 	start = last
 	while last - start < SECONDS * 1e6:
@@ -100,12 +104,14 @@ func _measure(phase: String) -> void:
 		var now: int = Time.get_ticks_usec()
 		frame_times.append((now - last) / 1000.0)
 		last = now
+		if not DisplayServer.window_is_focused():
+			unfocused += 1
 	var sorted: Array[float] = frame_times.duplicate()
 	sorted.sort()
 	var mean: float = (last - start) / 1000.0 / frame_times.size()
-	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames" % [
+	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames%s" % [
 		phase, 1000.0 / mean, mean, sorted[int(sorted.size() * 0.99)], sorted[-1],
-		frame_times.size()])
+		frame_times.size(), "" if unfocused == 0 else "  (%d unfocused: throttled)" % unfocused])
 
 
 # A hang fails the run instead of stalling it (the windowed tools wait for a level to load)

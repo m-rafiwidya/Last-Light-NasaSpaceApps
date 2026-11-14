@@ -4,7 +4,7 @@ extends SceneTree
 ## (not --headless):
 ##
 ##     Godot --path game -s res://tools/render_sky_previews.gd --resolution 1920x1080
-##     (append `-- elevations=1.5,9` to pick the sun elevations, `only=<shot>` for one shot,
+##     (append `-- elevations=1.5,2.1,9` to pick the sun elevations, `only=<shot>` for one shot,
 ##     `energy=<sun energy>`, `exposure=<e1>,<e2>` (one per elevation) and `tonemap=<mode>` to
 ##     try other lighting than the level's)
 ##
@@ -19,7 +19,7 @@ extends SceneTree
 ## It also checks the star map's orientation: Canopus must be the brightest point near the
 ## direction LunarSky computes for it (prints RESULT ... PASS / FAIL).
 
-const SUN_ELEVATIONS: Array = [1.5, 9.0]
+const SUN_ELEVATIONS: Array = [1.5, 2.1, 9.0]
 const OUT_DIR: String = "res://../tools/previews/sky"
 # At the base (x, z; the height comes from the Moon's terrain), and 120 m west of it for the far
 # shadows
@@ -54,7 +54,10 @@ func _check(name: String, ok: bool, detail: String = "") -> void:
 	print("RESULT %-50s %s %s" % [name, "PASS" if ok else "FAIL", detail])
 
 
+# Back in front first: another window can take the focus during a run, and an unfocused
+# window's frames come out stale or black
 func _frames(count: int) -> void:
+	DisplayServer.window_move_to_foreground()
 	for i in count:
 		await process_frame
 
