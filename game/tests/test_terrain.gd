@@ -22,7 +22,7 @@ extends SceneTree
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_terrain.gd
-##     (append `-- terrain_detail=low` for the 1 m ground)
+##     (append `-- terrain_detail=low` for Low: no detail relief shadows)
 
 const TICKS: int = 240
 const DATA: String = "res://res/terrain/moon_apollo12/"

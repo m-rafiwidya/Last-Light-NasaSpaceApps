@@ -9,11 +9,9 @@ enum TerrainDetail {
 	HIGH,   ## the Moon terrain's play area as stored (Apollo 12: the measured 2 m posts), with the regolith relief's own shadows
 	LOW,    ## no relief shadows; a 16-bit play tier finer than 1 m (the old south pole data) also at every other sample. A measured tier is never thinned
 }
-# (TERRAIN_DETAIL_NAMES, the menu's labels, still name the south pole's 0.5 / 1 m: the settings
-# menu belongs to the UI work, to be updated there)
 
 const PATH: String = "user://settings.cfg"
-const TERRAIN_DETAIL_NAMES: Array[String] = ["High (0.5 m ground)", "Low (1 m ground, weaker computers)"]
+const TERRAIN_DETAIL_NAMES: Array[String] = ["High (fine ground shadows)", "Low (no fine ground shadows, weaker computers)"]
 
 static var terrain_detail: TerrainDetail = TerrainDetail.HIGH
 static var _loaded: bool = false
