@@ -63,6 +63,9 @@ brief's principles are kept:
     normalised, blurred to 8 m and limited to +-30% (5-95%: 0.96-1.15). It shows Surveyor crater's
     halo, the LM's blast zone and fresh craters' haloes. Shading from relief smaller than the DTM
     resolves stays in it.
+- **Terrain Detail** (Settings > Video): Low only turns off the sub-metre relief's own shadows (its
+  normals stay); the measured 2 m posts are the same at either setting. The menu labels are
+  "High (fine ground shadows)" and "Low (no fine ground shadows, weaker computers)".
 - **Ring:**
   - near 8 m to +-4 km (the DTM where it has data, feathered over 100 m into SLDEM2015);
   - mid 64 m to +-32.8 km (SLDEM2015, only rows 720-2360 fetched by byte range, 151 MB of the
@@ -110,7 +113,6 @@ not just the terrain.
 
 - Re-rendering the windowed previews: sky, terrain and helmet light. The tools are retargeted.
 - The mission console's site map from the orthophoto. That console belongs to the UI work.
-- The Terrain Detail menu labels still say 0.5 m / 1 m.
 - Lower star visibility for a sunlit exposure: `star_brightness` is unchanged.
 
 # Apollo 12 switch: the plan as approved
