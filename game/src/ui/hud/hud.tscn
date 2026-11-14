@@ -1,16 +1,16 @@
-[gd_scene load_steps=5 format=3 uid="uid://dhqyoeojs2xo3"]
+[gd_scene format=3 uid="uid://dhqyoeojs2xo3"]
 
 [ext_resource type="Script" uid="uid://bohewxpq1lt12" path="res://src/ui/hud/hud.gd" id="1_ny4e7"]
-[ext_resource type="Texture2D" uid="uid://bxmle36ilh78w" path="res://res/textures/ui/crosshair.svg" id="2_cvkdw"]
+[ext_resource type="Texture2D" uid="uid://d25rgmp1s1quy" path="res://res/textures/ui/crosshair.svg" id="2_cvkdw"]
 [ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_udh2q"]
-[ext_resource type="Texture2D" uid="uid://crjbsy7gcdhmn" path="res://res/textures/ui/interaction.svg" id="4_076te"]
+[ext_resource type="Texture2D" uid="uid://bm7tx5r1xr823" path="res://res/textures/ui/interaction.svg" id="4_076te"]
 
-[node name="HUD" type="CanvasLayer"]
+[node name="HUD" type="CanvasLayer" unique_id=751782193]
 script = ExtResource("1_ny4e7")
 
-[node name="CanvasModulate" type="CanvasModulate" parent="."]
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=2011580715]
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=2005971245]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -18,18 +18,18 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_udh2q")
 
-[node name="CenterContainer" type="CenterContainer" parent="MarginContainer"]
+[node name="CenterContainer" type="CenterContainer" parent="MarginContainer" unique_id=1417362094]
 layout_mode = 2
 
-[node name="TextureRect" type="TextureRect" parent="MarginContainer/CenterContainer"]
+[node name="TextureRect" type="TextureRect" parent="MarginContainer/CenterContainer" unique_id=1063683468]
 layout_mode = 2
 texture = ExtResource("2_cvkdw")
 
-[node name="TextureRect2" type="TextureRect" parent="MarginContainer/CenterContainer"]
+[node name="TextureRect2" type="TextureRect" parent="MarginContainer/CenterContainer" unique_id=1067220017]
 layout_mode = 2
 texture = ExtResource("4_076te")
 
-[node name="Tooltip" type="Label" parent="MarginContainer"]
+[node name="Tooltip" type="Label" parent="MarginContainer" unique_id=820965034]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 4
@@ -38,23 +38,23 @@ text = "TESTTEST"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="DialogBox" type="PanelContainer" parent="MarginContainer"]
+[node name="DialogBox" type="PanelContainer" parent="MarginContainer" unique_id=842487878]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 8
 theme = ExtResource("2_udh2q")
 
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/DialogBox"]
+[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/DialogBox" unique_id=676817831]
 layout_mode = 2
 
-[node name="RichTextLabel" type="RichTextLabel" parent="MarginContainer/DialogBox/MarginContainer"]
+[node name="RichTextLabel" type="RichTextLabel" parent="MarginContainer/DialogBox/MarginContainer" unique_id=1597305212]
 custom_minimum_size = Vector2(512, 0)
 layout_mode = 2
 text = "This is a super long text ahahahahaha hahahahahaha hahahahahaha hahahahaha hahahahaha hahahaha hahahahah"
 fit_content = true
 
-[node name="DialogBoxContainer" type="VBoxContainer" parent="."]
+[node name="DialogBoxContainer" type="VBoxContainer" parent="." unique_id=1663830133]
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0

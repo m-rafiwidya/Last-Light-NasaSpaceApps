@@ -1,10 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://bcg040sdcwn84"]
+[gd_scene format=3 uid="uid://bcg040sdcwn84"]
 
 [ext_resource type="Script" uid="uid://dx88damyum7b5" path="res://src/ui/console/console.gd" id="1_1khpr"]
 
-[node name="Console" type="PopupPanel"]
+[node name="Console" type="PopupPanel" unique_id=294916546]
 oversampling_override = 1.0
-title = "Open Wheel Debug Console"
+title = "Debug Console"
 initial_position = 1
 size = Vector2i(512, 256)
 visible = true
@@ -14,7 +14,7 @@ always_on_top = true
 content_scale_mode = 1
 script = ExtResource("1_1khpr")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1339297615]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -25,21 +25,21 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CommandHistory" type="RichTextLabel" parent="VBoxContainer"]
+[node name="CommandHistory" type="RichTextLabel" parent="VBoxContainer" unique_id=1661520161]
 clip_contents = false
 layout_mode = 2
 size_flags_vertical = 3
 autowrap_mode = 0
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=736701426]
 layout_mode = 2
 
-[node name="Command" type="LineEdit" parent="VBoxContainer/HBoxContainer"]
+[node name="Command" type="LineEdit" parent="VBoxContainer/HBoxContainer" unique_id=1385024759]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
 placeholder_text = "Enter commands here"
 
-[node name="Submit" type="Button" parent="VBoxContainer/HBoxContainer"]
+[node name="Submit" type="Button" parent="VBoxContainer/HBoxContainer" unique_id=2017789759]
 layout_mode = 2
 text = "Submit"
