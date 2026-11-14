@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/field/field_logger_pickup.gd" id="1_pickup"]
+
+[node name="FieldLoggerPickup" type="Node3D"]
+script = ExtResource("1_pickup")
