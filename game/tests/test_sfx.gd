@@ -33,7 +33,10 @@ var GS: Node
 var SL: Node
 var SFX: Node
 var failures: int = 0
-var log: Array = []            # [sound, player, physics frame]
+# [sound, player, physics frame, what the player was as the sound started: {kind, bus, pitch}].
+# Sfx frees a one-shot's player when it finishes, so checks read the recorded facts, never the
+# (possibly freed) player.
+var log: Array = []
 var workshop
 var rover
 var player
@@ -105,7 +108,9 @@ func _run() -> void:
 	GS = root.get_node("GameState")
 	SL = root.get_node("SceneLoader")
 	SFX = root.get_node("Sfx")
-	SFX.played.connect(func(sound: StringName, p: Node) -> void: log.append([sound, p, Engine.get_physics_frames()]))
+	SFX.played.connect(func(sound: StringName, p: Node) -> void:
+		var kind: String = "3d" if p is AudioStreamPlayer3D else ("2d" if p is AudioStreamPlayer else p.get_class())
+		log.append([sound, p, Engine.get_physics_frames(), {"kind": kind, "bus": p.get("bus"), "pitch": p.get("pitch_scale")}]))
 
 	_bus_checks()
 	while GS.state != GS.State.MAIN_MENU:
@@ -170,8 +175,8 @@ func _foot_checks() -> void:
 	await _walk(1.2)
 	var steps: Array = _played(mark, "step_floor")
 	_check("walking inside: steps on the floor", steps.size() >= 2 and _played(mark, "step_regolith").is_empty(), _names(mark))
-	_check("steps are 2D on the SFX bus", not steps.is_empty() and steps[0][1] is AudioStreamPlayer and steps[0][1].bus == &"SFX")
-	var pitches: Array = steps.map(func(e: Array) -> float: return e[1].pitch_scale if is_instance_valid(e[1]) else 1.0)
+	_check("steps are 2D on the SFX bus", not steps.is_empty() and steps[0][3]["kind"] == "2d" and steps[0][3]["bus"] == &"SFX")
+	var pitches: Array = steps.map(func(e: Array) -> float: return e[3]["pitch"])
 	_check("steps get a small random pitch", pitches.any(func(p: float) -> bool: return not is_equal_approx(p, 1.0))
 		and pitches.all(func(p: float) -> bool: return absf(p - 1.0) <= SFX.PITCH_JITTER + 1e-4), str(pitches))
 
@@ -193,8 +198,9 @@ func _foot_checks() -> void:
 	await _ticks(2.0)
 	var grabs: Array = _played(mark, "grab")
 	_check("grab, drop and throw play at the part", grabs.size() == 2 and _played(mark, "drop").size() == 1
-		and _played(mark, "throw").size() == 1 and grabs[0][1] is AudioStreamPlayer3D, _names(mark))
-	_check("tonal sounds keep their pitch (grab)", grabs.all(func(e: Array) -> bool: return not is_instance_valid(e[1]) or e[1].pitch_scale == 1.0))
+		and _played(mark, "throw").size() == 1 and not grabs.is_empty() and grabs[0][3]["kind"] == "3d", _names(mark))
+	_check("tonal sounds keep their pitch (grab)", not grabs.is_empty() and grabs.all(func(e: Array) -> bool: return e[3]["pitch"] == 1.0),
+		str(grabs.map(func(e: Array) -> float: return e[3]["pitch"])))
 	var impacts: Array = log.slice(thrown_mark).filter(func(e: Array) -> bool: return String(e[0]).begins_with("impact_hard_"))
 	_check("the thrown part hits the floor: a hard impact", not impacts.is_empty(), _names(thrown_mark))
 
