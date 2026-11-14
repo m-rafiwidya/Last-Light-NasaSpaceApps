@@ -179,12 +179,15 @@ def empty(name: str, location) -> bpy.types.Object:
     return obj
 
 
-def assemble(side: str) -> dict:
-    """Builds one side from the saved part files, chained through their socket empties."""
+def assemble(side: str, chassis=None) -> dict:
+    """Builds one side from the saved part files, chained through their socket empties. With
+    a chassis, the rocker goes on its socket_rocker_<side> and becomes its child."""
     def load(blend, name):
         return kit.append_objects(os.path.join(kit.PARTS_DIR, blend), [name])[0]
 
     rocker = load("rocker.blend", "rocker_" + side)
+    if chassis:
+        rocker.location = socket(chassis, "socket_rocker_" + side)
     bogie = load("bogie.blend", "bogie_" + side)
     front_bracket = load("steer_bracket.blend", "steer_bracket_" + side)
     rear_bracket = copy_object(front_bracket)
@@ -208,6 +211,8 @@ def assemble(side: str) -> dict:
                           (rear_bracket, rear_pivot), (rear_wheel, rear_pivot),
                           (middle_wheel, bogie)):
         kit.parent_keep_transform(child, parent)
+    if chassis:
+        kit.parent_keep_transform(rocker, chassis)
     return {
         "rocker": rocker, "bogie": bogie, "front_bracket": front_bracket,
         "rear_bracket": rear_bracket, "front_wheel": front_wheel, "middle_wheel": middle_wheel,
@@ -333,12 +338,12 @@ def check_side(side: str) -> list:
     return parts, report
 
 
-def ground_plane(sign: float) -> bpy.types.Object:
+def ground_plane(center_x: float, size_x: float = 1.0) -> bpy.types.Object:
     """Preview ground: a thin slab whose top is the ground at rest, so it also shows edge-on."""
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.scale(bm, vec=(1.0, 1.6, 0.02), verts=bm.verts)
-    bmesh.ops.translate(bm, vec=(sign * 0.45, 0.0, GROUND_Z - 0.01), verts=bm.verts)
+    bmesh.ops.scale(bm, vec=(size_x, 1.6, 0.02), verts=bm.verts)
+    bmesh.ops.translate(bm, vec=(center_x, 0.0, GROUND_Z - 0.01), verts=bm.verts)
     material = bpy.data.materials.new("preview_ground")
     material.diffuse_color = (0.55, 0.42, 0.33, 1.0)
     obj = kit.mesh_object("preview_ground", bm, [material])
@@ -375,7 +380,7 @@ def main() -> None:
         report += side_report
         if previews and side == "R":
             sign = 1.0
-            ground = ground_plane(sign)
+            ground = ground_plane(sign * 0.45)
             kit.set_preview_colors(True)
             focus = (0.0, 0.0, -0.08)
             rocker = parts["rocker"]
@@ -400,4 +405,5 @@ def main() -> None:
     print("\n".join("ROVER_KIT " + line for line in report))
 
 
-main()
+if __name__ == "__main__":
+    main()
