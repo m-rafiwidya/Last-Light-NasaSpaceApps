@@ -14,7 +14,8 @@ clearance-checked pose range that the visuals must clamp to (5). Revised while b
 chassis: socket_motor moves to the hatch floor (0.12, 0.33, 0.30) so the drive unit can sit flush
 and still mate at its origin; chassis wheel sockets are named socket_wheel_<front|middle|rear>_L/R;
 the hazcams set the lowest chassis point (3.3, 3.4). Revised while integrating the kit: the
-collider import script lives in the game project (7); measured visual wheel offsets (5).
+collider import script lives in the game project (7); measured visual wheel offsets (5). Revised for wheel types: a fixed wheel envelope (radius 0.15 m,
+width may only grow outboard) and wheel variants that differ by tread, colour and stats (3.1, 4).
 
 ---
 
@@ -59,9 +60,9 @@ collider import script lives in the game project (7); measured visual wheel offs
 
 ### 2.3 Origins and empties
 - Every part's origin is at its own connection point: the centre of its connector's mating face.
-- **Exception: wheels.** The origin is the wheel centre (on the axle, mid-width), because the physics
-  places wheels by their centre and spins them about it. The hub connector sits on the axle at the
-  wheel's inner face.
+- **Exception: wheels.** The origin is the wheel centre (on the axle, 0.12 m outboard of the inner
+  face, i.e. mid-width of the standard 0.24 m wheel), because the physics places wheels by their
+  centre and spins them about it. The hub connector sits on the axle at the wheel's inner face.
 - `socket_*` and `pivot_*` empties have **zero rotation and scale 1**.
 - Parts are modelled in their **assembled rest pose** (rover at rest on flat ground, wheels straight,
   arm stretched straight forward). In Godot a part attaches with `part.position = socket.position`
@@ -106,6 +107,19 @@ Values are for the right side (+X). The left side mirrors x.
 | rear | (0.50, -0.50, 0.05) | yes, counter-steer | rear steer bracket (bogie) |
 
 - Radius 0.15 m, width 0.24 m. Inner face at x = 0.38, outer face at x = 0.62.
+- **Wheel envelope (every wheel, every variant):**
+  - **Radius is exactly 0.15 m.** The kit leaves 20 mm above the wheel top (bracket arm), 21 mm
+    to the rocker in the steering sweep, and 0.20 m between neighbouring wheels, and the physics
+    does not raise the rover for a bigger wheel. A larger wheel clips into the brackets, horns,
+    chassis and its neighbours and sinks into the ground visually; a smaller one floats. Measured
+    with 0.3 m wheels: 149 mm into the ground, 130 mm through the bracket arm, 100 mm overlap
+    between neighbours.
+  - **Width may only grow outboard.** The inner face (x = 0.38, against the hub stub) and the
+    origin (x = 0.50) stay where they are; extra width goes past x = 0.62, where nothing else is.
+  - Wheel sockets refuse a wheel outside the envelope and tell the player why.
+- **Wheel variants** differ by tread, colour and stats (grip now; more stats later), never by
+  radius. Each variant is a wheel_<variant>_L / _R mesh pair from make_wheel.py within the
+  envelope; a variant may reuse the standard mesh until its own exists.
 - Rest centre height z = 0.05 (physics rest is about 0.049). Physics travel: centre z from 0.00 (full
   extension) to 0.19 (full compression).
 - A steered wheel sweeps down to **x = 0.321** at 30 degrees (corner of the 0.30 x 0.24 plan footprint).
@@ -202,7 +216,7 @@ design; the 20 mm rule applies everywhere else.
 | `rocker_L/R` | 2 | fixed | - | Visual only, animated. |
 | `bogie_L/R` | 2 | fixed | - | Visual only, animated. |
 | `steer_bracket_L/R` | 4 | fixed | - | Visual only, animated (follows linkage, turns with steering). |
-| `wheel_L/R` | 6 | **yes** | `WHEEL` (`WheelPart`) | Radius and grip feed the physics. |
+| `wheel_L/R` | 6 | **yes** | `WHEEL` (`WheelPart`) | Fixed 0.15 m radius (3.1); variants change grip and other stats. |
 | `mast_base` | 1 | fixed | - | |
 | `mast_head` | 1 | **yes** | new `MAST_HEAD` | The rover camera follows its `pivot_camera`. |
 | `arm_shoulder`, `arm_upper`, `arm_forearm`, `arm_wrist` | 1 each | fixed | - | Posed in Godot. |
