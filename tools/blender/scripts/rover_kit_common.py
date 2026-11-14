@@ -201,8 +201,35 @@ def export_part(root: bpy.types.Object, path: str) -> None:
     )
     for child, name in renamed.items():
         child.name = name
+    ensure_godot_import_script(path)
     root.location = saved_location
     bpy.context.view_layer.update()
+
+
+# Godot post-import script that turns "-convcolonly" static bodies into plain collision shapes
+GODOT_IMPORT_SCRIPT = "res://src/robot/kit/rover_kit_import.gd"
+
+
+def ensure_godot_import_script(glb_path: str) -> None:
+    """Makes sure Godot imports the GLB with the rover kit post-import script, by setting
+    import_script/path in its .import file (a minimal one is written for a new GLB; Godot
+    fills in the rest on import)."""
+    import_path = glb_path + ".import"
+    line = 'import_script/path="%s"' % GODOT_IMPORT_SCRIPT
+    if not os.path.exists(import_path):
+        with open(import_path, "w") as f:
+            f.write('[remap]\n\nimporter="scene"\nimporter_version=1\n\n[params]\n\n%s\n' % line)
+        return
+    with open(import_path) as f:
+        text = f.read()
+    if line in text:
+        return
+    if re.search(r"^import_script/path=.*$", text, re.MULTILINE):
+        text = re.sub(r"^import_script/path=.*$", line, text, flags=re.MULTILINE)
+    else:
+        text = text.rstrip("\n") + "\n" + line + "\n"
+    with open(import_path, "w") as f:
+        f.write(text)
 
 
 def save_blend(path: str) -> None:
