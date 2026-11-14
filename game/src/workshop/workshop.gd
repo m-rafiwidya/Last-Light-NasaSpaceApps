@@ -428,7 +428,8 @@ func _build_rack_stock() -> void:
 		if entry[2] == "wheel":
 			basis = Basis(Vector3.UP, PI / 2.0)          # axle along the rack's depth
 		elif entry[2] == "side":
-			basis = Basis(Vector3(0.0, 0.0, 1.0), -PI / 2.0)
+			# On its side, then turned so its 0.355 m side runs across the shelf
+			basis = Basis(Vector3.UP, PI / 2.0) * Basis(Vector3(0.0, 0.0, 1.0), -PI / 2.0)
 		var box := _part_aabb(part, basis)
 		var lift: float = WHEEL_SEAT if entry[2] == "wheel" else PART_LIFT
 		var slot: Vector3 = anchors[key]

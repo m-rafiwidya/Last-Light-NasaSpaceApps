@@ -175,12 +175,12 @@ func _reach_checks() -> void:
 	var battery_socket: Node3D = rover.battery_socket.get_trigger()
 	var items: Array = [["console", at_console, workshop.console_trigger], ["restock button", at_rack, workshop.restock_trigger],
 		["charger", at_charger, workshop.pad.charger_trigger], ["rover's battery socket", at_rack, battery_socket]]
-	# The bottom two rows sit under the shelves above them: from 0.45 m the shelf hides the floor
-	# tray from a standing eye (it needs 1.14 m, or 0.93 m crouched), so step back to 1.4 m, still
-	# 0.7 m clear of the rover's rear
-	var back_from_rack: Vector3 = _kit(dock.x, -1.9, 1.5)
-	for n in [1, 6, 7, 10, 12, 13, 15]:
-		items.append(["rack slot_%02d" % n, back_from_rack if n <= 10 else at_rack, workshop.rack_stock.get_node("Slot%02d" % n)])
+	# The rack is stepped: every part stands in front of the shelf above it, so it's in view and in
+	# reach from close up and from across the walkway
+	for n in range(1, 16):
+		var slot_x: float = workshop.anchors["slot_%02d" % n].x
+		for d in [0.45, 1.2, 2.0]:
+			items.append(["rack slot_%02d from %.2f m" % [n, d], _kit(slot_x, -3.30 + d, 1.5), workshop.rack_stock.get_node("Slot%02d" % n)])
 	for item in items:
 		var target: Node3D = item[2]
 		var aim: Vector3 = target.global_position
