@@ -3,17 +3,24 @@ extends SceneTree
 ## standing in the workshop bay looking at the docked rover, then walking, in alternating
 ## windows with the body on and off (hidden, its animation, IK and script stopped). Prints the
 ## mean frame time, the process (CPU) time and the draw calls / primitives of each window.
-## Needs a window (the renderer); vsync off and no frame cap so the numbers are the frame's cost:
-##   Godot --path game --resolution 1920x1080 -s res://tools/measure_player_body.gd
+## With a window (the renderer); vsync off and no frame cap so the numbers are the frame's cost:
+##   Godot --path game --resolution 1920x1080 --disable-vsync -s res://tools/measure_player_body.gd
+## Headless, it measures the CPU alone (the body's script, animation tree, IK and skinning
+## setup, without drawing), which is steadier:
+##   Godot --headless --path game -s res://tools/measure_player_body.gd
 
-const WINDOW: float = 5.0
-const PAIRS: int = 3
+const WINDOW: float = 8.0
+const PAIRS: int = 6
 
 var GS: Node
 var SL: Node
 
 
 func _initialize() -> void:
+	# No focus: a real key or mouse movement on the desktop mustn't reach the game mid-measurement
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+	InputMap.action_erase_events("ui_cancel")
+	InputMap.action_erase_events("console")
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -50,6 +57,11 @@ func _run() -> void:
 	SL.load_scene("moon_level")
 	while not (GS.state == GS.State.IN_GAME_PLAYER and SL.current_level_id == "moon_level"):
 		await process_frame
+	# The game caps an unfocused window at 30 fps (main.gd); this window never takes focus
+	var main: Node = root.get_node("Main")
+	main.throttle_when_unfocused = false
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
 	var workshop = SL.current_scene.get_node("Workshop")
 	var player = GS.player
 	var body = player.get_node("Body")
@@ -80,4 +92,27 @@ func _run() -> void:
 			sums[false][1], sums[true][1], sums[true][1] - sums[false][1], sums[true][2] - sums[false][2],
 			sums[true][3] - sums[false][3]])
 	_set_body(body, true)
+	# The body's own work, timed directly while walking: its script with the animation tree, and
+	# the skeleton update that runs the modifiers (legs, arm IK, hands) and skins
+	Input.action_press("move_forward")
+	await _window(0.5)
+	var sk: Skeleton3D = body.skeleton
+	var script_us: float = 0.0
+	var skeleton_us: float = 0.0
+	var n: int = 600
+	for i in n:
+		await process_frame
+		var t0: int = Time.get_ticks_usec()
+		body._process(1.0 / 144.0)
+		var t1: int = Time.get_ticks_usec()
+		sk.force_update_all_bone_transforms()
+		var t2: int = Time.get_ticks_usec()
+		script_us += t1 - t0
+		skeleton_us += t2 - t1
+		if i == n / 2:
+			Input.action_release("move_forward")
+			Input.action_press("move_backward")
+	Input.action_release("move_backward")
+	print("MEASURE the body's own CPU per frame (walking, %d frames): script and animation tree %.3f ms, skeleton update with modifiers %.3f ms" % [
+		n, script_us / n / 1000.0, skeleton_us / n / 1000.0])
 	quit()
