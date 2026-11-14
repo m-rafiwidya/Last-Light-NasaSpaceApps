@@ -15,7 +15,8 @@ extends Node3D
 ## with the wheel speed. It also builds the fixed mast base and arm segments on their chassis
 ## sockets and drives the arm (stowed by default; R deploys / stows it, 1-5 pick a joint and
 ## Z / X turn it, never into the ground), and pans / tilts the mast head from the mouse
-## look with the rover camera riding on its pivot_camera. Nothing here affects the physics.
+## look with the rover camera riding on its pivot_camera, and keeps the high-gain antenna's dish
+## pointed at EARTH_DIRECTION. Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
 # re-running tools/blender/scripts/make_rocker_bogie.py with the new range.
@@ -44,6 +45,13 @@ const ARM_RANGES: Dictionary = {"J1": Vector2(-20.0, 15.0), "J2": Vector2(-30.0,
 const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
 const MAST_TILT_AXIS_HEIGHT: float = 0.10
 const PIVOT_CAMERA_FORWARD: float = 0.07
+
+# The fixed world direction the high-gain antenna tracks, as if it were Earth: 35 degrees above
+# the horizon, towards -Z / +X. Tilt range (ROVER_KIT.md 5) and how fast the dish follows.
+const EARTH_DIRECTION: Vector3 = Vector3(0.46, 0.57, -0.68)
+const ANTENNA_TILT_LIMIT: float = deg_to_rad(90.0)
+const ANTENNA_PAN_SPEED: float = deg_to_rad(120.0)
+const ANTENNA_TILT_SPEED: float = deg_to_rad(90.0)
 
 const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 # Deployed: upper arm forward, forearm angled down, turret level with the drill down
@@ -87,6 +95,10 @@ var arm_target: Dictionary = {}
 ## True while the last attempted step was refused because it would touch the ground
 var arm_blocked: bool = false
 var _posed_tool: HotswapPart = null
+## Current antenna pan / tilt (radians)
+var antenna_pan: float = 0.0
+var antenna_tilt: float = 0.0
+var _posed_antenna: HotswapPart = null
 # MeshInstance3D -> its mesh's vertex positions (local)
 var _mesh_vertices: Dictionary = {}
 # Joint name -> the arm model node it turns
@@ -143,6 +155,42 @@ func _build_mast_and_arm() -> void:
 
 func _model(instance: Node3D, model_name: String) -> Node3D:
 	return instance.find_child(model_name, true, false) as Node3D
+
+
+# Turns the mounted antenna's dish towards EARTH_DIRECTION. The dish faces up at rest; after
+# a pan p (about Y) and tilt t (about X) its normal is (sin t sin p, cos t, sin t cos p) in the
+# mount's frame, so p = atan2(d.x, d.z) and t = the angle from straight up (capped at 90
+# degrees, edge-on when Earth is below the horizon). The angles move at a limited rate.
+func _update_antenna(delta: float) -> void:
+	var socket := robot.get_node_or_null("AntennaSocket") as HotswapSocket
+	var antenna: HotswapPart = socket.part if socket else null
+	if antenna != _posed_antenna:
+		if is_instance_valid(_posed_antenna):
+			_pose_antenna(_posed_antenna, 0.0, 0.0)
+		_posed_antenna = antenna
+		antenna_pan = 0.0
+		antenna_tilt = 0.0
+	if antenna == null:
+		return
+	var dish := antenna.find_child("antenna_dish", true, false) as Node3D
+	if dish == null:
+		return
+	var mount: Node3D = dish.get_parent().get_parent() as Node3D
+	var d: Vector3 = (mount.global_basis.orthonormalized().inverse() * EARTH_DIRECTION).normalized()
+	var horizontal: float = Vector2(d.x, d.z).length()
+	var target_tilt: float = minf(atan2(horizontal, d.y), ANTENNA_TILT_LIMIT)
+	# Near the zenith the pan doesn't matter; keep it rather than spin
+	var target_pan: float = atan2(d.x, d.z) if horizontal > 0.01 else antenna_pan
+	antenna_pan = wrapf(rotate_toward(antenna_pan, target_pan, ANTENNA_PAN_SPEED * delta), -PI, PI)
+	antenna_tilt = move_toward(antenna_tilt, target_tilt, ANTENNA_TILT_SPEED * delta)
+	_pose_antenna(antenna, antenna_pan, antenna_tilt)
+
+
+func _pose_antenna(antenna: HotswapPart, pan: float, tilt: float) -> void:
+	var dish := antenna.find_child("antenna_dish", true, false) as Node3D
+	if dish:
+		(dish.get_parent() as Node3D).rotation = Vector3(0.0, pan, 0.0)
+		dish.rotation = Vector3(tilt, 0.0, 0.0)
 
 
 func _on_arm_toggle() -> void:
@@ -286,6 +334,7 @@ func _physics_process(delta: float) -> void:
 	_place_and_spin_wheels(delta)
 	_update_mast_head()
 	_update_arm(delta)
+	_update_antenna(delta)
 
 
 # Angle of the vector a -> b in the robot's side (z, y) plane. Rotating about +X by t changes
