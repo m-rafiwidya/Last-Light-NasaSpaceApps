@@ -16,7 +16,7 @@ extends RefCounted
 ##                     designed, 0 half, 100 twice. The UI is drawn on canvas layers after the 3D
 ##                     picture, so it never changes.
 ##   quality           Quality Preset (QUALITY_PRESETS): the 3D render scale (FSR below native),
-##                     MSAA and shadow filtering at once, and Terrain Detail and Dust and Tracks
+##                     MSAA and shadow filtering at once (High caps the 3D height at 1440 px), and Terrain Detail and Dust and Tracks
 ##                     (GraphicsSettings, next level load). The UI is always drawn at the window's
 ##                     full resolution (stretch mode canvas_items); only the 3D picture is scaled.
 ## Main applies them at launch (apply_saved) and keeps the brightness on every WorldEnvironment
@@ -37,15 +37,17 @@ const FOV_DEFAULT: float = 90.0
 const QUALITY_NAMES: Array[String] = ["Low", "Medium", "High", "Ultra"]
 ## Per Quality: the root viewport's 3D render scale and its upscaler (FSR 1 below native), MSAA,
 ## the soft shadow filter (directional and positional lights), the directional shadow atlas size,
-## and the GraphicsSettings it sets. HIGH is the game as built (Godot's defaults) at native size.
+## and the GraphicsSettings it sets. HIGH is the game as built (Godot's defaults) at native size, but
+## with the 3D height capped at `max_height_3d` (0: no cap): taller windows get FSR with the scale
+## that brings it back to the cap (see render_scale_3d).
 const QUALITY_PRESETS: Array[Dictionary] = [
-	{"scale_3d": 0.5, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_HARD, "shadow_atlas": 2048,
+	{"scale_3d": 0.5, "max_height_3d": 0, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_HARD, "shadow_atlas": 2048,
 		"terrain_detail": GraphicsSettings.TerrainDetail.LOW, "surface_effects": GraphicsSettings.SurfaceEffects.OFF},
-	{"scale_3d": 0.75, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, "shadow_atlas": 4096,
+	{"scale_3d": 0.75, "max_height_3d": 0, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, "shadow_atlas": 4096,
 		"terrain_detail": GraphicsSettings.TerrainDetail.LOW, "surface_effects": GraphicsSettings.SurfaceEffects.LOW},
-	{"scale_3d": 1.0, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_LOW, "shadow_atlas": 4096,
+	{"scale_3d": 1.0, "max_height_3d": 1440, "msaa": Viewport.MSAA_DISABLED, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_LOW, "shadow_atlas": 4096,
 		"terrain_detail": GraphicsSettings.TerrainDetail.HIGH, "surface_effects": GraphicsSettings.SurfaceEffects.HIGH},
-	{"scale_3d": 1.0, "msaa": Viewport.MSAA_4X, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_HIGH, "shadow_atlas": 8192,
+	{"scale_3d": 1.0, "max_height_3d": 0, "msaa": Viewport.MSAA_4X, "shadow_filter": RenderingServer.SHADOW_QUALITY_SOFT_HIGH, "shadow_atlas": 8192,
 		"terrain_detail": GraphicsSettings.TerrainDetail.HIGH, "surface_effects": GraphicsSettings.SurfaceEffects.HIGH},
 ]
 
@@ -80,6 +82,17 @@ static func resolution_index() -> int:
 static func render_height_3d(viewport: Viewport) -> float:
 	var height: float = viewport.get_visible_rect().size.y * viewport.get_final_transform().get_scale().y
 	return height * viewport.scaling_3d_scale
+
+
+## The 3D render scale of `quality` for a window `window_height` pixels tall: the preset's scale,
+## lowered so the 3D height stays within the preset's cap
+static func render_scale_3d(quality: int, window_height: float) -> float:
+	var preset: Dictionary = QUALITY_PRESETS[quality]
+	var scale: float = preset["scale_3d"]
+	var cap: int = preset["max_height_3d"]
+	if cap > 0 and window_height > cap:
+		scale = minf(scale, cap / window_height)
+	return scale
 
 
 ## Whether Terrain Detail and Dust and Tracks are still what the quality preset set (the menu
@@ -156,13 +169,23 @@ static func _apply_quality() -> void:
 	var preset: Dictionary = QUALITY_PRESETS[section.get_value("quality")]
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree:
-		var scale: float = preset["scale_3d"]
-		tree.root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if scale < 1.0 else Viewport.SCALING_3D_MODE_BILINEAR
-		tree.root.scaling_3d_scale = scale
+		if not tree.root.size_changed.is_connected(_apply_scale_3d):
+			tree.root.size_changed.connect(_apply_scale_3d)
+		_apply_scale_3d()
 		tree.root.msaa_3d = preset["msaa"]
 	RenderingServer.directional_soft_shadow_filter_set_quality(preset["shadow_filter"])
 	RenderingServer.positional_soft_shadow_filter_set_quality(preset["shadow_filter"])
 	RenderingServer.directional_shadow_atlas_set_size(preset["shadow_atlas"], true)
+
+
+## The 3D render scale for the current quality and window height (again whenever the window resizes)
+static func _apply_scale_3d() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var scale: float = render_scale_3d(section.get_value("quality"), tree.root.size.y)
+	tree.root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if scale < 1.0 else Viewport.SCALING_3D_MODE_BILINEAR
+	tree.root.scaling_3d_scale = scale
 
 
 static func _apply_brightness() -> void:

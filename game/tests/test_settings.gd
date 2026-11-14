@@ -396,6 +396,14 @@ func _check_video() -> void:
 		and root.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR)
 	_pick(quality, 3)
 	_check("[Video] Ultra: 3D at native size", is_equal_approx(root.scaling_3d_scale, 1.0))
+	_check("[Video] High caps the 3D height at 1440 (FSR above, native up to it); the others ignore the window",
+		is_equal_approx(VideoSettings.render_scale_3d(VideoSettings.Quality.HIGH, 2880.0), 0.5)
+		and is_equal_approx(VideoSettings.render_scale_3d(VideoSettings.Quality.HIGH, 1793.0), 1440.0 / 1793.0)
+		and VideoSettings.render_scale_3d(VideoSettings.Quality.HIGH, 1440.0) == 1.0
+		and VideoSettings.render_scale_3d(VideoSettings.Quality.HIGH, 1080.0) == 1.0
+		and VideoSettings.render_scale_3d(VideoSettings.Quality.ULTRA, 2880.0) == 1.0
+		and VideoSettings.render_scale_3d(VideoSettings.Quality.MEDIUM, 2880.0) == 0.75
+		and VideoSettings.render_scale_3d(VideoSettings.Quality.LOW, 2880.0) == 0.5)
 	_check("[Video] Ultra: 4x MSAA, high detail", root.msaa_3d == Viewport.MSAA_4X
 		and GraphicsSettings.get_terrain_detail() == GraphicsSettings.TerrainDetail.HIGH and terrain.selected == 0 and dust.selected == 0)
 	_check("[Video] Quality Preset is saved", _saved("video", "quality") == 3)
