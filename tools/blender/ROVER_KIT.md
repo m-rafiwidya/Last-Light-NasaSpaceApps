@@ -5,7 +5,9 @@ Modular low-poly kit for the drivable rover in `game/src/robot/`, inspired by NA
 replacing the placeholder box. Swappable parts use the existing `HotswapSocket` / `HotswapPart`
 system. **Every part follows this spec.**
 
-Status: approved 2026-10-07.
+Status: approved 2026-10-07. Revised 2026-10-07 while building the steer bracket: renamed the
+bracket's `socket_wheel` to `socket_wheel_hub` and added the Godot name rules (2.2); fixed the
+connector recess position (2.5).
 
 ---
 
@@ -41,6 +43,12 @@ Status: approved 2026-10-07.
 - `socket_*` empties: attach points where another part's origin goes.
 - `pivot_*` empties: animation or camera reference points that are not attach points.
 - No Godot import suffixes (`-col`, `-rigid`, `-noimp`, ...) except `-convcolonly` (section 7).
+  Godot also reads them after `_`, so **no node name may end in** `_wheel`, `_col`, `_colonly`,
+  `_convcol`, `_convcolonly`, `_rigid`, `_vehicle`, `_navmesh`, `_occ`, `_occonly`, `_noimp`,
+  `_loop` or `_cycle` (e.g. `socket_wheel` would import as a `VehicleWheel3D`). The exporter
+  rejects such names.
+- In an `_L` / `_R` file, Blender needs unique names, so each side's empties carry the side
+  suffix (`socket_wheel_hub_R`). The exporter strips it, so both GLBs have the same socket names.
 
 ### 2.3 Origins and empties
 - Every part's origin is at its own connection point: the centre of its connector's mating face.
@@ -61,7 +69,8 @@ Status: approved 2026-10-07.
 
 ### 2.5 Standard connector (every joint)
 - **Parent side (at the socket):** recessed collar, outer diameter 60 mm, recess diameter 44 mm,
-  8 mm deep. The recess floor is at the socket empty.
+  8 mm deep. The recess opening is flush with the mating plane at the socket empty, and the
+  recess floor is 8 mm inside the parent, so the child's plug fills it exactly.
 - **Child side (at the origin):** plug, diameter 44 mm, sticking out 8 mm from the mating face
   toward the parent. The mating face is at the origin.
 - **Key:** an 8 mm wide notch on the plug and a matching tab in the collar. The key points **+Y**;
@@ -114,7 +123,7 @@ All linkage rotation is about the X axis, so x bands never change.
 | `chassis` | world origin (0, 0, 0) | `socket_rocker_L/R` (+-0.25, 0.00, 0.27), `socket_mast` (0.15, 0.35, 0.44), `socket_arm` (-0.12, 0.45, 0.32), `socket_motor` (0.12, 0.45, 0.30), `socket_power` (0.00, -0.45, 0.36), `socket_antenna` (-0.15, -0.25, 0.44), `socket_wheel_<pos>_L/R` at the six wheel centres |
 | `rocker_R` | (0.25, 0.00, 0.27), mating face on the chassis side | `socket_steer_front` (0.50, 0.50, 0.30), `socket_bogie` (0.30, -0.25, 0.20) |
 | `bogie_R` | (0.30, -0.25, 0.20), mating face on the rocker | `socket_wheel_mid` (0.50, 0.00, 0.05), `socket_steer_rear` (0.50, -0.50, 0.30) |
-| `steer_bracket_R` | top of the steering actuator, on the steer axis: (0.50, +-0.50, 0.30) | `socket_wheel` at the wheel centre (0.50, +-0.50, 0.05) |
+| `steer_bracket_R` | top of the steering actuator, on the steer axis: (0.50, +-0.50, 0.30) | `socket_wheel_hub` at the wheel centre (0.50, +-0.50, 0.05) |
 | `wheel_R` | wheel centre (section 3.1) | none |
 | `mast_base` | (0.15, 0.35, 0.44) on the deck | `socket_mast_head` (0.15, 0.35, 0.95) |
 | `mast_head` | (0.15, 0.35, 0.95) | `pivot_camera` (0.15, 0.42, 1.05), the game camera position |
@@ -137,7 +146,8 @@ Shape notes:
   z >= 0.30 by y = -0.36, then a horn runs out to the rear steering actuator top (z 0.30 to 0.34).
 - **Steer bracket:** vertical actuator (diameter about 0.08) from z 0.22 to 0.30 on the steer axis.
   An arm runs inboard over the wheel top (z 0.22 to 0.25), then a leg goes down the wheel's inner
-  side (x 0.33 to 0.36) to an axle stub (x 0.36 to 0.38).
+  side (x 0.33 to 0.36) to an axle stub (x 0.36 to 0.38). Arm and leg are 36 mm deep, so the
+  leg's outer corners stay within 0.171 m of the steer axis (sweep to x = 0.329).
 - **Arm:** rest pose stretched straight forward (+Y). Lengths: shoulder 0.08, upper 0.30, forearm
   0.28, wrist 0.08, tool about 0.12. The shoulder yaws about Z; the shoulder, elbow and wrist pitch
   about X. Godot poses it stowed by default.
