@@ -42,11 +42,8 @@ const NEAR_PER_FAR: float = 1e-7
 static func near_for_far(near: float, far: float) -> float:
 	return maxf(near, far * NEAR_PER_FAR)
 
-## Pile parts' properties that are copied when the pile is respawned
-const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]
-
-# One entry per part in PartsPile as the level starts: scene, transform and properties
-var _pile_layout: Array = []
+# PartsPile as the level starts
+var _pile := PartsStock.new()
 
 
 func _ready() -> void:
@@ -56,7 +53,7 @@ func _ready() -> void:
 			if trigger:
 				trigger.interacted.connect(_on_robot_trigger_interacted.bind(rover))
 	if has_node("PartsPile"):
-		_record_parts_pile()
+		_pile.record($PartsPile)
 	if has_node("RespawnPartsTrigger"):
 		$RespawnPartsTrigger.interacted.connect(_on_respawn_parts_trigger_interacted)
 
@@ -70,30 +67,6 @@ func _on_robot_trigger_interacted(_player: Player, rover: Robot):
 
 # --- Parts pile -----------------------------------------------------------------------------
 
-func _record_parts_pile() -> void:
-	for part in $PartsPile.get_children():
-		if not part is HotswapPart:
-			continue
-		var properties: Dictionary = {}
-		for property in PILE_PROPERTIES:
-			if property in part:
-				properties[property] = part.get(property)
-		_pile_layout.append({"scene": load(part.scene_file_path), "transform": part.transform, "properties": properties})
-
-
 ## Clears the loose pile parts (parts mounted on a rover stay) and lays out a fresh full pile.
 func _on_respawn_parts_trigger_interacted(_player: Player) -> void:
-	var holders: Array = [GameState.player] + find_children("*", "Robot", true, false)
-	for part in $PartsPile.get_children():
-		if not part is HotswapPart or part.is_mounted():
-			continue
-		for holder_owner in holders:
-			if is_instance_valid(holder_owner) and holder_owner.holder and holder_owner.holder.held_object == part:
-				holder_owner.holder.release()
-		part.queue_free()
-	for entry in _pile_layout:
-		var part: HotswapPart = entry["scene"].instantiate()
-		part.transform = entry["transform"]
-		for property in entry["properties"]:
-			part.set(property, entry["properties"][property])
-		$PartsPile.add_child(part)
+	_pile.restock($PartsPile, self)
