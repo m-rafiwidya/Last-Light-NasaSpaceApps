@@ -27,9 +27,13 @@ signal part_unmounted(part: HotswapPart)
 ## the mounted part out
 @export var trigger_size: Vector3 = Vector3(0.5, 0.8, 0.4)
 @export var trigger_offset: Vector3 = Vector3(0.0, 0.4, 0.0)
-## Name of a socket_* node in the robot's body model (e.g. "socket_wheel_front_L"). The
-## robot moves this socket onto it, with zero rotation, when it is ready. Empty = stays put.
+## Name of a socket_* node on the rover (e.g. "socket_wheel_front_L" on the chassis model,
+## "socket_mast_head" on the mast). The robot moves this socket onto it, with zero rotation,
+## when it is ready. Empty = stays put.
 @export var anchor: StringName = &""
+## Parent the socket to its anchor so it follows a moving part (e.g. the arm tool socket on
+## the wrist); otherwise it is only placed there once.
+@export var follow_anchor: bool = false
 
 ## The mounted part, null while the socket is empty
 var part: HotswapPart = null

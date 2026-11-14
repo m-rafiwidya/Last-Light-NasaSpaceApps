@@ -30,12 +30,12 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	super._ready()
 	# The kit models carry their own "Collision" shapes; this part collides through its
-	# cylinder (a shape only counts as a direct child of the body anyway)
+	# cylinder instead, so they are removed before HotswapPart would adopt one
 	for shape in $Model.find_children("Collision", "CollisionShape3D", true, false):
 		shape.get_parent().remove_child(shape)
-		shape.queue_free()
+		shape.free()
+	super._ready()
 	_show_side("L")
 	_apply_radius()
 

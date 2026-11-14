@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://cy72210oo8ii3" path="res://res/models/rover_kit/antenna.glb" id="2_model"]
+
+[node name="AntennaPart" instance=ExtResource("1_base")]
+part_type = 5
+display_name = "High-gain antenna"
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("2_model")]

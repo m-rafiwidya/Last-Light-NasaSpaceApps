@@ -136,3 +136,37 @@ accepts_any_type = false
 
 [node name="Visuals" type="Node3D" parent="." unique_id=1203948574]
 script = ExtResource("22_visuals")
+
+[node name="MastHeadSocket" parent="." unique_id=1203948575 instance=ExtResource("20_socket")]
+socket_name = "Mast head socket"
+accepts_any_type = false
+accepted_type = 3
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.26, 0.24, 0.24)
+capture_offset = Vector3(0, 0.12, 0)
+trigger_size = Vector3(0.26, 0.2, 0.2)
+trigger_offset = Vector3(0, 0.1, 0)
+anchor = &"socket_mast_head"
+
+[node name="ArmToolSocket" parent="." unique_id=1203948576 instance=ExtResource("20_socket")]
+socket_name = "Arm tool socket"
+accepts_any_type = false
+accepted_type = 4
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.24, 0.24, 0.24)
+capture_offset = Vector3(0, 0, -0.04)
+trigger_size = Vector3(0.22, 0.22, 0.22)
+trigger_offset = Vector3(0, 0, -0.04)
+anchor = &"socket_arm_tool"
+follow_anchor = true
+
+[node name="AntennaSocket" parent="." unique_id=1203948577 instance=ExtResource("20_socket")]
+socket_name = "Antenna socket"
+accepts_any_type = false
+accepted_type = 5
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.28, 0.3, 0.28)
+capture_offset = Vector3(0, 0.15, 0)
+trigger_size = Vector3(0.24, 0.24, 0.24)
+trigger_offset = Vector3(0, 0.14, 0)
+anchor = &"socket_antenna"

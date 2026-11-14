@@ -27,12 +27,42 @@ var _free_mask: int = 0
 
 
 func _ready() -> void:
+	_adopt_model_collision()
 	var model := get_node_or_null("Model") as MeshInstance3D
 	if model:
 		var material := StandardMaterial3D.new()
 		material.albedo_color = tint
 		model.material_override = material
 
+
+
+# Rover kit models carry their convex collider as a "Collision" shape (rover_kit_import.gd).
+# A shape only counts as a direct child of the body, so it replaces this part's own
+# CollisionShape3D shape and the model's copy is removed.
+func _adopt_model_collision() -> void:
+	var model := get_node_or_null("Model")
+	var own := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if model == null or own == null:
+		return
+	var found: Array = model.find_children("Collision", "CollisionShape3D", true, false)
+	if found.is_empty():
+		return
+	var source := found[0] as CollisionShape3D
+	own.shape = source.shape
+	own.transform = _transform_in_part(source)
+	for shape in found:
+		shape.get_parent().remove_child(shape)
+		shape.queue_free()
+
+
+# The node's transform relative to this part (works before the part is in the tree)
+func _transform_in_part(node: Node3D) -> Transform3D:
+	var result := node.transform
+	var parent := node.get_parent()
+	while parent != self and parent is Node3D:
+		result = (parent as Node3D).transform * result
+		parent = parent.get_parent()
+	return result
 
 
 func get_display_name() -> String:

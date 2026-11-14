@@ -109,18 +109,22 @@ func _ready() -> void:
 	GameState.state_changed.connect(_on_game_state_changed)
 
 
-# Moves every HotswapSocket child that names an `anchor` onto that socket_* node of the
-# body model, with zero rotation (ROVER_KIT.md 2.3). Runs before anything reads the sockets.
+# Moves every HotswapSocket child that names an `anchor` onto that socket_* node, with zero
+# rotation (ROVER_KIT.md 2.3): the chassis model's sockets, or the mast's and arm's, which
+# RoverVisuals has built by now (children are ready before their parent). A `follow_anchor`
+# socket is parented to its anchor so it moves with it. Runs before anything reads the sockets.
 func _snap_sockets_to_anchors() -> void:
-	if body_model == null:
-		return
 	for child in get_children():
 		var socket := child as HotswapSocket
 		if socket == null or socket.anchor.is_empty():
 			continue
-		var anchor_node := body_model.find_child(socket.anchor, true, false) as Node3D
+		var anchor_node := find_child(socket.anchor, true, false) as Node3D
 		if anchor_node == null:
-			push_error('Robot: no "%s" in the body model for %s' % [socket.anchor, socket.name])
+			push_error('Robot: no "%s" on the rover for %s' % [socket.anchor, socket.name])
+			continue
+		if socket.follow_anchor:
+			socket.reparent(anchor_node, false)
+			socket.transform = Transform3D.IDENTITY
 			continue
 		var local: Transform3D = global_transform.affine_inverse() * anchor_node.global_transform
 		socket.transform = Transform3D(Basis.IDENTITY, local.origin)
