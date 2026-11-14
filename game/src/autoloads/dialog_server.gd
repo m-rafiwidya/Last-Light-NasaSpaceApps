@@ -15,8 +15,8 @@ const CHARACTERS_PER_SECOND: float = 1000.0 / 60.0
 ## so consecutive lines are on screen together and the HUD stacks them.
 const SEQUENCE_GAP: float = 0.35
 
-## Bus the voice lines play on. Change to a dedicated bus once the project has a bus layout.
-const AUDIO_BUS: StringName = &"Master"
+## Bus the voice lines play on (Settings > Audio > Voice Volume)
+const AUDIO_BUS: StringName = &"Voice"
 
 var _generation: int = 0
 var _active_dialogs: Array[Dialog] = []

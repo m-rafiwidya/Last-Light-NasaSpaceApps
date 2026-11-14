@@ -5,7 +5,8 @@ extends RefCounted
 ## The window mode (Settings > Video > Display Mode, F11 / Alt+Enter), kept in
 ## user://settings.cfg (section "display"). Only the window mode: the project's base resolution
 ## and stretch settings stay as they are, so every mode shows the same 1920 x 1080 (expanded)
-## picture, scaled to the window.
+## picture, scaled to the window. Going back to windowed gives the window the size picked in
+## Settings > Video > Resolution (VideoSettings).
 
 ## In the order of the settings menu's options
 enum Mode {
@@ -84,6 +85,8 @@ static func _apply(value: Mode) -> void:
 		Mode.WINDOWED:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+			# Deferred: leaving fullscreen can take the window a moment
+			VideoSettings.apply_resolution.call_deferred()
 		Mode.FULLSCREEN:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 		Mode.BORDERLESS:

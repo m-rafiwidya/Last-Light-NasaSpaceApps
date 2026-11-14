@@ -98,7 +98,7 @@ func bind_camera():
 	camera_tween.set_pause_mode(Tween.TWEEN_PAUSE_STOP)
 	camera_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	camera_tween.tween_property(camera, "transform", camera_last_transform, CROUCH_TIME)
-	camera_tween.parallel().tween_property(camera, "fov", 90.0, CROUCH_TIME)
+	camera_tween.parallel().tween_property(camera, "fov", VideoSettings.fov(), CROUCH_TIME)
 	camera_tween.tween_callback(func(): camera_lock = false)
 	camera_tween.tween_callback(func(): move_lock = false)
 	camera_tween.tween_callback(func(): hide_crosshair = false)
@@ -169,6 +169,14 @@ func _ready() -> void:
 	controller.secondary.connect(_on_controller_secondary)
 	controller.lights_toggle.connect(func() -> void: helmet_light_on = not helmet_light_on)
 	helmet_light_on = helmet_light_on
+	# Settings > Video > Field Of View, at once (not while the camera is away, see release_camera)
+	camera.fov = VideoSettings.fov()
+	VideoSettings.section.changed.connect(_on_video_setting_changed)
+
+
+func _on_video_setting_changed(key: String) -> void:
+	if key == "fov" and not camera_lock:
+		camera.fov = VideoSettings.fov()
 
 
 # Controller signals

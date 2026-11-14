@@ -26,6 +26,7 @@ func _ready() -> void:
 	_cargo_label.text = "CARGO  --"
 	%Battery.get_parent().add_child(_cargo_label)
 	%Battery.get_parent().move_child(_cargo_label, %Battery.get_index() + 1)
+	InputBindings.events.changed.connect(func() -> void: _hint_text = "")
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 
@@ -78,9 +79,26 @@ func _update_cargo_label(robot: Robot) -> void:
 	# Where the mast camera can't pick things up (the Moon), E only delivers cargo
 	var hint: Label = $MarginContainer/Hint
 	if _hint_text.is_empty():
-		_hint_text = hint.text
-	hint.text = _hint_text if robot.pickup_enabled else \
-		_hint_text.replace("E: pick up / drop   LMB: throw", "E: deliver cargo")
+		_hint_text = _controls_hint()
+	var key := InputBindings.action_text
+	hint.text = _hint_text if robot.pickup_enabled else _hint_text.replace(
+		"%s: pick up / drop   %s: throw" % [key.call(&"interact_use"), key.call(&"interact_primary")],
+		"%s: deliver cargo" % key.call(&"interact_use"))
+
+
+## The controls lines, with the keys as bound now (InputBindings; rebuilt after a change)
+func _controls_hint() -> String:
+	var key := InputBindings.action_text
+	return (
+		"%s: drive   Mouse: look   %s: pick up / drop   %s: throw   %s: exit robot\n" % [
+			InputBindings.keys_text([&"move_forward", &"move_left", &"move_backward", &"move_right"]),
+			key.call(&"interact_use"), key.call(&"interact_primary"), key.call(&"ui_cancel")]
+		+ "%s: deploy / stow arm   %s: arm joint   %s / %s: move joint   %s: reset upright\n" % [
+			key.call(&"arm_toggle"), InputBindings.keys_text([&"arm_joint_1", &"arm_joint_2", &"arm_joint_3",
+			&"arm_joint_4", &"arm_joint_5"]), key.call(&"arm_rotate_down"), key.call(&"arm_rotate_up"),
+			key.call(&"robot_reset")]
+		+ "%s: camera view   %s: headlights   Wheel / two-finger scroll / pinch / %s %s: zoom (mast camera)" % [
+			key.call(&"camera_next"), key.call(&"lights"), key.call(&"camera_zoom_in"), key.call(&"camera_zoom_out")])
 
 
 func _update_view_label(robot: Robot) -> void:
@@ -103,7 +121,8 @@ func _update_zoom_hint(rig: RoverCamera) -> void:
 		%ZoomHint.hide()
 		return
 	if rig.is_available(RoverCamera.View.MAST):
-		%ZoomHint.text = "No zoom on the %s: only the mast camera zooms (C to switch)" % rig.view_name().to_lower()
+		%ZoomHint.text = "No zoom on the %s: only the mast camera zooms (%s to switch)" % [rig.view_name().to_lower(),
+			InputBindings.action_text(&"camera_next")]
 	else:
 		%ZoomHint.text = "No zoom on the %s: zooming needs a mast camera" % rig.view_name().to_lower()
 	%ZoomHint.modulate.a = clampf((ZOOM_HINT_TIME - age) / ZOOM_HINT_FADE, 0.0, 1.0)

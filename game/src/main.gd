@@ -10,6 +10,9 @@ extends Node
 ## shows the frames anyway.
 ## Getting the focus back also re-applies the mouse mode for the game state (captured in game,
 ## visible in menus), so switching away and back never leaves the cursor hidden or free.
+## At launch it applies the saved settings that act on the window and the engine (window mode,
+## key bindings, resolution, vsync, frame cap, quality) and keeps Brightness on every
+## WorldEnvironment (VideoSettings); the other settings are read where they are used.
 const BACKGROUND_FPS: int = 30
 
 ## False when embedded in the editor (see above); tests may change it
@@ -25,6 +28,10 @@ func _ready() -> void:
 	# need the window as the command line opens it, whatever the player last chose
 	if get_tree().get_script() == null:
 		DisplaySettings.apply_saved()
+	# (In a script run these are the defaults, see SettingsSection.read_saved)
+	InputBindings.load_saved()
+	VideoSettings.apply_saved()
+	VideoSettings.track_environments(get_tree())
 	SceneLoader.main_node = self
 	SceneLoader.load_scene("main_menu", true)
 

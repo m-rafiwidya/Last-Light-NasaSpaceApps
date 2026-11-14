@@ -3,26 +3,23 @@ class_name KeyBindSlab
 extends Button
 
 ## Key-bind slab (settings Controls tab): shows the bound key; a click starts listening and the
-## label becomes PRESS A KEY on a darker slab. The next key press binds it, Esc cancels, and so
-## does losing focus. Only the shown name changes: nothing is rebound yet (part B).
+## label becomes PRESS A KEY on a darker slab. The next key press shows its name and is sent with
+## `key_bound` (the settings menu rebinds the action, InputBindings, and sets the slab's key_text
+## to what the action ends up with). Esc only cancels, it is never sent; so does losing focus.
 
-signal key_bound(key_name: String)
+signal key_bound(event: InputEventKey)
 
 const SIZE: Vector2 = Vector2(360.0, 36.0)
 const PROMPT: String = "PRESS A KEY"
-## Names the design shows for keys (Settings.dc.html keyName); others use the engine's name
-const KEY_NAMES: Dictionary = {
-	KEY_SPACE: "Space", KEY_CTRL: "Ctrl", KEY_SHIFT: "Shift", KEY_ALT: "Alt", KEY_ENTER: "Enter",
-	KEY_KP_ENTER: "Enter", KEY_TAB: "Tab", KEY_BACKSPACE: "Backspace",
-	KEY_UP: "Up", KEY_DOWN: "Down", KEY_LEFT: "Left", KEY_RIGHT: "Right",
-}
-
 var key_text: String = "":
 	set(value):
 		key_text = value
 		if not listening:
 			text = key_text
 var listening: bool = false
+
+# Process frame in which a slab last took a key press (see took_key_this_frame)
+static var _key_frame: int = -1
 
 
 func _init() -> void:
@@ -60,16 +57,19 @@ func _input(event: InputEvent) -> void:
 	if not key.pressed or key.echo:
 		return
 	get_viewport().set_input_as_handled()
+	_key_frame = Engine.get_process_frames()
 	if key.keycode == KEY_ESCAPE:
 		_set_listening(false)
 		return
-	key_text = key_name(key)
+	# The key itself, without the modifiers held with it (Shift alone is a key too)
+	var bound := InputEventKey.new()
+	bound.physical_keycode = key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
+	key_text = InputBindings.event_text(bound)
 	_set_listening(false)
-	key_bound.emit(key_text)
+	key_bound.emit(bound)
 
 
-static func key_name(key: InputEventKey) -> String:
-	var code: Key = key.keycode if key.keycode != KEY_NONE else key.physical_keycode
-	if KEY_NAMES.has(code):
-		return KEY_NAMES[code]
-	return OS.get_keycode_string(code)
+## True in the frame a listening slab took a key: actions polled with Input (the console's
+## backtick) must ignore it, set_input_as_handled doesn't stop Input.is_action_just_pressed
+static func took_key_this_frame() -> bool:
+	return _key_frame == Engine.get_process_frames()

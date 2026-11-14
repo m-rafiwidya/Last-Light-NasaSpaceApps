@@ -113,7 +113,7 @@ func _draw_brackets() -> void:
 
 # W ---|----- T  2.3x: the mast zoom on a log scale from none to the narrowest field of view
 func _draw_zoom_bar(font: Font) -> void:
-	var max_zoom: float = (tan(deg_to_rad(RoverCamera.MAST_FOV_MAX) / 2.0)
+	var max_zoom: float = (tan(deg_to_rad(VideoSettings.fov()) / 2.0)
 		/ tan(deg_to_rad(RoverCamera.MAST_FOV_MIN) / 2.0))
 	var left := Vector2((marks.size.x - ZOOM_BAR_WIDTH) / 2.0, ZOOM_BAR_Y)
 	var right := left + Vector2(ZOOM_BAR_WIDTH, 0.0)

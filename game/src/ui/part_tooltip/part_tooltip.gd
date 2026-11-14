@@ -5,8 +5,9 @@ extends PanelContainer
 ## Small panel next to the crosshair describing what it's on: a part (loose or mounted: name,
 ## what it does, where it mounts, stats), an empty socket (what goes there) or any other
 ## InteractTrigger (just its prompt). Names and descriptions come from PartCatalog, stats from
-## the part; the E prompt line comes from the trigger (or says what E does with a loose part).
-## Used by the player HUD and the robot HUD.
+## the part; the E prompt line comes from the trigger (or says what E does with a loose part),
+## with the interact key the player bound (InputBindings.with_current_keys).
+## Used by the player HUD and the robot HUD; hidden while Settings > General > Show Tooltips is off.
 
 const OFFSET: Vector2 = Vector2(36.0, 28.0)
 const COLOR_DIM := Color(0.8, 0.84, 0.9, 0.75)
@@ -52,6 +53,9 @@ func _line(parent: Node, size: int, color: Color) -> Label:
 ## Shows the panel for `target` (what the crosshair is on, or null). `on_foot` adds the
 ## take-out prompt for mounted parts; `holding` is true while `target` is the held object.
 func show_for(target: Object, on_foot: bool, holding: bool) -> void:
+	if not GeneralSettings.show_tooltips():
+		hide()
+		return
 	var title := ""
 	var description := ""
 	var mounts := ""
@@ -82,7 +86,7 @@ func show_for(target: Object, on_foot: bool, holding: bool) -> void:
 	_set_line(_description, description)
 	_set_line(_mounts, mounts)
 	_set_line(_stats, "\n".join(stats))
-	_set_line(_prompt, prompt)
+	_set_line(_prompt, InputBindings.with_current_keys(prompt))
 	show()
 	reset_size()
 	position = get_viewport_rect().size / 2.0 + OFFSET

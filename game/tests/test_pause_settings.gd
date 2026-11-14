@@ -8,32 +8,39 @@ extends SceneTree
 ##   2. Pause menu in a level: Esc pauses, the game is blurred, PAUSED and the five items in order,
 ##      focus on RESUME, the staggered fade-in; SETTINGS opens the shared screen, Esc there goes
 ##      back to the pause menu (it does not resume), a second Esc resumes.
-## Only wiring and layout are checked here; nothing it touches is saved. The settings script uses
-## autoloads, so it is not named as a type here (a test script compiles before the autoloads exist).
+## Wiring and layout are checked here (test_settings.gd checks what each setting does). What it
+## changes is saved, so user://settings.cfg is put back as it was afterwards. The settings script
+## uses autoloads, so it is not named as a type here (a test script compiles before the autoloads
+## exist).
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_pause_settings.gd
 ##
 ## Windowed with `-- --shot=<dir>` it also saves settings_<tab>.png (main menu), pause.png and
 ## pause_settings.png.
 
-## What each tab lists, in the board's order: [label, control kind]
+## What each tab shows, in the board's order: [label, control kind]. The board's Language, Camera
+## Shake, Speaker Setup and Motion Blur rows are hidden (test_settings.gd). Controls: then a key
+## slab per InputBindings.ACTIONS entry and the locked ones (checked there too).
 const BOARD: Dictionary = {
-	"General": [["Language", "select"], ["Subtitles", "toggle"], ["Subtitle Size", "slider"], ["Camera Shake", "toggle"],
-		["Show Tooltips", "toggle"], ["Show FPS Counter", "toggle"]],
+	"General": [["Subtitles", "toggle"], ["Subtitle Size", "slider"], ["Show Tooltips", "toggle"], ["Show FPS Counter", "toggle"]],
 	"Audio": [["Master Volume", "slider"], ["Music Volume", "slider"], ["Effects Volume", "slider"], ["Voice Volume", "slider"],
-		["Interface Volume", "slider"], ["Mute When Unfocused", "toggle"], ["Speaker Setup", "select"]],
+		["Interface Volume", "slider"], ["Mute When Unfocused", "toggle"]],
 	"Video": [["Display Mode", "select"], ["Resolution", "select"], ["Quality Preset", "select"], ["Terrain Detail", "select"],
 		["Dust and Tracks", "select"], ["VSync", "toggle"], ["Frame Rate Limit", "select"], ["Field Of View", "slider"],
-		["Brightness", "slider"], ["Motion Blur", "toggle"]],
+		["Brightness", "slider"]],
 	"Controls": [["Mouse Sensitivity", "slider"], ["Invert Y Axis", "toggle"], ["Toggle Crouch", "toggle"], ["Move Forward", "key"],
-		["Move Backward", "key"], ["Move Left", "key"], ["Move Right", "key"], ["Jump", "key"], ["Crouch", "key"], ["Interact", "key"]],
+		["Move Backward", "key"], ["Move Left", "key"], ["Move Right", "key"], ["Sprint", "key"], ["Jump", "key"], ["Crouch", "key"],
+		["Interact", "key"]],
 }
+const SETTINGS_PATH: String = "user://settings.cfg"
 
 var GS: Node
 var SL: Node
 var failures: int = 0
 var shot_dir: String = ""
 var _deadline_ms: int = 0
+var _had_settings: bool = false
+var _saved_settings: String = ""
 
 
 func _initialize() -> void:
@@ -97,11 +104,11 @@ func _amount(blur: ColorRect) -> float:
 	return float((blur.material as ShaderMaterial).get_shader_parameter(&"amount"))
 
 
-## The rows of a settings page: [{label, control}]
+## The shown rows of a settings page: [{label, control}]
 func _rows(settings: Node, tab_name: String) -> Array:
 	var rows: Array = []
 	for panel in settings.find_child("Pages", true, false).get_node(tab_name).get_node("Rows").get_children():
-		var hbox := panel.get_child(0) if panel is PanelContainer else null
+		var hbox := panel.get_child(0) if panel is PanelContainer and panel.visible else null
 		if hbox == null:
 			continue
 		rows.append({"label": (hbox.get_child(0) as Label).text, "control": hbox.get_child(1)})
@@ -127,7 +134,23 @@ func _control(settings: Node, tab_name: String, label: String) -> Control:
 	return null
 
 
+func _backup_settings() -> void:
+	_had_settings = FileAccess.file_exists(SETTINGS_PATH)
+	if _had_settings:
+		_saved_settings = FileAccess.get_file_as_string(SETTINGS_PATH)
+
+
+func _restore_settings() -> void:
+	if _had_settings:
+		var file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+		file.store_string(_saved_settings)
+		file.close()
+	elif FileAccess.file_exists(SETTINGS_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
+
+
 func _run() -> void:
+	_backup_settings()
 	GS = root.get_node("GameState")
 	SL = root.get_node("SceneLoader")
 	if not await _wait_state(GS.State.MAIN_MENU):
@@ -136,6 +159,7 @@ func _run() -> void:
 		return
 	await _check_main_menu_settings()
 	await _check_pause()
+	_restore_settings()
 	print("RESULT test_pause_settings %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
 
@@ -179,6 +203,7 @@ func _check_main_menu_settings() -> void:
 		_check("[%s] one page shown, its tab active" % tab_name, shown == 1 and tabs[tab_index].active
 			and settings.find_child("Pages", true, false).get_node(tab_name).visible)
 		var got: Array = _rows(settings, tab_name).map(func(r: Dictionary) -> Array: return [r["label"], _kind(r["control"])])
+		got = got.slice(0, BOARD[tab_name].size())
 		_check("[%s] the board's rows, in order" % tab_name, got == BOARD[tab_name], str(got))
 		await _shot("settings_%s.png" % tab_name.to_lower())
 		for row in _rows(settings, tab_name):
@@ -202,21 +227,22 @@ func _check_main_menu_settings() -> void:
 		slider_focus.grab_focus()
 		await _wait(0.2)
 		await _shot("settings_focus_slider.png")
-		_control(settings, "General", "Camera Shake").grab_focus()
+		_control(settings, "General", "Subtitles").grab_focus()
 		await _wait(0.2)
 		await _shot("settings_focus_toggle.png")
 
 	# General: toggles, slider, select, reset
 	(tabs[0] as Button).pressed.emit()
 	await _wait(0.1)
-	var shake: SlantedToggle = _control(settings, "General", "Camera Shake")
+	var subtitles: SlantedToggle = _control(settings, "General", "Subtitles")
 	var size: SettingsSlider = _control(settings, "General", "Subtitle Size")
-	var language: SlantedSelect = _control(settings, "General", "Language")
-	_check("[General] defaults: shake on, size 100 %, English", shake.button_pressed and size.value == 100.0 and language.selected == 0)
+	var fps: SlantedToggle = _control(settings, "General", "Show FPS Counter")
+	_check("[General] defaults: subtitles on, size 100 %, no FPS counter", subtitles.button_pressed and size.value == 100.0
+		and not fps.button_pressed)
 	_check("[General] size runs 50 to 200", size.min_value == 50.0 and size.max_value == 200.0)
-	shake.button_pressed = false
+	subtitles.button_pressed = false
 	size.value = 150.0
-	language.select(1)
+	fps.button_pressed = true
 	_check("[General] the slider shows its value", (size.get_meta(&"value_label") as Label).text == "150%")
 	var reset: Button = null
 	for button in settings.find_children("*", "SolidButton", true, false):
@@ -224,7 +250,7 @@ func _check_main_menu_settings() -> void:
 			reset = button
 	_check("[General] RESET TO DEFAULTS is there", reset != null and reset.is_visible_in_tree())
 	reset.pressed.emit()
-	_check("[General] reset restores the defaults", shake.button_pressed and size.value == 100.0 and language.selected == 0
+	_check("[General] reset restores the defaults", subtitles.button_pressed and size.value == 100.0 and not fps.button_pressed
 		and (size.get_meta(&"value_label") as Label).text == "100%")
 
 	# Controls: the key slab
@@ -256,7 +282,7 @@ func _check_main_menu_settings() -> void:
 	await _wait(0.1)
 	tabs[0].grab_focus()
 	await _key(KEY_DOWN)
-	_check("[focus] down from the tab: the first row's control", language.has_focus())
+	_check("[focus] down from the tab: the first row's control", subtitles.has_focus())
 	var back: Button = settings.find_child("Back", true, false)
 	_check("[focus] BACK is the last stop", settings.find_child("Back", true, false) != null
 		and reset.get_node(reset.focus_neighbor_bottom) == back)

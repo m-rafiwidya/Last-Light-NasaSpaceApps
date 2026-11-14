@@ -16,6 +16,8 @@ func _ready() -> void:
 	SceneLoader.level_loaded.connect(_on_level_loaded)
 	
 	$LoadingScreen.finished_fade_in.connect(SceneLoader._on_finished_fade_in)
+	# Settings > General > Show FPS Counter, above every screen
+	add_child(FpsCounter.new())
 	#$MainMenu.offset = Vector2(-1920.0, 0.0)
 	#$PauseMenu.offset = Vector2(-1920.0, 0.0)
 
@@ -31,7 +33,8 @@ func _process(_delta: float) -> void:
 	# The popup closes itself on Esc, so remember whether it was open at the start
 	# of this frame: that Esc must not also pause the game or leave the robot.
 	var console_was_open: bool = Debug.console_open
-	if Input.is_action_just_pressed("console"):
+	# (Not a key a settings key slab just took to rebind)
+	if Input.is_action_just_pressed("console") and not KeyBindSlab.took_key_this_frame():
 		if $Console.visible:
 			$Console.hide()
 		else:

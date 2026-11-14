@@ -80,8 +80,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(event.relative.y) * look_scale, -altitude_limit, altitude_limit)
-		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(event.relative.x) * look_scale, 2.0 * PI)
+		# Sensitivity and Invert Y Axis (Settings > Controls)
+		var look: Vector2 = ControlSettings.look_pixels(event.relative)
+		camera_altitude = clamp(camera_altitude - PlayerController.px_to_rad(look.y) * look_scale, -altitude_limit, altitude_limit)
+		camera_azimuth = fmod(camera_azimuth - PlayerController.px_to_rad(look.x) * look_scale, 2.0 * PI)
 	elif event is InputEventMouseButton and event.pressed:
 		# One step per wheel notch (not event.factor: on macOS it includes scroll acceleration)
 		if event.is_action("camera_zoom_in"):

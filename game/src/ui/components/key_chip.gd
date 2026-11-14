@@ -3,18 +3,9 @@ class_name KeyChip
 extends HBoxContainer
 
 ## Small light parallelogram with a key name, followed by the action label ("Esc Cancel",
-## "E Insert module"). The key comes from the InputMap for `action`, so rebinding is reflected.
+## "E Insert module"). The key comes from the InputMap for `action` (InputBindings.action_text),
+## and the chip follows rebinding (InputBindings.events.changed).
 ## Not focusable: it is a hint, not a control.
-
-const KEY_NAMES: Dictionary = {
-	"Escape": "Esc",
-	"Enter": "Enter",
-	"Kp Enter": "Enter",
-	"Space": "Space",
-	"Left Mouse Button": "LMB",
-	"Right Mouse Button": "RMB",
-	"Middle Mouse Button": "MMB",
-}
 
 @export var action: StringName = &"":
 	set(value):
@@ -56,6 +47,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	visibility_changed.connect(refresh)
+	InputBindings.events.changed.connect(refresh)
 	refresh()
 
 
@@ -69,29 +61,4 @@ func refresh() -> void:
 
 
 func key_text() -> String:
-	if action != &"" and InputMap.has_action(action):
-		var chosen: InputEvent = null
-		for event in InputMap.action_get_events(action):
-			if event is InputEventKey:
-				chosen = event
-				break
-			if chosen == null:
-				chosen = event
-		if chosen != null:
-			return _event_text(chosen)
-	return fallback_key
-
-
-func _event_text(event: InputEvent) -> String:
-	var text: String
-	if event is InputEventKey:
-		var key := event as InputEventKey
-		var code: Key = key.physical_keycode if key.keycode == KEY_NONE else key.keycode
-		if key.keycode == KEY_NONE and key.physical_keycode != KEY_NONE \
-				and DisplayServer.get_name() != "headless":
-			# Show the label for the player's keyboard layout (WASD stays W on AZERTY)
-			code = DisplayServer.keyboard_get_label_from_physical(key.physical_keycode)
-		text = OS.get_keycode_string(code | key.get_modifiers_mask())
-	else:
-		text = event.as_text()
-	return KEY_NAMES.get(text, text)
+	return InputBindings.action_text(action, fallback_key) if action != &"" else fallback_key
