@@ -108,7 +108,7 @@ from the text below, this list wins:
 
 ## 0. The brief, and where this sits in it
 
-`ASSET_BRIEF.md`, finish pass: *"Full astronaut bodies, animated NPCs ... are deferred. A static
+`game/docs/ASSET_BRIEF.md`, finish pass: *"Full astronaut bodies, animated NPCs ... are deferred. A static
 seated operator silhouette is optional if a rover camera can see through a window; it does not
 require a rigged astronaut."*
 

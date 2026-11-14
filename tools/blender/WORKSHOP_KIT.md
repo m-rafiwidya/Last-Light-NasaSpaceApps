@@ -1,6 +1,6 @@
 # Workshop Kit Spec
 
-Modular low-poly kit for the lunar workshop in `ASSET_BRIEF.md` (LAST LIGHT): **A01** the workshop
+Modular low-poly kit for the lunar workshop in `game/docs/ASSET_BRIEF.md` (LAST LIGHT): **A01** the workshop
 (operator area and rover service bay), **A02** the charging/service pad, **A03** the mission
 console, **A04** the parts rack and its labels, **A07** the navigation and dock markers. Same
 conventions as `ROVER_KIT.md` unless this file says otherwise. **Every workshop part follows

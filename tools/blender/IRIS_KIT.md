@@ -1,6 +1,6 @@
 # IRIS Kit Spec
 
-The first mission's other end (`ASSET_BRIEF.md`): **A07** IRIS, the research station (a
+The first mission's other end (`game/docs/ASSET_BRIEF.md`): **A07** IRIS, the research station (a
 placeholder for now), **A06** the diagnostic cartridge, and how Kite, the player's rover, delivers
 one to the other.
 
