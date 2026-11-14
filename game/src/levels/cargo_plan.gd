@@ -178,14 +178,11 @@ static func crate_parts() -> PackedStringArray:
 
 
 ## Workshop slots (in `stock`: "rack" or "bench") still waiting for their delivery; none without a campaign
-static func hidden_slots(stock: String, has_crate: bool) -> Array:
+static func hidden_slots(stock: String) -> Array:
 	var hidden: Array = []
 	if CampaignState.current_mission().is_empty():
 		return hidden
 	for entry in items():
-		var fallback: Array = entry.get("fallback_stock", {}).get(stock, [])
 		if not is_ordered(entry["id"]):
-			hidden.append_array(entry.get("stock", {}).get(stock, []) + fallback)
-		elif has_crate:
-			hidden.append_array(fallback)
+			hidden.append_array(entry.get("stock", {}).get(stock, []))
 	return hidden

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: the workshop (tools/blender/WORKSHOP_KIT.md) in the Moon level, then in the
 ## test level.
-##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 19
+##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 18
 ##      parts on their slots, at rest; every label fits its plate at 50-65 mm caps. The sample
 ##      bench holds the sampling kit on its tray and the thermal kit on its low shelf. M3 parts
 ##      (make_m3_kit.py): both tool turrets on the rack, the thermal one with its reading point;
@@ -153,7 +153,7 @@ func _layout_checks() -> void:
 		var aabb_centre: Vector3 = _visual_centre(part)
 		worst_slot = maxf(worst_slot, Vector2(aabb_centre.x - slot.x, aabb_centre.z - slot.z).length())
 		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
-	_check("the rack holds its 19 parts (with the cartridge, the light battery, the radio module and the thermal turret)", stock.get_child_count() == 19, "%d" % stock.get_child_count())
+	_check("the rack holds its 18 parts (with the cartridge, the light battery and the thermal turret)", stock.get_child_count() == 18, "%d" % stock.get_child_count())
 	var batteries: Array = []
 	for part in stock.get_children():
 		if part.has_method("drain"):  # a BatteryPart (named by method: the class needs the autoloads)
@@ -165,10 +165,8 @@ func _layout_checks() -> void:
 		", ".join(batteries.map(func(b): return "%s %.0f Wh %.1f kg" % [b.get_catalog_id(), b.capacity, b.mass])))
 	_check("rack parts on their slots, at rest", worst_slot < 0.06 and fastest < 0.01, "farthest %.3f m off its slot, fastest %.3f m/s" % [worst_slot, fastest])
 	var modules: Array = stock.get_children().filter(func(p): return p.get_catalog_id() == "radio_module")
-	var on_shelf: bool = modules.size() == 1 and modules[0].mass >= 10.0 \
-		and absf(workshop.to_local(_visual_centre(modules[0])).y - (workshop.anchors["slot_18"].y + 0.055)) < 0.03
-	_check("the rack holds the radio module (12 kg) lying flat on the top shelf", on_shelf,
-		"%d module(s)" % modules.size() + ("" if modules.is_empty() else ", %.1f kg, centre y %.3f vs slot %.3f" % [modules[0].mass, workshop.to_local(_visual_centre(modules[0])).y, workshop.anchors["slot_18"].y]))
+	_check("the rack holds no radio module (the cargo crate is its only source)", modules.is_empty() and workshop.cargo_crate != null
+		and workshop.cargo_crate.is_in_group(&"cargo_crate"), "%d module(s)" % modules.size())
 	var bench: Node3D = workshop.bench_stock
 	var bench_ok: bool = bench != null and bench.get_child_count() == 5
 	var bench_detail: String = ""

@@ -72,6 +72,7 @@ func _run() -> void:
 	iris = level.get_node("Iris")
 	await _ticks(1.0)
 	var plan: Script = load("res://src/levels/cargo_plan.gd")
+	workshop.cargo_crate.free()       # the workshop's own crate; this test makes its own
 
 	# 1. Before the delivery
 	var crate: Node3D = _crate_at(Vector3(2.0, 0.0, 1.5))

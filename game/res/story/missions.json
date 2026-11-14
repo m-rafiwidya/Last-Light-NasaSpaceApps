@@ -4,7 +4,7 @@
 		"IDs are lowercase with dots. A mission is mN, an objective is mN.thing. Objective IDs are unique across all missions.",
 		"objectives: all required for mission_completed. optional_objectives: can be completed but do not count.",
 		"objective_titles: what the console and the rover HUD show for each objective. report: the lines the console's Downlink tab shows once the mission's data is sent.",
-		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
+		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
 		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat.",
 		"downlink: the console's Downlink tab for this mission. objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
@@ -278,11 +278,21 @@
 				],
 				"m2.module_loaded": [
 					{
+						"text": "Go to the delivery crate beside the charging pad",
+						"label": "Delivery crate",
+						"target": "group:cargo_crate",
+						"stuck": "Leave the console with Esc and go through the personnel door in the glass partition. The crate is open on the bay floor, east of the pad.",
+						"done_when": {
+							"player_near": "group:cargo_crate",
+							"distance": 2.0
+						}
+					},
+					{
 						"text": "Pick up the radio-power module",
 						"label": "Radio-power module",
-						"target": "path:Workshop/RackStock/Slot18",
+						"target": "part:radio_module",
 						"key": "interact_use",
-						"stuck": "The module is the heavy box on the parts rack's top shelf. Look at it and press E.",
+						"stuck": "The module is the heavy box lying in the open crate. Look at it and press E.",
 						"done_when": {
 							"holding_part": "cargo"
 						}
@@ -297,10 +307,33 @@
 				],
 				"m2.module_installed": [
 					{
-						"text": "Drive to IRIS and install the module in its cradle",
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "The module is on Kite. Open the console and press CONTROL KITE to drive out to IRIS.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
 						"label": "",
 						"target": "",
-						"placeholder": "TODO Thursday: target for the module cradle (Rafi)"
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive to IRIS and park at its module bay",
+						"label": "IRIS module bay",
+						"target": "group:iris_module_cradle",
+						"waypoint": true,
+						"stuck": "Follow the marker to IRIS. Park with Kite's cargo mount at the glowing bay, stop, then press E."
 					}
 				],
 				"m2.iris_activated": [
