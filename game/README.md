@@ -730,6 +730,8 @@ Visual only; nothing here touches the physics. At `_ready` it builds each side's
 - turns the steer brackets by each wheel's steering angle (front with the steering, rear counter-steering);
 - moves each mounted `WheelPart` onto its hub socket (bracket or bogie, so it carries the steering and the linkage tilt) and spins its `Model` from the wheel speed; a part keeps its unspun rotation when it leaves the socket.
 
+It also builds the fixed parts: `mast_base` on the chassis's `socket_mast`, and the arm (`arm_shoulder` with its yaw turntable on `socket_arm`, then `arm_upper`, `arm_forearm`, `arm_wrist`, each on the previous one's socket). `RoverVisuals.arm_joints` holds the arm pose in degrees (J1 yaw, J2 shoulder, J3 elbow, J4 wrist, J5 turret; stowed `0, 90, 90, 90, 0` by default); `apply_arm_pose()` applies it clamped to the checked ranges (`tools/blender/ROVER_KIT.md` 5). Nothing drives the arm yet. The fixed parts have no collision and don't change the rover's mass or centre of mass.
+
 Because the linkage is rigid and the six physics wheels are independent springs, a visual wheel can sit a few cm off its physics contact: 1 mm on flat ground, up to 33 mm over an abrupt 8 cm step, up to 41 mm up a 15 cm ramp. The spin is applied to the wheel part's `Model` node (both kit wheels), about its local X.
 
 ### 15.4 Cameras

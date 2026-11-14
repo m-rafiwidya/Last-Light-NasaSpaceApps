@@ -12,7 +12,8 @@ extends Node3D
 ## - both clamped to the clearance-checked range (rocker +-10, bogie +-15 degrees),
 ## - the steer brackets turned by each wheel's steering angle.
 ## Mounted wheel parts are moved onto their hub sockets on the linkage, and their models spin
-## with the wheel speed. Nothing here affects the physics.
+## with the wheel speed. It also builds the fixed mast base and arm segments on their chassis
+## sockets and poses the arm (stowed by default). Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
 # re-running tools/blender/scripts/make_rocker_bogie.py with the new range.
@@ -26,7 +27,17 @@ const MODELS: Dictionary = {
 	"bogie_R": preload("res://res/models/rover_kit/bogie_R.glb"),
 	"steer_bracket_L": preload("res://res/models/rover_kit/steer_bracket_L.glb"),
 	"steer_bracket_R": preload("res://res/models/rover_kit/steer_bracket_R.glb"),
+	"mast_base": preload("res://res/models/rover_kit/mast_base.glb"),
+	"arm_shoulder": preload("res://res/models/rover_kit/arm_shoulder.glb"),
+	"arm_upper": preload("res://res/models/rover_kit/arm_upper.glb"),
+	"arm_forearm": preload("res://res/models/rover_kit/arm_forearm.glb"),
+	"arm_wrist": preload("res://res/models/rover_kit/arm_wrist.glb"),
 }
+
+# ROVER_KIT.md 5: arm joint ranges (degrees) and the stowed pose
+const ARM_RANGES: Dictionary = {"J1": Vector2(-20.0, 15.0), "J2": Vector2(-30.0, 90.0),
+	"J3": Vector2(-90.0, 90.0), "J4": Vector2(-110.0, 110.0)}
+const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 
 const SIDE_WHEELS: Dictionary = {
 	"L": [RunningGear.Wheel.FRONT_LEFT, RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.REAR_LEFT],
@@ -42,6 +53,12 @@ var sides: Dictionary = {}
 var rocker_angles: Dictionary = {"L": 0.0, "R": 0.0}
 var bogie_angles: Dictionary = {"L": 0.0, "R": 0.0}
 
+## Arm joint angles in degrees (J1 yaw, J2 shoulder, J3 elbow, J4 wrist, J5 tool turret),
+## clamped to ARM_RANGES when applied. Stowed by default.
+var arm_joints: Dictionary = ARM_STOWED.duplicate()
+# Joint name -> the arm model node it turns
+var _arm_nodes: Dictionary = {}
+
 var _spin: Dictionary = {}           # Wheel -> spin angle (rad)
 var _spun_parts: Dictionary = {}     # Wheel -> WheelPart whose model is spun
 var _model_rest: Dictionary = {}     # WheelPart -> its model's unspun rotation
@@ -52,6 +69,8 @@ func _ready() -> void:
 	process_physics_priority = 10
 	for side in SIDE_WHEELS:
 		_build_side(side)
+	_build_mast_and_arm()
+	apply_arm_pose()
 
 
 func _build_side(side: String) -> void:
@@ -66,6 +85,35 @@ func _build_side(side: String) -> void:
 		"rest_bogie_pivot": robot.to_local(bogie.global_position),
 		"rest_hubs": hubs.map(func(hub: Node3D) -> Vector3: return robot.to_local(hub.global_position)),
 	}
+
+
+# The fixed mast base on socket_mast, and the arm: the shoulder mount on socket_arm and each
+# segment on the previous one's socket. A segment's model node has its origin on its joint.
+func _build_mast_and_arm() -> void:
+	var body: Node3D = robot.body_model
+	_attach("mast_base", self, robot.to_local((body.find_child("socket_mast", true, false) as Node3D).global_position))
+	var shoulder: Node3D = _attach("arm_shoulder", self, robot.to_local((body.find_child("socket_arm", true, false) as Node3D).global_position))
+	var yaw := shoulder.find_child("arm_shoulder_yaw", true, false) as Node3D
+	var upper := _model(_attach("arm_upper", yaw, _socket_local(yaw, "socket_arm_upper")), "arm_upper")
+	var forearm := _model(_attach("arm_forearm", upper, _socket_local(upper, "socket_arm_forearm")), "arm_forearm")
+	var wrist := _model(_attach("arm_wrist", forearm, _socket_local(forearm, "socket_arm_wrist")), "arm_wrist")
+	_arm_nodes = {"J1": yaw, "J2": upper, "J3": forearm, "J4": wrist}
+
+
+func _model(instance: Node3D, model_name: String) -> Node3D:
+	return instance.find_child(model_name, true, false) as Node3D
+
+
+## Applies `arm_joints` (clamped to the checked ranges). Blender's X rotations map to Godot's
+## X, the yaw (Blender Z) to Godot Y. J5 turns the tool turret, mounted in the arm tool socket.
+func apply_arm_pose() -> void:
+	for joint in _arm_nodes:
+		var angle: float = clampf(arm_joints[joint], ARM_RANGES[joint].x, ARM_RANGES[joint].y)
+		var node: Node3D = _arm_nodes[joint]
+		if joint == "J1":
+			node.rotation = Vector3(0.0, deg_to_rad(angle), 0.0)
+		else:
+			node.rotation = Vector3(deg_to_rad(angle), 0.0, 0.0)
 
 
 func _attach(model: String, parent: Node3D, position_in_parent: Vector3) -> Node3D:
