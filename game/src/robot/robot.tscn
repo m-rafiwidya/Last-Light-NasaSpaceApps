@@ -14,10 +14,13 @@ bounce = 0.5
 mix_rate = 22050.0
 buffer_length = 0.1
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.5, 0.24, 0.9)
+
 [sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
 size = Vector3(1, 0.32641602, 1)
 
-[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket")]
+[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket")]
 collision_layer = 6
 collision_mask = 7
 mass = 80.0
@@ -31,6 +34,7 @@ linear_damp_mode = 1
 angular_damp_mode = 1
 script = ExtResource("1_caus5")
 body_model = NodePath("Body")
+body_collision = NodePath("BodyCollision")
 running_gear = NodePath("RunningGear")
 engine = NodePath("Engine")
 pivot = NodePath("Pivot")
@@ -55,9 +59,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.5)
 [node name="WheelBack" type="Marker3D" parent="." unique_id=63669362]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5)
 
-[node name="BodyCollision" type="CollisionPolygon3D" parent="." unique_id=1915869618]
-transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, 0)
-polygon = PackedVector2Array(0.4, 0, 0.5, 0.1, 0.5, 0.35, -0.5, 0.25, -0.5, 0.1, -0.4, 0)
+[node name="BodyCollision" type="CollisionShape3D" parent="." unique_id=1915869618]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32, 0)
+shape = SubResource("BoxShape3D_body")
+
 
 [node name="Pivot" type="Node3D" parent="." unique_id=2031539751]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -0.2)

@@ -5,6 +5,9 @@ extends RigidBody3D
 @export var controller: RobotController
 # The rover kit chassis model. HotswapSockets with an `anchor` are moved onto its socket_* nodes.
 @export var body_model: Node3D
+# The rover's collision shape. At _ready it takes the body model's imported "Collision" shape
+# (the chassis -convcolonly box, see rover_kit_import.gd); the scene's box is an editor stand-in.
+@export var body_collision: CollisionShape3D
 @export var running_gear: RunningGear
 @export var engine: RobotEngine
 
@@ -84,6 +87,7 @@ var looking_at_object: Node3D = null
 func _ready() -> void:
 	Debug.current_robot = self
 	_snap_sockets_to_anchors()
+	_adopt_body_collision()
 	running_gear.update_wheel_properties()
 	wheel_sockets = {
 		RunningGear.Wheel.FRONT_LEFT: front_left_socket,
@@ -118,6 +122,21 @@ func _snap_sockets_to_anchors() -> void:
 			continue
 		var local: Transform3D = global_transform.affine_inverse() * anchor_node.global_transform
 		socket.transform = Transform3D(Basis.IDENTITY, local.origin)
+
+
+# Copies the body model's "Collision" shape onto the robot's own CollisionShape3D (a shape
+# only counts as a direct child of the RigidBody3D) and removes the model's copy.
+func _adopt_body_collision() -> void:
+	if body_model == null or body_collision == null:
+		return
+	var source := body_model.find_child("Collision", true, false) as CollisionShape3D
+	if source == null:
+		push_error("Robot: the body model has no Collision shape (is rover_kit_import.gd set?)")
+		return
+	body_collision.shape = source.shape
+	body_collision.transform = global_transform.affine_inverse() * source.global_transform
+	source.get_parent().remove_child(source)
+	source.queue_free()
 
 
 # The robot's camera only takes over while it is being driven; otherwise the

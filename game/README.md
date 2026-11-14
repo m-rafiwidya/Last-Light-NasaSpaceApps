@@ -678,7 +678,8 @@ Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7,
 ├── Engine           RobotEngine: brushed DC motor (stall torque 10.7 Nm, no-load speed 345 rad/s)
 ├── RunningGear      RunningGear: 6 wheels, tyre + suspension params (wheelbase/track 1 m, default wheel radius 0.15, per wheel spring 2667, damping 267, ride height 0.15, max steer 30 degrees, rear counter-steer)
 ├── HotswapSocket x8 6 wheel sockets + 1 motor + 1 battery socket (`accepted_type`), wired to the `*_socket` / `motor_socket` / `battery_socket` exports, see 15.3a
-├── BodyCollision / CockpitCollision   CollisionPolygon3D
+├── BodyCollision    CollisionShape3D; at _ready it takes the chassis's imported "Collision" shape (convex box x +-0.25, y 0.20-0.44, z +-0.45), see 15.5
+├── Body             chassis.glb (rover kit), anchors for the sockets
 ├── Pivot            Node3D, yaw (at 0, 1, -0.2)
 │   └── Camera3D     first-person camera, pitch (FOV 90)
 │       └── RayCast3D  3 m pickup ray, mask 53, collides with areas
@@ -726,6 +727,8 @@ The camera is **not** `current` in the scene: `Robot` listens to `GameState.stat
 **Pickup** is identical to the player's, since both use the shared `ObjectHolder` (`src/object_holder/object_holder.gd`, section 9): `E` (`interact_use`) picks up the `RigidBody3D` under the crosshair or drops the held one, left click (`interact_primary`) throws it. `RobotController` exposes these as `interact` / `primary` signals. The robot is on the props layer, so the ray ignores the robot itself (`raycast.add_exception`) and a held prop gets a collision exception with the robot. `InteractTrigger`s are not usable from the robot. `Robot.looking_at_object` feeds the crosshair in `RobotHUD`.
 
 ### 15.5 Collision layers
+**Shape.** The rover's only collision shape is `BodyCollision`. `Robot._adopt_body_collision()` copies the chassis model's `Collision` shape onto it at `_ready()` and removes the model's copy (a shape only counts as a direct child of the `RigidBody3D`). That `Collision` node comes from the chassis's `-convcolonly` mesh via the post-import script `src/robot/kit/rover_kit_import.gd`, which replaces the `StaticBody3D` Godot would otherwise create (a static body inside the rover collides with the rover and throws it around). The box in `robot.tscn` is only an editor stand-in. Mass (80 kg) and inertia are set explicitly, so the shape does not change them.
+
 The robot is on layers 2 and 3 (collision_layer 6) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. Being on the props layer (3) is what lets the player's interact raycast (mask 53) hit it, so the player can **pick up and throw the robot** like any other prop (mass 80), and the player collides with it (player mask 5 includes layer 3). While held it is moved to layer 4 and loses the player layer from its mask, as for every held object. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
 
 ### 15.6 Recipe: spawn the robot in a new place
