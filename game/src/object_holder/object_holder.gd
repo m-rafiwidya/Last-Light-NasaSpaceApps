@@ -30,6 +30,10 @@ var pivot: Node3D
 var camera: Camera3D
 
 var held_object: RigidBody3D = null
+## Optional: where the held object is pulled to instead of PICKUP_DISTANCE in front of the
+## camera (the player's first-person body sets it to a point in its hands, PlayerBody). Null for
+## the robot, which keeps the old behaviour.
+var hold_point: Node3D = null
 ## Push the holder back with the force that pulls the object towards it
 var apply_reaction_force: bool = false
 
@@ -114,6 +118,8 @@ func update(delta: float) -> void:
 	var target_pos: Vector3 = (
 		camera.global_position - clamped_camera_basis.z * PICKUP_DISTANCE
 	)
+	if hold_point:
+		target_pos = hold_point.global_position
 
 	# Translation PID
 	var translation_error: Vector3 = target_pos - held_object.global_position

@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/player/body/player_body.gd" id="1_body"]
+[ext_resource type="PackedScene" path="res://res/models/astronaut_kit/astronaut_fp.glb" id="2_suit"]
+
+[node name="Body" type="Node3D"]
+script = ExtResource("1_body")
+
+[node name="Suit" parent="." instance=ExtResource("2_suit")]
