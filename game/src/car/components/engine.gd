@@ -3,11 +3,12 @@ class_name CarEngine
 extends Node
 
 @export var torque_curve: Curve
-@export var peak_torque: float = 200.0
-@export var idle_speed: float = 2000.0 * 0.1047
-@export var lower_redline: float = 7000.0 * 0.1047
-@export var upper_redline: float = 7500.0 * 0.1047
-@export var inertia: float = 0.2
+# Small electric drive motor sized for a ~80 kg rover. Speeds are rad/s (rpm * 0.1047).
+@export var peak_torque: float = 9.0
+@export var idle_speed: float = 500.0 * 0.1047
+@export var lower_redline: float = 3800.0 * 0.1047
+@export var upper_redline: float = 4000.0 * 0.1047
+@export var inertia: float = 0.01
 
 var is_disabled: bool = false
 

@@ -8,16 +8,21 @@ extends RigidBody3D
 
 # Single fixed gear, used for both forward and reverse. The engine is rigidly
 # coupled to the driven wheels (no clutch).
-@export var gear_ratio: float = 1.56
-@export var final_drive: float = 4.26
+@export var gear_ratio: float = 1.0
+@export var final_drive: float = 5.0
 # Top speed in both directions, in units per second. The controller's input is a
 # fraction of this (1 = full speed forward, -1 = full speed backward, 0 = stop).
-@export var max_speed: float = 20.0
+@export var max_speed: float = 10.0
 # Speed error (units/s) at which the drivetrain applies full torque. Smaller
 # values chase the target speed harder; larger values are gentler.
-@export var speed_control_band: float = 4.0
-var transmission_inertia: float = 0.5
-var differential_inertia: float = 0.5
+@export var speed_control_band: float = 2.0
+# Rotational inertias (kg m^2) of the transmission output shaft and differential
+@export var transmission_inertia: float = 0.004
+@export var differential_inertia: float = 0.01
+
+# Follow camera offset behind the car, scaled to the car's size
+@export var follow_camera_distance: float = 2.5
+@export var follow_camera_height: float = 0.8
 
 const DRIVEN_WHEELS: Array = [RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT]
 
@@ -79,8 +84,8 @@ func _process(delta) -> void:
 	$FollowCameraPivot.rotation.y = camera_rotation.y
 	$FollowCameraPivot.rotation.x = camera_rotation.x
 	$FollowCameraPivot/FollowCamera.transform.origin = Vector3.ZERO
-	$FollowCameraPivot/FollowCamera.transform.origin.z = 6.0
-	$FollowCameraPivot/FollowCamera.transform.origin.y = 2.0 * (1.0 + sin(camera_rotation.x))
+	$FollowCameraPivot/FollowCamera.transform.origin.z = follow_camera_distance
+	$FollowCameraPivot/FollowCamera.transform.origin.y = follow_camera_height * (1.0 + sin(camera_rotation.x))
 
 	$FollowCamera.global_transform = $FollowCamera.global_transform.interpolate_with($FollowCameraPivot/FollowCamera.global_transform, delta * 20.0)
 

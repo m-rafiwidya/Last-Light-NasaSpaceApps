@@ -23,11 +23,11 @@ metadata/_snap_enabled = true
 [node name="Car" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("running_gear", "engine")]
 collision_layer = 2
 collision_mask = 7
-mass = 800.0
+mass = 80.0
 physics_material_override = SubResource("PhysicsMaterial_6kj2t")
 center_of_mass_mode = 1
-center_of_mass = Vector3(0, 0.5, 0)
-inertia = Vector3(600, 600, 600)
+center_of_mass = Vector3(0, 0.15, 0)
+inertia = Vector3(8, 13, 8)
 can_sleep = false
 contact_monitor = true
 linear_damp_mode = 1
@@ -38,39 +38,29 @@ engine = NodePath("Engine")
 
 [node name="Engine" parent="." unique_id=1105020877 instance=ExtResource("2_y3xmu")]
 torque_curve = SubResource("Curve_gkkdu")
-peak_torque = 500.0
 
 [node name="RunningGear" parent="." unique_id=1604477408 instance=ExtResource("4_6b27f")]
-longitudinal_friction_coefficient = 2.0
-lateral_friction_coefficient = 2.0
-front_spring_stiffness = 40000.0
-rear_spring_stiffness = 40000.0
-front_shock_damping = 4000.0
-rear_shock_damping = 4000.0
-front_ride_height = 0.3
-rear_ride_height = 0.3
 
 [node name="WheelFront" type="Marker3D" parent="." unique_id=704094160]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.5)
 
 [node name="WheelBack" type="Marker3D" parent="." unique_id=63669362]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5)
 
 [node name="BodyCollision" type="CollisionPolygon3D" parent="." unique_id=1915869618]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, 0)
-depth = 2.0
-polygon = PackedVector2Array(1.5, 0, 2.5, 0.2, 2.5, 1, -2.5, 0.5, -2.5, 0.2, -1.5, 0)
+polygon = PackedVector2Array(0.4, 0, 0.5, 0.1, 0.5, 0.35, -0.5, 0.25, -0.5, 0.1, -0.4, 0)
 
 [node name="CockpitCollision" type="CollisionPolygon3D" parent="." unique_id=2123652665]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
-depth = 3.0
-polygon = PackedVector2Array(0.5, 0.2, -0.5, 0.2, -0.2, 1, 0.2, 1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.2)
+depth = 0.5
+polygon = PackedVector2Array(0.25, 0.3, -0.25, 0.3, -0.1, 0.6, 0.1, 0.6)
 
 [node name="BumperCamera" type="Camera3D" parent="." unique_id=1844620794]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.95, 0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 0.5, 0.1)
 
 [node name="FollowCamera" type="Camera3D" parent="." unique_id=849866000]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 2.5)
 current = true
 
 [node name="FollowCameraPivot" type="Node3D" parent="." unique_id=2031539751]
@@ -81,7 +71,7 @@ current = true
 one_shot = true
 
 [node name="EngineSound" type="AudioStreamPlayer3D" parent="." unique_id=552406406]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -1.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.5)
 stream = SubResource("AudioStreamGenerator_2vce4")
 autoplay = true
 script = ExtResource("2_460mh")

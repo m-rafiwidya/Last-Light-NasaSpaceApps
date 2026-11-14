@@ -12,22 +12,26 @@ extends Node
 @export_subgroup("Friction and Stiffness")
 @export var longitudinal_friction_coefficient: float = 1.0
 @export var lateral_friction_coefficient: float = 1.0
-@export var longitudinal_stiffness: float = 25000.0
-@export var cornering_stiffness: float = 20000.0
+# Newtons per unit of slip. These are absolute, so they must scale with the
+# vehicle's weight (the tyre saturates when stiffness * slip > friction * load).
+@export var longitudinal_stiffness: float = 1250.0
+@export var cornering_stiffness: float = 1000.0
 
 @export_group("Chassis")
-@export var wheel_base: float = 3.0
-@export var track_width: float = 2.0
+@export var wheel_base: float = 1.0
+@export var track_width: float = 1.0
 
 @export_group("Running Gear")
+@export var wheel_radius: float = 0.15
+@export var wheel_inertia: float = 0.03
 @export_subgroup("Suspension")
-@export var front_spring_stiffness: float = 60000
-@export var rear_spring_stiffness: float = 80000
+@export var front_spring_stiffness: float = 4000
+@export var rear_spring_stiffness: float = 4000
 # TODO: Implement variable damping (rebound and bump stiffness)
-@export var front_shock_damping: float = 6000
-@export var rear_shock_damping: float = 8000
-@export var front_ride_height: float = 0.2
-@export var rear_ride_height: float = 0.2
+@export var front_shock_damping: float = 400
+@export var rear_shock_damping: float = 400
+@export var front_ride_height: float = 0.15
+@export var rear_ride_height: float = 0.15
 
 enum Wheel{
 	FRONT_LEFT,
@@ -105,40 +109,40 @@ func update_wheel_properties() -> void:
 			WheelProperty.SPRING_STIFFNESS: front_spring_stiffness,
 			WheelProperty.SHOCK_DAMPING: front_shock_damping,
 			WheelProperty.RIDE_HEIGHT: front_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: 0.3,
+			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 1.0,
-			WheelProperty.INERTIA: 0.6,
+			WheelProperty.INERTIA: wheel_inertia,
 		},
 		Wheel.FRONT_RIGHT: {
 			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, -wheel_base / 2.0),
 			WheelProperty.SPRING_STIFFNESS: front_spring_stiffness,
 			WheelProperty.SHOCK_DAMPING: front_shock_damping,
 			WheelProperty.RIDE_HEIGHT: front_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: 0.3,
+			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 1.0,
-			WheelProperty.INERTIA: 0.6,
+			WheelProperty.INERTIA: wheel_inertia,
 		},
 		Wheel.REAR_LEFT: {
 			WheelProperty.POSITION: Vector3(-track_width / 2.0, 0, wheel_base / 2.0),
 			WheelProperty.SPRING_STIFFNESS: rear_spring_stiffness,
 			WheelProperty.SHOCK_DAMPING: rear_shock_damping,
 			WheelProperty.RIDE_HEIGHT: rear_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: 0.3,
+			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 0.0,
-			WheelProperty.INERTIA: 0.6,
+			WheelProperty.INERTIA: wheel_inertia,
 		},
 		Wheel.REAR_RIGHT: {
 			WheelProperty.POSITION: Vector3(track_width / 2.0, 0, wheel_base / 2.0),
 			WheelProperty.SPRING_STIFFNESS: rear_spring_stiffness,
 			WheelProperty.SHOCK_DAMPING: rear_shock_damping,
 			WheelProperty.RIDE_HEIGHT: rear_ride_height,
-			WheelProperty.EFFECTIVE_RADIUS: 0.3,
+			WheelProperty.EFFECTIVE_RADIUS: wheel_radius,
 			WheelProperty.MAX_STEER_ANGLE: 30.0 * PI / 180.0,
 			WheelProperty.STEER_BIAS: 0.0,
-			WheelProperty.INERTIA: 0.6,
+			WheelProperty.INERTIA: wheel_inertia,
 		}
 	}
 	return

@@ -652,10 +652,10 @@ Same idea as the player: the **controller** is *intent*, the **car** is *body*.
 
 ### 15.2 Scene structure (`car.tscn`, root `Car`)
 ```
-Car (RigidBody3D, car.gd)  mass 800, layer 2, mask 7, COM (0,0.5,0), can_sleep=false, contact_monitor
-├── Model            glTF muscle car (currently visible = false)
-├── Engine           CarEngine: torque curve, peak 500, idle ~2000 rpm, redline 7000-7500 rpm
-├── RunningGear      RunningGear: tyre + suspension params (stiffness 40000, damping 4000, ride height 0.3)
+Car (RigidBody3D, car.gd)  mass 80 (moon rover, ~1x1 m), layer 2, mask 7, COM (0,0.15,0), can_sleep=false, contact_monitor
+├── Model            glTF car model (currently visible = false; not rescaled to the rover size)
+├── Engine           CarEngine: torque curve, peak 9 Nm, idle ~500 rpm, redline 3800-4000 rpm
+├── RunningGear      RunningGear: tyre + suspension params (wheelbase/track 1 m, wheel radius 0.15, spring 4000, damping 400, ride height 0.15)
 ├── BodyCollision / CockpitCollision   CollisionPolygon3D
 ├── BumperCamera     Camera3D
 ├── FollowCamera     Camera3D (top_level, smoothed toward the pivot marker)
@@ -668,7 +668,7 @@ Car (RigidBody3D, car.gd)  mass 800, layer 2, mask 7, COM (0,0.5,0), can_sleep=f
 Every physics step:
 1. `_sync_driven_wheels`: forces the driven wheels (rear-left, rear-right) to the differential speed.
 2. `RunningGear.simulate_suspensions(state, steer)`: per wheel, ray-casts down (mask layer 1) from the wheel position. Computes spring + damper load, then slip ratio / slip angle and a Pacejka magic-formula tyre force (longitudinal + lateral), plus wheel torque that spins the wheel.
-3. `_step_drivetrain`: the engine is rigidly coupled to the driven wheels through one fixed ratio (`gear_ratio * final_drive`), so engine speed follows wheel speed (clamped between idle and redline). The controller input is a **desired speed** (`desired_speed * Car.max_speed`, 20 units/s). A proportional controller turns the error against the car's current forward speed into a -1..1 throttle (full torque at `speed_control_band` = 4 units/s of error). Torque comes from `CarEngine` (torque curve, rev limiter) scaled by `abs(throttle)`, and its sign drives the wheels forward or backward, so a negative error (including no input) slows the car down by driving against its motion. Only the differential speed is integrated.
+3. `_step_drivetrain`: the engine is rigidly coupled to the driven wheels through one fixed ratio (`gear_ratio * final_drive`), so engine speed follows wheel speed (clamped between idle and redline). The controller input is a **desired speed** (`desired_speed * Car.max_speed`, 10 units/s). A proportional controller turns the error against the car's current forward speed into a -1..1 throttle (full torque at `speed_control_band` = 2 units/s of error). Torque comes from `CarEngine` (torque curve, rev limiter) scaled by `abs(throttle)`, and its sign drives the wheels forward or backward, so a negative error (including no input) slows the car down by driving against its motion. Only the differential speed is integrated.
 4. `_apply_wheel_forces`: applies suspension load at the wheel offset and tyre force at the contact point.
 
 There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward and `S` drives backward.
@@ -680,6 +680,6 @@ There is **one gear** (no shifting, no clutch, no handbrake): `W` drives forward
 The car is on layer 2 (same layer as the player) with mask 7 (world, vehicles, props), so it collides with the level and pushes props. The suspension rays only hit layer 1, so props and walls on other layers don't hold the wheels up.
 
 ### 15.6 Recipe: spawn the car in a new place
-A level needs a `SpawnPoint`. The car spawns at its `transform` with the origin at the car's centre, and `RunningGear` ride height is 0.3 m, so give the marker a bit of height above the ground to avoid spawning inside it.
+A level needs a `SpawnPoint`. The car spawns at its `transform` with the origin at the car's centre, and `RunningGear` ride height is 0.15 m, so give the marker a bit of height above the ground to avoid spawning inside it.
 
 See [section 13](#13-known-issues--gotchas--todos) ("Car") for the issues found while integrating it.
