@@ -51,6 +51,10 @@ const TEXTS: Dictionary = {
 @export var scan_name: String = "IRIS"
 @export_multiline var scan_report: String = "IRIS. Research station, silent: no signal on any band. Diagnostic port open on its front bracket."
 
+## M1's scan target on the service panel (IrisServicePanel, child "ServicePanel" on `scan_point`)
+@export var panel_scan_name: String = "IRIS service panel"
+@export_multiline var panel_scan_report: String = "IRIS service panel S-1. Image recorded: connectors J1 to J3, Evan's labels readable. J1 radio power shows no supply."
+
 ## The seated module's turn about up, from the cartridge's pose (see module_seat_transform)
 const MODULE_SEAT_TURN: float = PI / 2.0
 
@@ -58,6 +62,8 @@ var is_scanned: bool = false
 var has_cartridge: bool = false
 var is_online: bool = false
 var port: CargoPort = null
+## The service panel's scan target (M1)
+var service_panel: IrisServicePanel = null
 ## The radio-power module's socket (socket_module) and seat (anchor_module_seated), for M2
 var module_socket: Node3D = null
 var module_seat: Node3D = null
@@ -103,6 +109,25 @@ func _ready() -> void:
 	port.global_transform = socket.global_transform.orthonormalized()
 	port.seat = model.find_child("anchor_cartridge_seated", true, false) as Node3D
 	port.cargo_inserted.connect(_on_cargo_inserted)
+	_add_service_panel(model)
+
+
+## The service panel's scan target on `scan_point`, already scanned if M1's scan is done (a
+## reloaded level keeps what the campaign says)
+func _add_service_panel(model: Node) -> void:
+	var anchor := model.find_child("scan_point", true, false) as Node3D
+	if anchor == null:
+		push_error("Iris: no scan_point in the model")
+		return
+	service_panel = IrisServicePanel.new()
+	service_panel.name = "ServicePanel"
+	service_panel.target_id = "iris_panel"
+	service_panel.scan_name = panel_scan_name
+	service_panel.scan_report = panel_scan_report
+	service_panel.is_scanned = CampaignState.is_objective_done("m1.iris_scanned")
+	service_panel.highlight_node = model.find_child("iris_service_panel", true, false) as Node3D
+	add_child(service_panel)
+	service_panel.global_transform = anchor.global_transform.orthonormalized()
 
 
 ## Where a seated radio-power module's origin goes, and how it lies (IRIS_KIT.md 4.1, 6.2.1): the module's
