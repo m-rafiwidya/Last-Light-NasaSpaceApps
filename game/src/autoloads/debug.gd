@@ -1,6 +1,6 @@
 extends Node
 
-# Set by Robot._ready()
+# The rover being driven, set by the Robot when it takes control (read by the robot HUD)
 var current_robot: Robot
 
 ## True while the debug console popup is open (set by UIManager). Player and robot

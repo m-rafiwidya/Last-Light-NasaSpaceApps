@@ -76,4 +76,4 @@ size_flags_horizontal = 8
 size_flags_vertical = 8
 theme_override_font_sizes/font_size = 24
 text = "WASD: drive   Mouse: look   E: pick up / drop   LMB: throw   Esc: exit robot
-R: deploy / stow arm   1-5: arm joint   Z / X: move joint"
+R: deploy / stow arm   1-5: arm joint   Z / X: move joint   F: reset upright"

@@ -12,6 +12,9 @@ var last_in_game_state: State = State.IN_GAME_PLAYER
 
 ## The current Player, null while no gameplay level is loaded
 var player: Player = null
+## The rover being driven (or last driven), set by drive(). Only this rover takes input, the
+## camera and the robot HUD; null while no gameplay level is loaded.
+var robot: Robot = null
 
 ## Time scale the game runs at while not paused. The `timescale` console command
 ## changes it, so unpausing returns to it instead of always going back to 1.0.
@@ -26,6 +29,12 @@ func _ready() -> void:
 
 func is_in_game(s: State = state) -> bool:
 	return s == State.IN_GAME_PLAYER or s == State.IN_GAME_ROBOT
+
+
+## Takes control of `rover` (IN_GAME_ROBOT). Esc hands control back to the player.
+func drive(rover: Robot) -> void:
+	robot = rover
+	change_state_to(State.IN_GAME_ROBOT)
 
 
 ## Leave a menu-like state (pause, mission console) and go back to whichever

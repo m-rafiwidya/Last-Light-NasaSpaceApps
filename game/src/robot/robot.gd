@@ -3,6 +3,9 @@ class_name Robot
 extends RigidBody3D
 
 @export var controller: RobotController
+## Mount a full set of parts (six standard wheels, motor, battery, mast camera, antenna and
+## tool turret) when the rover is ready, so it can be driven straight away
+@export var start_assembled: bool = false
 # The rover kit chassis model. HotswapSockets with an `anchor` are moved onto its socket_* nodes.
 @export var body_model: Node3D
 # The rover's collision shape. At _ready it takes the body model's imported "Collision" shape
@@ -87,8 +90,23 @@ var holder: ObjectHolder
 var looking_at_object: Node3D = null
 
 
+const STARTING_PARTS: Dictionary = {
+	"wheel": preload("res://src/robot/socket/wheel_part.tscn"),
+	"motor": preload("res://src/robot/socket/motor_part.tscn"),
+	"battery": preload("res://src/robot/socket/battery_part.tscn"),
+	"mast_head": preload("res://src/robot/socket/mast_head_part.tscn"),
+	"antenna": preload("res://src/robot/socket/antenna_part.tscn"),
+	"arm_tool": preload("res://src/robot/socket/arm_tool_part.tscn"),
+}
+# The reset puts the rover's origin this far above the ground under it (it rests at 0.10)
+const RESET_HEIGHT: float = 0.25
+
+var _reset_pending: bool = false
+
+
 func _ready() -> void:
-	Debug.current_robot = self
+	controller.robot = self
+	controller.reset_requested.connect(func() -> void: _reset_pending = true)
 	_snap_sockets_to_anchors()
 	_adopt_body_collision()
 	running_gear.update_wheel_properties()
@@ -108,6 +126,8 @@ func _ready() -> void:
 	controller.primary.connect(_on_controller_primary)
 
 	GameState.state_changed.connect(_on_game_state_changed)
+	if start_assembled:
+		_mount_starting_parts.call_deferred()
 	controller.altitude_limit = RoverVisuals.MAST_TILT_LIMIT
 	camera.transform = Transform3D.IDENTITY
 
@@ -148,11 +168,40 @@ func _adopt_body_collision() -> void:
 	source.queue_free()
 
 
-# The robot's camera only takes over while it is being driven; otherwise the
-# player's (or the main menu's) camera is the current one.
+## True while this rover is the one being driven (or was the last one, while paused)
+func is_driven() -> bool:
+	return GameState.robot == self
+
+
+# Puts a new part in every socket (deferred: the parts are added next to the rover, to its
+# parent, which is still being set up during _ready). A part taken out later stays in the level.
+func _mount_starting_parts() -> void:
+	var plan: Array = [
+		[front_left_socket, "wheel"], [front_right_socket, "wheel"], [middle_left_socket, "wheel"],
+		[middle_right_socket, "wheel"], [rear_left_socket, "wheel"], [rear_right_socket, "wheel"],
+		[motor_socket, "motor"], [battery_socket, "battery"],
+		[find_child("MastHeadSocket", true, false), "mast_head"],
+		[find_child("AntennaSocket", true, false), "antenna"],
+		[find_child("ArmToolSocket", true, false), "arm_tool"],
+	]
+	for entry in plan:
+		var socket := entry[0] as HotswapSocket
+		if socket == null or socket.part:
+			continue
+		var part: HotswapPart = STARTING_PARTS[entry[1]].instantiate()
+		get_parent().add_child(part)
+		part.global_position = socket.global_position
+		socket.mount(part)
+
+
+# The robot's camera only takes over while this rover is being driven; otherwise the
+# player's (or the main menu's, or the other rover's) camera is the current one.
 func _on_game_state_changed(old_state, new_state) -> void:
+	if not is_driven():
+		return
 	if new_state == GameState.State.IN_GAME_ROBOT:
 		camera.make_current()
+		Debug.current_robot = self
 	elif old_state == GameState.State.IN_GAME_ROBOT:
 		# Don't keep carrying a prop around while parked (PAUSED etc. keep it)
 		if new_state == GameState.State.IN_GAME_PLAYER:
@@ -240,7 +289,34 @@ func _update_wheel_parts() -> void:
 		wheel_part.global_basis = Basis(global_transform.basis.y.normalized(), steer_angle) * mount_basis
 
 
+# F: lifts the rover to RESET_HEIGHT above the ground under it, upright, facing the way it
+# faced (its heading), at rest.
+func _reset_upright(state: PhysicsDirectBodyState3D) -> void:
+	_reset_pending = false
+	var basis: Basis = state.transform.basis
+	var forward: Vector3 = -basis.z
+	if Vector2(forward.x, forward.z).length() < 0.1:
+		# Nose straight up or down: take the heading from the roof instead
+		forward = basis.y * signf(-forward.y)
+	var yaw: float = atan2(-forward.x, -forward.z)
+	var origin: Vector3 = state.transform.origin
+	var query := PhysicsRayQueryParameters3D.create(origin + Vector3.UP * 3.0, origin + Vector3.DOWN * 10.0, 1)
+	var hit: Dictionary = state.get_space_state().intersect_ray(query)
+	if hit:
+		origin.y = (hit["position"] as Vector3).y + RESET_HEIGHT
+	else:
+		origin.y += RESET_HEIGHT
+	state.transform = Transform3D(Basis(Vector3.UP, yaw), origin)
+	state.linear_velocity = Vector3.ZERO
+	state.angular_velocity = Vector3.ZERO
+	for wheel in running_gear.wheel_states:
+		running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] = 0.0
+
+
 func _integrate_forces(state) -> void:
+	if _reset_pending:
+		_reset_upright(state)
+		return
 	running_gear.simulate_suspensions(state, controller.steer, _get_wheel_inertias())
 	_step_drivetrain(state.step)
 	_apply_wheel_forces(state)

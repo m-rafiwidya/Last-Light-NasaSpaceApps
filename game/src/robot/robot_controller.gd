@@ -9,12 +9,18 @@ extends Node
 ## forward / backward (as a fraction of the robot's top speed; no input = 0, so
 ## the robot slows down), move_left / move_right = steering, mouse = look,
 ## interact_use = pick up / drop, interact_primary = throw.
-## Unlike PlayerController, input is only accepted while GameState is IN_GAME_ROBOT.
+## Unlike PlayerController, input is only accepted while GameState is IN_GAME_ROBOT and its
+## robot is the one being driven (GameState.robot), so each rover in a level is independent.
 
 signal interact(value: bool)
 signal primary(value: bool)
 ## R: deploy / stow the arm (press only)
 signal arm_toggle
+## F: put the rover back upright where it is (press only)
+signal reset_requested
+
+## The Robot this controller drives (set by the Robot)
+var robot: Node = null
 
 
 ## Desired speed as a fraction of the robot's top speed. The robot uses it as the
@@ -42,7 +48,10 @@ var was_input_enabled: bool = false
 
 
 func is_input_enabled() -> bool:
-	return GameState.state == GameState.State.IN_GAME_ROBOT and not Debug.console_open
+	return (
+		GameState.state == GameState.State.IN_GAME_ROBOT and not Debug.console_open
+		and (robot == null or GameState.robot == robot)
+	)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -81,6 +90,8 @@ func _physics_process(delta: float) -> void:
 
 		if Input.is_action_just_pressed("arm_toggle"):
 			arm_toggle.emit()
+		if Input.is_action_just_pressed("robot_reset"):
+			reset_requested.emit()
 		for joint in range(1, 6):
 			if Input.is_action_just_pressed("arm_joint_%d" % joint):
 				arm_joint = joint

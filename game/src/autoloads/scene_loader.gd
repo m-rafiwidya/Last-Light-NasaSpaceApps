@@ -60,6 +60,7 @@ func _on_finished_fade_in() -> void:
 	# Unload current level if it exists
 	if current_scene:
 		GameState.player = null
+		GameState.robot = null
 		current_scene.queue_free()
 		level_unloaded.emit(current_scene.name)
 		current_scene = null
