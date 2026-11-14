@@ -43,6 +43,13 @@ const ARM_RANGES: Dictionary = {"J1": Vector2(-20.0, 15.0), "J2": Vector2(-30.0,
 # ROVER_KIT.md 3.3 / 5: mast head tilt range, and its rig when no head is mounted (the
 # camera falls back to where the head's pivot_camera would be)
 const MAST_TILT_LIMIT: float = deg_to_rad(30.0)
+# Past the head's tilt limit the camera keeps pitching on its own, up to +-90 degrees. Looking
+# down past -65 degrees it slides forward, away from the head (up to 6 cm at -90), so the
+# head never enters the view (checked in Blender for every pan and pitch, 90 degree and
+# zoomed fields of view; 4 cm is the least that works at -90).
+const CAMERA_PITCH_LIMIT: float = deg_to_rad(90.0)
+const CAMERA_SLIDE_MAX: float = 0.06
+const CAMERA_SLIDE_START: float = deg_to_rad(65.0)
 const MAST_TILT_AXIS_HEIGHT: float = 0.10
 const PIVOT_CAMERA_FORWARD: float = 0.07
 
@@ -104,9 +111,11 @@ var _mesh_vertices: Dictionary = {}
 # Joint name -> the arm model node it turns
 var _arm_nodes: Dictionary = {}
 
-## Current mast head pan / tilt (radians), from the mouse look
+## Current mast head pan / tilt (radians), from the mouse look, and the camera's extra pitch
+## beyond the head's tilt
 var mast_pan: float = 0.0
 var mast_tilt: float = 0.0
+var camera_extra_pitch: float = 0.0
 var _mast_top: Node3D = null
 var _posed_head: HotswapPart = null
 
@@ -378,11 +387,14 @@ func _pose_side(side: String) -> void:
 
 
 # Pans (yoke about Y) and tilts (camera box about X) the mounted mast head from the mouse
-# look, then puts the rover camera's pivot on its pivot_camera. Without a head the pivot
-# goes where pivot_camera would be on the mast top.
+# look, then puts the rover camera's pivot on its pivot_camera, pitched further by whatever
+# look angle is beyond the head's tilt limit. Without a head the pivot goes where
+# pivot_camera would be on the mast top.
 func _update_mast_head() -> void:
+	var look: float = clampf(robot.controller.camera_altitude, -CAMERA_PITCH_LIMIT, CAMERA_PITCH_LIMIT)
 	mast_pan = robot.controller.camera_azimuth
-	mast_tilt = clampf(robot.controller.camera_altitude, -MAST_TILT_LIMIT, MAST_TILT_LIMIT)
+	mast_tilt = clampf(look, -MAST_TILT_LIMIT, MAST_TILT_LIMIT)
+	camera_extra_pitch = look - mast_tilt
 	var socket := robot.get_node_or_null("MastHeadSocket") as HotswapSocket
 	var head: HotswapPart = socket.part if socket else null
 	if head != _posed_head:
@@ -390,13 +402,28 @@ func _update_mast_head() -> void:
 		if is_instance_valid(_posed_head):
 			_pose_head(_posed_head, 0.0, 0.0)
 		_posed_head = head
+	var on_head: Transform3D
 	if head:
 		_pose_head(head, mast_pan, mast_tilt)
-		robot.pivot.global_transform = (head.find_child("pivot_camera", true, false) as Node3D).global_transform
+		on_head = (head.find_child("pivot_camera", true, false) as Node3D).global_transform
 	elif _mast_top:
-		robot.pivot.global_transform = _mast_top.global_transform * Transform3D(
+		on_head = _mast_top.global_transform * Transform3D(
 			Basis(Vector3.UP, mast_pan) * Basis(Vector3.RIGHT, mast_tilt),
 			Vector3(0.0, MAST_TILT_AXIS_HEIGHT, 0.0)) * Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, -PIVOT_CAMERA_FORWARD))
+	else:
+		return
+	robot.pivot.global_transform = mast_view_transform(on_head, camera_extra_pitch)
+
+
+## The mast camera's transform: `on_head` (pivot_camera) pitched by `extra_pitch` about its own
+## X, slid forward along the head's heading when looking steeply down.
+func mast_view_transform(on_head: Transform3D, extra_pitch: float) -> Transform3D:
+	var up: Vector3 = robot.global_basis.y.normalized()
+	var heading: Vector3 = -on_head.basis.z
+	heading = (heading - up * heading.dot(up)).normalized()
+	var total_down: float = -(mast_tilt + extra_pitch)
+	var slide: float = CAMERA_SLIDE_MAX * clampf((total_down - CAMERA_SLIDE_START) / (CAMERA_PITCH_LIMIT - CAMERA_SLIDE_START), 0.0, 1.0)
+	return Transform3D(on_head.basis * Basis(Vector3.RIGHT, extra_pitch), on_head.origin + heading * slide)
 
 
 func _pose_head(head: HotswapPart, pan: float, tilt: float) -> void:

@@ -128,7 +128,7 @@ func _ready() -> void:
 	GameState.state_changed.connect(_on_game_state_changed)
 	if start_assembled:
 		_mount_starting_parts.call_deferred()
-	controller.altitude_limit = RoverVisuals.MAST_TILT_LIMIT
+	controller.altitude_limit = RoverVisuals.CAMERA_PITCH_LIMIT
 	camera.transform = Transform3D.IDENTITY
 
 
