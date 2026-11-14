@@ -6,6 +6,8 @@ signal recovery_started(rover: Robot)
 signal recovery_finished(rover: Robot)
 
 const SCAN_OBJECTIVES: Dictionary = {"iris_panel": "m1.iris_scanned"}
+const MOUNT_OBJECTIVES: Dictionary = {"radio_module": "m2.module_loaded", "field_logger": "m3.logger_recovered"}
+const CARGO_SOCKET: String = "CargoSocket"
 const IRIS_ONLINE_FLAG: String = "iris_online"
 const DOCK_OBJECTIVES: Dictionary = {"m1": "m1.kite_docked", "m2": "m2.kite_docked", "m3": "m3.kite_docked"}
 const RECOVERY_DELAY: float = 3.0
@@ -74,8 +76,8 @@ func _start() -> void:
 	_last_position = rover.global_position
 	_prepare_mission()
 	workshop.account_rack()
-	if rover.battery_socket:
-		rover.battery_socket.part_mounted.connect(_on_part_mounted)
+	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+		socket.part_mounted.connect(_on_part_mounted.bind(socket))
 
 
 func _on_flag_changed(flag: String, _value: bool) -> void:
@@ -144,9 +146,12 @@ func try_complete(objective: String) -> bool:
 	return true
 
 
-func _on_part_mounted(part: HotswapPart) -> void:
-	if part is BatteryPart:
+func _on_part_mounted(part: HotswapPart, socket: HotswapSocket) -> void:
+	var id: String = part.get_catalog_id()
+	if part is BatteryPart and socket == rover.battery_socket:
 		try_complete("m1.kite_prepared")
+	elif MOUNT_OBJECTIVES.has(id) and (id != "radio_module" or socket.name == CARGO_SOCKET):
+		try_complete(MOUNT_OBJECTIVES[id])
 
 
 func _on_scanned(_by: Robot, target: Node) -> void:
