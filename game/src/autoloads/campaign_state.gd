@@ -17,10 +17,16 @@ var _done_objectives: Dictionary = {}
 var _done_missions: Dictionary = {}
 var _flags: Dictionary = {}
 var _items: Dictionary = {}
+var play_time_sec: float = 0.0
 
 
 func _ready() -> void:
 	_load_missions()
+
+
+func _process(delta: float) -> void:
+	if GameState.is_in_game() or GameState.state == GameState.State.MISSION_CONSOLE:
+		play_time_sec += delta
 
 
 func start_mission(id: String) -> void:
@@ -130,6 +136,58 @@ func reset() -> void:
 	_done_missions.clear()
 	_flags.clear()
 	_items.clear()
+	play_time_sec = 0.0
+
+
+func story_progress() -> float:
+	return story_progress_of(_done_objectives.keys())
+
+
+func story_progress_of(done: Array) -> float:
+	var total: int = 0
+	var count: int = 0
+	for mission_id in _mission_order:
+		for objective in _missions[mission_id]["objectives"]:
+			total += 1
+			if done.has(objective):
+				count += 1
+	return float(count) / total if total > 0 else 0.0
+
+
+func save_state() -> Dictionary:
+	return {
+		"current": _current,
+		"objectives": _done_objectives.keys(),
+		"missions_done": _done_missions.keys(),
+		"flags": _flags.keys(),
+		"items": _items.duplicate(),
+		"play_time_sec": play_time_sec,
+	}
+
+
+## Restores a save_state() dictionary without emitting any signal. Returns false, changing
+## nothing, when the data is malformed; unknown missions and objectives are dropped.
+func load_state(data: Dictionary) -> bool:
+	if not (data.get("current") is String and data.get("objectives") is Array and data.get("missions_done") is Array
+			and data.get("flags") is Array and data.get("items") is Dictionary):
+		return false
+	reset()
+	_current = data["current"] if _missions.has(data["current"]) else ""
+	for objective in data["objectives"]:
+		if _objective_mission.has(str(objective)):
+			_done_objectives[str(objective)] = true
+	for mission_id in data["missions_done"]:
+		if _missions.has(str(mission_id)):
+			_done_missions[str(mission_id)] = true
+	for flag in data["flags"]:
+		_flags[str(flag)] = true
+	for item in data["items"]:
+		var count: Variant = data["items"][item]
+		if (count is int or count is float) and int(count) > 0:
+			_items[str(item)] = int(count)
+	var time: Variant = data.get("play_time_sec")
+	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
+	return true
 
 
 func debug_dump() -> PackedStringArray:

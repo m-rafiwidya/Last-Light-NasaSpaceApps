@@ -78,11 +78,12 @@ const PLANETS: Array[Dictionary] = [
 
 
 ## Whether the explorer shows `id`'s globe and sites, or a lock and its hint: the Moon always,
-## Mars after the Moon chapter, Earth after the end of the game.
-## TODO(Goriorio): read the campaign state here once it exists (Moon chapter done -> mars,
-## game finished -> earth). Until then only the Moon is unlocked (or all, with `unlockall`).
+## Mars after the Moon chapter (m3 completed), Earth after the end of the game.
+## TODO(campaign state): Earth needs a "game finished" state; until then it stays locked (or
+## all, with `unlockall`).
 static func is_unlocked(id: StringName) -> bool:
-	return unlock_all or id == &"moon"
+	var campaign: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null(^"CampaignState")
+	return unlock_all or id == &"moon" or (id == &"mars" and campaign != null and campaign.is_mission_completed("m3"))
 
 
 static func index_of(id: StringName) -> int:

@@ -2,13 +2,15 @@ class_name SaveCard
 
 extends FramedPanel
 
-## One save in the PLAY popup's list (docs/ui/boards/Main.dc.html `.ll-save`, design x 1.2):
+## One save slot in the PLAY popup's list (docs/ui/boards/Main.dc.html `.ll-save`, design x 1.2):
 ## the mission image, date and time, mission title, a 16-segment story progress bar with %,
-## the time played top-right and the slanted Autosave tag. Hovering focuses it, and focus
-## selects it (frame, glow, corner brackets), so mouse and keyboard share one highlight.
-## Click or Enter emits `activated`.
+## the time played top-right and the slanted Autosave tag. An empty slot says so, an unreadable
+## one too (it can't be loaded, only deleted). Hovering focuses it, and focus selects it (frame,
+## glow, corner brackets), so mouse and keyboard share one highlight. Click or Enter emits
+## `activated`; Del or the Delete button, pressed twice, emits `delete_confirmed`.
 
 signal activated
+signal delete_confirmed
 
 const SIZE: Vector2 = Vector2(720.0, 124.8)
 ## The image fills the card's inner height at 16:9
@@ -23,6 +25,8 @@ const TAG_SLANT: float = 9.6
 var info: SaveSlotInfo
 
 var _mouse_down: bool = false
+var _delete_armed: bool = false
+var _delete_button: Button = null
 
 
 func _init() -> void:
@@ -42,7 +46,9 @@ func _ready() -> void:
 	super()
 	mouse_entered.connect(_on_mouse_entered)
 	focus_entered.connect(func() -> void: selected = true)
-	focus_exited.connect(func() -> void: selected = false)
+	focus_exited.connect(func() -> void:
+		selected = false
+		_set_delete_armed(false))
 	_build()
 
 
@@ -50,6 +56,9 @@ func _gui_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept") and not event.is_echo():
 		accept_event()
 		_activate()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_DELETE:
+		accept_event()
+		request_delete()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
 		if event.pressed:
@@ -62,8 +71,31 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _activate() -> void:
+	if info.state == SaveSlotInfo.State.UNREADABLE:
+		return
 	AudioManager.play_ui(&"game_start")
 	activated.emit()
+
+
+## The first call arms the delete, the second deletes; empty slots have nothing to delete
+func request_delete() -> void:
+	if info.is_empty():
+		return
+	if _delete_armed:
+		_set_delete_armed(false)
+		delete_confirmed.emit()
+	else:
+		_set_delete_armed(true)
+
+
+func is_delete_armed() -> bool:
+	return _delete_armed
+
+
+func _set_delete_armed(armed: bool) -> void:
+	_delete_armed = armed
+	if _delete_button:
+		_delete_button.text = "Press again to delete" if armed else "Delete"
 
 
 func _on_mouse_entered() -> void:
@@ -90,7 +122,7 @@ func _build() -> void:
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	image.texture = SaveIndex.mission_image(info.mission_id)
+	image.texture = SaveIndex.mission_image(info.mission_id) if info.is_readable() else null
 	row.add_child(image)
 
 	var text_margin := MarginContainer.new()
@@ -103,8 +135,19 @@ func _build() -> void:
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_theme_constant_override("separation", 3)
 	text_margin.add_child(column)
+	if not info.is_readable():
+		column.add_child(_label("Date", "Slot %d" % SaveIndex.slot_number(info.slot_id), &"LabelBody", 17, &"text_3"))
+		var empty: bool = info.is_empty()
+		column.add_child(_label("Title", "Empty slot" if empty else "Unreadable save", &"LabelBodyStrong", 24,
+			&"muted" if empty else &"text"))
+		column.add_child(_label("Note", "Start a new campaign here" if empty
+			else "This save can't be loaded. Delete it to free the slot.", &"LabelBody", 14, &"muted"))
+		if not empty:
+			_add_delete_button(_overlay())
+		return
 	column.add_child(_label("Date", SaveIndex.format_date(info.saved_at), &"LabelBody", 17, &"text_3"))
-	column.add_child(_label("Title", SaveIndex.mission_title(info.mission_id), &"LabelBodyStrong", 24, &"text"))
+	var title: String = info.mission_title if info.mission_title else SaveIndex.mission_title(info.mission_id)
+	column.add_child(_label("Title", title, &"LabelBodyStrong", 24, &"text"))
 
 	var progress_margin := MarginContainer.new()
 	progress_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -127,9 +170,7 @@ func _build() -> void:
 	progress.add_child(_label("Percent", "%d%%" % roundi(info.story_progress * 100.0), &"LabelBody", 14, &"muted"))
 
 	# Corner items sit on an overlay the size of the card's inside
-	var overlay := Control.new()
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
+	var overlay := _overlay()
 	var played := _label("Played", SaveIndex.format_play_time(info.play_time_sec), &"LabelBody", 16, &"muted")
 	played.anchor_left = 1.0
 	played.anchor_right = 1.0
@@ -140,6 +181,41 @@ func _build() -> void:
 	overlay.add_child(played)
 	if info.is_autosave:
 		overlay.add_child(_autosave_tag())
+	_add_delete_button(overlay)
+
+
+func _overlay() -> Control:
+	var overlay := Control.new()
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
+	return overlay
+
+
+func _add_delete_button(overlay: Control) -> void:
+	_delete_button = Button.new()
+	_delete_button.name = "Delete"
+	_delete_button.text = "Delete"
+	_delete_button.flat = true
+	_delete_button.focus_mode = Control.FOCUS_NONE
+	_delete_button.theme_type_variation = &"LabelBody"
+	_delete_button.add_theme_font_size_override(&"font_size", 15)
+	_delete_button.add_theme_color_override(&"font_color", get_theme_color(&"muted", &"UIColor"))
+	_delete_button.add_theme_color_override(&"font_hover_color", get_theme_color(&"text", &"UIColor"))
+	_delete_button.anchor_left = 1.0
+	_delete_button.anchor_top = 1.0
+	_delete_button.anchor_right = 1.0
+	_delete_button.anchor_bottom = 1.0
+	_delete_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_delete_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_delete_button.offset_left = -14.0
+	_delete_button.offset_right = -14.0
+	_delete_button.offset_top = -8.0
+	_delete_button.offset_bottom = -8.0
+	_delete_button.mouse_entered.connect(func() -> void:
+		if not has_focus():
+			grab_focus())
+	_delete_button.pressed.connect(request_delete)
+	overlay.add_child(_delete_button)
 
 
 func _autosave_tag() -> Control:

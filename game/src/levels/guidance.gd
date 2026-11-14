@@ -293,7 +293,7 @@ func _follow_markers() -> void:
 	for item in _follows:
 		var marker: Node3D = item[0]
 		var node: Node3D = item[1]
-		if is_instance_valid(marker) and is_instance_valid(node):
+		if is_instance_valid(marker) and is_instance_valid(node) and node.is_inside_tree():
 			if item[2] == null:
 				marker.global_transform = node.global_transform
 			else:

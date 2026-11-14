@@ -2,112 +2,208 @@ class_name SaveIndex
 
 extends RefCounted
 
-## Read-only index of the save slots for the PLAY popup. It reads only the small metadata files
-## user://saves/<slot_id>.meta.json (format in game/README.md, "Save slot metadata"); the
-## campaign state writes them next to its own save data. There is no campaign state yet, so
-## today the list is empty unless the `fakesaves` console command wrote sample files.
+## The campaign's save slots: one JSON file per slot, user://saves/<slot_id>.json (format in
+## game/README.md, "Saves"). Tests (a script run) use user://saves_test instead.
 
 const SAVE_DIR: String = "user://saves"
-const META_SUFFIX: String = ".meta.json"
-const META_FORMAT: int = 1
-const MISSIONS_PATH: String = "res://docs/examples/MISSIONS.json"
-## Placeholder images, one per mission id; drop real ones in with the same names
+const TEST_SAVE_DIR: String = "user://saves_test"
+const SAVE_SUFFIX: String = ".json"
+const SAVE_VERSION: int = 1
+const SLOT_IDS: PackedStringArray = ["slot_1", "slot_2", "slot_3"]
+const MISSIONS_PATH: String = "res://res/story/missions.json"
+## One 16:9 image per mission, named by the mission's legacy_id in missions.json
 const MISSION_IMAGE_DIR: String = "res://res/ui/missions"
-## The level a new campaign (and, for now, every save) starts in
 const CAMPAIGN_LEVEL: String = "moon_level"
-## Slot ids of the `fakesaves` samples; `clearsaves` removes only these
-const FAKE_PREFIX: String = "fake_"
 
-static var _mission_titles: Dictionary = {}   # mission id -> title, read once
+## The slot the running campaign saves to; empty = nothing is saved
+static var current_slot: String = ""
+## Kite's saved parts, applied by the MissionDirector once the Moon level is up
+static var pending_kite: Dictionary = {}
+
+static var _legacy_ids: Dictionary = {}
 
 
-## Every readable slot, newest first. Broken or incomplete files are skipped.
+static func save_dir() -> String:
+	var args: PackedStringArray = OS.get_cmdline_args()
+	return TEST_SAVE_DIR if args.has("-s") or args.has("--script") else SAVE_DIR
+
+
+static func slot_path(slot_id: String) -> String:
+	return save_dir().path_join(slot_id + SAVE_SUFFIX)
+
+
+static func slot_number(slot_id: String) -> int:
+	return SLOT_IDS.find(slot_id) + 1
+
+
+## Every slot in order, empty and unreadable ones included
+static func list_slots() -> Array[SaveSlotInfo]:
+	var slots: Array[SaveSlotInfo] = []
+	for id in SLOT_IDS:
+		slots.append(read_slot(id))
+	return slots
+
+
+## The readable saves, newest first
 static func list_saves() -> Array[SaveSlotInfo]:
 	var saves: Array[SaveSlotInfo] = []
-	if not DirAccess.dir_exists_absolute(SAVE_DIR):
-		return saves
-	for file_name in DirAccess.get_files_at(SAVE_DIR):
-		if not file_name.ends_with(META_SUFFIX):
-			continue
-		var id: String = file_name.trim_suffix(META_SUFFIX)
-		var text: String = FileAccess.get_file_as_string(SAVE_DIR.path_join(file_name))
-		var info: SaveSlotInfo = SaveSlotInfo.from_dict(id, JSON.parse_string(text)) if not text.is_empty() else null
-		if info == null or id.is_empty():
-			push_warning("SaveIndex: ignoring unreadable save metadata %s" % file_name)
-			continue
-		saves.append(info)
+	for info in list_slots():
+		if info.is_readable():
+			saves.append(info)
 	saves.sort_custom(func(a: SaveSlotInfo, b: SaveSlotInfo) -> bool:
 		return a.saved_at > b.saved_at if a.saved_at != b.saved_at else a.slot_id < b.slot_id)
 	return saves
 
 
-## Loads a save slot.
-## TODO(campaign state): restore the slot's campaign state here. Until it exists this only
-## starts the Moon level, like START NEW CAMPAIGN.
-static func load_slot(slot_id: String) -> void:
-	var message: String = "TODO(campaign state): SaveIndex.load_slot(\"%s\") is a stub; starting the Moon level" % slot_id
-	print(message)
-	Debug.add_log(message)
-	start_new_campaign()
+static func read_slot(slot_id: String) -> SaveSlotInfo:
+	if not FileAccess.file_exists(slot_path(slot_id)):
+		return SaveSlotInfo.empty(slot_id)
+	var data: Variant = _read_save(slot_id)
+	var info: SaveSlotInfo = SaveSlotInfo.from_dict(slot_id, data.get("meta")) if data is Dictionary else null
+	if info == null:
+		push_warning("SaveIndex: unreadable save %s" % slot_path(slot_id))
+		return SaveSlotInfo.unreadable(slot_id)
+	return info
 
 
-## Starts a new campaign: the Moon level, through the normal loading path
-static func start_new_campaign() -> void:
+## The parsed file when it is this version's format, else null
+static func _read_save(slot_id: String) -> Variant:
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(slot_path(slot_id))) != OK:
+		return null
+	var data: Variant = json.data
+	if not (data is Dictionary and (data.get("version") is int or data.get("version") is float)
+			and int(data["version"]) == SAVE_VERSION and data.get("campaign") is Dictionary
+			and data.get("meta") is Dictionary):
+		return null
+	return data
+
+
+## Writes the running campaign and `rover`'s parts to the current slot
+static func save_current(rover: Robot) -> Error:
+	if current_slot.is_empty() or CampaignState.current_mission().is_empty():
+		return ERR_UNCONFIGURED
+	var mission: String = CampaignState.current_mission()
+	var info := SaveSlotInfo.new()
+	info.slot_id = current_slot
+	info.mission_id = mission
+	info.mission_title = CampaignState.mission_title(mission)
+	info.saved_at = int(Time.get_unix_time_from_system())
+	info.play_time_sec = int(CampaignState.play_time_sec)
+	info.story_progress = CampaignState.story_progress()
+	info.current_objective = CampaignState.objective_title(CampaignState.current_objective())
+	var data: Dictionary = {
+		"version": SAVE_VERSION,
+		"meta": info.to_dict(),
+		"campaign": CampaignState.save_state(),
+		"kite": KiteSave.capture(rover) if rover else pending_kite,
+	}
+	return write_save(current_slot, data)
+
+
+static func write_save(slot_id: String, data: Dictionary) -> Error:
+	DirAccess.make_dir_recursive_absolute(save_dir())
+	var temp: String = slot_path(slot_id) + ".tmp"
+	var file := FileAccess.open(temp, FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+	return DirAccess.rename_absolute(temp, slot_path(slot_id))
+
+
+## Restores the slot's campaign, then loads the Moon level (Kite's parts follow there).
+## False, changing nothing, when the file can't be read.
+static func load_slot(slot_id: String) -> bool:
+	var data: Variant = _read_save(slot_id)
+	if data == null or not CampaignState.load_state(data["campaign"]):
+		push_warning("SaveIndex: cannot load %s" % slot_path(slot_id))
+		return false
 	if CampaignState.current_mission().is_empty():
 		CampaignState.start_mission("m1")
+	current_slot = slot_id
+	pending_kite = data["kite"] if data.get("kite") is Dictionary else {}
+	SceneLoader.load_scene(CAMPAIGN_LEVEL)
+	return true
+
+
+## Clears `slot_id` (or the first empty slot, else the oldest) and starts m1 in it
+static func start_new_campaign(slot_id: String = "") -> void:
+	var slot: String = slot_id if slot_id else new_campaign_slot()
+	delete_slot(slot)
+	current_slot = slot
+	pending_kite = {}
+	CampaignState.reset()
+	CampaignState.start_mission("m1")
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)
 
 
+## The first empty slot; when all are used, an unreadable one, else the oldest save
+static func new_campaign_slot() -> String:
+	var oldest: SaveSlotInfo = null
+	for info in list_slots():
+		if info.is_empty():
+			return info.slot_id
+		if oldest == null or info.saved_at < oldest.saved_at:
+			oldest = info
+	return oldest.slot_id
+
+
+static func delete_slot(slot_id: String) -> Error:
+	if slot_id == current_slot:
+		current_slot = ""
+	var path: String = slot_path(slot_id)
+	return DirAccess.remove_absolute(path) if FileAccess.file_exists(path) else OK
+
+
 static func mission_title(mission_id: String) -> String:
-	if _mission_titles.is_empty():
-		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(MISSIONS_PATH))
-		if data is Dictionary and data.get("missions") is Array:
-			for mission in data["missions"]:
-				if mission is Dictionary and mission.has("id") and mission.has("title"):
-					_mission_titles[mission["id"]] = mission["title"]
-	return _mission_titles.get(mission_id, mission_id.capitalize())
+	return CampaignState.mission_title(mission_id)
 
 
 ## The mission's 16:9 image, or null if it has none
 static func mission_image(mission_id: String) -> Texture2D:
-	var path: String = MISSION_IMAGE_DIR.path_join(mission_id + ".png")
+	if _legacy_ids.is_empty():
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(MISSIONS_PATH))
+		if data is Dictionary and data.get("missions") is Array:
+			for mission in data["missions"]:
+				if mission is Dictionary and mission.get("id") is String and mission.get("legacy_id") is String:
+					_legacy_ids[mission["id"]] = mission["legacy_id"]
+	var path: String = MISSION_IMAGE_DIR.path_join(str(_legacy_ids.get(mission_id, mission_id)) + ".png")
 	return load(path) if ResourceLoader.exists(path) else null
 
 
-## Writes a slot's metadata file (used by the fake saves; the campaign state can use it too)
-static func write_meta(info: SaveSlotInfo) -> Error:
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	var file := FileAccess.open(SAVE_DIR.path_join(info.slot_id + META_SUFFIX), FileAccess.WRITE)
-	if file == null:
-		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify(info.to_dict(), "\t"))
-	return OK
-
-
-## `fakesaves`: the five sample saves of the UI board (docs/ui/boards/Main.dc.html), dated in
-## local time. Returns how many were written.
+## `fakesaves`: sample saves in every slot (marked "fake"), dated in local time. Returns how many
+## were written.
 static func write_fake_saves() -> int:
-	# [local date and time, mission, segments of 16 done, minutes played, autosave, objective]
+	# [local date and time, mission, objectives done, minutes played]
 	var samples: Array = [
-		["2026-10-12T22:41:00", "first_signal", 6, 16, false, "Activate IRIS"],
-		["2026-10-12T22:38:00", "first_signal", 5, 13, true, "Install the module at IRIS"],
-		["2026-10-12T22:31:00", "first_signal", 4, 9, true, "Load the replacement module"],
-		["2026-10-12T22:27:00", "wake_kite", 3, 7, true, "Downlink the inspection"],
-		["2026-10-11T21:05:00", "wake_kite", 1, 3, true, "Photograph IRIS's service panel"],
+		["2026-10-12T22:41:00", "m2", ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked",
+			"m1.inspection_sent", "m2.module_loaded"], 16],
+		["2026-10-12T22:27:00", "m1", ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked"], 7],
+		["2026-10-11T21:05:00", "m1", ["m1.kite_prepared"], 3],
 	]
 	var bias_sec: int = int(Time.get_time_zone_from_system().get("bias", 0)) * 60
 	var written: int = 0
 	for i in samples.size():
 		var s: Array = samples[i]
+		var done: Array = s[2]
+		var next: String = ""
+		for objective in CampaignState.mission_objectives(s[1]):
+			if not done.has(objective):
+				next = objective
+				break
 		var info := SaveSlotInfo.new()
-		info.slot_id = "%s%02d" % [FAKE_PREFIX, i + 1]
 		info.mission_id = s[1]
+		info.mission_title = CampaignState.mission_title(s[1])
 		info.saved_at = Time.get_unix_time_from_datetime_string(s[0]) - bias_sec
-		info.story_progress = s[2] / 16.0
+		info.story_progress = CampaignState.story_progress_of(done)
 		info.play_time_sec = s[3] * 60
-		info.is_autosave = s[4]
-		info.current_objective = s[5]
-		if write_meta(info) == OK:
+		info.current_objective = CampaignState.objective_title(next)
+		var campaign: Dictionary = {"current": s[1], "objectives": done,
+			"missions_done": ["m1"] if s[1] == "m2" else [], "flags": [], "items": {}, "play_time_sec": s[3] * 60}
+		var data: Dictionary = {"version": SAVE_VERSION, "fake": true, "meta": info.to_dict(),
+			"campaign": campaign, "kite": {}}
+		if write_save(SLOT_IDS[i], data) == OK:
 			written += 1
 	return written
 
@@ -115,12 +211,10 @@ static func write_fake_saves() -> int:
 ## `clearsaves`: removes the fake saves only. Returns how many were removed.
 static func clear_fake_saves() -> int:
 	var removed: int = 0
-	if not DirAccess.dir_exists_absolute(SAVE_DIR):
-		return removed
-	for file_name in DirAccess.get_files_at(SAVE_DIR):
-		if file_name.begins_with(FAKE_PREFIX) and file_name.ends_with(META_SUFFIX):
-			if DirAccess.remove_absolute(SAVE_DIR.path_join(file_name)) == OK:
-				removed += 1
+	for id in SLOT_IDS:
+		var data: Variant = _read_save(id) if FileAccess.file_exists(slot_path(id)) else null
+		if data is Dictionary and data.get("fake") == true and delete_slot(id) == OK:
+			removed += 1
 	return removed
 
 

@@ -1,20 +1,19 @@
 extends SceneTree
 ## The main menu's PLAY popup and the save index: both states (no save file after `clearsaves`,
-## the save list after `fakesaves`), the cards' contents and order, that the menu and the Moon
-## take no input while it is open, keyboard and mouse selection, scrolling a long list, broken
-## metadata files being skipped, Esc closing only the popup (focus back on PLAY), loading a save
-## and START NEW CAMPAIGN (both the Moon level for now) and the `testlevel` console command.
-## user://saves is moved aside while it runs and put back afterwards.
+## the three slots after `fakesaves`), the cards' contents and order, that the menu and the Moon
+## take no input while it is open, keyboard and mouse selection, empty and unreadable slots,
+## deleting (Del twice, the Delete button twice), Esc closing only the popup (focus back on PLAY),
+## loading a save, START NEW CAMPAIGN and the `testlevel` console command.
+## Saves go to user://saves_test (SaveIndex under a script run), cleared before and after.
 ## The save and popup scripts use autoloads, so they are loaded at run time, not named as types
 ## here (a test script compiles before the autoloads exist).
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_play_popup.gd
 ##
 ## Windowed with `-- --shot=<dir>` it also saves popup_empty.png, popup_saves.png (newest card
-## selected) and popup_scrolled.png (eight saves, scrolled to the last).
+## selected) and popup_slots.png (an empty and an unreadable slot).
 
-const BACKUP_DIR: String = "user://saves_test_backup"
-const SAVE_DIR: String = "user://saves"
+const SAVE_DIR: String = "user://saves_test"
 
 var GS: Node
 var SL: Node
@@ -29,7 +28,7 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_dir = arg.trim_prefix("--shot=")
-	_move_saves_aside()
+	_clear_saves()
 	root.add_child.call_deferred(load("res://src/main.tscn").instantiate())
 	_run.call_deferred()
 
@@ -161,20 +160,18 @@ func _run() -> void:
 	var cards: Array = popup.get_cards()
 	_check("[saves] the list is shown", popup.has_saves() and not popup.get_node("%NoSave").visible
 		and popup.get_node("%LoadChip").visible)
-	_check("[saves] five cards", cards.size() == 5, str(cards.size()))
-	if cards.size() == 5:
+	_check("[saves] three cards, one per slot", cards.size() == 3, str(cards.size()))
+	if cards.size() == 3:
 		var expected: Array = [
-			["12/10/2026 22:41", "First Signal", "16 min played", "38%", false],
-			["12/10/2026 22:38", "First Signal", "13 min played", "31%", true],
-			["12/10/2026 22:31", "First Signal", "9 min played", "25%", true],
-			["12/10/2026 22:27", "Wake Kite", "7 min played", "19%", true],
-			["11/10/2026 21:05", "Wake Kite", "3 min played", "6%", true],
+			["12/10/2026 22:41", "First Signal", "16 min played", "42%", false],
+			["12/10/2026 22:27", "Wake Kite", "7 min played", "25%", false],
+			["11/10/2026 21:05", "Wake Kite", "3 min played", "8%", false],
 		]
-		for i in 5:
+		for i in 3:
 			var c: Control = cards[i]
 			var got: Array = [_text(c, "Date"), _text(c, "Title"), _text(c, "Played"), _text(c, "Percent"),
 				c.find_child("AutosaveTag", true, false) != null]
-			_check("[saves] card %d: newest first, date, title, time, %%, tag" % (i + 1), got == expected[i], str(got))
+			_check("[saves] card %d: slot order, date, title, time, %%, no tag" % (i + 1), got == expected[i], str(got))
 		_check("[saves] cards show the mission image", cards.all(func(c: Control) -> bool:
 			return (c.find_child("Image", true, false) as TextureRect).texture != null))
 		_check("[saves] 16:9 image", is_equal_approx(cards[0].IMAGE_SIZE.aspect(), 16.0 / 9.0))
@@ -182,79 +179,121 @@ func _run() -> void:
 			and cards.slice(1).all(func(c: Control) -> bool: return not c.selected))
 		await _shot("popup_saves.png")
 
-		# Keyboard: up/down walk the cards, then START; focus never leaves the popup
 		await _key(KEY_DOWN)
 		_check("[keys] down: second card", cards[1].has_focus() and cards[1].selected and not cards[0].selected)
-		for i in 3:
-			await _key(KEY_DOWN)
-		_check("[keys] down x3: last card", cards[4].has_focus())
+		await _key(KEY_DOWN)
+		_check("[keys] down: last card", cards[2].has_focus())
 		await _key(KEY_DOWN)
 		_check("[keys] down: START NEW CAMPAIGN", popup.get_node("%StartList").has_focus())
 		await _key(KEY_DOWN)
 		_check("[keys] down at the end stays on START", popup.get_node("%StartList").has_focus())
 		await _key(KEY_UP)
-		_check("[keys] up: back to the last card", cards[4].has_focus())
-		for i in 5:
+		_check("[keys] up: back to the last card", cards[2].has_focus())
+		for i in 3:
 			await _key(KEY_UP)
-		_check("[keys] up at the top stays on the newest card", cards[0].has_focus())
+		_check("[keys] up at the top stays on the first card", cards[0].has_focus())
 		await _key(KEY_LEFT)
 		await _key(KEY_RIGHT)
 		_check("[keys] left/right stay on the card", cards[0].has_focus())
 
-		# Mouse: hovering a card selects it
 		await _mouse_to(cards[2])
 		_check("[mouse] hovering a card focuses and selects it", cards[2].has_focus() and cards[2].selected
 			and not cards[0].selected)
 
+		# 3. Deleting, empty and unreadable slots
+		await _key(KEY_UP)
+		await _key(KEY_DELETE)
+		_check("[delete] one Del arms it, the slot stays", cards[1].is_delete_armed()
+			and FileAccess.file_exists(SI.slot_path("slot_2")))
+		await _key(KEY_DOWN)
+		await _key(KEY_UP)
+		_check("[delete] leaving the card disarms it", not cards[1].is_delete_armed())
+		await _key(KEY_DELETE)
+		await _key(KEY_DELETE)
+		cards = popup.get_cards()
+		_check("[delete] Del twice deletes the slot", not FileAccess.file_exists(SI.slot_path("slot_2")))
+		_check("[delete] the slot shows as empty, focused", cards.size() == 3 and _text(cards[1], "Title") == "Empty slot"
+			and _text(cards[1], "Date") == "Slot 2" and cards[1].has_focus())
+		_check("[empty] no image, no delete button", (cards[1].find_child("Image", true, false) as TextureRect).texture == null
+			and cards[1].find_child("Delete", true, false) == null)
 	await _esc_closes_only_popup(menu, popup, play, sub, "[saves]")
 
-	# 3. A long list scrolls and keeps the selected card in view; broken files are skipped
-	for i in 3:
-		var extra = SlotInfo.new()
-		extra.slot_id = "fake_extra_%d" % i
-		extra.mission_id = "beyond_the_rim"
-		extra.saved_at = 1_700_000_000 - i * 60
-		extra.play_time_sec = 72 * 60
-		extra.story_progress = 0.9
-		SI.write_meta(extra)
-	_write_raw("fake_broken_json", "{ not json")
-	_write_raw("fake_broken_fields", JSON.stringify({"saved_at": 5}))
-	_check("[index] broken metadata files are skipped", SI.list_saves().size() == 8,
-		str(SI.list_saves().size()))
+	_write_raw("slot_3", "{ not json")
 	play.pressed.emit()
 	await _seconds(0.6)
 	cards = popup.get_cards()
-	var scroll: ScrollContainer = popup.get_node("%Scroll")
-	_check("[scroll] eight cards, the list is capped", cards.size() == 8
-		and scroll.size.y <= popup.MAX_LIST_HEIGHT + 0.5, "%d cards, %.0f px" % [cards.size(), scroll.size.y])
-	if cards.size() == 8:
-		_check("[scroll] an older save of another mission", _text(cards[7], "Title") == "Beyond the Rim"
-			and _text(cards[7], "Played") == "1 h 12 min played")
-		for i in 7:
-			await _key(KEY_DOWN)
-		await process_frame
-		_check("[scroll] down to the last card scrolls the list", cards[7].has_focus() and scroll.scroll_vertical > 0,
-			"scroll %d" % scroll.scroll_vertical)
-		_check("[scroll] the selected card is in view, brackets included",
-			scroll.get_global_rect().grow(1.0).encloses(cards[7].get_global_rect().grow(popup.LIST_MARGIN)))
-		await _seconds(0.2)
-		await _shot("popup_scrolled.png")
-		for i in 7:
-			await _key(KEY_UP)
-		await process_frame
-		_check("[scroll] back up to the newest card", cards[0].has_focus() and scroll.scroll_vertical == 0)
-	await _esc_closes_only_popup(menu, popup, play, sub, "[scroll]")
+	if cards.size() == 3:
+		_check("[unreadable] a corrupt file shows as unreadable", _text(cards[2], "Title") == "Unreadable save")
+		await _shot("popup_slots.png")
+		cards[2].grab_focus()
+		await _key(KEY_ENTER)
+		_check("[unreadable] Enter does not load it", popup.is_open and SL.loading_scene_id == "")
+		var delete: Button = cards[2].find_child("Delete", true, false)
+		_check("[unreadable] it has a Delete button", delete != null)
+		if delete:
+			delete.pressed.emit()
+			_check("[unreadable] one press asks again", delete.text == "Press again to delete"
+				and FileAccess.file_exists(SI.slot_path("slot_3")))
+			delete.pressed.emit()
+			cards = popup.get_cards()
+			_check("[unreadable] a second press deletes it", not FileAccess.file_exists(SI.slot_path("slot_3"))
+				and _text(cards[2], "Title") == "Empty slot")
+	await _esc_closes_only_popup(menu, popup, play, sub, "[unreadable]")
 	DBG.parse_command("clearsaves")
 	_check("clearsaves removes the fake saves", SI.list_saves().is_empty())
 
-	# 4. Loading a save (a stub: the Moon level) and START NEW CAMPAIGN
+	# 3b. All slots used: START NEW CAMPAIGN asks first
+	DBG.parse_command("fakesaves")
+	_write_raw("slot_2", "{ not json")
+	_check("[full] unreadable slots are replaced first", SI.new_campaign_slot() == "slot_2")
+	play.pressed.emit()
+	await _seconds(0.6)
+	popup.get_node("%StartList").grab_focus()
+	popup.get_node("%StartList").pressed.emit()
+	await process_frame
+	var confirm: Control = popup.get_node("Confirm")
+	var message: String = (confirm.find_child("Message", true, false) as Label).text
+	_check("[full] START asks first and names the slot", popup.is_confirming() and message.contains("Slot 2")
+		and message.contains("unreadable") and SL.loading_scene_id == "", message)
+	_check("[full] Cancel has focus", popup.get_confirm_buttons()[1].has_focus())
+	await _key(KEY_ESCAPE)
+	_check("[full] Esc cancels the question only", not popup.is_confirming() and popup.is_open
+		and popup.get_node("%StartList").has_focus() and SL.loading_scene_id == "")
+	popup.get_node("%StartList").pressed.emit()
+	await process_frame
+	popup.get_confirm_buttons()[1].pressed.emit()
+	_check("[full] Cancel returns to the popup, nothing replaced", not popup.is_confirming() and popup.is_open
+		and FileAccess.file_exists(SI.slot_path("slot_2")) and SL.loading_scene_id == "")
+	SI.delete_slot("slot_2")
+	DBG.parse_command("fakesaves")
+	_check("[full] with no unreadable slot: the oldest", SI.new_campaign_slot() == "slot_3")
+	popup.close(false)
+	play.pressed.emit()
+	await _seconds(0.6)
+	popup.get_node("%StartList").pressed.emit()
+	await process_frame
+	_check("[full] the question names the oldest save", popup.is_confirming()
+		and (confirm.find_child("Message", true, false) as Label).text.contains("Slot 3 (Wake Kite, 11/10/2026 21:05)"))
+	popup.get_confirm_buttons()[0].pressed.emit()
+	_check("[full] confirming starts the campaign in that slot", SL.loading_scene_id == "moon_level"
+		and SI.current_slot == "slot_3")
+	_check("[full] the replaced slot is cleared", not FileAccess.file_exists(SI.slot_path("slot_3")))
+	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+	await process_frame
+	DBG.parse_command("clearsaves")
+	for id in ["slot_1", "slot_2", "slot_3"]:
+		SI.delete_slot(id)
+
+	# 4. Loading a save and START NEW CAMPAIGN
 	DBG.parse_command("fakesaves")
 	play.pressed.emit()
 	await _seconds(0.6)
 	await _key(KEY_DOWN)
 	await _key(KEY_ENTER)
-	_check("[load] Enter on a card loads the Moon level (load_slot stub)", SL.loading_scene_id == "moon_level"
-		and not popup.is_open)
+	_check("[load] Enter on a card loads the Moon level", SL.loading_scene_id == "moon_level"
+		and not popup.is_open and SI.current_slot == "slot_2")
 	_check("[load] the Moon level comes up", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
 	await _seconds(0.6)
 	DBG.parse_command("testlevel")
@@ -263,12 +302,15 @@ func _run() -> void:
 	SL.load_scene("main_menu")
 	await _wait_state(GS.State.MAIN_MENU)
 	await process_frame
-	DBG.parse_command("clearsaves")
+	_check("[load] leaving the Moon saved the slot (no longer a fake)", SI.clear_fake_saves() == 2
+		and SI.read_slot("slot_2").is_readable())
+	SI.delete_slot("slot_2")
 	_check("back on the menu: popup closed, PLAY focused", not popup.is_open and play.has_focus())
 	play.pressed.emit()
 	await _seconds(0.6)
 	await _key(KEY_ENTER)
-	_check("[new] START NEW CAMPAIGN loads the Moon level", SL.loading_scene_id == "moon_level")
+	_check("[new] START NEW CAMPAIGN loads the Moon level in slot 1", SL.loading_scene_id == "moon_level"
+		and SI.current_slot == "slot_1")
 	_check("[new] the Moon level comes up", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
 	_finish()
 
@@ -292,9 +334,11 @@ func _esc_closes_only_popup(menu: Node, popup: Control, play: Button, sub: Contr
 ## Formats and parsing, without the menu
 func _check_index() -> void:
 	_check("[index] no saves: empty list", SI.list_saves().is_empty())
-	_check("[index] mission titles from MISSIONS.json", SI.mission_title("wake_kite") == "Wake Kite"
-		and SI.mission_title("first_signal") == "First Signal"
-		and SI.mission_title("beyond_the_rim") == "Beyond the Rim")
+	_check("[index] mission titles", SI.mission_title("m1") == "Wake Kite"
+		and SI.mission_title("m2") == "First Signal" and SI.mission_title("m3") == "Beyond the Rim")
+	_check("[index] mission images by legacy id", SI.mission_image("m1") != null and SI.mission_image("m3") != null)
+	_check("[index] three slots, all empty", SI.list_slots().size() == 3
+		and SI.list_slots().all(func(i) -> bool: return i.is_empty()))
 	_check("[index] play time", SI.format_play_time(16 * 60 + 30) == "16 min played"
 		and SI.format_play_time(72 * 60) == "1 h 12 min played"
 		and SI.format_play_time(120 * 60) == "2 h played")
@@ -311,26 +355,19 @@ func _text(card: Control, node_name: String) -> String:
 
 
 func _write_raw(slot_id: String, text: String) -> void:
-	var file := FileAccess.open(SAVE_DIR.path_join(slot_id + ".meta.json"), FileAccess.WRITE)
+	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	var file := FileAccess.open(SI.slot_path(slot_id), FileAccess.WRITE)
 	file.store_string(text)
 	file.close()
 
 
-func _move_saves_aside() -> void:
-	if DirAccess.dir_exists_absolute(SAVE_DIR):
-		DirAccess.rename_absolute(SAVE_DIR, BACKUP_DIR)
-
-
-func _restore_saves() -> void:
+func _clear_saves() -> void:
 	if DirAccess.dir_exists_absolute(SAVE_DIR):
 		for file_name in DirAccess.get_files_at(SAVE_DIR):
 			DirAccess.remove_absolute(SAVE_DIR.path_join(file_name))
-		DirAccess.remove_absolute(SAVE_DIR)
-	if DirAccess.dir_exists_absolute(BACKUP_DIR):
-		DirAccess.rename_absolute(BACKUP_DIR, SAVE_DIR)
 
 
 func _finish() -> void:
-	_restore_saves()
+	_clear_saves()
 	print("DONE %d failures" % failures)
 	quit(1 if failures else 0)
