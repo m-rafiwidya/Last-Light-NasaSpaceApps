@@ -17,7 +17,6 @@
 [ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
 [ext_resource type="Script" path="res://src/levels/mission_director.gd" id="40_director"]
-[ext_resource type="Script" path="res://src/levels/iris_panel_placeholder.gd" id="41_panel"]
 [ext_resource type="Script" path="res://src/levels/guidance.gd" id="42_guidance"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
@@ -147,13 +146,6 @@ transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513
 
 [node name="Sign" parent="IrisGate/PostRight" instance=ExtResource("34_route_sign")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)
-
-[node name="IrisPanelPlaceholder" type="StaticBody3D" parent="." node_paths=PackedStringArray("iris")]
-script = ExtResource("41_panel")
-iris = NodePath("../Iris")
-target_id = "iris_panel"
-scan_name = "IRIS service panel"
-scan_report = "IRIS service panel S-1. Image recorded: connectors J1 to J3, Evan's labels readable. J1 radio power shows no supply."
 
 [node name="MissionDirector" type="Node" parent="." node_paths=PackedStringArray("workshop")]
 script = ExtResource("40_director")

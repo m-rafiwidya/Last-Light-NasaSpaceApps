@@ -101,7 +101,7 @@ func mission_report(id: String) -> String
 
 ### Scan targets
 
-Anything Kite can scan is a node in group `scan_target` with `@export var target_id: String`, `scan_name`, `scan_report`, `is_scanned`, `mark_scanned(rover)` and `signal scanned(rover: Robot)`. The easiest way is to extend `ScanTarget` (`src/levels/scan_target.gd`). The mission director turns scans into objectives by `target_id`, so `"iris_panel"` completes `m1.iris_scanned`. Rafi: `Iris` needs `target_id = "iris_panel"`, and then Fahd deletes the temporary `IrisPanelPlaceholder`.
+Anything Kite can scan is a node in group `scan_target` with `@export var target_id: String`, `scan_name`, `scan_report`, `is_scanned`, `mark_scanned(rover)` and `signal scanned(rover: Robot)`. The easiest way is to extend `ScanTarget` (`src/levels/scan_target.gd`). The mission director turns scans into objectives by `target_id`, so `"iris_panel"` completes `m1.iris_scanned`. IRIS's `ServicePanel` (`src/iris/iris_service_panel.gd`) is the `iris_panel` target; Guidance glows its `highlight_node` when set, else a GuidanceBox.
 
 ### Other hooks
 

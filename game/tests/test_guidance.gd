@@ -107,7 +107,7 @@ func _run() -> void:
 	level = SL.current_scene
 	workshop = level.get_node("Workshop")
 	rover = level.get_node("ReadyRover")
-	panel = level.get_node("IrisPanelPlaceholder")
+	panel = level.get_node("Iris/ServicePanel")
 	guidance = level.get_node("Guidance")
 	console = root.get_node("Main").find_child("MissionConsole", true, false)
 	hint = root.get_node("Main").find_child("MissionHint", true, false)
@@ -195,8 +195,9 @@ func _run() -> void:
 	_check("scanned: near IRIS asks for the mast camera", guidance.index == 3 and _step() == "Switch to the mast camera", _step())
 	rover.get_node("CameraRig")._switch(MAST)
 	await _ticks(0.3)
-	_check("scanned: in the mast view, hold on the panel; the placeholder glows", guidance.index == 4
-		and guidance.target == panel and guidance.get_node_or_null("GuidanceBox") != null, _step())
+	_check("scanned: in the mast view, hold on the panel; the model's panel glows", guidance.index == 4
+		and guidance.target == panel and _all_under(guidance.highlighted_meshes(), panel.highlight_node)
+		and guidance.get_node_or_null("GuidanceBox") == null, _step())
 	_check("never completes: the scan step doesn't complete m1.iris_scanned", not CS.is_objective_done("m1.iris_scanned"))
 	await _place(panel.global_position + front * 60.0, -front)
 	_check("scanned: driving away from IRIS before the scan steps back to 'drive to IRIS'", guidance.index == 2, _step())
