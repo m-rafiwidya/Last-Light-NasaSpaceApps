@@ -96,6 +96,28 @@ This ideal estimate omits real flight dynamics and many losses. State how requir
 
 The 15–25 second presentation compresses story days. Its outcome changes actual stock. Physical crew arrival is already complete; this is a parts-resupply mission. The competition build should visibly support objective selection, vehicle/payload configuration, delivery constraints, surface operation, communications and evaluation.
 
+#### The M2 cargo order as built (`res/story/cargo.json`)
+
+The console's Planning tab offers two fictional services. Every value below is a **game assumption** unless a source is given.
+
+| Value | Used | Status |
+|---|---|---|
+| Courier lander: 30 kg delivered payload, arrives story day 4 | Mass check, M3 timing | Game assumption |
+| Freighter lander: 40 kg delivered payload, arrives story day 11 | Mass check, M3 timing | Game assumption |
+| Packaging and structure: 2 kg per order | Counted in the mass total | Game assumption |
+| Item masses (module 12 kg, wheel 5 kg each, cover 0.9 kg, heater 0.6 kg, scoop 0.4 kg, containers 0.5 kg each, thermal turret 5.3 kg) | Read from the part scenes | Authored part data, the same values the rover physics uses |
+| Descent from low lunar orbit: delta-v 1,900 m/s | Shown in the flight panel only; it doesn't constrain the order | Declared game assumption, of the order of published lunar descent budgets. No rocket-equation margin is computed in this build |
+| Flight phases (launch, transfer, lunar arrival, delivery) and their days | Flight panel, 18 s, skippable | Game assumption; story days compressed and labelled |
+| Lunar day: 708.7 hours, about 29.5 Earth days | Local time of M3 | [NASA Moon by the Numbers](https://science.nasa.gov/moon/by-the-numbers/) |
+| Daylight: about 14.75 Earth days | Local time of M3 | Half the lunar day near the equator, derived from the figure above |
+| Order on local day 1.4 | Start of the timeline | Derived: the Moon level's sun is 16.7 degrees up in the east (JPL Horizons, see the game README), and the Sun climbs about 12.2 degrees per Earth day (180 degrees over 14.77 days) |
+| M3 starts 1 story day after the delivery; "near nightfall" means within 3 days of sunset | Late-arrival rule | Game assumption |
+| Sun elevation shown on the cards and in the forecast | A uniform 180 degree arc over the daylight half | Game assumption (ignores the site's 3 degree latitude and libration). The level's lighting doesn't change |
+| Cold zones (a 32 m radius on the short route, which is cold in daylight; a 24 m radius at the far rim, cold only near nightfall) | Positions of the shade | Authored. They are not derived from the DTM or Diviner |
+| Cold shutdown after 20 s in an active cold zone without the cover and heater fitted, followed by the existing emergency recovery | M3 consequence | Game assumption, with time compressed. It is not a thermal model: it checks only whether the parts are fitted, and the heater's power draw belongs to the rover physics |
+
+The Courier arrives early, so M3 falls on local day 6.4 with the Sun about 78 degrees up, and only the short route's shade is cold. The Freighter arrives late, so M3 falls on local day 13.4, about 1.4 days before sunset with the Sun about 17 degrees up. The far rim is in shade on either route, so the thermal kit is required to confirm a Freighter order, and no manifest leads to a dead end. The Courier can't carry the 20 kg of high-grip wheels. The Freighter can carry them, but not together with every other item.
+
 ### Communications
 
 The local human-to-Kite link is distinct from the Earth downlink. Local teleoperation need not impose an Earth round-trip delay. Records move from collected to queued to received; UI/storage and energy follow that state. The IRIS link can transmit its archive when restored; samples/logger use the outpost reader and report pipeline.

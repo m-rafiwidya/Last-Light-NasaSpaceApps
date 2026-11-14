@@ -1,0 +1,80 @@
+{
+	"_readme": [
+		"The M2 cargo order (CargoPlan, src/levels/cargo_plan.gd; the console's Planning tab). Owned by Fahd.",
+		"Every number here is a game assumption unless game/docs/SCIENCE_AND_DATA.md gives a source for it. Item masses are not listed: CargoPlan reads them from the part scenes.",
+		"services: limit_kg is the delivered payload limit (items plus packaging_kg); arrival_day is story days after the order; phases are [label, story day] for the flight panel.",
+		"items: parts are the part scenes it delivers. stock names the workshop slots (rack: RackStock child names, bench: BenchStock child names) that stay empty until it is delivered. crate: its parts go to Rafi's cargo crate (CargoPlan.crate_parts()). fallback_stock: TEMPORARY, the slots used instead while no node is in group cargo_crate; remove once the crate exists.",
+		"lunar_day: local days since sunrise. order_day matches the Moon level's sun (16.7 degrees up in the east); M3 happens m3_after_delivery_days after arrival and is near nightfall when it falls within nightfall_margin_days of sunset; then night_required items must be ordered."
+	],
+	"objective": "m2.cargo_ordered",
+	"packaging_kg": 2.0,
+	"descent_delta_v_mps": 1900,
+	"lunar_day": {
+		"synodic_days": 29.53,
+		"daylight_days": 14.77,
+		"order_day": 1.4,
+		"m3_after_delivery_days": 1.0,
+		"nightfall_margin_days": 3.0,
+		"night_required": ["thermal_kit"]
+	},
+	"services": [
+		{
+			"id": "courier",
+			"name": "Courier lander",
+			"limit_kg": 30.0,
+			"arrival_day": 4,
+			"description": "Small, fast lander. Little room: the module plus light kit.",
+			"phases": [["Launch", 0], ["Transfer", 1], ["Lunar arrival", 3], ["Delivery", 4]]
+		},
+		{
+			"id": "freighter",
+			"name": "Freighter lander",
+			"limit_kg": 40.0,
+			"arrival_day": 11,
+			"description": "Larger, slower lander on a low-energy transfer. Room for heavy parts.",
+			"phases": [["Launch", 0], ["Transfer", 1], ["Lunar arrival", 9], ["Delivery", 11]]
+		}
+	],
+	"items": [
+		{
+			"id": "radio_module",
+			"name": "Radio-power module",
+			"required": true,
+			"description": "IRIS's replacement radio-power unit. Required.",
+			"parts": [{"scene": "res://src/robot/socket/radio_module_part.tscn", "count": 1}],
+			"crate": true,
+			"fallback_stock": {"rack": ["Slot18"]}
+		},
+		{
+			"id": "grip_wheels",
+			"name": "High-grip wheels (4)",
+			"description": "Traction for the short, rough route to the far rim.",
+			"parts": [{"scene": "res://src/robot/socket/wheel_part.tscn", "count": 4}],
+			"stock": {"rack": ["Slot07", "Slot08", "Slot09", "Slot10"]}
+		},
+		{
+			"id": "thermal_kit",
+			"name": "Thermal kit",
+			"description": "Cover and heater for the electronics bay. Needed in shade.",
+			"parts": [{"scene": "res://src/robot/socket/thermal_cover_part.tscn", "count": 1},
+				{"scene": "res://src/robot/socket/thermal_heater_part.tscn", "count": 1}],
+			"stock": {"bench": ["thermal_cover", "heater"]}
+		},
+		{
+			"id": "sampling_kit",
+			"name": "Sampling kit",
+			"description": "Scoop and two sample containers for the near and far sites.",
+			"parts": [{"scene": "res://src/robot/socket/sample_scoop_part.tscn", "count": 1},
+				{"scene": "res://src/robot/socket/sample_container_part.tscn", "count": 1},
+				{"scene": "res://src/robot/socket/sample_container_far_part.tscn", "count": 1}],
+			"stock": {"bench": ["sample_scoop", "sample_a", "sample_b"]}
+		},
+		{
+			"id": "thermal_turret",
+			"name": "Thermal sensor turret",
+			"description": "Arm turret with a radiometer for ground temperature readings.",
+			"parts": [{"scene": "res://src/robot/socket/arm_tool_thermal_part.tscn", "count": 1}],
+			"stock": {"rack": ["Slot19"]}
+		}
+	]
+}

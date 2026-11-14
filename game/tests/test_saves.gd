@@ -94,6 +94,7 @@ func _run() -> void:
 	for objective in ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
 		CS.complete_objective(objective)
 	CS.start_mission("m2")
+	CS.complete_objective("m2.cargo_ordered")
 	CS.complete_objective("m2.module_loaded")
 	CS.set_flag("iris_online")
 	CS.add_item("sample", 2)
@@ -164,10 +165,16 @@ func _run() -> void:
 	var rover = level.get_node("ReadyRover")
 	var workshop: Node = level.get_node("Workshop")
 	await _ticks(1.0)
+	var gated: Dictionary = _rack(workshop)
+	_check("[rack] a new campaign leaves the cargo slots empty", gated["total"] == 13 and gated["wheel"] == 6
+		and not gated.has("wheel_high_grip") and not gated.has("radio_module") and not gated.has("arm_tool_thermal")
+		and gated["battery"] == 1 and gated["battery_light"] == 1 and workshop.rack_stock.has_node("Slot12"), str(gated))
+	CS.add_item("cargo.grip_wheels")
+	workshop.account_rack()
+	await physics_frame
 	var full_rack: Dictionary = _rack(workshop)
-	_check("[rack] a new campaign shows the full rack", full_rack["total"] == 19 and full_rack["wheel"] == 6
-		and full_rack["wheel_high_grip"] == 4 and full_rack["battery"] == 1 and full_rack["battery_light"] == 1
-		and workshop.rack_stock.has_node("Slot12"), str(full_rack))
+	_check("[rack] delivered grip wheels fill their slots", full_rack["total"] == 17 and full_rack["wheel_high_grip"] == 4,
+		str(full_rack))
 	workshop._on_restock_interacted(null)
 	await physics_frame
 	_check("[rack] Restock keeps it the same", _rack(workshop) == full_rack, str(_rack(workshop)))
@@ -241,7 +248,7 @@ func _run() -> void:
 	_check("[rack] a battery on Kite means one fewer on the rack", rack.get("battery_light", 0) == full_rack["battery_light"] - 1
 		and rack["battery"] == full_rack["battery"], str(rack))
 	_check("[rack] a high-grip wheel on Kite: one fewer grip wheel, no duplicate", rack["wheel_high_grip"] == 3, str(rack))
-	_check("[rack] Kite's original wheel is back on the rack", rack["wheel"] == 7 and rack["total"] == 18, str(rack))
+	_check("[rack] Kite's original wheel is back on the rack", rack["wheel"] == 7 and rack["total"] == full_rack["total"] - 1, str(rack))
 	workshop._on_restock_interacted(null)
 	await physics_frame
 	_check("[rack] Restock follows the same rule", _rack(workshop) == rack, str(_rack(workshop)))

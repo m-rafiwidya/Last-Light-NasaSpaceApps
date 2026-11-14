@@ -71,7 +71,7 @@ func _run() -> void:
 	_clear_logs()
 	CS.start_mission("m2")
 	CS.complete_objective("m2.near_sample_collected")
-	for id in ["m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked"]:
+	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked"]:
 		CS.complete_objective(id)
 	_check("an optional objective doesn't count", completed.is_empty() and CS.is_objective_done("m2.near_sample_collected"))
 	_check("m2's last objective is the telemetry downlink", CS.current_objective() == "m2.telemetry_received", CS.current_objective())
@@ -91,7 +91,7 @@ func _run() -> void:
 	_clear_logs()
 	CS.reset()
 	CS.start_mission("m2")
-	for id in ["m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked", "m2.telemetry_received"]:
+	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked", "m2.telemetry_received"]:
 		CS.complete_objective(id)
 	_check("m2 completes without its optional objective", completed == ["m2"] and not CS.is_objective_done("m2.near_sample_collected"))
 	CS.complete_objective("m2.near_sample_collected")

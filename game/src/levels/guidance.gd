@@ -173,7 +173,7 @@ func is_met(condition: Dictionary) -> bool:
 	return true
 
 
-const SECTION_NAMES: Array[String] = ["mission", "kite", "downlink"]
+const SECTION_NAMES: Array[String] = ["mission", "kite", "downlink", "planning"]
 
 
 func resolve(spec: String) -> Node3D:

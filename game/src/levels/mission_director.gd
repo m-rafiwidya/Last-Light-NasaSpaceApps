@@ -15,6 +15,11 @@ const MIN_LEARN_DISTANCE: float = 20.0
 const RETURN_MARGIN: float = 1.3
 const MAX_STEP_DRAIN: float = 0.05
 const WARN_EXTRA: float = 0.1
+const COLD_MISSION: String = "m3"
+const COLD_LIMIT: float = 20.0
+const COLD_WARNING: String = "COLD: Kite is in shade without its thermal cover and heater. Cold shutdown in %d s: get back to sunlight."
+const COLD_MESSAGE: String = "Kite's electronics got too cold. Emergency recovery: Kite is being returned to the pad."
+const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
 
 @export var workshop: Workshop
 
@@ -29,6 +34,7 @@ var _last_position: Vector3 = Vector3.ZERO
 var _last_charge: float = -1.0
 var _distance: float = 0.0
 var _energy: float = 0.0
+var cold_time: float = 0.0
 
 
 func _ready() -> void:
@@ -171,7 +177,8 @@ func _physics_process(delta: float) -> void:
 		if _recovery_time <= 0.0:
 			_finish_recovery()
 		return
-	if CampaignState.current_mission().is_empty() or rover.battery == null:
+	_update_cold(delta)
+	if recovering or CampaignState.current_mission().is_empty() or rover.battery == null:
 		return
 	if rover.battery.is_empty() and not pad.is_in_zone(rover):
 		_start_recovery()
@@ -214,11 +221,42 @@ func return_warning() -> bool:
 	return rover.battery.get_charge_fraction() <= return_fraction_needed() + WARN_EXTRA
 
 
-func _start_recovery() -> void:
+func thermal_kit_fitted() -> bool:
+	var fitted: Array = []
+	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+		if socket.part:
+			fitted.append(socket.part.get_catalog_id())
+	return THERMAL_KIT.all(func(id: String) -> bool: return fitted.has(id))
+
+
+## The active cold zone Kite is in, or null
+func cold_zone_at(point: Vector3) -> ColdZone:
+	if CampaignState.current_mission() != COLD_MISSION or CampaignState.is_mission_completed(COLD_MISSION):
+		return null
+	for zone in get_tree().get_nodes_in_group(&"cold_zone"):
+		if zone is ColdZone and zone.is_active() and zone.contains(point):
+			return zone
+	return null
+
+
+func _update_cold(delta: float) -> void:
+	if cold_zone_at(rover.global_position) == null or thermal_kit_fitted():
+		if cold_time > 0.0:
+			cold_time = 0.0
+			alert = ""
+		return
+	cold_time += delta
+	alert = COLD_WARNING % ceili(maxf(COLD_LIMIT - cold_time, 0.0))
+	if cold_time >= COLD_LIMIT:
+		cold_time = 0.0
+		_start_recovery(COLD_MESSAGE)
+
+
+func _start_recovery(message: String = RECOVERY_MESSAGE) -> void:
 	recovering = true
 	_recovery_time = RECOVERY_DELAY
-	alert = RECOVERY_MESSAGE
-	Debug.add_log(RECOVERY_MESSAGE)
+	alert = message
+	Debug.add_log(message)
 	CampaignState.record_recovery()
 	recovery_started.emit(rover)
 
