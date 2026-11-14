@@ -6,6 +6,7 @@ signal objective_completed(id: String)
 signal flag_changed(name: String, value: bool)
 
 const MISSIONS_PATH: String = "res://res/story/missions.json"
+const COMPLETE_FLAG: String = "campaign_complete"
 
 var _missions: Dictionary = {}
 var _mission_order: PackedStringArray = []
@@ -18,6 +19,7 @@ var _done_missions: Dictionary = {}
 var _flags: Dictionary = {}
 var _items: Dictionary = {}
 var play_time_sec: float = 0.0
+var recoveries: int = 0
 
 
 func _ready() -> void:
@@ -75,6 +77,30 @@ func next_mission(id: String) -> String:
 
 func mission_report(id: String) -> String:
 	return _missions[id]["report"] if _missions.has(id) else ""
+
+
+func mission_downlink(id: String) -> Dictionary:
+	return _missions[id]["downlink"] if _missions.has(id) else {}
+
+
+func mission_ending(id: String) -> Dictionary:
+	return _missions[id]["ending"] if _missions.has(id) else {}
+
+
+func last_mission() -> String:
+	return _mission_order[-1] if not _mission_order.is_empty() else ""
+
+
+func mission_order() -> PackedStringArray:
+	return _mission_order.duplicate()
+
+
+func is_campaign_complete() -> bool:
+	return has_flag(COMPLETE_FLAG)
+
+
+func record_recovery() -> void:
+	recoveries += 1
 
 
 func complete_objective(id: String) -> void:
@@ -137,6 +163,7 @@ func reset() -> void:
 	_flags.clear()
 	_items.clear()
 	play_time_sec = 0.0
+	recoveries = 0
 
 
 func story_progress() -> float:
@@ -162,6 +189,7 @@ func save_state() -> Dictionary:
 		"flags": _flags.keys(),
 		"items": _items.duplicate(),
 		"play_time_sec": play_time_sec,
+		"recoveries": recoveries,
 	}
 
 
@@ -187,6 +215,8 @@ func load_state(data: Dictionary) -> bool:
 			_items[str(item)] = int(count)
 	var time: Variant = data.get("play_time_sec")
 	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
+	var recovered: Variant = data.get("recoveries")
+	recoveries = maxi(int(recovered), 0) if recovered is int or recovered is float else 0
 	return true
 
 
@@ -232,7 +262,9 @@ func _load_missions() -> void:
 		var required: Array = _strings(entry.get("objectives"))
 		var optional: Array = _strings(entry.get("optional_objectives"))
 		_missions[id] = {"objectives": required, "optional_objectives": optional,
-			"title": str(entry.get("title", id)), "report": "\n".join(_strings(entry.get("report")))}
+			"title": str(entry.get("title", id)), "report": "\n".join(_strings(entry.get("report"))),
+			"downlink": entry.get("downlink") if entry.get("downlink") is Dictionary else {},
+			"ending": entry.get("ending") if entry.get("ending") is Dictionary else {}}
 		var titles: Variant = entry.get("objective_titles")
 		if titles is Dictionary:
 			for objective in titles:

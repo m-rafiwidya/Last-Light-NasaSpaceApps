@@ -6,6 +6,7 @@ signal recovery_started(rover: Robot)
 signal recovery_finished(rover: Robot)
 
 const SCAN_OBJECTIVES: Dictionary = {"iris_panel": "m1.iris_scanned"}
+const IRIS_ONLINE_FLAG: String = "iris_online"
 const DOCK_OBJECTIVES: Dictionary = {"m1": "m1.kite_docked", "m2": "m2.kite_docked", "m3": "m3.kite_docked"}
 const RECOVERY_DELAY: float = 3.0
 const RECOVERY_MESSAGE: String = "Kite's battery is flat. Emergency recovery: Kite is being returned to the pad."
@@ -19,6 +20,7 @@ const WARN_EXTRA: float = 0.1
 
 var rover: Robot = null
 var pad: ChargingPad = null
+var ending: CampaignEnding = null
 var recovering: bool = false
 var alert: String = ""
 var _recovery_time: float = 0.0
@@ -34,6 +36,7 @@ func _ready() -> void:
 	rover = workshop.rover if workshop else null
 	pad = workshop.pad if workshop else null
 	CampaignState.mission_started.connect(func(_id: String) -> void: _prepare_mission())
+	CampaignState.flag_changed.connect(_on_flag_changed)
 	CampaignState.objective_completed.connect(_on_progress)
 	CampaignState.mission_completed.connect(_on_progress)
 	CampaignState.mission_started.connect(_on_progress)
@@ -43,6 +46,9 @@ func _ready() -> void:
 		_watch(target)
 	if pad:
 		pad.docked.connect(_on_docked)
+	ending = CampaignEnding.new()
+	ending.name = "CampaignEnding"
+	add_child(ending)
 	_start()
 
 
@@ -56,16 +62,26 @@ func _start() -> void:
 	if loading:
 		KiteSave.apply(rover, SaveIndex.pending_kite)
 		SaveIndex.pending_kite = {}
-		_dock_rover()
+		dock_rover()
 		_returned_by_recovery = true
-	var iris: Node = get_parent().get_node_or_null("Iris")
-	if iris and iris.has_method("set_online") and CampaignState.has_flag("iris_online"):
-		iris.set_online(true, true)
+	_apply_iris_online(true)
 	_last_position = rover.global_position
 	_prepare_mission()
 	workshop.account_rack()
 	if rover.battery_socket:
 		rover.battery_socket.part_mounted.connect(_on_part_mounted)
+
+
+func _on_flag_changed(flag: String, _value: bool) -> void:
+	if flag == IRIS_ONLINE_FLAG:
+		_apply_iris_online(false)
+
+
+func _apply_iris_online(instant: bool) -> void:
+	var iris: Node = get_parent().get_node_or_null("Iris")
+	var online: bool = CampaignState.has_flag(IRIS_ONLINE_FLAG)
+	if iris and iris.has_method("set_online") and bool(iris.get("is_online")) != online:
+		iris.set_online(online, instant)
 
 
 func _starting_parts(skip_battery: bool) -> Array:
@@ -81,7 +97,7 @@ func _on_progress(_id: String) -> void:
 		SaveIndex.save_current(rover)
 
 
-func _dock_rover() -> void:
+func dock_rover() -> void:
 	var dock: Transform3D = workshop.get_dock_transform()
 	dock.origin += Vector3.UP * 0.3
 	rover.global_transform = dock
@@ -203,6 +219,7 @@ func _start_recovery() -> void:
 	_recovery_time = RECOVERY_DELAY
 	alert = RECOVERY_MESSAGE
 	Debug.add_log(RECOVERY_MESSAGE)
+	CampaignState.record_recovery()
 	recovery_started.emit(rover)
 
 
@@ -210,7 +227,7 @@ func _finish_recovery() -> void:
 	recovering = false
 	alert = ""
 	_returned_by_recovery = true
-	_dock_rover()
+	dock_rover()
 	if rover.battery:
 		rover.battery.add_charge(rover.battery.capacity)
 	_last_position = rover.global_position
