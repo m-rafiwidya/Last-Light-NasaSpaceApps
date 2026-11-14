@@ -131,10 +131,13 @@ def render(midi_path, out_dir=None, target_lufs=TARGET_LUFS):
     with tempfile.TemporaryDirectory() as tmp:
         for stem, insts in groups.items():
             voice = synth.voice_for(stem)
-            if voice:
+            if voice and synth.VOICES[voice].get("source") != "soundfont":
                 wet[stem] = synth.render_stem(insts, voice, SAMPLE_RATE, loop_len / SAMPLE_RATE, space)
                 continue
             dry = render_dry(pm, insts, Path(tmp), stem)
+            if voice:  # soundfont source, synth processing (e.g. felt_piano)
+                wet[stem] = synth.process_dry(dry, voice, SAMPLE_RATE, loop_len / SAMPLE_RATE, space)
+                continue
             padded = np.zeros((max(loop_len, len(dry)) + tail, 2), dtype=np.float32)
             padded[:len(dry)] = dry
             wet[stem] = hall()(padded, SAMPLE_RATE)

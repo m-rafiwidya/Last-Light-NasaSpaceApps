@@ -6,6 +6,7 @@ Each `song.instrument(name, ...)` becomes one MIDI track; render.py makes one st
 "pad_sine", "drone", "bell", "chime", "texture", or one of those plus "_suffix") are synthesised
 by synth.py; other names are soundfont instruments from PROGRAMS / DRUM_KITS.
 """
+import random
 import sys
 from pathlib import Path
 
@@ -129,6 +130,23 @@ class Song:
             value = round(start + (end - start) * i / steps)
             inst.control_changes.append(
                 pretty_midi.ControlChange(cc, value, self.t(bar, beat + beats * i / steps)))
+
+    def humanize(self, inst, timing=0.05, velocity=3, seed=0):
+        """Nudge note onsets by up to +-`timing` seconds and velocities by up to +-`velocity`,
+        repeatably (seeded), so a part doesn't sound mechanical."""
+        rng = random.Random(seed)
+        for n in inst.notes:
+            shift = rng.uniform(-timing, timing)
+            n.start, n.end = max(0.0, n.start + shift), n.end + shift
+            n.velocity = min(127, max(1, n.velocity + rng.randint(-velocity, velocity)))
+
+    def pedal(self, inst, times, lift=0.12):
+        """Sustain pedal (CC64) held from each time in `times` (seconds), re-pedalled with a short
+        lift just before the next one."""
+        for t in times:
+            if t > 0:
+                inst.control_changes.append(pretty_midi.ControlChange(64, 0, t - lift))
+            inst.control_changes.append(pretty_midi.ControlChange(64, 127, t + 0.02))
 
     def space(self, name):
         """Synth space for all synth stems: "distant" (default), "dark", "dream" or "liminal"

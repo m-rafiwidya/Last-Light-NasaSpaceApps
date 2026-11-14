@@ -33,6 +33,7 @@ name picks the voice (a voice name, or a voice name plus `_suffix` for extra ste
 | `bell`     | Soft FM bell, soft attack, long decay, dark echo            | Rare, distant twinkles                    |
 | `chime`    | Higher, glassier, shorter FM chime                          | Even sparser, highest sparkle             |
 | `texture`  | Band-passed noise, nearly silent with rare soft gusts      | Optional distant wind; leave out freely   |
+| `felt_piano` | Soundfont piano rendered dry, then processed into a dim felt piano: attacks softened, steep lowpass, sustain blur, the space's reverb and wobble | Almost hidden melody inside the pads (the one exception to "synth only") |
 
 - Effects are built into each voice (`fx_chain` in `synth.py`): a huge synthetic hall with
   mostly wet and little dry sound, a steep lowpass that cuts most high frequencies, slow chorus
@@ -47,9 +48,20 @@ name picks the voice (a voice name, or a voice name plus `_suffix` for extra ste
   - `dream`: warm and blurry, with deep chorus and slow wow. For soft major-7th washes.
   - `liminal`: music from another room, through a smaller room and a wall (lowpass around 1 kHz
     with a low-mid bump), on worn tape (strong wow, flutter, slight saturation). Eerie but calm.
+  - `memory`: dream's warm blur with a little of liminal's tape wow and flutter. Sweet and
+    sorrowful; made for the felt piano.
+- Felt piano (`memory`-style tracks): a simple, sparse melody, a few notes per phrase, mostly
+  descending, with long rests between phrases. Velocities about 20–28 (the voice's gain makes
+  up for them); it should sit about 8–12 dB under the pads, never on top. Use
+  `song.humanize(piano, timing=0.07, velocity=3)` so it isn't mechanical and
+  `song.pedal(piano, chord_times + [loop_seconds])` for sustain, re-pedalled at chord changes.
+  It replaces bells and wind; don't use both. This is the one sanctioned "melody" in Deep
+  Space: barely there, not hummable.
+- Bittersweet harmony (memory): major 7th and add9 chords with a borrowed minor iv (e.g. F to
+  Fm in C) for the sorrowful moment; iv minor back to Imaj7/9 is a good loop point.
 - Keep everything far away: soft attacks (the voices' attacks are already slow), no bright
   notes in high registers, bells high only if the space muffles them anyway.
-- Never: choir, orchestral or acoustic instruments, drums or percussion, fast rhythms, arpeggiator
+- Never: choir, orchestral or acoustic instruments (except the processed `felt_piano`), drums or percussion, fast rhythms, arpeggiator
   patterns, or a clear hummable melody. Bells are isolated notes, not tunes.
 - Harmony: slow chord changes, every 8–16 seconds; pads crossfade through their long releases.
   Suspended and open chords (sus2, sus4, add9, open fifths, major 7th or 9th without the third),
@@ -64,7 +76,8 @@ name picks the voice (a voice name, or a voice name plus `_suffix` for extra ste
   Voice gains in `synth.py` already set the balance: at these velocities bells sit roughly
   5–12 dB under the pads and the wind's rare gusts peak near −30 dB.
 - References: `tracks/deep_space_dark.py`, `deep_space_dream.py`, `deep_space_liminal.py`
-  (30 s comparison loops, one per space), and `deep_space_demo.py` (every voice, default space).
+  (30 s comparison loops, one per space), `deep_space_memory.py` (60 s, felt piano), and
+  `deep_space_demo.py` (every voice, default space).
 
 ## Mood 2: Wilds (exploring planets)
 

@@ -209,9 +209,23 @@ def space_ir(sr, rt60=(10.0, 7.5, 3.5), predelay=0.06):
     return ir.astype(np.float32)
 
 
-def reverb(x, sr, rt60):
+def reverb(x, sr, rt60, predelay=0.06):
     """Wet-only reverb."""
-    return _pb(pedalboard.Pedalboard([pedalboard.Convolution(space_ir(sr, rt60), 1.0, sr)]), x, sr)
+    return _pb(pedalboard.Pedalboard([pedalboard.Convolution(space_ir(sr, rt60, predelay), 1.0, sr)]), x, sr)
+
+
+def soften_attacks(x, sr, amount=0.9):
+    """Transient softener: where a fast envelope jumps ahead of a slow one (a hammer strike),
+    turn the gain down, so notes swell in like felt instead of striking."""
+    level = np.abs(x).max(axis=1) + 1e-9
+    follow = lambda tau: sig.lfilter([1 - np.exp(-1 / (tau * sr))], [1, -np.exp(-1 / (tau * sr))], level)
+    gain = np.clip(follow(0.06) / follow(0.002), 0, 1) ** amount
+    gain = sig.lfilter([1 - np.exp(-1 / (0.004 * sr))], [1, -np.exp(-1 / (0.004 * sr))], gain)
+    return x * gain[:, None]
+
+
+def steep_lowpass(x, sr, hz):
+    return _pb(pedalboard.Pedalboard([pedalboard.LowpassFilter(hz), pedalboard.LowpassFilter(hz)]), x, sr)
 
 
 def shimmer(x, sr, rt60):
@@ -280,7 +294,13 @@ SPACES = {
     # Heard from another room: a smaller room, then muffled through the wall, on worn tape.
     "liminal": dict(rt60=(4.5, 3.0, 1.2), dry=0.35, wet=0.75, shimmer=0.0, lowpass=1000,
                     chorus=0.3, wow=14, flutter=4, drive=6.0, boom=3.0),
+    # Dream's warm blur with a little of liminal's worn tape: sweet and sorrowful.
+    "memory": dict(rt60=(10.0, 8.0, 3.5), dry=0.22, wet=1.0, shimmer=0.03, lowpass=1700,
+                   chorus=0.5, wow=11, flutter=2, drive=0, boom=0),
 }
+
+# How much darker than the space each kind sits (bells and felt piano are more muffled).
+LOWPASS_FACTOR = {"bell": 0.8, "felt": 0.6}
 
 
 def fx_chain(kind, x, sr, loop_s, space):
@@ -289,13 +309,17 @@ def fx_chain(kind, x, sr, loop_s, space):
         x = chorus(x, sr, loop_s, s["chorus"])
     if kind == "bell":
         x = x + 0.35 * echo(x, sr)
+    if kind == "felt":
+        x = soften_attacks(x, sr)
+        x = steep_lowpass(x, sr, s["lowpass"] * LOWPASS_FACTOR["felt"])
+        x = 0.5 * x + 0.9 * reverb(x, sr, (1.4, 1.1, 0.5), predelay=0.0)  # sustain blur
     out = s["dry"] * x + s["wet"] * reverb(x, sr, s["rt60"])
     if kind in ("pad", "bell") and s["shimmer"]:
         out += s["shimmer"] * shimmer(x, sr, s["rt60"])
     out = wow(out, sr, loop_s, s["wow"], s["flutter"])
     if s["drive"]:
         out = saturate(out, s["drive"])
-    lowpass = s["lowpass"] * (0.8 if kind == "bell" else 1.0)  # bells a little more muffled
+    lowpass = s["lowpass"] * LOWPASS_FACTOR.get(kind, 1.0)
     return distance(out, sr, lowpass, s["boom"])
 
 
@@ -319,6 +343,8 @@ VOICES = {
     # Higher, glassier, shorter chime.
     "chime": dict(fn=bell, fx="bell", ratio=1.41, index=0.7, index_decay=0.3, ratio2=5.4, partial2=0.05,
                   attack=0.02, decay=1.8, ring=10.0, gain=1.7, preview=112),
+    # Soundfont piano (rendered dry by FluidSynth) processed into a dim, muffled felt piano.
+    "felt_piano": dict(source="soundfont", fx="felt", gain=60.0, preview=0),  # gain offsets the very low velocities
     # Distant wind, barely there with rare soft gusts; the note's pitch sets the band centre.
     "texture": dict(fn=texture, fx="texture", q=0.8, sweep_oct=0.8, sweep_hz=1 / 23,
                     attack=8.0, release=8.0, gain=0.6, preview=122),
@@ -331,6 +357,14 @@ def voice_for(name):
     """Voice preset name for a stem/instrument name, or None for a soundfont instrument."""
     matches = [v for v in VOICES if name == v or name.startswith(v + "_")]
     return max(matches, key=len) if matches else None
+
+
+def process_dry(dry, voice, sr, loop_s, space="distant"):
+    """Effects for a soundfont-sourced voice (`dry` is FluidSynth's render, (n, 2))."""
+    p = VOICES[voice]
+    buf = np.zeros((len(dry) + int(REVERB_TAIL_SECONDS * sr), 2))
+    buf[:len(dry)] = dry * p["gain"]
+    return fx_chain(p["fx"], buf, sr, loop_s, space).astype(np.float32)
 
 
 def render_stem(instruments, voice, sr, loop_s, space="distant"):
