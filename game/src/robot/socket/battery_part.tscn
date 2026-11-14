@@ -8,6 +8,7 @@
 script = ExtResource("2_script")
 part_type = 2
 display_name = "Battery"
+tint_material = &"rover_dark"
 
 [node name="Model" parent="." index="1"]
 mesh = null

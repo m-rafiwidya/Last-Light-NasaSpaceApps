@@ -14,8 +14,12 @@ enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA }
 
 @export var part_type: PartType = PartType.WHEEL
 @export var display_name: String = "Hotswap Part"
-## Colour of the placeholder model (the child MeshInstance3D named "Model")
-@export var tint: Color = Color(0.25, 0.25, 0.28)
+## Recolours the part's main kit material (ROVER_KIT.md 6.3), e.g. to mark a variant. Only
+## surfaces using `tint_material` change; the rest keep the kit palette. Alpha 0 = no tint.
+@export var tint: Color = Color(0.0, 0.0, 0.0, 0.0)
+## The kit material the tint replaces: rover_body for most parts, rover_dark for wheels,
+## the motor and the power unit
+@export var tint_material: StringName = &"rover_body"
 ## Local offset from the socket's mount point while mounted
 @export var mount_offset: Vector3 = Vector3.ZERO
 
@@ -28,11 +32,31 @@ var _free_mask: int = 0
 
 func _ready() -> void:
 	_adopt_model_collision()
-	var model := get_node_or_null("Model") as MeshInstance3D
-	if model:
-		var material := StandardMaterial3D.new()
-		material.albedo_color = tint
-		model.material_override = material
+	_apply_tint()
+
+
+# Gives every surface that uses `tint_material` (in any mesh under "Model") one tinted copy
+# of that material, as a surface override, so the shared kit material stays untouched.
+func _apply_tint() -> void:
+	var model := get_node_or_null("Model")
+	if model == null or tint.a <= 0.0:
+		return
+	var tinted: StandardMaterial3D = null
+	var meshes: Array = model.find_children("*", "MeshInstance3D", true, false)
+	if model is MeshInstance3D:
+		meshes.append(model)
+	for mesh_instance in meshes:
+		var mesh: Mesh = mesh_instance.mesh
+		if mesh == null:
+			continue
+		for i in mesh.get_surface_count():
+			var material := mesh.surface_get_material(i) as StandardMaterial3D
+			if material == null or material.resource_name != tint_material:
+				continue
+			if tinted == null:
+				tinted = material.duplicate() as StandardMaterial3D
+				tinted.albedo_color = Color(tint, 1.0)
+			mesh_instance.set_surface_override_material(i, tinted)
 
 
 
