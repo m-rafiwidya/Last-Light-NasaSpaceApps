@@ -1,0 +1,71 @@
+{
+	"name": "moon_site01",
+	"description": "LOLA Site01 'Connecting ridge' (between Shackleton and de Gerlache), lunar south pole. See tools/terrain/MOON_TERRAIN.md.",
+	"raw_dir": "tools/terrain/raw",
+	"out_dir": "game/res/terrain/moon_site01",
+	"preview_dir": "tools/terrain/previews/moon_site01",
+	"seed": 20261008,
+	"sources": {
+		"site": {
+			"url": "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/Site01_final_adj_5mpp_surf.tif",
+			"bytes": 40980810,
+			"credit": "LOLA 5 m/px landing site DEM, NASA GSFC PGDA product 78 (Barker et al. 2021)"
+		},
+		"psr": {
+			"url": "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LPSR_80S_20MPP_ADJ.TIF",
+			"bytes": 154221202,
+			"credit": "LOLA permanently shadowed regions, 20 m/px, NASA GSFC PGDA product 90"
+		},
+		"polar_20m": {
+			"url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_875s_20m.img",
+			"bytes": 115034112,
+			"lines": 7584,
+			"metres_per_pixel": 20.0,
+			"projection_offset": 3791.5,
+			"metres_per_dn": 0.5,
+			"credit": "LOLA gridded data record LDEM_875S_20M, NASA PDS Geosciences Node"
+		},
+		"polar_40m": {
+			"url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_85s_40m.img",
+			"bytes": 115034112,
+			"lines": 7584,
+			"metres_per_pixel": 40.0,
+			"projection_offset": 3791.5,
+			"metres_per_dn": 0.5,
+			"credit": "LOLA gridded data record LDEM_85S_40M, NASA PDS Geosciences Node"
+		}
+	},
+	"centre_stereographic": [-13347.5, -13552.5],
+	"tiers": [
+		{"name": "play", "metres_per_pixel": 0.5, "half_size": 512, "source": "site", "detail": true, "horizon_step": 4},
+		{"name": "near", "metres_per_pixel": 8.0, "half_size": 4096, "source": "site", "horizon_step": 2},
+		{"name": "mid", "metres_per_pixel": 128.0, "half_size": 32768, "source": "polar_20m", "horizon_step": 1},
+		{"name": "far", "metres_per_pixel": 512.0, "half_size": 131072, "source": "polar_40m", "horizon_step": 1}
+	],
+	"detail": {
+		"roughness_rms_slope_degrees": 3.0,
+		"roughness_hurst": 0.9,
+		"roughness_max_wavelength": 10.0,
+		"crater_min_diameter": 1.5,
+		"crater_max_diameter": 20.0,
+		"crater_density_coefficient": 0.079,
+		"crater_depth_ratio": [0.04, 0.11],
+		"rock_density_over_10cm": 0.01,
+		"rock_size_exponent": 2.5,
+		"rock_sizes": [0.1, 1.5],
+		"rock_collision_min_size": 0.2
+	},
+	"protected": [
+		{"name": "landing_pad", "centre": [-246, -357], "size": [100, 100], "blend": 10},
+		{"name": "base", "centre": [-337, -296], "size": [46, 32], "blend": 10}
+	],
+	"spots": {
+		"player_spawn": [-335, -286],
+		"rover_parking": [-351, -300],
+		"parts_pile": [-328, -302],
+		"landing_pad": [-246, -357]
+	},
+	"boundary_half_size": 500,
+	"sun": {"elevation": 9.0, "keep_dark_psr_min_hectares": 5.0, "margin_degrees": 0.0},
+	"earth": {"azimuth_range": [-8.0, 8.0], "elevation_range": [-7.1, 6.2], "clearance_degrees": 1.5}
+}

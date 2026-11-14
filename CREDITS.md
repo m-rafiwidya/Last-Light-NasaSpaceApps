@@ -27,3 +27,21 @@ file in every capture from 2020 to 2026.
   (`world.topo.bathy.200412.3x5400x2700.jpg`), <https://visibleearth.nasa.gov/images/73909>
 
 Downscaled from 5400 x 2700 to 1024 x 512.
+
+## Moon terrain
+
+`game/res/terrain/moon_site01/`: the Moon level's ground, made by `tools/terrain/build_moon_terrain.py`
+(see `tools/terrain/MOON_TERRAIN.md`) from NASA Lunar Reconnaissance Orbiter LOLA data. The game
+data are converted (to metres in a local frame, with the Moon's curvature), resampled and, in the
+play area, given procedural small craters, roughness and rocks; the large-scale shape is NASA's.
+
+- **LOLA 5 m/pixel south pole landing site DEMs**, Site01 "Connecting ridge", NASA Goddard Space
+  Flight Center Planetary Geodesy Data Archive (PGDA), <https://pgda.gsfc.nasa.gov/products/78>;
+  Barker, M. K., et al. (2021), Improved LOLA elevation maps for south pole landing sites,
+  Planetary and Space Science 203, 105119, doi:10.1016/j.pss.2020.105119
+- **LOLA permanently shadowed regions, 20 m/pixel** (`LPSR_80S_20MPP_ADJ`), NASA GSFC PGDA,
+  <https://pgda.gsfc.nasa.gov/products/90>
+- **LOLA gridded data records** `LDEM_875S_20M` and `LDEM_85S_40M`, NASA Planetary Data System
+  Geosciences Node, <https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/>
+
+Every source file's URL, byte count and SHA-256 are recorded in `terrain.json` (`sources`).
