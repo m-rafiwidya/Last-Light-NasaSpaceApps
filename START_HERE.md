@@ -4,6 +4,8 @@
 
 The target is one complete playable chapter: prepare Kite at a lunar workshop, inspect and restore IRIS, recover a field logger, collect useful comparison records, return and transmit. Three outings reuse one NASA-derived terrain patch. The story ends at home; Mars is a future assignment.
 
+**Team:** Fahd = Fahd Muhammad Zahid · Rafi = Muhammad Rafi Widyatama · Faiq = Faiq Haidar Dzikrullah Satriawan · Satinize = Rayhan Satrio Adi Nurdjaman
+
 ## Which file each person needs
 
 | File | Use |

@@ -65,13 +65,13 @@ const PLANETS: Array[Dictionary] = [
 		"map": "res://res/textures/planets/earth_blue_marble_4k.jpg", "atmosphere": Color(0.431, 0.667, 1.0, 0.35),
 		"view": Vector2(-0.22, 2.0), "lock_hint": "FINISH THE GAME",
 		"subtitle": "TANDBORSTE · NASA SPACE APPS CHALLENGE 2026", "sites": [
-		{ "id": &"fahd", "name": "FAHD", "lat": -6.891, "lon": 107.61,
+		{ "id": &"fahd", "name": "FAHD MUHAMMAD ZAHID", "lat": -6.891, "lon": 107.61,
 			"rows": [["STUDIES", "Informatics"], ["AT", "Institut Teknologi Bandung"], ["CITY", "Bandung, Indonesia"], ["FROM", "Indonesia"]] },
-		{ "id": &"rafi", "name": "RAFI WIDYA PRATAMA", "lat": 3.121, "lon": 101.654,
+		{ "id": &"rafi", "name": "MUHAMMAD RAFI WIDYATAMA", "lat": 3.121, "lon": 101.654,
 			"rows": [["STUDIES", "Mechanical Engineering"], ["AT", "Universiti Malaya"], ["CITY", "Kuala Lumpur, Malaysia"], ["FROM", "Indonesia"]] },
-		{ "id": &"satinize", "name": "SATINIZE", "lat": 1.297, "lon": 103.776,
+		{ "id": &"satinize", "name": "RAYHAN SATRIO ADI NURDJAMAN", "lat": 1.297, "lon": 103.776,
 			"rows": [["STUDIES", "Mechanical Engineering"], ["AT", "National University of Singapore"], ["CITY", "Singapore"], ["FROM", "Indonesia"]] },
-		{ "id": &"faiq", "name": "FAIQ", "lat": -37.911, "lon": 145.134,
+		{ "id": &"faiq", "name": "FAIQ HAIDAR DZIKRULLAH SATRIAWAN", "lat": -37.911, "lon": 145.134,
 			"rows": [["STUDIES", "Mechanical Engineering"], ["AT", "Monash University"], ["CITY", "Melbourne, Australia"], ["FROM", "Indonesia"]] },
 	] },
 ]

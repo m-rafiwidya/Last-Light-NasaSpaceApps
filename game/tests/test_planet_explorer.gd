@@ -238,6 +238,14 @@ func _run() -> void:
 	await process_frame
 	rows = explorer.find_child("Rows", true, false).get_children().map(func(l: Label) -> String: return l.text)
 	_check("Earth sites have no COORDS row", not "COORDS" in rows and "Bandung, Indonesia" in rows, str(rows))
+	explorer.marker(&"faiq").pressed.emit()
+	await process_frame
+	await process_frame
+	var site_name: Label = explorer.find_child("SiteName", true, false)
+	_check("a long name wraps inside the card", site_name.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN"
+		and site_name.get_line_count() > 1 and site_name.size.x <= tip.size.x
+		and site_name.get_visible_line_count() == site_name.get_line_count(),
+		"%d lines, %.0f of %.0f" % [site_name.get_line_count(), site_name.size.x, tip.size.x])
 
 	# Esc goes back to the menu
 	await _key(KEY_ESCAPE)
