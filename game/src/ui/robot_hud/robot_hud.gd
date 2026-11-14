@@ -22,7 +22,9 @@ func _process(_delta: float) -> void:
 		looking_at_prop = looking_at is InteractTrigger or looking_at is RigidBody3D
 		_update_battery_label(Debug.current_robot)
 		_update_arm_label(Debug.current_robot)
+		_update_view_label(Debug.current_robot)
 	else:
+		%View.text = "VIEW  --"
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
 		%Arm.text = "ARM  --"
@@ -41,6 +43,17 @@ func _update_battery_label(robot: Robot) -> void:
 	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power]
 	# Turn red when the battery is low enough that the motor starts to sag
 	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
+
+
+func _update_view_label(robot: Robot) -> void:
+	var rig := robot.get_node_or_null("CameraRig") as RoverCamera
+	if rig == null:
+		%View.text = "VIEW  --"
+		return
+	var text: String = "VIEW  " + rig.view_name()
+	if rig.view == RoverCamera.View.MAST and rig.mast_zoom() > 1.05:
+		text += "  %.1fx" % rig.mast_zoom()
+	%View.text = text
 
 
 func _update_arm_label(robot: Robot) -> void:

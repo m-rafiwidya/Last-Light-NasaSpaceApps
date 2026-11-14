@@ -52,6 +52,12 @@ size_flags_horizontal = 0
 size_flags_vertical = 8
 mouse_filter = 2
 
+[node name="View" type="Label" parent="MarginContainer/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "VIEW  --"
+
 [node name="Speed" type="Label" parent="MarginContainer/Stats"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -76,4 +82,5 @@ size_flags_horizontal = 8
 size_flags_vertical = 8
 theme_override_font_sizes/font_size = 24
 text = "WASD: drive   Mouse: look   E: pick up / drop   LMB: throw   Esc: exit robot
-R: deploy / stow arm   1-5: arm joint   Z / X: move joint   F: reset upright"
+R: deploy / stow arm   1-5: arm joint   Z / X: move joint   F: reset upright
+C: camera view   Wheel: zoom (mast camera)"

@@ -750,7 +750,7 @@ The robot has a single **first-person camera on the mast head**. `Pivot` -> `Cam
 - **Mast:** on the mast head as described above (needs a mast camera). Only this view moves the mast head.
 - **Front / rear hazard:** midway between each hazard-camera pair under the chassis, 27 mm from the nearest surface, looking out and 20 degrees down, FOV 100.
 - **Arm tool:** just outside the tool turret's camera lens, looking along it (turns with the arm and J5), FOV 60 (needs a tool turret).
-If the current view's part is taken out (or the rover starts without it), the view falls back to Chase. Picking up, holding and throwing aim with the mast camera, so they only work in the mast view (switching away drops a held prop; the crosshair only shows there). Checked headless: no view's camera is ever inside rover geometry, the mast view never shows the head and the tool view never shows its own turret.
+If the current view's part is taken out (or the rover starts without it), the view falls back to Chase. Picking up, holding and throwing aim with the mast camera, so they only work in the mast view (switching away drops a held prop; the crosshair only shows there). Checked headless: no view's camera is ever inside rover geometry, the mast view never shows the head and the tool view never shows its own turret. `RobotHUD` shows the current view's name as its top line ("VIEW  Mast camera", plus the zoom factor when zoomed in).
 
 **Zoom:** the mouse wheel (`camera_zoom_in` / `camera_zoom_out`, buttons 4 / 5) narrows / widens the mast camera's vertical field of view (mast view only) by 20% per notch, between 90 degrees (no zoom) and 20 degrees (5.7x), easing towards the target; mouse look sensitivity scales with it (`RobotController.look_scale`).
 
