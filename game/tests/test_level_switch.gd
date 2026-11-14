@@ -172,7 +172,7 @@ func _run_step():
 		9:
 			var pile: Node = SL.current_scene.get_node("Workshop").rack_stock
 			# The part the rover holds stays (it is loose, so it is cleared too and restocked)
-			_check("[moon_level] restock lays out the full rack", pile.get_child_count() == 16, "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
+			_check("[moon_level] restock lays out the full rack", pile.get_child_count() == _rack_slots(SL.current_scene.get_node("Workshop")), "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
 			var part: RigidBody3D = pile.get_child(0)
 			GS.player.holder.pickup(part)
 			held = weakref(part)
@@ -229,3 +229,7 @@ func _physics_process(_delta: float) -> bool:
 	step += 1
 	wait = result
 	return false
+
+
+func _rack_slots(workshop) -> int:
+	return workshop.SLOTS.keys().filter(func(n): return workshop.anchors.has("slot_%02d" % n)).size()

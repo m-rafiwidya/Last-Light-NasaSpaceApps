@@ -195,19 +195,19 @@ trigger_offset = Vector3(0, 0.05, 0)
 anchor = &"socket_cargo_item"
 
 [node name="ThermalCoverSocket" parent="." instance=ExtResource("20_socket")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1225, 0.44, 0.02)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1225, 0.44, 0.045)
 socket_name = "Thermal cover mount"
 accepts_any_type = false
 accepted_type = 7
 accepted_catalog_id = "thermal_cover"
 mount_offset = Vector3(0, 0, 0)
-capture_size = Vector3(0.2, 0.12, 0.42)
-capture_offset = Vector3(0, 0.05, 0)
+capture_size = Vector3(0.2, 0.12, 0.6)
+capture_offset = Vector3(0, 0.05, 0.17)
 trigger_size = Vector3(0.18, 0.04, 0.4)
 trigger_offset = Vector3(0, 0.015, 0)
 
 [node name="HeaterSocket" parent="." instance=ExtResource("20_socket")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.44, -0.225)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.1, 0.44, 0.375)
 socket_name = "Heater mount"
 accepts_any_type = false
 accepted_type = 7

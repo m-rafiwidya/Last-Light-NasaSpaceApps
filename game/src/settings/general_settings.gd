@@ -7,13 +7,14 @@ extends RefCounted
 ##   subtitle_size  their text size, percent of the normal 24 px
 ##   show_tooltips  the part tooltip next to the crosshair (player and robot HUD)
 ##   show_fps       the FPS counter in the top-right corner (FpsCounter)
+##   guidance       mission guidance: the current step, highlights, labels and waypoints (Guidance)
 ## Listen to `section.changed` to follow a change.
 
 const SUBTITLE_SIZE_MIN: float = 50.0
 const SUBTITLE_SIZE_MAX: float = 200.0
 
 static var section := SettingsSection.new("general",
-	{"subtitles": true, "subtitle_size": 100.0, "show_tooltips": true, "show_fps": false},
+	{"subtitles": true, "subtitle_size": 100.0, "show_tooltips": true, "show_fps": false, "guidance": true},
 	{"subtitle_size": Vector2(SUBTITLE_SIZE_MIN, SUBTITLE_SIZE_MAX)})
 
 
@@ -32,3 +33,7 @@ static func show_tooltips() -> bool:
 
 static func show_fps() -> bool:
 	return section.get_value("show_fps")
+
+
+static func guidance() -> bool:
+	return section.get_value("guidance")

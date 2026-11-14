@@ -53,6 +53,8 @@ static func load_slot(slot_id: String) -> void:
 
 ## Starts a new campaign: the Moon level, through the normal loading path
 static func start_new_campaign() -> void:
+	if CampaignState.current_mission().is_empty():
+		CampaignState.start_mission("m1")
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)
 
 
