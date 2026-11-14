@@ -19,7 +19,7 @@ buffer_length = 0.1
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(0.5, 0.24, 0.9)
 
-[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket")]
+[node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket", "headlights")]
 collision_layer = 6
 collision_mask = 7
 mass = 80.0
@@ -47,6 +47,7 @@ rear_left_socket = NodePath("HotswapSocket2")
 rear_right_socket = NodePath("HotswapSocket6")
 motor_socket = NodePath("HotswapSocket")
 battery_socket = NodePath("HotswapSocket3")
+headlights = NodePath("Headlights")
 
 [node name="Engine" parent="." unique_id=1105020877 instance=ExtResource("2_y3xmu")]
 
@@ -182,3 +183,29 @@ anchor = &"socket_antenna"
 
 [node name="CameraRig" type="Node" parent="." unique_id=1203948630]
 script = ExtResource("23_camera_rig")
+
+[node name="Headlights" type="Node3D" parent="." unique_id=1203948640]
+transform = Transform3D(1, 0, 0, 0, 0.9945219, 0.104528464, 0, -0.104528464, 0.9945219, 0, 0.4, -0.47)
+visible = false
+
+[node name="HeadlightL" type="SpotLight3D" parent="Headlights" unique_id=1203948641]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, 0, 0)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 6.0
+light_size = 0.04
+shadow_enabled = true
+spot_range = 35.0
+spot_attenuation = 1.0
+spot_angle = 32.0
+spot_angle_attenuation = 0.6
+
+[node name="HeadlightR" type="SpotLight3D" parent="Headlights" unique_id=1203948642]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, 0, 0)
+light_color = Color(1, 0.96, 0.9, 1)
+light_energy = 6.0
+light_size = 0.04
+shadow_enabled = true
+spot_range = 35.0
+spot_attenuation = 1.0
+spot_angle = 32.0
+spot_angle_attenuation = 0.6

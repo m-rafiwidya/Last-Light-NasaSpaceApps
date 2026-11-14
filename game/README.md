@@ -47,7 +47,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 | Viewport | 1920x1080, stretch mode `viewport`, aspect `expand` |
 | Language | GDScript |
 | Game type | First-person 3D, rigidbody character, physics prop pickup, subtitle/dialog system, drivable robot (placed in the level, entered via an interact trigger) |
-| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (placeholder Moon); chosen on the main menu or switched from the pause menu |
+| Content | Two levels: `src/levels/test_level.tscn` (also reused as the main-menu backdrop) and `src/levels/moon_level.tscn` (Moon: placeholder ground, lunar south pole sky and lighting); chosen on the main menu or switched from the pause menu |
 | Theme | `res/theme.tres` (shared by all UI) |
 
 The repository has three top-level folders (`backend/`, `database/`, `game/`). This document only covers `game/`.
@@ -61,7 +61,7 @@ game/
 ├── project.godot            # autoloads, input map, display, physics engine
 ├── res/                     # raw assets
 │   ├── theme.tres           # global UI theme
-│   └── textures/{dev,ui}/   # dev grid textures, crosshair.svg, interaction.svg
+│   └── textures/{dev,ui,sky}/ # dev grid textures, crosshair.svg, interaction.svg; the Moon's star map and Earth (credits: ../CREDITS.md)
 └── src/
     ├── main.tscn / main.gd           # entry point (root "Main" node)
     ├── autoloads/
@@ -84,7 +84,8 @@ game/
     ├── levels/
     │   ├── rover_level.gd            # base for levels with rovers + a parts pile (class RoverLevel)
     │   ├── test_level.tscn / .gd     # the test sandbox (extends RoverLevel)
-    │   └── moon_level.tscn           # Moon level, placeholder ground and sky (script: rover_level.gd)
+    │   ├── moon_level.tscn           # Moon level, placeholder ground (script: rover_level.gd)
+    │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
     ├── player/
     │   ├── player.tscn / player.gd           # RigidBody3D character (class Player)
     │   └── player_controller.gd              # input -> intent (class PlayerController)
@@ -102,6 +103,8 @@ game/
         ├── dialog_box/               # one subtitle line widget
         ├── sub_screens/settings_sub_menu.tscn/.gd   # shared by main + pause menu (tabbed, dummy widgets)
         └── button_style_components/  # ButtonResizeComponent, ButtonSoundComponent
+tests/                                # headless test scripts (see each file's header)
+tools/                                # windowed helper scripts: render_sky_previews.gd, measure_moon_fps.gd
 ```
 
 ---
@@ -388,7 +391,7 @@ Every path in `LEVEL_PATHS` is checked with `ResourceLoader.exists` in `SceneLoa
 
 ### The Moon level (`levels/moon_level.tscn`)
 
-Placeholders until the real terrain, sky and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture), a black sky with grey ambient light and a low `Sun` (about 23 degrees up, shadows). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below).
+Placeholders until the real terrain and base exist: a flat 512x512 m `Ground` (`CSGBox3D`, top at y 0, grey dev texture, no specular: regolith doesn't shine). The sky and light are the lunar south pole's (see Moon sky and lighting below). It has a `SpawnPoint`, a ready rover (`ReadyRover`, `start_assembled`) with its `ReadyRoverController` and "Drive Robot" `ReadyRoverTrigger`, and a full `PartsPile` with its `RespawnPartsTrigger`, copied from the test level at the same positions. Lunar gravity: `gravity = 1.62` on the root (see Level gravity below).
 
 ### Level gravity
 
@@ -416,6 +419,27 @@ Tyre forces scale with the wheel load, so everything grip-limited drops to about
 Not retuned yet (candidates, in order of impact):
 - **Rover suspension** sits 4 cm higher with little sag, so less droop travel over dips; springs a sixth as stiff (and dampers about 0.4x) would restore the Earth ride.
 - **Rolling resistance** is a fixed 12 N; making it proportional to the wheel load would let the Moon rover coast further (minor).
+
+### Moon sky and lighting (`levels/lunar_sky.gd`, `LunarSky`)
+
+The Moon's `WorldEnvironment` carries `LunarSky` (a `@tool` script, so the editor shows it too). It places the `Sun` light and feeds `lunar_sky.gdshader`, a sky shader that draws, in one pass:
+- **Stars:** NASA's Deep Star Maps 2020 (`res/textures/sky/starmap_2020_4k.exr`, 4096x2048, imported BC6H: 8 MB of video memory), an equatorial plate carree panorama (RA 0h in the middle, RA growing to the left; checked against Canopus, Avior and Polaris in the map). `LunarSky.world_to_equatorial()` turns it so the south ecliptic pole is straight up, as from the lunar south pole (the Moon's axis is 1.5 degrees from it), so the ecliptic, with the sun and Earth on it, runs along the horizon; `forward_ecliptic_longitude` turns the sky about the zenith (any value is some moment: the stars circle the pole once a sidereal month). Straight up are the Magellanic Clouds, with Canopus 75.8 degrees up. `star_brightness` is how bright the stars look whatever the exposure.
+- **The sun's disc** (0.53 degrees, the light's `light_angular_distance`, which also softens shadows with distance like the real sun).
+- **Earth:** a sphere 1.9 degrees across (`earth_angular_diameter`) along the level's `earth_direction`, textured with NASA's Blue Marble (`res/textures/sky/earth_blue_marble_1024.jpg`), north pole where the celestial north pole is (below the horizon here, so it looks upside down) and lit by the `Sun` light, so its phase is right. The Moon puts it 4 degrees up, 115 degrees round from the sun: a gibbous Earth. Terrain always hides it (it is part of the sky).
+
+Lighting: no atmosphere, fog or glow; one `Sun` (energy 2, shadows) and a faint blue-grey fill (ambient colour at energy 0.04), so shadows are nearly black. AgX tonemapping; with `auto_exposure` (default on) the exposure follows the sun's height (`LunarSky.exposure_for_elevation`: 2.0 at 9 degrees, 5.85 at 1.5), making up 60% of the darker flat ground in stops, so a lower sun still looks darker but the ground stays readable without washing out what faces the sun.
+
+**Sun height:** `sun_elevation` (default 1.5 degrees, the real south pole: flat ground is nearly black, upright things are lit, shadows are about 38 times as long as their object) or about 9 degrees for visibility; `sun_azimuth` (default 160: from behind the spawn, so the shadows and Earth are ahead). Compare them in `tools/previews/sky/` (`sun01.5_*` and `sun09.0_*`), rendered from the chase and mast cameras by `tools/render_sky_previews.gd` (needs a window: `<godot> --path game -s res://tools/render_sky_previews.gd --resolution 1920x1080`), which also checks the star map's orientation on screen (Canopus where `LunarSky` puts it).
+
+**Shadows** (the `Sun`'s settings; project shadow settings are untouched): four cascades out to 500 m, the cameras' far plane, so everything in view of the middle of a 1 km area: 0-10, 10-40, 40-150 and 150-500 m. The first cascade covers the rover and the player at about 1 cm per texel. The directional shadow atlas stays at the project's 4096: 8192 looked the same up close, and with the headlights on it came with a 1 s stall in 2 of 4 measured runs (none in 8 runs with either change alone). Bias 0.03, normal bias 1.0 against acne on the ground at grazing light.
+
+**Frame rate** (`tools/measure_moon_fps.gd`: the rover circles at full throttle with its headlights on, 12 s each in the chase and mast views, then on foot; MacBook Pro M4, 1920x1080, Godot 4.7): with vsync on it holds the display's 120 fps (p99 frame 9-12 ms, worst 19 ms in five runs; the Moon level before this work: p99 10-14 ms, worst 18 ms); vsync off, 180-290 fps at either sun height.
+
+`tests/test_moon_sky.gd` checks the sky's orientation, the sun, exposure and Earth placement, the antennas' target in both levels and the headlight key.
+
+### Level Earth direction
+
+`RoverLevel.earth_direction` (a world direction) is where Earth is in the level's sky; every rover's high-gain antenna tracks it (`RoverVisuals` reads it from the nearest ancestor that has it as it starts, see 15.3c). The default, `RoverVisuals.DEFAULT_EARTH_DIRECTION`, is the old fixed direction 35 degrees up, which the test level keeps; the Moon sets its Earth's, 4 degrees up, and `LunarSky` draws Earth there.
 
 ### The test level (`levels/test_level.tscn`)
 
@@ -591,10 +615,11 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `interact_secondary` | Right mouse (sets rotate flag, unused) |
 | `console` | `` ` `` (backtick) |
 | `camera_next` | C (robot: next camera view) |
+| `rover_lights` | L (robot: headlights on / off) |
 | `camera_zoom_in` / `camera_zoom_out` | Mouse wheel up / down, `=` / `-` (robot: mast camera zoom; trackpad scroll and pinch are handled in code, see 15.4) |
 | `ui_cancel` | Esc (Godot built-in; pause toggle) |
 
-The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. It has no robot-only actions.
+The robot shares the player's actions: `move_forward` = drive forward, `move_backward` = drive backward, `move_left` / `move_right` = steering, mouse = look, `interact_use` = pick up / drop, `interact_primary` = throw. Its own actions: `arm_toggle`, `arm_joint_1`..`5`, `arm_rotate_down` / `_up`, `robot_reset`, `camera_next`, `camera_zoom_in` / `_out` and `rover_lights`.
 
 ### Collision layers (bit value in parentheses)
 
@@ -709,7 +734,7 @@ Place a `RobotController` node and a `robot.tscn` instance in the level (assign 
 
 Files: `src/robot/robot.tscn`, `robot.gd` (`class_name Robot`), `robot_controller.gd` (`class_name RobotController`), `components/engine.gd` (`RobotEngine`, a brushed DC motor model), `components/running_gear.gd` (`RunningGear`), `components/engine_sound.gd` (procedural motor sound). The sim was ported from the `openwheel` project, then simplified: no gearbox, clutch or handbrake.
 
-**Status:** rovers are placed manually in a level, each with its own `RobotController`. `GameState.robot` is the rover being driven: `GameState.drive(rover)` sets it and enters `IN_GAME_ROBOT` (Esc leaves). Only that rover's controller takes input, only it takes the camera (and gives it back to the player on leaving) and sets `Debug.current_robot`, which the robot HUD reads; `SceneLoader` clears `GameState.robot` on level unload. A parked rover ignores input and rolls to a stop. `Robot.start_assembled` mounts a full set of new parts when the rover is ready. `F` (`robot_reset`) puts the driven rover upright where it is, facing the way it faced, 0.25 m above the ground under it, at rest.
+**Status:** rovers are placed manually in a level, each with its own `RobotController`. `GameState.robot` is the rover being driven: `GameState.drive(rover)` sets it and enters `IN_GAME_ROBOT` (Esc leaves). Only that rover's controller takes input, only it takes the camera (and gives it back to the player on leaving) and sets `Debug.current_robot`, which the robot HUD reads; `SceneLoader` clears `GameState.robot` on level unload. A parked rover ignores input and rolls to a stop. `Robot.start_assembled` mounts a full set of new parts when the rover is ready. `F` (`robot_reset`) puts the driven rover upright where it is, facing the way it faced, 0.25 m above the ground under it, at rest. `L` (`rover_lights`) switches the driven rover's headlights on and off (`Robot.headlights_on`; they start off).
 
 **Test level:** two rovers. `ReadyRover` (`start_assembled`, sign "Ready to drive") and `BareRover` (nothing mounted, sign "Build it yourself"), each with its own "Drive Robot" trigger. `PartsPile` next to the bare rover holds a full build (six wheels, motor, battery, mast camera, antenna, tool turret) plus four high-grip wheels; the "Respawn parts" trigger clears the loose pile parts (mounted parts stay, a held one is released first) and lays out a fresh pile as recorded when the level started.
 
@@ -732,7 +757,9 @@ Robot (RigidBody3D, robot.gd)  mass 80 (moon rover, ~1x1 m), layers 2+3, mask 7,
 │   └── Camera3D     first-person camera, pitch (FOV 90)
 │       └── RayCast3D  3 m pickup ray, mask 53, collides with areas
 ├── EngineSound      AudioStreamPlayer3D + components/engine_sound.gd (procedural motor whir)
-└── Visuals          Node3D + kit/rover_visuals.gd (RoverVisuals): visual rocker-bogie linkage, see 15.3c
+├── Visuals          Node3D + kit/rover_visuals.gd (RoverVisuals): visual rocker-bogie linkage, see 15.3c
+└── Headlights       Node3D (hidden = off), 2 cm in front of the chassis front face, 0.40 m up, tilted 6 degrees down
+    └── HeadlightL/R SpotLight3D at x -+0.18: 32 degree cone, 35 m range, energy 6, shadows (no lamp model yet)
 ```
 
 ### 15.3 Simulation (`Robot._integrate_forces`)
@@ -789,7 +816,7 @@ The linkage and wheels are posed every frame from `Robot.visual_wheel_centers`: 
 
 **Arm control** (while driving): `R` (`arm_toggle`) deploys / stows the arm, moving every joint towards the deployed pose `0, 0, -45, 45, 0` or back to stowed at 60 degrees/s; while deployed, `1`-`5` (`arm_joint_1`..`5`) pick a joint and `Z` / `X` (`arm_rotate_down` / `_up`) turn it at 30 degrees/s within its range (J5 turns the mounted tool turret, any angle). `RobotController.arm_toggle` / `arm_joint` / `arm_rotate` carry the input; `RobotHUD` shows the arm state and selected joint. **Ground:** `RoverVisuals.arm_ground_clearance()` casts rays down (world layer 1) from the 16 lowest vertices of the forearm, wrist and mounted tool meshes. A step that would bring the arm within 20 mm of the terrain, and closer than it already is, is not taken (the HUD shows "(ground)"), so a blocked arm can still move away. While the rover moves, the same check 0.25 s ahead (the points moved by the rover's linear and angular velocity) lifts the shoulder, then the elbow, at 120 degrees/s, also in the middle of a deploy or stow. In a scripted run (manual lowering, driving onto a 15 cm step, reversing off it mid-deploy) the arm never came closer than 20 mm. The arm is visual only, so it cannot affect driving.
 
-**Antenna tracking:** `RoverVisuals._update_antenna()` keeps a mounted high-gain antenna's dish pointed at `EARTH_DIRECTION` (a fixed world direction 35 degrees above the horizon, standing in for Earth). It turns the direction into the antenna mount's frame and solves pan = `atan2(d.x, d.z)` (base `antenna` about Y) and tilt = the angle from straight up (dish `antenna_dish` about X, capped at 90 degrees, so the dish turns edge-on when the direction is below the horizon), moving at up to 120 / 90 degrees/s. Measured while circling over bumps: within 1 degree of the target after the first second's slew. An antenna taken out returns to its rest pose.
+**Antenna tracking:** `RoverVisuals._update_antenna()` keeps a mounted high-gain antenna's dish pointed at `earth_direction`: the level's (`RoverLevel.earth_direction`, read once at `_ready` from the nearest ancestor that has one; the Moon's Earth, 4 degrees up), else `DEFAULT_EARTH_DIRECTION` (35 degrees up, which the test level keeps). It turns the direction into the antenna mount's frame and solves pan = `atan2(d.x, d.z)` (base `antenna` about Y) and tilt = the angle from straight up (dish `antenna_dish` about X, capped at 90 degrees, so the dish turns edge-on when the direction is below the horizon), moving at up to 120 / 90 degrees/s. Measured while circling over bumps: within 1 degree of the target after the first second's slew. An antenna taken out returns to its rest pose.
 
 Because the linkage is rigid and the six physics wheels are independent springs, the linkage can't reach all six wheels exactly; since the wheels sit at their physics positions, the mismatch (up to a few cm on rough ground) shows at the hubs, never as a wheel in the ground. The spin is applied to the wheel part's `Model` node (both kit wheels), about its local X.
 

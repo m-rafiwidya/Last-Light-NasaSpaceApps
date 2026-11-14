@@ -20,6 +20,8 @@ extends RigidBody3D
 @export var pivot: Node3D
 @export var camera: Camera3D
 @export var raycast: RayCast3D
+## Two spotlights on the chassis front (hidden = off); L toggles them while driving
+@export var headlights: Node3D
 
 # Sockets that hold the wheel parts. Each wheel is placed by the running gear
 # (suspension travel) and takes its radius from the mounted WheelPart.
@@ -133,10 +135,19 @@ const RESET_HEIGHT: float = 0.25
 
 var _reset_pending: bool = false
 
+## True while the headlights are on
+var headlights_on: bool = false:
+	set(value):
+		headlights_on = value
+		if headlights:
+			headlights.visible = value
+
 
 func _ready() -> void:
 	controller.robot = self
 	controller.reset_requested.connect(func() -> void: _reset_pending = true)
+	controller.lights_toggle.connect(func() -> void: headlights_on = not headlights_on)
+	headlights_on = headlights_on
 	_add_wheel_bump_stops()
 	_snap_sockets_to_anchors()
 	_adopt_body_collision()

@@ -19,6 +19,9 @@ extends Node3D
 ## gravity alone would leave a sixth of Earth's grip (2.1 m to stop from a walk); the Moon
 ## sets 1.6 (0.8 m)
 @export var ground_friction: float = Player.FRICTION
+## Where Earth is in this level's sky (world direction): the rovers' high-gain antennas track it
+## (RoverVisuals reads it from the level). The Moon puts its Earth here (LunarSky draws it)
+@export var earth_direction: Vector3 = RoverVisuals.DEFAULT_EARTH_DIRECTION
 
 ## Pile parts' properties that are copied when the pile is respawned
 const PILE_PROPERTIES: Array[String] = ["catalog_id", "tint", "radius", "grip"]

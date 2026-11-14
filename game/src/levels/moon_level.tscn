@@ -11,18 +11,35 @@
 [ext_resource type="PackedScene" path="res://src/robot/socket/mast_head_part.tscn" id="24_mast_head"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/arm_tool_part.tscn" id="25_arm_tool"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/antenna_part.tscn" id="26_antenna"]
+[ext_resource type="Script" path="res://src/levels/lunar_sky.gd" id="8_lunar_sky"]
+[ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
+[ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
+[ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("9_sky_shader")
+shader_parameter/star_map = ExtResource("10_stars")
+shader_parameter/star_energy = 0.1026
+shader_parameter/earth_map = ExtResource("11_earth")
+
+[sub_resource type="Sky" id="Sky_moon"]
+sky_material = SubResource("ShaderMaterial_sky")
+radiance_size = 1
 
 [sub_resource type="Environment" id="Environment_moon"]
-background_mode = 1
-background_color = Color(0, 0, 0, 1)
+background_mode = 2
+sky = SubResource("Sky_moon")
 ambient_light_source = 2
-ambient_light_color = Color(0.55, 0.57, 0.62, 1)
-ambient_light_energy = 0.35
-tonemap_mode = 2
+ambient_light_color = Color(0.62, 0.68, 0.8, 1)
+ambient_light_energy = 0.04
+reflected_light_source = 2
+tonemap_mode = 4
+tonemap_exposure = 5.85
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
 albedo_color = Color(0.72, 0.72, 0.7, 1)
 albedo_texture = ExtResource("2_grey")
+specular_mode = 2
 uv1_triplanar = true
 
 [sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
@@ -34,14 +51,24 @@ script = ExtResource("1_level")
 gravity = 1.62
 jump_height = 1.2
 ground_friction = 1.6
+earth_direction = Vector3(0.7054, 0.0698, -0.7054)
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.8660254, -0.2241439, 0.4472136, 0, 0.8944272, 0.4472136, -0.5, 0.3882286, -0.7745967, 0, 0, 0)
-light_energy = 1.6
+transform = Transform3D(-0.9396926, -0.008952, -0.3419787, 0, 0.9996573, -0.026177, 0.3420201, -0.024594, -0.9395707, 0, 0, 0)
+light_energy = 2.0
+light_angular_distance = 0.53
 shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.0
+directional_shadow_split_1 = 0.02
+directional_shadow_split_2 = 0.08
+directional_shadow_split_3 = 0.3
+directional_shadow_max_distance = 500.0
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." node_paths=PackedStringArray("sun")]
 environment = SubResource("Environment_moon")
+script = ExtResource("8_lunar_sky")
+sun = NodePath("../Sun")
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, 5)

@@ -16,7 +16,7 @@ extends Node3D
 ## sockets and drives the arm (stowed by default; R deploys / stows it, 1-5 pick a joint and
 ## Z / X turn it, never into the ground), and pans / tilts the mast head from the mouse
 ## look (RoverCamera puts the camera on it in the mast view), and keeps the high-gain antenna's dish
-## pointed at EARTH_DIRECTION. Nothing here affects the physics.
+## pointed at earth_direction (the level's). Nothing here affects the physics.
 
 # ROVER_KIT.md 5: the pose range the kit was clearance-checked for. Widen only after
 # re-running tools/blender/scripts/make_rocker_bogie.py with the new range.
@@ -50,9 +50,10 @@ const CAMERA_PITCH_LIMIT: float = deg_to_rad(90.0)
 const CAMERA_SLIDE_MAX: float = 0.06
 const CAMERA_SLIDE_START: float = deg_to_rad(65.0)
 
-# The fixed world direction the high-gain antenna tracks, as if it were Earth: 35 degrees above
-# the horizon, towards -Z / +X. Tilt range (ROVER_KIT.md 5) and how fast the dish follows.
-const EARTH_DIRECTION: Vector3 = Vector3(0.46, 0.57, -0.68)
+# Where the high-gain antenna looks for Earth in a level that doesn't say (RoverLevel's default,
+# the test level's): 35 degrees above the horizon, towards -Z / +X. Tilt range (ROVER_KIT.md 5)
+# and how fast the dish follows.
+const DEFAULT_EARTH_DIRECTION: Vector3 = Vector3(0.46, 0.57, -0.68)
 const ANTENNA_TILT_LIMIT: float = deg_to_rad(90.0)
 const ANTENNA_PAN_SPEED: float = deg_to_rad(120.0)
 const ANTENNA_TILT_SPEED: float = deg_to_rad(90.0)
@@ -99,6 +100,9 @@ var arm_target: Dictionary = {}
 ## True while the last attempted step was refused because it would touch the ground
 var arm_blocked: bool = false
 var _posed_tool: HotswapPart = null
+## World direction the high-gain antenna tracks: the level's `earth_direction` (RoverLevel; the
+## Moon's Earth in the sky), read from the nearest ancestor that has one, else the default
+var earth_direction: Vector3 = DEFAULT_EARTH_DIRECTION
 ## Current antenna pan / tilt (radians)
 var antenna_pan: float = 0.0
 var antenna_tilt: float = 0.0
@@ -134,6 +138,17 @@ func _ready() -> void:
 	_build_mast_and_arm()
 	apply_arm_pose()
 	robot.controller.arm_toggle.connect(_on_arm_toggle)
+	earth_direction = _level_earth_direction()
+
+
+func _level_earth_direction() -> Vector3:
+	var node: Node = robot.get_parent()
+	while node:
+		var direction = node.get("earth_direction")
+		if direction is Vector3 and direction != Vector3.ZERO:
+			return (direction as Vector3).normalized()
+		node = node.get_parent()
+	return DEFAULT_EARTH_DIRECTION
 
 
 
@@ -168,7 +183,7 @@ func _model(instance: Node3D, model_name: String) -> Node3D:
 	return instance.find_child(model_name, true, false) as Node3D
 
 
-# Turns the mounted antenna's dish towards EARTH_DIRECTION. The dish faces up at rest; after
+# Turns the mounted antenna's dish towards earth_direction. The dish faces up at rest; after
 # a pan p (about Y) and tilt t (about X) its normal is (sin t sin p, cos t, sin t cos p) in the
 # mount's frame, so p = atan2(d.x, d.z) and t = the angle from straight up (capped at 90
 # degrees, edge-on when Earth is below the horizon). The angles move at a limited rate.
@@ -187,7 +202,7 @@ func _update_antenna(delta: float) -> void:
 	if dish == null:
 		return
 	var mount: Node3D = dish.get_parent().get_parent() as Node3D
-	var d: Vector3 = (mount.global_basis.orthonormalized().inverse() * EARTH_DIRECTION).normalized()
+	var d: Vector3 = (mount.global_basis.orthonormalized().inverse() * earth_direction).normalized()
 	var horizontal: float = Vector2(d.x, d.z).length()
 	var target_tilt: float = minf(atan2(horizontal, d.y), ANTENNA_TILT_LIMIT)
 	# Near the zenith the pan doesn't matter; keep it rather than spin
