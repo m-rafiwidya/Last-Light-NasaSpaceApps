@@ -8,6 +8,8 @@ extends Control
 ## dragged (with a little inertia), brightens and grows slightly on hover, and emits
 ## moon_clicked when clicked without dragging. Only the disc takes the mouse (_has_point).
 ## Call set_active(false) while the menu is hidden: the SubViewport then stops rendering.
+## The SubViewport renders at the Moon's real size on screen (the window's pixels, not the
+## 1920 x 1080 base): its container is that many pixels big and scaled back down (_fit_viewport).
 
 signal moon_clicked
 
@@ -61,6 +63,7 @@ var _frame_drag: Vector2 = Vector2.ZERO
 var _velocity: Vector2 = Vector2.ZERO
 var _idle: float = 0.0
 
+@onready var _container: SubViewportContainer = $Container
 @onready var _viewport: SubViewport = $Container/Viewport
 @onready var _pivot: Node3D = $Container/Viewport/Pivot
 @onready var _material: ShaderMaterial = ($Container/Viewport/Pivot/Sphere as MeshInstance3D).material_override
@@ -73,8 +76,22 @@ func _ready() -> void:
 	mouse_entered.connect(_set_hovered.bind(true))
 	mouse_exited.connect(_set_hovered.bind(false))
 	resized.connect(func() -> void: pivot_offset = size)
+	resized.connect(_fit_viewport)
+	get_tree().root.size_changed.connect(_fit_viewport)
+	_fit_viewport()
 	_apply_rotation()
 	_apply_brightness()
+
+
+## Screen pixels per design pixel (the window's stretch); the SubViewport renders that much larger
+func screen_scale() -> float:
+	return get_viewport().get_final_transform().get_scale().y
+
+
+func _fit_viewport() -> void:
+	var pixels: float = maxf(screen_scale(), 0.25)
+	_container.scale = Vector2.ONE / pixels
+	_container.size = (size * pixels).round()
 
 
 ## Renders and turns only while active; the menu turns it off when it hides

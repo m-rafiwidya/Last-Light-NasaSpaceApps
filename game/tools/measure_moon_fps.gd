@@ -14,7 +14,8 @@ extends SceneTree
 ##
 ##     Godot --path game -s res://tools/measure_moon_fps.gd --resolution 1920x1080
 ##     (append `-- vsync`, `sun=<elevation>`, `quality=<0-5>` (directional soft shadow quality),
-##     `atlas=<size>` (directional shadow atlas) or `lights=off` to compare; `unthrottled` keeps
+##     `atlas=<size>` (directional shadow atlas), `scale_3d=<0.25-1>` (3D render scale, FSR below 1:
+##     what Quality Preset Low / Medium use) or `lights=off` to compare; `unthrottled` keeps
 ##     the frame rate up while the window is unfocused (main.gd caps an unfocused window at
 ##     30 fps), for A/B phases in one run when the window can't keep the focus; `decor_ab` measures
 ##     only the decor's cost: three off/on pairs in the bay and three on the apron; `dust_ab` only
@@ -86,10 +87,17 @@ func _run() -> void:
 		RenderingServer.directional_shadow_atlas_set_size(int(args["atlas"]), true)
 	if args.has("quality"):
 		RenderingServer.directional_soft_shadow_filter_set_quality(int(args["quality"]))
+	if args.has("scale_3d"):
+		root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if float(args["scale_3d"]) < 1.0 else Viewport.SCALING_3D_MODE_BILINEAR
+		root.scaling_3d_scale = float(args["scale_3d"])
 	print("SETUP %s, %.0f Hz screen, sun %s deg, vsync %s, atlas %s, soft shadow quality %s, %s%s" % [
 		RenderingServer.get_video_adapter_name(), DisplayServer.screen_get_refresh_rate(), sky.get("sun_elevation"), args.has("vsync"),
 		args.get("atlas", "default"), args.get("quality", "default"), "lights off" if args.get("lights") == "off" else "lights on",
 		", unthrottled when unfocused" if args.has("unthrottled") else ""])
+	print("SETUP window %s, 3D at %s (scale %.2f, %s)" % [DisplayServer.window_get_size(),
+		Vector2i(((Vector2(root.content_scale_size) if root.content_scale_mode == Window.CONTENT_SCALE_MODE_VIEWPORT
+			else Vector2(root.size)) * root.scaling_3d_scale).round()), root.scaling_3d_scale,
+		["bilinear", "FSR 1", "FSR 2", "MetalFX spatial", "MetalFX temporal"][root.scaling_3d_mode]])
 
 	var rover: Node = level.get_node("ReadyRover")
 	var workshop: Node3D = level.get_node("Workshop")

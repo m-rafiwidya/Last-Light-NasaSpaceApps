@@ -387,9 +387,15 @@ func _check_video() -> void:
 	_check("[Video] Quality Preset starts at High", quality.get_item_text(quality.selected) == "High")
 	_pick(quality, 0)
 	_check("[Video] Low: no MSAA, hard shadows", root.msaa_3d == Viewport.MSAA_DISABLED)
+	_check("[Video] Low: 3D at half size with FSR", is_equal_approx(root.scaling_3d_scale, 0.5)
+		and root.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR)
 	_check("[Video] Low sets Terrain Detail and Dust and Tracks", GraphicsSettings.get_terrain_detail() == GraphicsSettings.TerrainDetail.LOW
 		and GraphicsSettings.get_surface_effects() == GraphicsSettings.SurfaceEffects.OFF and terrain.selected == 1 and dust.selected == 2)
+	_pick(quality, 1)
+	_check("[Video] Medium: 3D at 0.75 with FSR", is_equal_approx(root.scaling_3d_scale, 0.75)
+		and root.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR)
 	_pick(quality, 3)
+	_check("[Video] Ultra: 3D at native size", is_equal_approx(root.scaling_3d_scale, 1.0))
 	_check("[Video] Ultra: 4x MSAA, high detail", root.msaa_3d == Viewport.MSAA_4X
 		and GraphicsSettings.get_terrain_detail() == GraphicsSettings.TerrainDetail.HIGH and terrain.selected == 0 and dust.selected == 0)
 	_check("[Video] Quality Preset is saved", _saved("video", "quality") == 3)

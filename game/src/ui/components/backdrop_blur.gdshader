@@ -5,7 +5,9 @@ shader_type canvas_item;
 render_mode unshaded;
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear_mipmap;
-// Blur radius in screen pixels at amount 1 (10 design px x 1.2)
+// Blur radius in design pixels (the 1920 x 1080 base) at amount 1 (10 design px x 1.2); the
+// screen is drawn at the window's real size, so it is turned into screen pixels with the canvas
+// scale (ui_scale)
 uniform float radius_px = 12.0;
 uniform float amount : hint_range(0.0, 1.0) = 1.0;
 // What is left of the picture behind at amount 1 (mixed towards bg_color)
@@ -14,8 +16,15 @@ uniform vec4 bg_color : source_color = vec4(0.0196, 0.0196, 0.0275, 1.0);
 
 const int TAPS = 16;
 
+// Screen pixels per design pixel (the stretch scale, in the canvas transform)
+varying float ui_scale;
+
+void vertex() {
+	ui_scale = length(CANVAS_MATRIX[0].xy);
+}
+
 void fragment() {
-	float r = radius_px * amount;
+	float r = radius_px * ui_scale * amount;
 	// Each tap reads a mip about as wide as the gap between taps, so 16 taps look smooth
 	float lod = log2(max(r * 0.5, 1.0));
 	vec3 sum = vec3(0.0);
