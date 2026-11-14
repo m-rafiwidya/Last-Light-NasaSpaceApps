@@ -16,6 +16,47 @@ Status: **approved 2026-10-09**, with these answers and changes:
 - the dock zone is 0.4 m, with guide lines, an on-screen hint and a probe that finds the rover;
 - bigger rack labels.
 
+**Built 2026-10-09.** Models: `tools/blender/scripts/workshop/` (every generator's checks pass);
+game: `game/src/workshop/` (game README, "The workshop"); test: `game/tests/test_workshop.gd`
+(Moon level and test level, all pass). Where the build differs from the text below, this list
+wins:
+
+- **Heights.** Walls 3.45 m (a 5 cm parapet over the roof, so no roof face lies in a wall face);
+  roof slab 3.25-3.40 m with the beams below it, 3.00-3.25 (clear height 3.0 m under the beams,
+  3.25 m between them); the partition reaches the slab, 3.25 m.
+- **Plinth:** against the wall face (y 0 to 0.05 out), z -0.30 to +0.05, no collision.
+- **Bay door leaf:** 3.95 x 2.475 m, 25 mm from the jamb plates and the header (the swing check:
+  20 mm least, at full open). Open, it reaches 2.40 m out. Its bottom edge turns through a slot in
+  the threshold (inside the floor slab, out of sight). Its 25 mm gaps let thin lines of low
+  sunlight into the bay, so Godot adds a shadow-only panel behind the closed leaf.
+- **Personnel door leaf:** on the operator face 20 mm off the trims, pivot (2.21, -2.0, 0.0);
+  the partition's fastener heads are on the bay face only (the leaf slides over the operator face).
+- **Lamps and lights:** wall lamps at the rack (-1.8, -3.8, 2.3), over the door inside
+  (1.6, 3.8, 2.6) and on the operator area's east wall (4.8, 0.0, 2.6); `light_rack` (-1.8, -3.45,
+  2.15), `light_door` (1.6, 3.45, 2.45), `light_operator` (4.45, 0.0, 2.45). Energies, set in
+  renders (`game/tools/render_workshop_previews.gd`): bay key 6, rack lamp 2.2, door lamp 1.6,
+  operator lamp 1.4, exterior flood 2; reflection probe ambient 0.75. The bay key light leaves
+  the ground (terrain chunks and rock field, render layer 10) out of its shadow casters.
+- **Console screen:** bottom edge z 0.966, top 1.314 (0.36 m tall at 15 degrees).
+- **Rack labels:** 65 mm capitals, except MAST CAMERA (63 mm) and TOOL TURRET (55 mm), shrunk to
+  fit their plates. The bottom two rows sit under the shelf above: from closer than 1.14 m
+  (standing) or 0.93 m (crouched) the shelf hides the floor tray; from 1.4 m every part is in view
+  and in reach.
+- **Markers:** the stripes round the bay door's swing outside are left out (the regolith there
+  isn't flat); the 0.30 m tall sign plate is 16 px tall at 10 m (22 px wide). The Moon level has a
+  base sign on a post at the apron's end; route and heritage posts wait for the route work.
+- **Rover turning, measured** (full lock, at the speeds a driver uses in the bay): Moon 0.66 m at
+  0.36 m/s, 1.1-1.2 m at 0.8-0.9 m/s; Earth gravity 0.78 m at 0.42 m/s, 1.10 m at 0.72 m/s. The
+  layout's 1.07 m holds.
+- **Spawn:** unrotated (the player moves along its pivot's own basis, so a turned spawn would walk
+  off its view); the console turns the player to face the screen.
+- **Triangles:** 6,720 for the assembled workshop, 102 part instances (`make_layout.py`). Per
+  part: wall panel 196, window 274, bay door frame and leaf 256, roof tile 40, partition 96-168,
+  pad 182, charger 136, rack 384, console 328, marker post 58.
+- **Frame rate** (MacBook Pro M4, 1920 x 1080, vsync off, `measure_moon_fps.gd`): standing in the
+  bay facing the docked rover 148.6 fps (6.73 ms), against 164.6 fps (6.08 ms) facing the rover
+  outside in the same run: +0.65 ms. p99 14.5 ms (14.6-18.1 ms in the other phases of that run).
+
 The brief overrides earlier asset plans. Its delivery contract applies to every part here:
 `.blend` source plus `.glb` export, metres, applied transforms, separately named moving pieces,
 marked pivots and anchors, collision proxies kept apart from the visible meshes, blank screens
