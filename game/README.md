@@ -149,6 +149,7 @@ Registered in `project.godot` in this order. All of them are globally reachable 
 | `DialogServer` | `autoloads/dialog_server.gd` | Times and broadcasts subtitles (`dialog_played`, `dialog_ended`). |
 | `AudioManager` | `autoloads/audio_manager.gd` | Background music and UI sounds by name (`play_ui`), audio volumes; runs while paused. See [section 16](#16-audio). |
 | `Sfx` | `autoloads/sfx.gd` | Gameplay sounds: one-shots (`play`), loops with a limit and ducking, ambience beds; attaches the sound observers in `src/audio/`. Pauses with the game. See [section 16](#16-audio). |
+| `CampaignState` | `autoloads/campaign_state.gd` | The campaign in memory: current mission, completed objectives, flags and items. Loads `res/story/missions.json` (missions `m1` to `m3` and their objectives, IDs lowercase with dots). Signals `mission_started`, `mission_completed`, `objective_completed`, `flag_changed`; API in `workflow_1.md`. Unknown IDs only warn. `debug_dump()` feeds the `campaign` console command. |
 
 `SceneLoader`, `GameState` are set to `PROCESS_MODE_ALWAYS` so they keep running while the tree is paused. `UIManager` is also `process_mode = 3` (ALWAYS) in its scene.
 
@@ -825,6 +826,10 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |
 | `saves` | lists `SaveIndex.list_saves()` in the console and the output log: the saves folder's absolute path, then one line per save (slot id, mission title, saved at DD/MM/YYYY HH:MM, play time, progress %, autosave yes/no, metadata file path), or `No save files in user://saves/` |
 | `unlockall` | unlocks Mars and Earth in the planet explorer until the game quits (`PlanetData.unlock_all`) |
+| `startmission <id>` | `CampaignState.start_mission` (e.g. `m1`) |
+| `objective <id>` | `CampaignState.complete_objective` (e.g. `m1.iris_scanned`) |
+| `flag <name> [true\|false]` | `CampaignState.set_flag`, true by default |
+| `campaign` | prints the current mission, every objective, the flags and the items |
 
 | anything else | logs `Unknown command "..."` |
 

@@ -25,6 +25,7 @@ Debug="*uid://krkr54tekosk"
 DialogServer="*uid://sq6h80gxsxqs"
 AudioManager="*res://src/autoloads/audio_manager.gd"
 Sfx="*res://src/autoloads/sfx.gd"
+CampaignState="*res://src/autoloads/campaign_state.gd"
 
 [display]
 

@@ -45,6 +45,9 @@ Before you merge, check that:
 2. The headless tests pass.
 3. You didn't edit a scene you don't own.
 4. Unfinished features are hidden or harmless, not crashing.
+5. New scripts have their `.uid` files committed. Open the project in the Godot editor once so it creates them. If they're missing, each person's editor makes its own and they clash.
+
+Two tests, `test_cursor` and `test_terrain`, were already failing before this workflow started. Don't worry about those, but don't let any other test break.
 
 ## Rules for Claude Code
 
@@ -82,29 +85,50 @@ func remove_item(id: String, count: int = 1) -> void
 func has_item(id: String) -> bool
 ```
 
-For example, when the player finishes repairing IRIS, Rafi's code calls `CampaignState.complete_objective("m2.iris_repaired")` and `CampaignState.set_flag("iris_online")`. It doesn't need to know what happens next.
+The script lives at `game/src/autoloads/campaign_state.gd`. It also has `debug_dump()`, which is only for the debug console, so don't use it in gameplay code.
 
-### Naming IDs
+For example, when the player finishes repairing IRIS, Rafi's code calls `CampaignState.complete_objective("m2.iris_activated")` and `CampaignState.set_flag("iris_online")`. It doesn't need to know what happens next.
 
-All IDs are lowercase with dots: `mission.thing`. For example `m1.iris_scanned`, `m1.kite_docked`, `m2.module_installed`, `m3.logger_recovered`. Flags describe world state: `iris_online`, `sample_near_taken`. Fahd keeps the full list in the mission data file. If you need a new ID, add it there and mention it in the chat.
+### Testing without playing through
+
+The debug console has four commands, so you can jump straight to the state you need:
+
+| Command | What it does |
+|---|---|
+| `startmission <id>` | Starts a mission, e.g. `startmission m2` |
+| `objective <id>` | Completes an objective, e.g. `objective m1.iris_scanned` |
+| `flag <name> [true\|false]` | Sets a flag |
+| `campaign` | Prints the whole campaign state |
+
+### Objective IDs (final)
+
+All IDs are lowercase with dots. Use these exact names in your code and data files.
+
+| Mission | Objectives, in order |
+|---|---|
+| m1 (Wake Kite) | `m1.kite_prepared`, `m1.iris_scanned`, `m1.kite_docked`, `m1.inspection_sent` |
+| m2 (First Signal) | `m2.module_loaded`, `m2.module_installed`, `m2.iris_activated`, `m2.telemetry_received`, `m2.kite_docked`, optional `m2.near_sample_collected` |
+| m3 (Beyond the Rim) | `m3.logger_recovered`, `m3.kite_docked`, `m3.archive_sent` |
+
+A mission completes when all its required objectives are done. Optional objectives never block completion. Flags describe world state, like `iris_online`. If you need a new ID, ask Fahd in the chat so it gets added to the mission data.
 
 ### Mission data
 
-Missions, their objectives and their order live in one JSON file, starting from `game/docs/examples/MISSIONS.json`. Fahd owns this file.
+Missions, their objectives and their order live in `game/res/story/missions.json`. Fahd owns this file.
 
 ### Dialogue data
 
 The radio and log lines live in two JSON files that Faiq owns:
 
-`res/story/lines.json` holds every line once:
+`game/res/story/lines.json` holds every line once:
 
 ```json
 {
-  "mira_m1_01": { "speaker": "Mira", "text": "Kite's battery reads green. Take her out.", "audio": "res://audio/voice/mira_m1_01.ogg" }
+  "mira_m1_01": { "speaker": "Mira", "text": "Kite's battery reads green. Take her out.", "audio": "res://res/audio/voice/mira_m1_01.ogg" }
 }
 ```
 
-`res/story/dialogue_triggers.json` says when each line plays:
+`game/res/story/dialogue_triggers.json` says when each line plays:
 
 ```json
 [
@@ -113,7 +137,7 @@ The radio and log lines live in two JSON files that Faiq owns:
 ]
 ```
 
-Audio files are named exactly like the line ID. Goriorio's dialogue system reads both files and listens to `CampaignState` signals, so Faiq can add or change lines without touching code. A line with no audio yet shows its subtitle only.
+Audio files go in `game/res/audio/voice/` and are named exactly like the line ID. Goriorio's dialogue system reads both files and listens to `CampaignState` signals, so Faiq can add or change lines without touching code. A line with no audio yet shows its subtitle only.
 
 ## Schedule
 

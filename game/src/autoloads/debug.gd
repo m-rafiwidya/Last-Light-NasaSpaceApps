@@ -97,6 +97,28 @@ func parse_command(input: String):
 				if explorer:
 					explorer.refresh_locks()
 				add_log("All planets unlocked")
+			"startmission":
+				if argc >= 2:
+					CampaignState.start_mission(argv[1])
+					add_log("Current mission: %s" % CampaignState.current_mission())
+				else:
+					add_log("Usage: startmission <mission id>")
+			"objective":
+				if argc >= 2:
+					CampaignState.complete_objective(argv[1])
+					add_log("%s done: %s" % [argv[1], CampaignState.is_objective_done(argv[1])])
+				else:
+					add_log("Usage: objective <objective id>")
+			"flag":
+				if argc >= 2:
+					var value: bool = argc < 3 or argv[2].to_lower() not in ["false", "0", "off"]
+					CampaignState.set_flag(argv[1], value)
+					add_log("Flag %s: %s" % [argv[1], CampaignState.has_flag(argv[1])])
+				else:
+					add_log("Usage: flag <name> [true|false]")
+			"campaign":
+				for line in CampaignState.debug_dump():
+					_log_and_print(line)
 			"fullbright":
 				var viewport = get_viewport()
 				if viewport.debug_draw != Viewport.DEBUG_DRAW_UNSHADED:

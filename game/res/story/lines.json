@@ -1,0 +1,7 @@
+{
+	"mira_m1_01": {
+		"speaker": "Mira",
+		"text": "Fit the battery, check the wheels, then take control from the console.",
+		"audio": "res://res/audio/voice/mira_m1_01.ogg"
+	}
+}

@@ -1,0 +1,51 @@
+{
+	"_readme": [
+		"Missions, their order and their objectives for CampaignState (autoload). Owned by Fahd.",
+		"IDs are lowercase with dots. A mission is mN, an objective is mN.thing. Objective IDs are unique across all missions.",
+		"objectives: all required for mission_completed. optional_objectives: can be completed but do not count.",
+		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
+		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat."
+	],
+	"content_version": "2026-11-09",
+	"mission_order": ["m1", "m2", "m3"],
+	"missions": [
+		{
+			"id": "m1",
+			"legacy_id": "wake_kite",
+			"title": "Wake Kite",
+			"objectives": [
+				"m1.kite_prepared",
+				"m1.iris_scanned",
+				"m1.kite_docked",
+				"m1.inspection_sent"
+			],
+			"optional_objectives": []
+		},
+		{
+			"id": "m2",
+			"legacy_id": "first_signal",
+			"title": "First Signal",
+			"objectives": [
+				"m2.module_loaded",
+				"m2.module_installed",
+				"m2.iris_activated",
+				"m2.telemetry_received",
+				"m2.kite_docked"
+			],
+			"optional_objectives": [
+				"m2.near_sample_collected"
+			]
+		},
+		{
+			"id": "m3",
+			"legacy_id": "beyond_the_rim",
+			"title": "Beyond the Rim",
+			"objectives": [
+				"m3.logger_recovered",
+				"m3.kite_docked",
+				"m3.archive_sent"
+			],
+			"optional_objectives": []
+		}
+	]
+}
