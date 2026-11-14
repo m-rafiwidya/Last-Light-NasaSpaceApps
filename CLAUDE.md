@@ -13,8 +13,9 @@
   `game/res/models/rover_kit/<part>.glb` and previews in `tools/blender/previews/<part>/`
   (git-ignored). Check the previews from the side, front and inner face for every part.
 - Game tests are headless SceneTree scripts in `game/tests/`, e.g.
-  `/Users/fahd/Downloads/Godot-2.app/Contents/MacOS/Godot --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd`
-  (Godot 4.7; each prints `RESULT ... PASS / FAIL`).
+  `<godot> --headless --fixed-fps 240 --path game -s res://tests/test_wheel_contact.gd`
+  (use your local Godot 4.7 install; macOS: usually ~/Downloads/Godot.app or /Applications/Godot.app, binary at
+  `Contents/MacOS/Godot`; each test prints `RESULT ... PASS / FAIL`).
 
 ## Working rules (token budget)
 - Run only the tests related to the change. Run the full suite only when I ask (before merging).

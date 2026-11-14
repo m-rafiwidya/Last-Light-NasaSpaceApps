@@ -125,7 +125,16 @@ func _run() -> void:
 	_check("highlight: the rack battery glows, one name label", guidance.target == battery
 		and _all_under(guidance.highlighted_meshes(), battery) and _overlay_count() == guidance.highlighted_meshes().size()
 		and _markers().size() == 1, "%d meshes, %d markers" % [_overlay_count(), _markers().size()])
-	await _ticks(44.0)
+	var replaced: RigidBody3D = battery
+	workshop._on_restock_interacted(player)
+	await _ticks(0.3)
+	battery = workshop.rack_stock.get_node("Slot12")
+	_check("restock: the rack battery was replaced", battery != replaced and not is_instance_valid(replaced))
+	_check("restock: the highlight follows the new battery, one label", guidance.target == battery
+		and _all_under(guidance.highlighted_meshes(), battery) and _overlay_count() == guidance.highlighted_meshes().size()
+		and _markers().size() == 1, "%d meshes, %d markers" % [_overlay_count(), _markers().size()])
+	_check("restock: the step is unchanged", guidance.index == 0, _step())
+	await _ticks(43.5)
 	_check("stuck: no stuck hint before 45 s", overlay.stuck_label.text == "" and guidance.stuck_text() == "", "%.1f s" % guidance.stuck_time)
 	await _ticks(2.0)
 	_check("stuck: the stuck hint shows after 45 s", overlay.stuck_label.text.begins_with("The rack is"), overlay.stuck_label.text)

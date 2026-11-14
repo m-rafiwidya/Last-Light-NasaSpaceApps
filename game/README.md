@@ -37,7 +37,7 @@ Then the supporting pieces: `game_state.gd`, `dialog_server.gd`, `debug.gd`, HUD
 14. [Recipes: how to extend the game](#14-recipes-how-to-extend-the-game)
 15. [Robot](#15-robot)
 16. [Audio](#16-audio)
-17. [Save slot metadata](#17-save-slot-metadata)
+17. [Saves](#17-saves)
 
 ---
 
@@ -99,7 +99,7 @@ game/
     │   ├── moon_level.tscn           # Moon level (script: rover_level.gd)
     │   ├── terrain/                  # MoonTerrain (moon_terrain.gd), RockField (rock_field.gd), regolith.gdshader
     │   └── lunar_sky.gd / .gdshader  # the Moon's sky, sun and Earth (class LunarSky, on its WorldEnvironment)
-    ├── save/                         # SaveIndex (save slot list for the PLAY popup) and SaveSlotInfo: metadata only, see section 17
+    ├── save/                         # SaveIndex (save slots), SaveSlotInfo (a card's metadata), KiteSave (Kite's parts): section 17
     ├── settings/                     # every setting, one class per area, all in user://settings.cfg (section 6.5):
     │   ├── settings_section.gd       #   SettingsSection: a saved section (typed, clamped values, `changed`)
     │   ├── general_settings.gd       #   subtitles, subtitle size, tooltips, FPS counter
@@ -320,7 +320,7 @@ Built on the new UI theme (`res/ui_theme_v2.tres`, components in `ui/components/
     - It reads `SaveIndex.list_saves()` (section 17) every time it opens. **No saves:** a `FramedPanel` with "There's no save file." (Exo 2) and START NEW CAMPAIGN (`SolidButton`); footer Esc Cancel. **Saves:** "Select save data to load.", one `SaveCard` per save, newest first, START NEW CAMPAIGN under the list; footer Enter Load, Esc Cancel. More than five cards scroll (`ScrollContainer`, `follow_focus` keeps the selected card in view, no visible scroll bar).
     - `SaveCard` (`save_card.gd`, extends `FramedPanel`): the mission image (`res/ui/missions/<mission_id>.png`, 16:9; placeholders from `tools/ui/make_mission_placeholders.py`, replace them with real images of the same names), DD/MM/YYYY HH:MM in local time, the mission title (from `docs/examples/MISSIONS.json`), a 16-segment story progress bar with %, "X min played" / "1 h 12 min played" top-right and the slanted Autosave tag. Hovering focuses a card and focus selects it (frame, glow, corner brackets), so mouse and keyboard share one highlight; up/down move between the cards and START (focus never leaves the popup), Enter or click loads.
     - Focus goes to the newest card (or START when there are none) on open and back to PLAY on close. Esc (handled in the popup's `_input`) or the back button closes it.
-    - START NEW CAMPAIGN -> `SaveIndex.start_new_campaign()` (`SceneLoader.load_scene("moon_level")`, the normal loading path); a card -> `SaveIndex.load_slot(slot_id)`, a stub that prints a TODO and loads the Moon level until the campaign state exists.
+    - START NEW CAMPAIGN -> `SaveIndex.start_new_campaign()` (`SceneLoader.load_scene("moon_level")`, the normal loading path); a card -> `SaveIndex.load_slot(slot_id)` (section 17); an empty slot's card starts a new campaign there; Del or the card's Delete button, pressed twice, deletes a slot.
     - The test level is not on the main menu: use the pause menu's "Switch to Test level" or the console's `testlevel`.
   - **SETTINGS** opens `SettingsSubMenu` (section 6.5) over the blurred menu the same way (the Moon keeps turning behind the blur; the menu takes no mouse or focus meanwhile); BACK or Esc closes it and puts the focus back on SETTINGS. **QUIT GAME** -> `get_tree().quit()`.
 - `MenuMoon` (`menu_moon.gd`): a sphere with the LROC colour map (`res/textures/moon/lroc_color_4k.jpg`) in a `SubViewport` with its own world and a transparent background, orthographic camera, unshaded shader with a fixed view-space light from the upper left and a softened terminator (`menu_moon.gdshader`; texture coordinates come from the object-space direction, so the near side faces +Z). It turns slowly by itself, can be dragged (inertia; spin resumes 1.2 s later), brightens and grows 2 % on hover, and emits `moon_clicked` on a click without drag (it opens the planet explorer). Only the disc takes the mouse (`_has_point`). `set_active(false)` stops the `SubViewport` rendering (`UPDATE_DISABLED`) and its `_process`: the menu does this whenever it is hidden or the settings cover it.
@@ -536,7 +536,7 @@ The Moon's task (A07, A06; spec, measurements and checks in `tools/blender/IRIS_
 
 ### The M1 loop (`levels/mission_director.gd`, `ui/mission_console/`, `ui/mission_hint/`)
 
-`SaveIndex.start_new_campaign` starts `m1` when no mission is active. `MissionDirector` (Moon level, group `mission_director`) completes objectives in mission order only (`try_complete`): on `m1` it takes Kite's battery out until `m1.kite_prepared` (a `BatteryPart` mounted in `battery_socket`); a `scan_target` emitting `scanned` with `target_id` `iris_panel` completes `m1.iris_scanned`; `ChargingPad.docked` completes the mission's `*.kite_docked`, but not after an emergency recovery until Kite has left the pad. A flat battery off the pad while a mission is active: `alert`, 3 s, Kite back on the dock, recharged, objectives kept. The return estimate is distance to the pad x Wh/m measured this session (0.05 until 20 m driven) x 1.3; `return_warning()` within 10% of it. `MissionHint` (robot HUD, top left) shows the objective, the estimate and the alert. The mission console has Mission / Kite / Downlink sections, CONTROL KITE, and the Downlink action (2.5 s, then the mission's `report` from `missions.json`) and "Start next mission". `ScanTarget` (`levels/scan_target.gd`) is the scan contract; `Iris/ServicePanel` (`IrisServicePanel`, a 0.70 x 0.87 x 0.02 m box on IRIS's `scan_point`, layer 2, in front of IRIS's body collider; `target_id` `iris_panel`) is the M1 scan target; Guidance glows its `highlight_node` (the model's `iris_service_panel`) and only falls back to a GuidanceBox when a target has none. `tests/test_m1_loop.gd` runs the whole loop.
+`SaveIndex.start_new_campaign` resets the campaign and starts `m1` in a save slot (section 17). `MissionDirector` (Moon level, group `mission_director`) completes objectives in mission order only (`try_complete`): on `m1` it takes Kite's battery out until `m1.kite_prepared` (a `BatteryPart` mounted in `battery_socket`); a `scan_target` emitting `scanned` with `target_id` `iris_panel` completes `m1.iris_scanned`; `ChargingPad.docked` completes the mission's `*.kite_docked`, but not after an emergency recovery until Kite has left the pad. A flat battery off the pad while a mission is active: `alert`, 3 s, Kite back on the dock, recharged, objectives kept. The return estimate is distance to the pad x Wh/m measured this session (0.05 until 20 m driven) x 1.3; `return_warning()` within 10% of it. `MissionHint` (robot HUD, top left) shows the objective, the estimate and the alert. The mission console has Mission / Kite / Downlink sections, CONTROL KITE, and the Downlink action (2.5 s, then the mission's `report` from `missions.json`) and "Start next mission". `ScanTarget` (`levels/scan_target.gd`) is the scan contract; `Iris/ServicePanel` (`IrisServicePanel`, a 0.70 x 0.87 x 0.02 m box on IRIS's `scan_point`, layer 2, in front of IRIS's body collider; `target_id` `iris_panel`) is the M1 scan target; Guidance glows its `highlight_node` (the model's `iris_service_panel`) and only falls back to a GuidanceBox when a target has none. `tests/test_m1_loop.gd` runs the whole loop.
 
 ### Guidance (`levels/guidance.gd`, `ui/guidance/`)
 
@@ -830,8 +830,8 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `intro` | plays the main menu's opening sequence again (main menu only) |
 | `credits` | plays the credits roll over the main menu or the level (state `CREDITS`; back to where you were) |
 | `testlevel` | loads the test level (it is no longer on the main menu) |
-| `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
-| `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |
+| `fakesaves` | writes three loadable sample saves into `slot_1..3` (marked `"fake": true`, overwriting those slots) so the PLAY popup's list can be previewed |
+| `clearsaves` | removes the slots that still hold a fake save; real saves are left alone |
 | `saves` | lists `SaveIndex.list_saves()` in the console and the output log: the saves folder's absolute path, then one line per save (slot id, mission title, saved at DD/MM/YYYY HH:MM, play time, progress %, autosave yes/no, metadata file path), or `No save files in user://saves/` |
 | `unlockall` | unlocks Mars and Earth in the planet explorer until the game quits (`PlanetData.unlock_all`) |
 | `startmission <id>` | `CampaignState.start_mission` (e.g. `m1`) |
@@ -1179,44 +1179,33 @@ See [section 13](#13-known-issues--gotchas--todos) ("Robot") for the issues foun
 
 ---
 
-## 17. Save slot metadata
+## 17. Saves
 
-There is **no save system or campaign state yet**. The campaign state (README_AI.md: "one authoritative campaign state") will own the real save data. The PLAY popup only needs a few display fields per slot, so it reads them from small metadata files that the campaign state writes **next to its own save data**. The UI never reads or writes gameplay data.
+Three fixed slots, one JSON file each: `user://saves/slot_1.json` .. `slot_3.json` (`user://saves_test/` under a script run, so tests never touch the player's saves).
 
-- `src/save/save_slot_info.gd` (`SaveSlotInfo`): `slot_id`, `mission_id`, `saved_at`, `play_time_sec`, `story_progress`, `is_autosave`, `current_objective`; `from_dict()` validates a parsed file, `to_dict()` writes one.
-- `src/save/save_index.gd` (`SaveIndex`, static functions, no autoload):
-  - `list_saves() -> Array[SaveSlotInfo]`: every readable `user://saves/*.meta.json`, newest first (`saved_at` descending, then `slot_id`). `[]` when the folder or the files don't exist. Files that aren't JSON objects, or lack a valid `mission_id` / `saved_at`, are skipped with a warning.
-  - `load_slot(slot_id)`: **the hook for the campaign state.** Today a stub that prints `TODO(campaign state): ...` and starts the Moon level.
-  - `start_new_campaign()`: `SceneLoader.load_scene(CAMPAIGN_LEVEL)` (`"moon_level"`).
-  - `write_meta(info)`: writes a metadata file (the fake saves use it; the campaign state may too).
-  - `mission_title(id)` (from `docs/examples/MISSIONS.json`; unknown ids fall back to the id, capitalised), `mission_image(id)`, `format_date()`, `format_play_time()`, `write_fake_saves()` / `clear_fake_saves()` (console `fakesaves` / `clearsaves`).
-
-**File:** `user://saves/<slot_id>.meta.json`, one per slot. The slot id is the file name without `.meta.json` (letters, digits, `_` and `-`; `fake_` is reserved for the fake saves). Write it whenever the slot's save data is written, and delete it with the slot.
+- `CampaignState.save_state() -> Dictionary` / `load_state(data) -> bool`: the current mission, completed objectives and missions, flags, items and `play_time_sec` (counted while in game or at the mission console). `load_state` emits **no** signal, drops unknown ids and refuses malformed data without changing anything.
+- `KiteSave` (`src/save/kite_save.gd`): `capture(rover)` records each `HotswapSocket` (by node name): the part's scene, `PartsStock.PROPERTIES` and a battery's `charge`. `apply(rover, data)` unmounts the starting parts and mounts the saved ones with `HotswapSocket.mount()`. A replaced part leaves the tree at once and is freed 1 s later, because `RoverVisuals` still holds an unmounted wheel for a frame.
+- `SaveIndex` (static): `current_slot`, `list_slots()` (always three: `SaveSlotInfo.State` EMPTY / OK / UNREADABLE), `list_saves()` (readable ones, newest first), `save_current(rover)`, `load_slot(id) -> bool`, `start_new_campaign(slot_id = "")` (the given slot, or the first empty one, else an unreadable one, else the oldest: cleared, `CampaignState.reset()`, m1), `delete_slot(id)`, `write_fake_saves()` / `clear_fake_saves()` (console `fakesaves` / `clearsaves`: three samples marked `"fake": true`; a fake slot that gets saved over is a real save).
+- **When:** `MissionDirector` (Moon level) saves on `objective_completed`, `mission_completed`, `mission_started` and `SceneLoader.level_unloaded` (quit to menu, level switch). Nothing is saved without a `current_slot`.
+- **Loading:** `load_slot` restores `CampaignState` in the menu, keeps the Kite data in `SaveIndex.pending_kite` and loads `moon_level`, so everything reads the restored state in its `_ready` (IRIS's panel `is_scanned`, Guidance, console, HUD). On its first physics frame `MissionDirector` applies `pending_kite`, puts Kite on the dock (it must leave the pad before docking counts again) and calls `Iris.set_online(true, true)` when the `iris_online` flag is set. The m1 battery rule (`_prepare_mission`) still applies.
+- **The rack conserves parts:** `Workshop.set_rover_pool()` gives the rack's `PartsStock` Kite's starting parts (without the battery M1 removes) as extras; the rack and the sample bench then show the pool (recorded stock + extras) minus what is mounted on Kite, by scene and catalog id (`PartsStock.plan`). `MissionDirector` calls `Workshop.account_rack()` after setup (a new campaign changes nothing; a save with a battery on Kite shows one fewer battery; after a wheel swap the original wheels fill the vacated slots) and the Restock button follows the same rule. Without a pool (the test level) Restock lays out the full stock.
+- **New campaign with every slot used:** START NEW CAMPAIGN opens a confirmation naming the slot it would replace (an unreadable one first, then the oldest); Cancel or Esc returns to the popup.
+- **Unreadable:** not JSON, a `version` other than `SaveIndex.SAVE_VERSION`, or no valid `meta` / `campaign`. The card says so, can't be loaded and can be deleted.
 
 ```json
 {
-	"format": 1,
-	"slot_id": "slot_03",
-	"mission_id": "first_signal",
-	"saved_at": 1760301660,
-	"play_time_sec": 960,
-	"story_progress": 0.375,
-	"is_autosave": false,
-	"current_objective": "Activate IRIS"
+	"version": 1,
+	"meta": { "mission_id": "m1", "mission_title": "Wake Kite", "saved_at": 1762790000, "play_time_sec": 840,
+		"story_progress": 0.1667, "is_autosave": false, "current_objective": "Dock Kite on the charging pad" },
+	"campaign": { "current": "m1", "objectives": ["m1.kite_prepared", "m1.iris_scanned"], "missions_done": [],
+		"flags": [], "items": {}, "play_time_sec": 840.2 },
+	"kite": { "sockets": {
+		"HotswapSocket3": { "scene": "res://src/robot/socket/battery_light_part.tscn",
+			"properties": { "catalog_id": "battery_light", "tint": [0.18, 0.42, 0.62, 1.0] }, "charge": 37.5 },
+		"CargoSocket": null } }
 }
 ```
 
-| Key | Type | Required | Meaning |
-|---|---|---|---|
-| `format` | int | no | Metadata format version, `1` |
-| `slot_id` | string | no | Informational; the file name is what counts |
-| `mission_id` | string | **yes** | A mission id from `docs/examples/MISSIONS.json` (`wake_kite`, `first_signal`, `beyond_the_rim`): picks the card's title and image |
-| `saved_at` | number | **yes** | Unix time in seconds (UTC) of the save; the card shows it in local time as DD/MM/YYYY HH:MM |
-| `play_time_sec` | number | no (0) | Total play time; shown as "16 min played" / "1 h 12 min played" |
-| `story_progress` | number | no (0) | Campaign progress 0..1 (clamped); the card fills `round(progress x 16)` of 16 segments and shows `round(progress x 100)` % |
-| `is_autosave` | bool | no (false) | Shows the Autosave tag |
-| `current_objective` | string | no ("") | The objective the save resumes at, for the "Resuming · <objective>" title card (not shown on the card) |
+`meta` is what the card shows: the mission image (`res/ui/missions/<legacy_id>.png`, `legacy_id` from `missions.json`), DD/MM/YYYY HH:MM local time, the title, story progress (required objectives done / all required objectives), the play time. Every save is automatic, so the Autosave tag isn't shown. Known limit: local time uses the current UTC offset.
 
-Known limit: local time uses the system's current UTC offset, so a save made before a daylight-saving change shows one hour off.
-
-**Tests:** `tests/test_play_popup.gd` (the index's parsing and formats, both popup states, keyboard and mouse selection, scrolling, Esc closing only the popup, loading and START NEW CAMPAIGN, `testlevel`; it moves `user://saves` aside while it runs).
+**Tests:** `tests/test_saves.gd` (round trip, no signals on load, slot choice, corrupt / old files, autosave on an objective and on quitting, loading on the Moon). `tests/test_play_popup.gd` (formats, both popup states, keyboard and mouse, empty / unreadable slots, deleting, Esc, loading, START NEW CAMPAIGN, `testlevel`).

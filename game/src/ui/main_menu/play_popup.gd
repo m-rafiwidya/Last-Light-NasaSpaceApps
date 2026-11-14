@@ -7,9 +7,11 @@ extends Control
 ## menu column) and its full-screen blur takes the mouse. The owner turns the menu's own input
 ## off while it is open.
 ## - No saves: "There's no save file." and START NEW CAMPAIGN.
-## - Saves: "Select save data to load.", the save cards newest first (SaveIndex.list_saves()),
-##   then START NEW CAMPAIGN. Up/down move between cards, Enter or click loads. A long list
-##   scrolls to keep the selected card in view.
+## - Saves: "Select save data to load.", one card per slot (SaveIndex.list_slots(): empty and
+##   unreadable slots included), then START NEW CAMPAIGN. Up/down move between cards, Enter or
+##   click loads a save (or starts a new campaign in an empty slot), Del twice deletes one. A long
+##   list scrolls to keep the selected card in view. With every slot used, START NEW CAMPAIGN asks
+##   first, naming the slot it would replace; Cancel (or Esc) returns to the popup.
 ## Esc or the back button closes it; `closed` is emitted as it starts closing.
 
 signal closed
@@ -32,6 +34,12 @@ const START_GAP: float = 38.4
 var is_open: bool = false
 
 var _tween: Tween
+var _confirm: Control
+var _confirm_message: Label
+var _confirm_ok: Button
+var _confirm_cancel: Button
+var _confirm_return: Control
+var _confirm_replace_slot: String = ""
 var _blur_material: ShaderMaterial
 
 @onready var _blur: ColorRect = $Blur
@@ -60,6 +68,7 @@ func _ready() -> void:
 	(%GapTop as Control).custom_minimum_size.y = HEADING_GAP - LIST_MARGIN
 	(%GapBottom as Control).custom_minimum_size.y = START_GAP - LIST_MARGIN
 	_cards.add_theme_constant_override("separation", int(CARD_GAP))
+	_build_confirm()
 	_set_interactive(false)
 	hide()
 
@@ -72,7 +81,10 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_cancel") and not event.is_echo():
 		get_viewport().set_input_as_handled()
 		AudioManager.play_ui(&"back")
-		close()
+		if is_confirming():
+			_close_confirm()
+		else:
+			close()
 
 
 ## Reads the saves and shows the popup. Focus goes to the newest save, or START NEW CAMPAIGN.
@@ -88,11 +100,7 @@ func open() -> void:
 	_content.position.y = RISE
 	_tween.parallel().tween_property(_content, "modulate:a", 1.0, RISE_TIME)
 	_tween.parallel().tween_property(_content, "position:y", 0.0, RISE_TIME)
-	var cards: Array[SaveCard] = get_cards()
-	if cards.is_empty():
-		_start_empty.grab_focus()
-	else:
-		cards[0].grab_focus()
+	_focus_default()
 
 
 ## Closes the popup (the menu behind sharpens again). `animate = false` hides it at once.
@@ -100,6 +108,7 @@ func close(animate: bool = true) -> void:
 	if not is_open:
 		return
 	is_open = false
+	_confirm.hide()
 	_set_interactive(false)
 	if animate:
 		_animate(0.0, CLOSE_TIME)
@@ -129,22 +138,40 @@ func get_start_button() -> Button:
 	return _start_list if has_saves() else _start_empty
 
 
+## Focus on the newest save, else the first used slot, else START NEW CAMPAIGN
+func _focus_default() -> void:
+	var cards: Array[SaveCard] = get_cards()
+	var best: SaveCard = null
+	for card in cards:
+		if card.info.is_readable() and (best == null or card.info.saved_at > best.info.saved_at):
+			best = card
+	for card in cards:
+		if best == null and not card.info.is_empty():
+			best = card
+	if best:
+		best.grab_focus()
+	else:
+		get_start_button().grab_focus()
+
+
 func _populate() -> void:
 	for child in _cards.get_children():
 		_cards.remove_child(child)
 		child.queue_free()
-	var saves: Array[SaveSlotInfo] = SaveIndex.list_saves()
-	_no_save.visible = saves.is_empty()
-	_saves.visible = not saves.is_empty()
-	_load_chip.visible = not saves.is_empty()
-	if saves.is_empty():
+	var slots: Array[SaveSlotInfo] = SaveIndex.list_slots()
+	var any: bool = slots.any(func(info: SaveSlotInfo) -> bool: return not info.is_empty())
+	_no_save.visible = not any
+	_saves.visible = any
+	_load_chip.visible = any
+	if not any:
 		_lock_focus(_start_empty, null, null)
 		return
 	var cards: Array[SaveCard] = []
-	for info in saves:
+	for info in slots:
 		var card := SaveCard.new()
 		card.setup(info)
-		card.activated.connect(_on_card_activated.bind(info.slot_id))
+		card.activated.connect(_on_card_activated.bind(info))
+		card.delete_confirmed.connect(_on_delete_confirmed.bind(info.slot_id))
 		card.focus_entered.connect(_keep_in_view.bind(card))
 		_cards.add_child(card)
 		cards.append(card)
@@ -181,14 +208,125 @@ func _keep_in_view(card: SaveCard) -> void:
 		_scroll.scroll_vertical = ceili(bottom - _scroll.size.y)
 
 
-func _on_card_activated(slot_id: String) -> void:
-	if is_open:
-		SaveIndex.load_slot(slot_id)
+func _on_card_activated(info: SaveSlotInfo) -> void:
+	if not is_open:
+		return
+	if info.is_empty():
+		SaveIndex.start_new_campaign(info.slot_id)
+	elif not SaveIndex.load_slot(info.slot_id):
+		_populate()
+		_focus_default()
+
+
+func _on_delete_confirmed(slot_id: String) -> void:
+	if not is_open:
+		return
+	var index: int = SaveIndex.SLOT_IDS.find(slot_id)
+	SaveIndex.delete_slot(slot_id)
+	AudioManager.play_ui(&"back")
+	_populate()
+	var cards: Array[SaveCard] = get_cards()
+	if index >= 0 and index < cards.size():
+		cards[index].grab_focus()
+	else:
+		_focus_default()
 
 
 func _on_start_pressed() -> void:
-	if is_open:
+	if not is_open or is_confirming():
+		return
+	var slot: SaveSlotInfo = SaveIndex.read_slot(SaveIndex.new_campaign_slot())
+	if slot.is_empty():
 		SaveIndex.start_new_campaign()
+		return
+	var what: String = "an unreadable save" if not slot.is_readable() \
+		else "%s, %s" % [slot.mission_title, SaveIndex.format_date(slot.saved_at)]
+	_confirm_message.text = "All save slots are in use.\nStarting a new campaign replaces Slot %d (%s)." % [
+		SaveIndex.slot_number(slot.slot_id), what]
+	_confirm_ok.text = "REPLACE SLOT %d" % SaveIndex.slot_number(slot.slot_id)
+	_confirm_return = get_viewport().gui_get_focus_owner() as Control
+	_confirm_replace_slot = slot.slot_id
+	_content.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
+	_content.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+	_confirm.show()
+	_confirm_cancel.grab_focus()
+
+
+func is_confirming() -> bool:
+	return _confirm.visible
+
+
+func get_confirm_buttons() -> Array[Button]:
+	return [_confirm_ok, _confirm_cancel]
+
+
+func _close_confirm() -> void:
+	_confirm.hide()
+	_set_interactive(is_open)
+	if is_open and is_instance_valid(_confirm_return):
+		_confirm_return.grab_focus()
+
+
+func _on_confirm_ok() -> void:
+	if is_open and is_confirming():
+		var slot: String = _confirm_replace_slot
+		_confirm.hide()
+		SaveIndex.start_new_campaign(slot)
+
+
+func _build_confirm() -> void:
+	_confirm = Control.new()
+	_confirm.name = "Confirm"
+	_confirm.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm.visible = false
+	add_child(_confirm)
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.0, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_confirm.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_confirm.add_child(center)
+	var panel := FramedPanel.new()
+	center.add_child(panel)
+	var margin := MarginContainer.new()
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 48)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 40)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 30)
+	margin.add_child(box)
+	_confirm_message = Label.new()
+	_confirm_message.name = "Message"
+	_confirm_message.theme_type_variation = &"LabelBody"
+	_confirm_message.add_theme_font_size_override(&"font_size", 22)
+	_confirm_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_confirm_message)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	box.add_child(row)
+	_confirm_ok = SolidButton.new()
+	_confirm_ok.name = "ConfirmOk"
+	_confirm_ok.pressed.connect(_on_confirm_ok)
+	row.add_child(_confirm_ok)
+	_confirm_cancel = SolidButton.new()
+	_confirm_cancel.name = "ConfirmCancel"
+	_confirm_cancel.text = "CANCEL"
+	_confirm_cancel.pressed.connect(func() -> void:
+		AudioManager.play_ui(&"back")
+		_close_confirm())
+	row.add_child(_confirm_cancel)
+	_confirm_ok.focus_neighbor_right = _confirm_ok.get_path_to(_confirm_cancel)
+	_confirm_cancel.focus_neighbor_left = _confirm_cancel.get_path_to(_confirm_ok)
+	for button in [_confirm_ok, _confirm_cancel]:
+		button.focus_neighbor_top = NodePath(".")
+		button.focus_neighbor_bottom = NodePath(".")
+	_confirm_ok.focus_neighbor_left = NodePath(".")
+	_confirm_cancel.focus_neighbor_right = NodePath(".")
 
 
 ## While closed (or closing) nothing in the popup takes the mouse or focus

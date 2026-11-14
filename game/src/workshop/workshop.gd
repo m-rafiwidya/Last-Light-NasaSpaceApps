@@ -88,6 +88,7 @@ var _door_shadow_seal: MeshInstance3D = null
 var _door_bodies: Array = []
 var _personnel_area: Area3D = null
 var _stock := PartsStock.new()
+var _pool_ready: bool = false
 var _bench_parts := PartsStock.new()
 var _screen_lines: Array[Label] = []
 var _screen_time: float = 0.0
@@ -624,10 +625,38 @@ func _on_door_panel_interacted(_player: Player) -> void:
 
 
 func _on_restock_interacted(_player: Player) -> void:
+	var mounted: Variant = _mounted_parts() if _pool_ready else null
 	if rack_stock:
-		_stock.restock(rack_stock, get_parent())
+		_stock.restock(rack_stock, get_parent(), mounted)
 	if bench_stock:
-		_bench_parts.restock(bench_stock, get_parent())
+		_bench_parts.restock(bench_stock, get_parent(), mounted)
+
+
+## The rover's own starting parts join the rack's pool, so from now on the rack shows the pool
+## minus what is mounted on the rover (account_rack, Restock)
+func set_rover_pool(starting: Array) -> void:
+	_stock.set_extras(starting)
+	_pool_ready = true
+
+
+## Lays the rack and the bench out again when parts mounted on the rover change what they show
+func account_rack() -> void:
+	if not _pool_ready:
+		return
+	var mounted: Array = _mounted_parts()
+	if rack_stock and _stock.differs(mounted):
+		_stock.restock(rack_stock, get_parent(), mounted)
+	if bench_stock and _bench_parts.differs(mounted):
+		_bench_parts.restock(bench_stock, get_parent(), mounted)
+
+
+func _mounted_parts() -> Array:
+	var parts: Array = []
+	if rover:
+		for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+			if socket.part:
+				parts.append(socket.part)
+	return parts
 
 
 func _doorway_occupied() -> bool:

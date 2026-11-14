@@ -75,21 +75,23 @@ func parse_command(input: String):
 				SceneLoader.load_scene("test_level")
 			"fakesaves":
 				# Sample save metadata so the PLAY popup's list can be previewed
-				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.SAVE_DIR])
+				add_log("Wrote %d fake saves to %s" % [SaveIndex.write_fake_saves(), SaveIndex.save_dir()])
 			"clearsaves":
 				add_log("Removed %d fake saves" % SaveIndex.clear_fake_saves())
 			"saves":
-				# Lists the save metadata files (SaveIndex.list_saves) in the console and the output log
-				_log_and_print("Saves folder: %s" % ProjectSettings.globalize_path(SaveIndex.SAVE_DIR))
-				var saves: Array[SaveSlotInfo] = SaveIndex.list_saves()
-				if saves.is_empty():
-					_log_and_print("No save files in %s/" % SaveIndex.SAVE_DIR)
-				for info in saves:
-					_log_and_print("%s | %s | %s | %s | %d%% | autosave %s | %s" % [
-						info.slot_id, SaveIndex.mission_title(info.mission_id), SaveIndex.format_date(info.saved_at),
-						SaveIndex.format_play_time(info.play_time_sec), roundi(info.story_progress * 100.0),
-						"yes" if info.is_autosave else "no",
-						ProjectSettings.globalize_path(SaveIndex.SAVE_DIR.path_join(info.slot_id + SaveIndex.META_SUFFIX))])
+				# Lists the save slots (SaveIndex.list_slots) in the console and the output log
+				_log_and_print("Saves folder: %s" % ProjectSettings.globalize_path(SaveIndex.save_dir()))
+				for info in SaveIndex.list_slots():
+					var path: String = ProjectSettings.globalize_path(SaveIndex.slot_path(info.slot_id))
+					if info.is_empty():
+						_log_and_print("%s | empty" % info.slot_id)
+					elif not info.is_readable():
+						_log_and_print("%s | unreadable | %s" % [info.slot_id, path])
+					else:
+						_log_and_print("%s | %s | %s | %s | %d%% | %s | %s" % [
+							info.slot_id, info.mission_title, SaveIndex.format_date(info.saved_at),
+							SaveIndex.format_play_time(info.play_time_sec), roundi(info.story_progress * 100.0),
+							info.current_objective, path])
 			"unlockall":
 				# Unlocks every planet in the planet explorer until the game quits (testing)
 				PlanetData.unlock_all = true

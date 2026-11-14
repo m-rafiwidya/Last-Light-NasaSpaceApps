@@ -34,6 +34,10 @@ func _ready() -> void:
 	rover = workshop.rover if workshop else null
 	pad = workshop.pad if workshop else null
 	CampaignState.mission_started.connect(func(_id: String) -> void: _prepare_mission())
+	CampaignState.objective_completed.connect(_on_progress)
+	CampaignState.mission_completed.connect(_on_progress)
+	CampaignState.mission_started.connect(_on_progress)
+	SceneLoader.level_unloaded.connect(_on_progress)
 	get_tree().node_added.connect(_on_node_added)
 	for target in get_tree().get_nodes_in_group(&"scan_target"):
 		_watch(target)
@@ -46,10 +50,43 @@ func _start() -> void:
 	await get_tree().physics_frame
 	if rover == null:
 		return
+	var loading: bool = not SaveIndex.pending_kite.is_empty()
+	_prepare_mission()
+	workshop.set_rover_pool(_starting_parts(loading))
+	if loading:
+		KiteSave.apply(rover, SaveIndex.pending_kite)
+		SaveIndex.pending_kite = {}
+		_dock_rover()
+		_returned_by_recovery = true
+	var iris: Node = get_parent().get_node_or_null("Iris")
+	if iris and iris.has_method("set_online") and CampaignState.has_flag("iris_online"):
+		iris.set_online(true, true)
 	_last_position = rover.global_position
 	_prepare_mission()
+	workshop.account_rack()
 	if rover.battery_socket:
 		rover.battery_socket.part_mounted.connect(_on_part_mounted)
+
+
+func _starting_parts(skip_battery: bool) -> Array:
+	var parts: Array = []
+	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+		if socket.part and not (skip_battery and socket.part is BatteryPart):
+			parts.append(socket.part)
+	return parts
+
+
+func _on_progress(_id: String) -> void:
+	if rover and is_instance_valid(rover):
+		SaveIndex.save_current(rover)
+
+
+func _dock_rover() -> void:
+	var dock: Transform3D = workshop.get_dock_transform()
+	dock.origin += Vector3.UP * 0.3
+	rover.global_transform = dock
+	rover.linear_velocity = Vector3.ZERO
+	rover.angular_velocity = Vector3.ZERO
 
 
 func _on_node_added(node: Node) -> void:
@@ -173,11 +210,7 @@ func _finish_recovery() -> void:
 	recovering = false
 	alert = ""
 	_returned_by_recovery = true
-	var dock: Transform3D = workshop.get_dock_transform()
-	dock.origin += Vector3.UP * 0.3
-	rover.global_transform = dock
-	rover.linear_velocity = Vector3.ZERO
-	rover.angular_velocity = Vector3.ZERO
+	_dock_rover()
 	if rover.battery:
 		rover.battery.add_charge(rover.battery.capacity)
 	_last_position = rover.global_position
