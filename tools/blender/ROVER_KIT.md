@@ -16,6 +16,8 @@ and still mate at its origin; chassis wheel sockets are named socket_wheel_<fron
 the hazcams set the lowest chassis point (3.3, 3.4). Revised while integrating the kit: the
 collider import script lives in the game project (7); measured visual wheel offsets (5). Revised for wheel types: a fixed wheel envelope (radius 0.15 m,
 width may only grow outboard) and wheel variants that differ by tread, colour and stats (3.1, 4).
+Revised while building the mast: the mast head is two objects in one GLB, the panning yoke
+`mast_head` and the tilting `mast_head_camera`; pan / tilt range and camera view checks (3.3, 5).
 
 ---
 
@@ -149,7 +151,8 @@ All linkage rotation is about the X axis, so x bands never change.
 | `steer_bracket_R` | top of the steering actuator, on the steer axis: (0.50, +-0.50, 0.30) | `socket_wheel_hub` at the wheel centre (0.50, +-0.50, 0.05) |
 | `wheel_R` | wheel centre (section 3.1) | none |
 | `mast_base` | (0.15, 0.35, 0.44) on the deck | `socket_mast_head` (0.15, 0.35, 0.95) |
-| `mast_head` | (0.15, 0.35, 0.95) | `pivot_camera` (0.15, 0.42, 1.05), the game camera position |
+| `mast_head` (yoke, pans) | (0.15, 0.35, 0.95), the connector on the mast top; pans about the vertical axis through it | child object `mast_head_camera`; collider `mast_head-convcolonly` |
+| `mast_head_camera` (camera box, tilts) | (0.15, 0.35, 1.05), on the horizontal tilt axis (along X); child of `mast_head` | `pivot_camera` (0.15, 0.42, 1.05), the game camera position, 22 mm in front of the lens |
 | `arm_shoulder` | (-0.12, 0.45, 0.32) on the front face | `pivot_shoulder_yaw` at the origin, `socket_arm_upper` (-0.12, 0.53, 0.32) |
 | `arm_upper` | (-0.12, 0.53, 0.32) | `socket_arm_forearm` (-0.12, 0.83, 0.32) |
 | `arm_forearm` | (-0.12, 0.83, 0.32) | `socket_arm_wrist` (-0.12, 1.11, 0.32) |
@@ -177,7 +180,15 @@ Shape notes:
 - **Power unit:** finned dark cylinder (diameter about 0.14, length about 0.35), angled up and back
   from its rear-face connector. The angle is modelled into the mesh.
 - **Antenna:** flat hexagonal high-gain dish (about 0.22 across) on a small gimbal, gold accent.
-- **Mast head:** boxy camera head with two lenses (Curiosity Mastcam look).
+- **Mast base:** keyed plug into the deck, a 60 mm foot, a 40 mm pole and a 60 mm top collar
+  with the keyed recess at z 0.95; two small sensor booms, toward the rover's centre (-X) at
+  z 0.78 and to the rear (-Y) at z 0.72, out of the camera's forward view. All rover_metal.
+- **Mast head:** two objects in one GLB so Godot can pan and tilt it. `mast_head` is the yoke
+  (rover_metal): keyed plug, base and crossbar resting on the mast's top collar (the pan joint),
+  and two arms at 0.080 to 0.092 m either side of the mast axis. `mast_head_camera` is a
+  0.12 x 0.08 x 0.08 m camera box (rover_body) between the arms, held by axle stubs on the tilt
+  axis, with one large hooded lens and two small stereo cameras below it (rover_dark lenses).
+  In Godot: pan = rotate `mast_head` about its Y, tilt = rotate `mast_head_camera` about its X.
 - **Motor:** drive unit box about 0.16 x 0.14 x 0.12 that sits flush in a recessed hatch on the
   chassis front face, to the right of the arm shoulder. The hatch is a 0.16 x 0.14 pocket
   (x 0.04 to 0.20, z 0.23 to 0.37) from the front face back to y 0.33, with the connector recess
@@ -255,11 +266,15 @@ follow the linkage (their hub sockets), not the physics contact.
 | Rocker (about X, at its pivot) | +-10 degrees |
 | Bogie (about X, at its pivot) | +-15 degrees |
 | Steering (front, rear counter-steers) | +-30 degrees |
+| Mast head pan (`mast_head`, about the vertical) | any angle (checked every 15 degrees) |
+| Mast head tilt (`mast_head_camera`, about X) | +-30 degrees |
 
 `rover_visuals.gd` must clamp the rocker and bogie angles to this range (steering is already
 limited to +-30 degrees by the physics), so the visuals never reach a pose that was not
 clearance-checked. Widening a range means re-running the check in
-`tools/blender/scripts/make_rocker_bogie.py` first.
+`tools/blender/scripts/make_rocker_bogie.py` first (`make_mast.py` for the mast head). The mast head
+check also confirms that no head geometry is ever inside the game camera's view from
+`pivot_camera` (90 degree vertical field of view, checked for a 21:9 screen).
 
 ---
 
