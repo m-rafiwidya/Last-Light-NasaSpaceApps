@@ -63,7 +63,7 @@ BUDGET = 7000
 YAW_AXIS = Vector((-0.12, 0.53))
 WINDOW_D = (0.45, 0.57)
 WINDOW_BEARING = (-18.0, 13.0)
-LIFT = {"J1": 0.0, "J2": 90.0, "J3": 60.0, "J4": 120.0, "J5": 0.0}
+LIFT = {"J1": 0.0, "J2": 90.0, "J3": 70.0, "J4": 110.0, "J5": 0.0}     # the latch still points down, J4 at its limit
 STROKE = 0.10
 MIN_GAP = 0.020
 
