@@ -35,6 +35,7 @@ const MODELS: Dictionary = {
 	"arm_upper": preload("res://res/models/rover_kit/arm_upper.glb"),
 	"arm_forearm": preload("res://res/models/rover_kit/arm_forearm.glb"),
 	"arm_wrist": preload("res://res/models/rover_kit/arm_wrist.glb"),
+	"cargo_mount": preload("res://res/models/rover_kit/cargo_mount.glb"),
 }
 
 # ROVER_KIT.md 5: arm joint ranges (degrees) and the stowed pose
@@ -58,7 +59,10 @@ const ANTENNA_TILT_LIMIT: float = deg_to_rad(90.0)
 const ANTENNA_PAN_SPEED: float = deg_to_rad(120.0)
 const ANTENNA_TILT_SPEED: float = deg_to_rad(90.0)
 
-const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
+# Stowed lifts the turret 57 mm over a loaded cargo mount (ROVER_KIT.md 9); the latch pose puts the
+# turret hub's end (pivot_latch) on a cargo part's top face on the mount
+const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 80.0, "J4": 100.0, "J5": 0.0}
+const ARM_LATCH: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 # Deployed: upper arm forward, forearm angled down, turret level with the drill down
 const ARM_DEPLOYED: Dictionary = {"J1": 0.0, "J2": 0.0, "J3": -45.0, "J4": 45.0, "J5": 0.0}
 const ARM_JOINT_NAMES: Array[String] = ["J1", "J2", "J3", "J4", "J5"]
@@ -99,6 +103,9 @@ var arm_deployed: bool = false
 var arm_target: Dictionary = {}
 ## True while the last attempted step was refused because it would touch the ground
 var arm_blocked: bool = false
+## True while a script (CargoDelivery) poses the arm: R, the joint keys and the ground lift
+## leave it alone; the script sets arm_joints and calls apply_arm_pose itself
+var arm_scripted: bool = false
 var _posed_tool: HotswapPart = null
 ## World direction the high-gain antenna tracks: the level's `earth_direction` (RoverLevel; the
 ## Moon's Earth in the sky), read from the nearest ancestor that has one, else the default
@@ -177,6 +184,21 @@ func _build_mast_and_arm() -> void:
 	var forearm := _model(_attach("arm_forearm", upper, _socket_local(upper, "socket_arm_forearm")), "arm_forearm")
 	var wrist := _model(_attach("arm_wrist", forearm, _socket_local(forearm, "socket_arm_wrist")), "arm_wrist")
 	_arm_nodes = {"J1": yaw, "J2": upper, "J3": forearm, "J4": wrist}
+	# The cargo mount on the deck, under the stowed turret (ROVER_KIT.md 9)
+	var cargo_anchor := body.find_child("socket_cargo", true, false) as Node3D
+	if cargo_anchor:
+		_attach("cargo_mount", self, robot.to_local(cargo_anchor.global_position))
+
+
+## True while the cargo mount holds something: the arm is the delivery's only (ROVER_KIT.md 9)
+func cargo_loaded() -> bool:
+	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
+	return socket != null and socket.part != null
+
+
+## The manual controls (R, 1-5, Z / X) are off while cargo is loaded or a script poses the arm
+func arm_manual_locked() -> bool:
+	return arm_scripted or cargo_loaded()
 
 
 func _model(instance: Node3D, model_name: String) -> Node3D:
@@ -220,6 +242,8 @@ func _pose_antenna(antenna: HotswapPart, pan: float, tilt: float) -> void:
 
 
 func _on_arm_toggle() -> void:
+	if arm_manual_locked():
+		return
 	arm_deployed = not arm_deployed
 	arm_target = (ARM_DEPLOYED if arm_deployed else ARM_STOWED).duplicate()
 
@@ -234,6 +258,12 @@ func _update_arm(delta: float) -> void:
 			(_posed_tool.get_node("Model") as Node3D).rotation = Vector3.ZERO
 		_posed_tool = tool
 
+	if arm_scripted:
+		return
+	# Cargo loaded: the arm goes (or stays) stowed, out of the cartridge's way
+	if cargo_loaded() and (arm_deployed or (arm_joints != ARM_STOWED and arm_target.is_empty())):
+		arm_deployed = false
+		arm_target = ARM_STOWED.duplicate()
 	var next: Dictionary = arm_joints.duplicate()
 	var active: bool = arm_deployed or not arm_target.is_empty()
 	var clearance_now: float = arm_ground_clearance() if active else INF

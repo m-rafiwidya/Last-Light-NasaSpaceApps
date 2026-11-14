@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" path="res://src/workshop/workshop.tscn" id="30_workshop"]
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_marker_post.glb" id="31_post"]
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_base.glb" id="32_sign"]
+[ext_resource type="PackedScene" path="res://src/kite/kite.tscn" id="33_kite"]
+[ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_route.glb" id="34_route_sign"]
 [ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/starmap_2020_4k.exr" id="10_stars"]
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
@@ -39,6 +41,8 @@ jump_height = 1.2
 ground_friction = 1.6
 earth_direction = Vector3(0.480189, 0.877163, 0.002010)
 camera_far = 50000.0
+rover_pickup = false
+player_lifts_rovers = false
 rover_suspension = {
 "front_spring_stiffness": 440.8,
 "middle_spring_stiffness": 440.8,
@@ -104,3 +108,20 @@ outline_size = 0
 font_size = 96
 pixel_size = 0.00088
 text = "BASE"
+
+[node name="Kite" parent="." instance=ExtResource("33_kite")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+
+[node name="KiteGate" type="Node3D" parent="."]
+
+[node name="PostLeft" parent="KiteGate" instance=ExtResource("31_post")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -208.81, -3.192, 139.47)
+
+[node name="Sign" parent="KiteGate/PostLeft" instance=ExtResource("34_route_sign")]
+transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, 1.05, -0.03)
+
+[node name="PostRight" parent="KiteGate" instance=ExtResource("31_post")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -206.5, -3.143, 141.38)
+
+[node name="Sign" parent="KiteGate/PostRight" instance=ExtResource("34_route_sign")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)

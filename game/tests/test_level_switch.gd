@@ -4,7 +4,7 @@ extends SceneTree
 ##   1. Main menu "Play Test level". Drive the ready rover and pick up a pile part with it, Esc
 ##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), "Switch to Moon".
 ##   2. On the Moon: the level's contents (the workshop; no outdoor drive trigger or pile), then
-##      drive its rover from the workshop console and pick up a rack part with it, Esc out,
+##      drive its rover from the workshop console with the rack's cartridge on its cargo mount, Esc out,
 ##      restock the rack, pick up a rack part on foot, pause, "Switch to Test level".
 ##   3. Back in the test level: the same checks, then pause, "Quit To Menu".
 ## After every switch: one level under Main and the old one freed; no rover driven
@@ -96,9 +96,13 @@ func _drive_and_hold(rover_name: String) -> void:
 		SL.current_scene._on_robot_trigger_interacted(GS.player, rover)
 		part = SL.current_scene.get_node("PartsPile").get_child(0)
 	else:
-		# The Moon: driven from the workshop console, parts on the rack
+		# The Moon: driven from the workshop console. The rover picks nothing up there; it carries
+		# what's on its cargo mount, so the rack's cartridge goes onto it
 		SL.current_scene.get_node("Workshop")._on_console_interacted(GS.player)
-		part = SL.current_scene.get_node("Workshop").rack_stock.get_child(0)
+		var cartridge = SL.current_scene.get_node("Workshop").rack_stock.get_node("Slot17")
+		rover.get_node("CargoSocket").mount(cartridge)
+		_check("[moon_level] the cartridge rides on the rover's cargo mount", rover.get_node("CargoSocket").part == cartridge)
+		return
 	rover.holder.pickup(part)
 
 
@@ -172,7 +176,7 @@ func _run_step():
 		9:
 			var pile: Node = SL.current_scene.get_node("Workshop").rack_stock
 			# The part the rover holds stays (it is loose, so it is cleared too and restocked)
-			_check("[moon_level] restock lays out the full rack", pile.get_child_count() == 15, "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
+			_check("[moon_level] restock lays out the full rack", pile.get_child_count() == 16, "%d parts (was %d)" % [pile.get_child_count(), get_meta("pile_count")])
 			var part: RigidBody3D = pile.get_child(0)
 			GS.player.holder.pickup(part)
 			held = weakref(part)

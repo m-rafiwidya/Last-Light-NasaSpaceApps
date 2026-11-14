@@ -30,7 +30,7 @@ const ENTRIES: Dictionary = {
 	},
 	"mast_head": {
 		"name": "Mast camera",
-		"description": "The rover's eyes. Required to pick things up from the rover.",
+		"description": "The rover's eyes: drive by it, look around and scan things.",
 		"mounts": "Mounts on top of the mast",
 	},
 	"arm_tool": {
@@ -43,11 +43,16 @@ const ENTRIES: Dictionary = {
 		"description": "Tracks Earth to keep the rover in contact.",
 		"mounts": "Mounts on the rear-left of the deck",
 	},
+	"cartridge": {
+		"name": "Diagnostic cartridge",
+		"description": "Kite's fault-log reader. The rover's arm delivers it to Kite's service port.",
+		"mounts": "Rides on the rover's cargo mount, on the deck",
+	},
 }
 
 ## Default catalog entry per HotswapPart.PartType (by value: WHEEL, MOTOR, BATTERY, MAST_HEAD,
-## ARM_TOOL, ANTENNA)
-const TYPE_DEFAULTS: Array[String] = ["wheel", "motor", "battery", "mast_head", "arm_tool", "antenna"]
+## ARM_TOOL, ANTENNA, CARGO)
+const TYPE_DEFAULTS: Array[String] = ["wheel", "motor", "battery", "mast_head", "arm_tool", "antenna", "cartridge"]
 
 const UNKNOWN: Dictionary = {"name": "Part", "description": "", "mounts": ""}
 

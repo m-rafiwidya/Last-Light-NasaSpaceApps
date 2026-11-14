@@ -10,11 +10,22 @@ const ZOOM_HINT_TIME: float = 1.8
 const ZOOM_HINT_FADE: float = 0.4
 
 var fade_tween: Tween = null
+var _cargo_label: Label = null
+var _hint_text: String = ""
 
 
 func _ready() -> void:
 	add_child(BoundaryHint.new(true))
 	add_child(DockHint.new())
+	add_child(CargoHint.new())
+	add_child(ScanHint.new())
+	# CARGO under BATTERY: what the cargo mount holds (KITE_KIT.md 5.3)
+	_cargo_label = Label.new()
+	_cargo_label.name = "Cargo"
+	_cargo_label.add_theme_font_size_override("font_size", 32)
+	_cargo_label.text = "CARGO  --"
+	%Battery.get_parent().add_child(_cargo_label)
+	%Battery.get_parent().move_child(_cargo_label, %Battery.get_index() + 1)
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 
@@ -27,10 +38,13 @@ func _process(_delta: float) -> void:
 		%Speed.text = "SPEED  %4.1f m/s%s" % [Debug.current_robot.linear_velocity.length(),
 			"  BRAKE" if Debug.current_robot.braking else ""]
 		var looking_at = Debug.current_robot.looking_at_object
-		looking_at_prop = looking_at is RigidBody3D
+		if not is_instance_valid(looking_at):
+			looking_at = null           # freed since the robot's last physics tick
+		looking_at_prop = looking_at is RigidBody3D and Debug.current_robot.pickup_enabled
 		var holding: bool = looking_at != null and looking_at == Debug.current_robot.holder.held_object
 		%PartTooltip.show_for(looking_at, false, holding)
 		_update_battery_label(Debug.current_robot)
+		_update_cargo_label(Debug.current_robot)
 		_update_arm_label(Debug.current_robot)
 		_update_view_label(Debug.current_robot)
 	else:
@@ -38,6 +52,7 @@ func _process(_delta: float) -> void:
 		%ZoomHint.hide()
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
+		_cargo_label.text = "CARGO  --"
 		%Arm.text = "ARM  --"
 		%PartTooltip.hide()
 	var aiming: bool = is_instance_valid(Debug.current_robot) and Debug.current_robot.is_aiming()
@@ -55,6 +70,17 @@ func _update_battery_label(robot: Robot) -> void:
 	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power]
 	# Turn red when the battery is low enough that the motor starts to sag
 	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
+
+
+func _update_cargo_label(robot: Robot) -> void:
+	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
+	_cargo_label.text = "CARGO  " + (socket.part.get_display_name() if socket and socket.part else "empty")
+	# Where the mast camera can't pick things up (the Moon), E only delivers cargo
+	var hint: Label = $MarginContainer/Hint
+	if _hint_text.is_empty():
+		_hint_text = hint.text
+	hint.text = _hint_text if robot.pickup_enabled else \
+		_hint_text.replace("E: pick up / drop   LMB: throw", "E: deliver cargo")
 
 
 func _update_view_label(robot: Robot) -> void:
@@ -92,7 +118,11 @@ func _update_arm_label(robot: Robot) -> void:
 		%Arm.text = "ARM  --"
 		return
 	var text: String
-	if not visuals.arm_target.is_empty():
+	if visuals.arm_scripted:
+		text = "ARM  delivering cargo"
+	elif visuals.cargo_loaded():
+		text = "ARM  cargo loaded: automatic only"
+	elif not visuals.arm_target.is_empty():
 		text = "ARM  deploying" if visuals.arm_deployed else "ARM  stowing"
 	elif not visuals.arm_deployed:
 		text = "ARM  stowed"

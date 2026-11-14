@@ -31,6 +31,12 @@ extends Node3D
 ## sixth as stiff (the dampers stay Earth's, so the ride is heavily damped), and adds a progressive
 ## bump stop, so landings off crater rims at 4-6 m/s don't bottom out (tests/test_rover_landing.gd)
 @export var rover_suspension: Dictionary = {}
+## Whether a driven rover's mast camera picks things up, holds and throws them here. The Moon
+## turns it off: there the rover only carries what's on its cargo mount (KITE_KIT.md 10)
+@export var rover_pickup: bool = true
+## Whether the player on foot can pick up and throw a rover here (the test level's sandbox: yes;
+## the Moon: no)
+@export var player_lifts_rovers: bool = true
 
 ## Nearest a camera's near plane may be for a far plane: Godot's light culler fails (an error
 ## every frame) when far / near is much over 10^7, measured with a 200 km far plane: 1 mm fails,

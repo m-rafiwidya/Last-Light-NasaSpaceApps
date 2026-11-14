@@ -77,6 +77,9 @@ var jump_height: float = JUMP_HEIGHT
 ## Ground friction coefficient (stopping and turning on foot decelerate at gravity * this);
 ## the level sets it (SceneLoader). The Moon raises it so a walk still stops within a metre.
 var ground_friction: float = FRICTION
+## Whether the player can pick up and throw a rover here (the level's player_lifts_rovers: the
+## test level's sandbox yes, the Moon no; KITE_KIT.md 10)
+var player_lifts_rovers: bool = true
 
 
 var want_to_crouch: bool = false
@@ -185,6 +188,8 @@ func _on_controller_interact(value: bool) -> void:
 	elif raycast.is_colliding():
 		var collider = raycast.get_collider()
 		if collider is RigidBody3D:
+			if collider is Robot and not player_lifts_rovers:
+				return
 			holder.pickup(collider as RigidBody3D)
 		elif collider is InteractTrigger:
 			collider.interact(self)

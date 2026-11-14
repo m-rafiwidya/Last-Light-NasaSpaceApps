@@ -89,6 +89,8 @@ const SLOTS: Dictionary = {
 	13: ["res://src/robot/socket/mast_head_part.tscn", {}, ""],
 	14: ["res://src/robot/socket/arm_tool_part.tscn", {}, ""],
 	15: ["res://src/robot/socket/antenna_part.tscn", {}, ""],
+	# The diagnostic cartridge (KITE_KIT.md 4), lying flat on the top shelf
+	17: ["res://src/robot/socket/cartridge_part.tscn", {}, ""],
 }
 # Wheels rest on the cradle rails' inner edges (0.08 m off the wheel's centre, 0.04 m tall)
 const WHEEL_SEAT: float = 0.04 + 0.1269 - 0.15 + 0.003

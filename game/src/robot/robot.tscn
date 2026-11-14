@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" uid="uid://dy5tit5s5tomt" path="res://res/models/rover_kit/chassis.glb" id="21_chassis"]
 [ext_resource type="Script" path="res://src/robot/kit/rover_visuals.gd" id="22_visuals"]
 [ext_resource type="Script" path="res://src/robot/kit/rover_camera.gd" id="23_camera_rig"]
+[ext_resource type="Script" path="res://src/robot/kit/cargo_delivery.gd" id="24_cargo_delivery"]
+[ext_resource type="Script" path="res://src/robot/kit/rover_scanner.gd" id="25_scanner"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 bounce = 0.5
@@ -180,6 +182,23 @@ capture_offset = Vector3(0, 0.15, 0)
 trigger_size = Vector3(0.24, 0.24, 0.24)
 trigger_offset = Vector3(0, 0.14, 0)
 anchor = &"socket_antenna"
+
+[node name="CargoSocket" parent="." instance=ExtResource("20_socket")]
+socket_name = "Cargo mount"
+accepts_any_type = false
+accepted_type = 6
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.4, 0.3, 0.26)
+capture_offset = Vector3(0, 0.15, 0)
+trigger_size = Vector3(0.3, 0.12, 0.2)
+trigger_offset = Vector3(0, 0.05, 0)
+anchor = &"socket_cargo_item"
+
+[node name="CargoDelivery" type="Node" parent="."]
+script = ExtResource("24_cargo_delivery")
+
+[node name="RoverScanner" type="Node" parent="."]
+script = ExtResource("25_scanner")
 
 [node name="CameraRig" type="Node" parent="." unique_id=1203948630]
 script = ExtResource("23_camera_rig")

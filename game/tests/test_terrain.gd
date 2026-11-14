@@ -181,7 +181,7 @@ func _run() -> void:
 	var fastest: float = 0.0
 	for part in workshop.rack_stock.get_children():
 		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
-	_check("rack parts resting on their shelves", workshop.rack_stock.get_child_count() == 15 and fastest < 0.01,
+	_check("rack parts resting on their shelves", workshop.rack_stock.get_child_count() == 16 and fastest < 0.01,
 		"%d parts, fastest %.3f m/s" % [workshop.rack_stock.get_child_count(), fastest])
 
 	# 2. Mesh = collision

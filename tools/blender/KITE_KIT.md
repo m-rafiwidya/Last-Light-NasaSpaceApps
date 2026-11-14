@@ -285,7 +285,7 @@ E in the window starts it. The arm moves at up to 45 degrees/s, the stroke at 0.
 |---|---|---|
 | 1. Latch | stowed, then the latch pose (the hub end meets the cartridge's top) | 0.5 s |
 | 2. Lift | the cartridge leaves the mount: it's reparented from the cargo socket to the turret's `pivot_latch` | - |
-| 3. Transit | joint-space moves through (0, 90, 60, 120), then aim J1 at the port and turn J5 so the cartridge's long side matches the port's, then the approach pose (the hub end 0.10 m above the port's top) | about 3.5 s |
+| 3. Transit | joint-space moves through (0, 90, 70, 110), then aim J1 at the port and turn J5 so the cartridge's long side matches the port's, then the approach pose (the hub end 0.10 m above the port's top) | about 3.5 s |
 | 4. Insert | straight down 0.10 m (IK every frame, pointing down) | 1.5 s |
 | 5. Release | the cartridge is reparented to Kite's `anchor_cartridge_seated`, frozen. The port's light turns amber, then green after 3 s. `CargoPort.cargo_inserted` is emitted. | - |
 | 6. Retract | up 0.10 m, transit back, stowed | about 4 s |
@@ -506,3 +506,39 @@ forbid. It will load the cargo mount instead.
    it optional?
 3. Kite's damage: the rear-left wheel off and the arm sheared, as proposed, or something lighter?
 4. Is 150 m right for the first sortie (about a minute's drive), or further out?
+
+---
+
+## 17. As built (2026-10-09)
+
+Where the build differs from the sections above, this wins.
+
+| | Spec | Built | Why |
+|---|---|---|---|
+| Port box | 0.32 x 0.24 m | **0.34 x 0.24 m** | room for the wider opening |
+| Opening | 0.26 x 0.16 m | **0.28 x 0.17 m** | the cartridge's grips are 0.262 m across; at 0.26 the stroke hit the lead-in |
+| Release | on the seat | **6 mm over the seat** (`SEAT_GAP`), then `CargoPort.accept` puts it on the seat | a release exactly on the floor counted as touching it |
+| Kite's colliders | layer 1 | **layer 2, mask 0** | on layer 1 the wheels' ground check (layers 1, 3) would drive up Kite's body and the arm's ground check (layer 1) would see the port as terrain and stop the stroke. Rovers (mask 71) still collide with it; the player's mask leaves layer 2 out, which doesn't matter on the Moon, where the player stays inside. The wheels also don't climb the fallen wheel now; it's off the approach |
+| Lift pose | (0, 90, 60, 120, 0) | **(0, 90, 70, 110, 0)** | J4's range is +-110: the visuals clamped 120 and tilted the cartridge 10 degrees. The latch still points straight down; the cartridge rises 113 mm off the mount |
+| Kite triangles | about 6,600 | **5,576** (budget 7,000) | |
+| Cartridge, cargo mount | 250, 120 triangles | **124, 84** | |
+
+**Checks** (`make_kite.py`, all 27 corners of the parking window, each pose sampled along the
+whole path: latch, lift, transit, turn, stroke, release): all OK. Arm vs Kite 31.1 mm (need 20),
+cartridge vs Kite 60.9 mm, cartridge vs the port before the stroke 25.6 mm, during the stroke
+6.7 mm (need 3), at the release 3.7 mm over the floor; cartridge vs the rescuer 37.8 mm; the arm
+357 mm and the cartridge 472 mm over the ground; the rescuer's wheels and body 157.8 mm from Kite
+(need 150); the cartridge squared to the port within 0.5 degrees.
+
+**Game** (`tests/test_kite.gd`, all 18 checks pass): loading from the rack, the Moon's pickup rules,
+the drive out of the bay and 150 m to Kite (route right of the base sign), the scan (once), parking
+by the hint (the test's controller stops 8 cm short and then creeps the distance the hint asks for,
+like a driver), an insert interrupted by throttle (cartridge back on the mount, arm stowed), the
+insert (seated 0.0 mm off, `cargo_inserted` then `cartridge_inserted` once each, green light, arm
+stowed; the arm about 360 mm above the terrain at its lowest and never inside Kite outside the port's opening;
+the rover never touched Kite and tilted at most 5 degrees), and the test level's sandbox rules
+(the player lifts a rover; the mast camera picks a part up). Every other suite passes unchanged.
+
+**Previews** in the game's lighting: `game/tools/render_kite_previews.gd` (window) writes
+`tools/previews/kite/`: Kite from the gate, the mast view scanning, parked with the hint, from
+above, the carry and the stroke from beside, and Kite's green light.

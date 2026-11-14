@@ -27,7 +27,8 @@ func _process(_delta: float) -> void:
 ## True when E does something with `target`: a prop, or a trigger (not an empty socket's)
 static func is_interactive(target: Object) -> bool:
 	if target is RigidBody3D:
-		return true
+		# A rover only where the level lets the player lift one (RoverLevel.player_lifts_rovers)
+		return not (target is Robot and is_instance_valid(GameState.player) and not GameState.player.player_lifts_rovers)
 	if target is InteractTrigger:
 		var socket := (target as Node).get_parent() as HotswapSocket
 		return socket == null or socket.part != null

@@ -127,6 +127,9 @@ var electrical_power: float = 0.0
 
 # Object pickup (shared with the player, see ObjectHolder)
 var holder: ObjectHolder
+## Whether the mast camera picks things up here (the level's rover_pickup: off on the Moon,
+## where the rover only carries what's on its cargo mount)
+var pickup_enabled: bool = true
 # Held object or whatever the pickup ray is aiming at (used by the robot HUD crosshair)
 var looking_at_object: Node3D = null
 
@@ -203,6 +206,9 @@ func _ready() -> void:
 		# and its suspension (RoverLevel.rover_suspension)
 		if level.get("rover_suspension") is Dictionary:
 			apply_suspension(level.rover_suspension)
+		# and whether the mast camera may pick things up (RoverLevel.rover_pickup)
+		if level.get("rover_pickup") is bool:
+			pickup_enabled = level.rover_pickup
 
 
 ## Sets the running gear's suspension to the scene's values with `overrides` (RunningGear
@@ -325,7 +331,13 @@ func is_aiming() -> bool:
 
 
 func _on_controller_interact(value: bool) -> void:
-	if not value or not is_aiming():
+	if not value:
+		return
+	# Cargo delivery first (KITE_KIT.md 8): E in a port's window
+	var delivery := get_node_or_null("CargoDelivery") as CargoDelivery
+	if delivery and delivery.handle_interact():
+		return
+	if not is_aiming() or not pickup_enabled:
 		return
 
 	if holder.held_object:
@@ -337,7 +349,7 @@ func _on_controller_interact(value: bool) -> void:
 
 
 func _on_controller_primary(value: bool) -> void:
-	if value and is_aiming():
+	if value and is_aiming() and pickup_enabled:
 		holder.throw()
 
 
