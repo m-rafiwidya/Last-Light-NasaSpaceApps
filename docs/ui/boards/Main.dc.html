@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light main menu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=Exo+2:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+.ll-m{display:inline-flex;align-items:center;align-self:flex-start;background:none;border:1px solid transparent;font-family:Michroma,sans-serif;color:#8A8783;cursor:pointer;text-align:left;min-height:48px;position:relative;transition:color .25s,transform .25s,border-color .25s,background .25s}
+.ll-m:hover,.ll-m:focus-visible{color:#ECE9E3;outline:none}
+.ll-mA{font-size:22px;letter-spacing:7px;padding:10px 0}
+.ll-mA::after{content:"";position:absolute;left:0;bottom:4px;height:1px;width:0;background:#F5B04C;transition:width .3s}
+.ll-mA:hover::after,.ll-mA:focus-visible::after{width:calc(100% - 7px)}
+.ll-mB{font-size:26px;letter-spacing:8px;padding:10px 0}
+.ll-mB:hover,.ll-mB:focus-visible{transform:translateX(12px);color:#FFC46B}
+.ll-mC{font-size:18px;letter-spacing:8px;padding:12px 22px;margin-left:-23px}
+.ll-mC:hover,.ll-mC:focus-visible{border-color:#3A3A40;background:rgba(236,233,227,.04)}
+.ll-mD{font-size:20px;letter-spacing:9px;padding:10px 0}
+.ll-mD::after{content:"";width:7px;height:7px;border-radius:50%;background:#3FB950;margin-left:10px;opacity:0;box-shadow:0 0 10px 2px rgba(63,185,80,.5);transition:opacity .25s}
+.ll-mD:hover::after,.ll-mD:focus-visible::after{opacity:1}
+.ll-big{display:block;touch-action:none;transform-origin:100% 100%;transition:transform .5s ease,filter .5s ease;filter:drop-shadow(0 0 30px rgba(236,233,227,.06))}
+.ll-big.is-hover{transform:scale(1.02);filter:brightness(1.08) drop-shadow(0 0 60px rgba(236,233,227,.22));cursor:pointer}
+.ll-big.is-drag{cursor:grabbing}
+.ll-moon{display:block;cursor:grab;touch-action:none}
+.ll-moon.is-drag{cursor:grabbing}
+.ll-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;background:none;border:1px solid #2A2A2E;color:#B5B2AC;cursor:pointer;transition:border-color .2s,color .2s}
+.ll-icon:hover,.ll-icon:focus-visible{border-color:#8A8783;color:#ECE9E3;outline:none}
+.ll-tab{display:flex;align-items:center;gap:8px;background:none;border:0;border-bottom:1px solid transparent;padding:10px 4px;min-height:44px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:4px;color:#8A8783;cursor:pointer}
+.ll-tab:hover,.ll-tab:focus-visible{color:#ECE9E3;outline:none}
+.ll-tab.is-on{color:#ECE9E3;border-bottom:2px solid #8A8783}
+.ll-tab.is-on.t-moon{border-bottom-color:#C9C4BB}
+.ll-tab.is-on.t-mars{border-bottom-color:#C8643A}
+.ll-tab.is-on.t-earth{border-bottom-color:#4C8FD6}
+.ll-tab.is-locked{color:#55534F}
+.ll-tip{position:absolute;left:0;top:0;width:300px;box-sizing:border-box;background:rgba(10,10,13,.94);border:1px solid #34343A;padding:18px 20px;display:flex;flex-direction:column;gap:10px;pointer-events:none;transition:opacity .2s;z-index:3}
+.ll-mm{font-size:18px;letter-spacing:10px;padding:10px 0}
+.ll-mm::after{content:"";position:absolute;left:0;bottom:6px;height:1px;width:0;background:#ECE9E3;transition:width .35s}
+.ll-mm:hover::after,.ll-mm:focus-visible::after{width:calc(100% - 10px)}
+@keyframes llFloat{0%{transform:translate(0,0) rotate(-2deg)}25%{transform:translate(7px,-14px) rotate(1.5deg)}50%{transform:translate(2px,-22px) rotate(4deg)}75%{transform:translate(-6px,-10px) rotate(0.5deg)}100%{transform:translate(0,0) rotate(-2deg)}}
+@keyframes llShadowPulse{0%,100%{filter:drop-shadow(0 18px 24px rgba(0,0,0,.55))}50%{filter:drop-shadow(0 34px 34px rgba(0,0,0,.35))}}
+.ll-float{transform-origin:55% 45%;animation:llFloat 7s ease-in-out infinite,llShadowPulse 7s ease-in-out infinite}
+@keyframes llFade{from{opacity:0}to{opacity:1}}
+@keyframes llMoonIn{0%{opacity:0;transform:translate(220px,180px) scale(1.5);filter:brightness(0)}35%{opacity:1;filter:brightness(.15)}100%{opacity:1;transform:none;filter:brightness(1)}}
+@keyframes llAstroIn{0%{opacity:0;transform:translate(-300px,-240px) scale(.2) rotate(-70deg);filter:blur(6px)}60%{opacity:1;filter:blur(0)}82%{transform:translate(6px,4px) scale(1.04) rotate(4deg)}100%{opacity:1;transform:none}}
+@keyframes llWordIn{from{opacity:0;letter-spacing:0;filter:blur(10px)}to{opacity:1;letter-spacing:22px;filter:blur(0)}}
+@keyframes llSweep{from{background-position:120% 0}to{background-position:-20% 0}}
+@keyframes llBtnIn{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes llOvlOut{to{opacity:0;visibility:hidden}}
+@keyframes llPres{0%{opacity:0;letter-spacing:4px}25%{opacity:1}75%{opacity:1}100%{opacity:0;letter-spacing:14px}}
+@keyframes llSkipIn{from{opacity:0}to{opacity:1}}
+@keyframes llPush{from{transform:scale(1.08)}to{transform:none}}
+@keyframes llFlare{0%{opacity:0;transform:scale(.4)}35%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.3)}}
+@keyframes llStreak{0%{opacity:0;transform:scaleX(.1)}35%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1.4)}}
+.ll-fade.ll-intro{animation:llFade .6s ease both}
+@keyframes llEarthIn{from{opacity:0}to{opacity:1}}
+.ll-intro .ll-i-earth{animation:llEarthIn 1.6s ease .2s backwards}
+.ll-intro .ll-i-moon{animation:llMoonIn 3.2s cubic-bezier(.25,.7,.2,1) 3.2s backwards}
+@keyframes llDriftX{from{transform:translateX(-520px)}to{transform:none}}
+@keyframes llDriftY{from{transform:translateY(190px) rotate(-26deg)}to{transform:none}}
+.ll-intro .ll-i-astro{animation:llDriftX 5.6s cubic-bezier(.1,.55,.2,1) 4.4s backwards}
+.ll-intro .ll-i-astro2{animation:llDriftY 5.6s cubic-bezier(.35,.35,.2,1) 4.4s backwards}
+.ll-intro .ll-i-word{animation:llWordIn 2s cubic-bezier(.2,.7,.2,1) 7s backwards}
+.ll-intro .ll-i-btn{animation:llBtnIn .9s cubic-bezier(.2,.7,.2,1) backwards}
+.ll-intro .ll-i-btn:nth-child(1){animation-delay:8.8s}
+.ll-intro .ll-i-btn:nth-child(2){animation-delay:9.05s}
+.ll-intro .ll-i-btn:nth-child(3){animation-delay:9.3s}
+.ll-ovl{position:absolute;inset:0;z-index:5;background:#000;pointer-events:none;animation:llOvlOut 1.8s ease 2.8s forwards}
+.ll-pres-wrap{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.ll-presents{margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:6px;color:#B5B2AC;opacity:0;text-shadow:0 0 18px rgba(0,0,0,.9),0 0 4px rgba(0,0,0,.9);animation:llPres 2.8s ease .7s forwards}
+.ll-flare{position:absolute;left:574px;top:14px;width:600px;height:600px;z-index:4;pointer-events:none;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.9) 0%,rgba(236,233,227,.35) 12%,rgba(236,233,227,.08) 35%,rgba(236,233,227,0) 60%);opacity:0;animation:llFlare 2s ease-out 6.6s forwards}
+.ll-streak{position:absolute;left:274px;top:312px;width:1200px;height:3px;z-index:4;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.85) 50%,rgba(255,255,255,0));opacity:0;animation:llStreak 2s ease-out 6.6s forwards}
+.ll-skip{position:absolute;right:48px;bottom:40px;z-index:6;background:none;border:0;min-height:44px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:4px;color:#6B6863;cursor:pointer;animation:llSkipIn .6s ease 1s backwards}
+.ll-skip:hover,.ll-skip:focus-visible{color:#ECE9E3;outline:none}
+@keyframes llInR{from{opacity:0;transform:translateX(120px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes llInL{from{opacity:0;transform:translateX(-120px) scale(.92)}to{opacity:1;transform:none}}
+.ll-fade{animation:llFade .6s ease both}
+.ll-in-r{animation:llInR .55s cubic-bezier(.2,.7,.2,1) both}
+.ll-in-l{animation:llInL .55s cubic-bezier(.2,.7,.2,1) both}
+.ll-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 38px;border:0;background:#ECE9E3;color:#0B0B0D;font-family:Michroma,sans-serif;font-size:13px;letter-spacing:5px;cursor:pointer;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);transition:background .2s,transform .2s}
+.ll-btn:hover,.ll-btn:focus-visible{background:#FFFFFF;transform:translateY(-1px);outline:none}
+.ll-pb{position:relative;background:none;border:0;min-height:44px;padding:10px 0 10px 5px;font-family:Michroma,sans-serif;font-size:12px;letter-spacing:5px;color:#6B6863;cursor:pointer;transition:color .25s}
+.ll-pb:hover,.ll-pb:focus-visible{color:#ECE9E3;outline:none}
+.ll-key{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;box-sizing:border-box;background:#ECE9E3;color:#141417;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:600;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.ll-save{position:relative;display:flex;align-items:stretch;width:100%;height:104px;padding:4px;box-sizing:border-box;background:rgba(0,0,0,.72);border:1px solid #2A2A2E;color:#ECE9E3;font-family:'Exo 2',sans-serif;text-align:left;cursor:pointer;transition:border-color .2s,background .2s}
+.ll-save:focus-visible{outline:none}
+.ll-save.is-on{border-color:rgba(236,233,227,.85);background:rgba(8,8,10,.86);box-shadow:0 0 18px rgba(236,233,227,.12)}
+.ll-cn{position:absolute;width:9px;height:9px;border-color:#ECE9E3;border-style:solid;opacity:0;transition:opacity .2s}
+.ll-save.is-on .ll-cn{opacity:1}
+.ll-tag{position:absolute;right:4px;bottom:4px;padding:3px 14px 3px 16px;background:#34343A;font-size:13px;font-weight:500;color:#C9C4BB;clip-path:polygon(8px 0,100% 0,100% 100%,0 100%)}
+.ll-sg{flex:1;height:3px;background:#2A2A2E}
+.ll-sg.on{background:#ECE9E3}
+@keyframes llPIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.ll-pin{animation:llPIn .45s ease both}
+.ll-pfade{animation:llFade 1.2s ease both}
+.ll-blurwrap{transition:filter .5s,opacity .5s}
+.ll-blurwrap.on{filter:blur(10px);opacity:.45;pointer-events:none}
+@keyframes llBar{from{width:0}to{width:100%}}
+.ll-bar{animation:llBar 3s cubic-bezier(.3,.6,.4,1) both}
+@keyframes llPulse{0%,100%{opacity:.45}50%{opacity:1}}
+.ll-pulse{animation:llPulse 1.8s ease-in-out infinite}
+@keyframes llRule{from{width:0}to{width:48px}}
+.ll-rule{height:1px;background:#ECE9E3;animation:llRule .8s ease .5s both}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507; font-family: 'IBM Plex Mono', monospace; color: #ECE9E3">
+<canvas ref="{{setBg}}" width="1600" height="900" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+
+<sc-if value="{{isMenu}}" hint-placeholder-val="{{true}}">
+<div class="{{menuWrapCls}}" style="position: absolute; inset: 0">
+<canvas ref="{{setMenu}}" class="{{bigCls}}" width="520" height="450" role="img" aria-label="The Moon. Drag to rotate, click to explore." onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" onPointerLeave="{{leave}}" style="position: absolute; left: 560px; top: 0; width: 1040px; height: 900px"></canvas>
+<div style="position: absolute; left: 150px; top: 0; bottom: 0; width: 560px; display: flex; flex-direction: column; justify-content: center; gap: 64px">
+<div role="img" aria-label="Last Light" style="display: flex; flex-direction: column; align-items: flex-start; gap: 30px">
+<div class="ll-i-astro"><div class="ll-i-astro2"><img class="ll-float" src="/_blob/bb123daca0826d320dc695b61684775a" alt="" style="display: block; width: 150px; height: 170px; margin-left: 4px"></div></div>
+<span class="ll-i-word" style="font-family: Michroma, sans-serif; font-size: 40px; line-height: 1; letter-spacing: 22px; color: #ECE9E3">LAST LIGHT</span>
+</div>
+<nav aria-label="Main menu" style="display: flex; flex-direction: column; gap: 2px">
+<button class="ll-m ll-mm ll-i-btn" type="button" onClick="{{openPlay}}">PLAY</button>
+<button class="ll-m ll-mm ll-i-btn" type="button">SETTINGS</button>
+<button class="ll-m ll-mm ll-i-btn" type="button">QUIT GAME</button>
+</nav>
+</div>
+</div>
+<sc-if value="{{showIntro}}" hint-placeholder-val="{{false}}">
+<div class="ll-ovl" aria-hidden="true"></div>
+<div class="ll-pres-wrap" aria-hidden="true"><p class="ll-presents">TANDBORSTE PRESENTS</p></div>
+<button class="ll-skip" type="button" onClick="{{skipIntro}}">SKIP</button>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{playOpen}}" hint-placeholder-val="{{false}}"><div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,0,.25)"></div></sc-if>
+<sc-if value="{{showNoSave}}" hint-placeholder-val="{{false}}">
+<button class="ll-icon ll-in" type="button" aria-label="Back to main menu" onClick="{{closePlay}}" style="position: absolute; left: 56px; top: 48px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+<div role="dialog" aria-label="No save file" class="ll-pin" style="position: absolute; left: 560px; top: 330px; width: 480px; padding: 44px 0 34px; box-sizing: border-box; background: rgba(0,0,0,.78); border: 1px solid rgba(236,233,227,.85); box-shadow: 0 0 18px rgba(236,233,227,.12); display: flex; flex-direction: column; align-items: center; gap: 26px">
+<span class="ll-cn" style="opacity: 1; left: -4px; top: -4px; border-width: 2px 0 0 2px"></span>
+<span class="ll-cn" style="opacity: 1; right: -4px; top: -4px; border-width: 2px 2px 0 0"></span>
+<span class="ll-cn" style="opacity: 1; left: -4px; bottom: -4px; border-width: 0 0 2px 2px"></span>
+<span class="ll-cn" style="opacity: 1; right: -4px; bottom: -4px; border-width: 0 2px 2px 0"></span>
+<span style="font-family: 'Exo 2', sans-serif; font-size: 20px; font-weight: 500; color: #C9C4BB">There’s no save file.</span>
+<button class="ll-btn" type="button" onClick="{{startCampaign}}">START NEW CAMPAIGN</button>
+</div>
+<div class="ll-pin" style="position: absolute; right: 64px; bottom: 48px; display: flex; align-items: center; gap: 10px; font-family: 'Exo 2', sans-serif; font-size: 16px; font-weight: 500"><span class="ll-key">Esc</span>Cancel</div>
+</sc-if>
+
+<sc-if value="{{showSaves}}" hint-placeholder-val="{{false}}">
+<button class="ll-icon ll-in" type="button" aria-label="Back to main menu" onClick="{{closePlay}}" style="position: absolute; left: 56px; top: 48px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+<div role="dialog" aria-label="Load save data" class="ll-pin" style="position: absolute; left: 500px; top: 64px; width: 600px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+<span style="margin-bottom: 14px; font-family: 'Exo 2', sans-serif; font-size: 21px; font-weight: 500; color: #C9C4BB">Select save data to load.</span>
+<sc-for list="{{saves}}" as="s" hint-placeholder-count="5">
+<button class="{{s.cls}}" type="button" onMouseEnter="{{s.pick}}" onFocus="{{s.pick}}" onClick="{{s.load}}">
+<span class="ll-cn" style="left: -4px; top: -4px; border-width: 2px 0 0 2px"></span>
+<span class="ll-cn" style="right: -4px; top: -4px; border-width: 2px 2px 0 0"></span>
+<span class="ll-cn" style="left: -4px; bottom: -4px; border-width: 0 0 2px 2px"></span>
+<span class="ll-cn" style="right: -4px; bottom: -4px; border-width: 0 2px 2px 0"></span>
+<img src="{{s.img}}" alt="" style="display: block; width: 172px; height: 94px; object-fit: cover; flex: none">
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 7px 16px 0">
+<span style="font-size: 14px; font-weight: 500; color: #B5B2AC; font-variant-numeric: tabular-nums">{{s.date}}</span>
+<span style="font-size: 20px; font-weight: 600">{{s.title}}</span>
+<span style="display: flex; align-items: center; gap: 10px; margin-top: 5px; width: 240px">
+<span style="flex: 1; display: flex; gap: 2px">
+<sc-for list="{{s.segs}}" as="g" hint-placeholder-count="16"><span class="{{g.cls}}"></span></sc-for>
+</span>
+<span style="font-size: 12px; font-weight: 500; color: #8A8783; font-variant-numeric: tabular-nums">{{s.pct}}</span>
+</span>
+</span>
+<span style="position: absolute; right: 16px; top: 11px; font-size: 13px; font-weight: 500; color: #8A8783; font-variant-numeric: tabular-nums">{{s.played}}</span>
+<sc-if value="{{s.auto}}" hint-placeholder-val="{{true}}"><span class="ll-tag">Autosave</span></sc-if>
+</button>
+</sc-for>
+<button class="ll-btn" type="button" onClick="{{startCampaign}}" style="margin-top: 18px">START NEW CAMPAIGN</button>
+</div>
+<div class="ll-pin" style="position: absolute; right: 64px; bottom: 48px; display: flex; align-items: center; gap: 28px; font-family: 'Exo 2', sans-serif; font-size: 16px; font-weight: 500">
+<span style="display: flex; align-items: center; gap: 10px"><span class="ll-key">Enter</span>Load</span>
+<span style="display: flex; align-items: center; gap: 10px"><span class="ll-key">Esc</span>Cancel</span>
+</div>
+</sc-if>
+
+<sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}">
+<div class="ll-pfade" style="position: absolute; left: 150px; top: 150px; width: 820px; display: flex; flex-direction: column; gap: 40px; font-family: 'Exo 2', sans-serif">
+<p style="margin: 0; font-size: 22px; font-weight: 600; color: #C9C4BB">Did you know?</p>
+<p style="margin: 0; font-family: Michroma, sans-serif; font-size: 30px; line-height: 1.55; letter-spacing: 1px">With no air on the Moon, dust kicked up by a wheel flies in a clean arc and falls straight back down.</p>
+<p style="margin: 0; font-size: 16px; font-weight: 500; color: #8A8783">The lunar surface</p>
+</div>
+<img class="ll-float" src="/_blob/bb123daca0826d320dc695b61684775a" alt="" aria-hidden="true" style="position: absolute; right: 190px; top: 250px; width: 210px; height: 238px">
+<div style="position: absolute; left: 150px; right: 150px; bottom: 96px; display: flex; flex-direction: column; gap: 18px">
+<p class="ll-pulse" style="margin: 0; font-family: Michroma, sans-serif; font-size: 12px; letter-spacing: 5px; color: #B5B2AC">{{loadStage}}</p>
+<div style="position: relative; height: 2px; background: #1E1E22"><div class="ll-bar" style="position: absolute; left: 0; top: 0; bottom: 0; background: #ECE9E3"></div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{isTitle}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; font-family: 'Exo 2', sans-serif">
+<span class="ll-pfade" style="font-size: 15px; font-weight: 500; color: #8A8783; animation-delay: .2s">Mission {{tm.n}}</span>
+<span class="ll-pfade" style="font-family: Michroma, sans-serif; font-size: 44px; line-height: 1; letter-spacing: 20px; padding-left: 20px; animation-delay: .5s">{{tm.upper}}</span>
+<div class="ll-rule"></div>
+<span class="ll-pfade" style="font-size: 19px; font-weight: 500; color: #C9C4BB; animation-delay: 1.1s">{{titleLine}}</span>
+</div>
+<button class="ll-pb ll-pfade" type="button" onClick="{{restart}}" style="position: absolute; right: 150px; bottom: 56px; animation-delay: 2.6s">RESTART FLOW</button>
+</sc-if>
+<sc-if value="{{isExplore}}" hint-placeholder-val="{{false}}">
+<div class="ll-fade" style="position: absolute; inset: 0">
+<button class="ll-icon" type="button" aria-label="Back to main menu" onClick="{{back}}" style="position: absolute; left: 56px; top: 48px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+<p style="position: absolute; left: 0; right: 0; top: 101px; margin: 0; text-align: center; font-family: Michroma, sans-serif; font-size: 26px; letter-spacing: 12px; color: #ECE9E3">{{p.title}}</p>
+<sc-if value="{{p.isEarth}}" hint-placeholder-val="{{false}}">
+<p style="position: absolute; left: 0; right: 0; top: 144px; margin: 0; text-align: center; font-size: 12px; letter-spacing: 4px; color: #8A8783">TANDBORSTE · NASA SPACE APPS CHALLENGE 2026</p>
+</sc-if>
+
+<sc-if value="{{hasPrev}}" hint-placeholder-val="{{false}}">
+<button class="ll-icon" type="button" aria-label="Previous planet" onClick="{{prev}}" style="position: absolute; left: 380px; top: 466px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+</sc-if>
+<sc-if value="{{hasNext}}" hint-placeholder-val="{{true}}">
+<button class="ll-icon" type="button" aria-label="Next planet" onClick="{{next}}" style="position: absolute; left: 1172px; top: 466px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+</sc-if>
+
+<div style="position: absolute; left: 480px; top: 170px; width: 640px; height: 640px">
+<sc-if value="{{showMoon}}" hint-placeholder-val="{{true}}">
+<div class="{{slideCls}}" style="position: absolute; inset: 0">
+<canvas ref="{{setMoon}}" class="{{expCls}}" width="580" height="580" role="img" aria-label="The Moon with landing site markers. Drag to rotate, click a marker." onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 640px; height: 640px"></canvas>
+</div>
+</sc-if>
+<sc-if value="{{showMars}}" hint-placeholder-val="{{false}}">
+<div class="{{slideCls}}" style="position: absolute; inset: 0">
+<canvas ref="{{setMars}}" class="{{expCls}}" width="580" height="580" role="img" aria-label="Mars with landing site markers. Drag to rotate, click a marker." onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 640px; height: 640px"></canvas>
+</div>
+</sc-if>
+<sc-if value="{{showEarth}}" hint-placeholder-val="{{false}}">
+<div class="{{slideCls}}" style="position: absolute; inset: 0">
+<canvas ref="{{setEarth}}" class="{{expCls}}" width="580" height="580" role="img" aria-label="Earth with the team's locations. Drag to rotate, click a marker." onPointerDown="{{down}}" onPointerMove="{{move}}" onPointerUp="{{up}}" onPointerCancel="{{up}}" style="width: 640px; height: 640px"></canvas>
+</div>
+</sc-if>
+<sc-if value="{{p.locked}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8A8783" stroke-width="1.6" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="1.5"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<p style="margin: 0; font-family: Michroma, sans-serif; font-size: 16px; letter-spacing: 8px; color: #B5B2AC">LOCKED</p>
+<p style="margin: 0; font-size: 12px; letter-spacing: 2px; color: #8A8783">{{p.lockHint}}</p>
+</div>
+</sc-if>
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+<div ref="{{setTip}}" class="ll-tip" role="status">
+<sc-if value="{{sel.hasBadge}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 11px; letter-spacing: 3px; color: #3FB950">● {{sel.badge}}</p>
+</sc-if>
+<p style="margin: 0; font-family: Michroma, sans-serif; font-size: 17px; letter-spacing: 3px; color: #ECE9E3">{{sel.name}}</p>
+<div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); row-gap: 5px; column-gap: 10px; font-size: 12px">
+<sc-for list="{{sel.rows}}" as="row" hint-placeholder-count="4">
+<span style="color: #8A8783">{{row.k}}</span><span>{{row.v}}</span>
+</sc-for>
+</div>
+<sc-if value="{{sel.hasNote}}" hint-placeholder-val="{{true}}">
+<p style="margin: 0; font-size: 12px; line-height: 1.6; color: #B5B2AC">{{sel.note}}</p>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<nav aria-label="Planets" style="position: absolute; left: 0; right: 0; top: 826px; display: flex; justify-content: center; gap: 40px">
+<sc-for list="{{tabs}}" as="tab" hint-placeholder-count="3">
+<button class="{{tab.cls}}" type="button" onClick="{{tab.go}}">
+<sc-if value="{{tab.locked}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="1.5"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+{{tab.label}}
+</button>
+</sc-for>
+</nav>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;replayIntro&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false},&quot;progress&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;moon only&quot;,&quot;mars unlocked&quot;,&quot;game finished&quot;],&quot;default&quot;:&quot;game finished&quot;},&quot;saveFile&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;No save file&quot;,&quot;Has save files&quot;],&quot;default&quot;:&quot;No save file&quot;},&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  planets() {
+    return [
+      { id: 'moon', title: 'THE MOON', tab: 'MOON', view: { lat: 0.05, lon: -0.2 }, lockHint: '', sites: [
+        { id: 'a11', name: 'APOLLO 11', lat: 0.674, lon: 23.473, rows: [['LANDED', '20 Jul 1969'], ['CREW', 'Neil Armstrong, Buzz Aldrin'], ['REGION', 'Mare Tranquillitatis']], note: 'The first crewed landing on the Moon.' },
+        { id: 'a12', name: 'APOLLO 12', lat: -3.012, lon: -23.422, badge: 'WHERE LAST LIGHT TAKES PLACE', rows: [['LANDED', '19 Nov 1969'], ['CREW', 'Pete Conrad, Alan Bean'], ['REGION', 'Oceanus Procellarum']], note: 'A pinpoint landing right next to Surveyor 3, a robotic lander from April 1967. The crew walked over to it and brought parts of it back to Earth.' },
+        { id: 'a14', name: 'APOLLO 14', lat: -3.646, lon: -17.471, rows: [['LANDED', '5 Feb 1971'], ['CREW', 'Alan Shepard, Edgar Mitchell'], ['REGION', 'Fra Mauro']], note: 'Explored the Fra Mauro highlands. Shepard famously hit two golf balls on the surface.' },
+        { id: 'a15', name: 'APOLLO 15', lat: 26.132, lon: 3.634, rows: [['LANDED', '30 Jul 1971'], ['CREW', 'David Scott, James Irwin'], ['REGION', 'Hadley–Apennine']], note: 'The first mission to drive the Lunar Roving Vehicle.' },
+        { id: 'a16', name: 'APOLLO 16', lat: -8.973, lon: 15.5, rows: [['LANDED', '21 Apr 1972'], ['CREW', 'John Young, Charles Duke'], ['REGION', 'Descartes Highlands']], note: 'The only Apollo landing in the central lunar highlands.' },
+        { id: 'a17', name: 'APOLLO 17', lat: 20.191, lon: 30.772, rows: [['LANDED', '11 Dec 1972'], ['CREW', 'Gene Cernan, Harrison Schmitt'], ['REGION', 'Taurus–Littrow']], note: 'The last crewed landing so far. Schmitt was the first geologist to walk on the Moon.' }
+      ] },
+      { id: 'mars', title: 'MARS', tab: 'MARS', view: { lat: 0.2, lon: 1.2 }, lockHint: 'COMPLETE THE MOON MISSIONS', sites: [
+        { id: 'v1', name: 'VIKING 1', lat: 22.27, lon: -47.95, rows: [['LANDED', '20 Jul 1976'], ['AGENCY', 'NASA'], ['REGION', 'Chryse Planitia']], note: 'NASA’s first Mars landing. It sent back the first clear pictures from the surface.' },
+        { id: 'v2', name: 'VIKING 2', lat: 47.64, lon: -134.29, rows: [['LANDED', '3 Sep 1976'], ['AGENCY', 'NASA'], ['REGION', 'Utopia Planitia']], note: 'Photographed frost on the ground during the Martian winter.' },
+        { id: 'pf', name: 'PATHFINDER', lat: 19.33, lon: -33.55, rows: [['LANDED', '4 Jul 1997'], ['AGENCY', 'NASA'], ['REGION', 'Ares Vallis']], note: 'Carried Sojourner, the first rover to drive on Mars.' },
+        { id: 'sp', name: 'SPIRIT', lat: -14.57, lon: 175.47, rows: [['LANDED', '4 Jan 2004'], ['AGENCY', 'NASA'], ['REGION', 'Gusev crater']], note: 'Planned for 90 days, it kept working for six years.' },
+        { id: 'op', name: 'OPPORTUNITY', lat: -1.95, lon: -5.53, rows: [['LANDED', '25 Jan 2004'], ['AGENCY', 'NASA'], ['REGION', 'Meridiani Planum']], note: 'Drove over 45 km, a record for driving on another world.' },
+        { id: 'cu', name: 'CURIOSITY', lat: -4.59, lon: 137.44, badge: 'THE ROVER THAT INSPIRED OURS', rows: [['LANDED', '6 Aug 2012'], ['AGENCY', 'NASA'], ['REGION', 'Gale crater']], note: 'Still climbing Mount Sharp. Our rover’s design is based on it.' },
+        { id: 'pe', name: 'PERSEVERANCE', lat: 18.44, lon: 77.45, rows: [['LANDED', '18 Feb 2021'], ['AGENCY', 'NASA'], ['REGION', 'Jezero crater']], note: 'Collects rock samples for a future return to Earth, and brought the Ingenuity helicopter.' },
+        { id: 'zh', name: 'ZHURONG', lat: 25.07, lon: 109.93, rows: [['LANDED', '15 May 2021'], ['AGENCY', 'CNSA'], ['REGION', 'Utopia Planitia']], note: 'China’s first Mars rover.' }
+      ] },
+      { id: 'earth', title: 'EARTH', tab: 'EARTH', view: { lat: -0.22, lon: 2.0 }, lockHint: 'FINISH THE GAME', sites: [
+        { id: 'fahd', name: 'FAHD', lat: -6.891, lon: 107.61, rows: [['STUDIES', 'Informatics'], ['AT', 'Institut Teknologi Bandung'], ['CITY', 'Bandung, Indonesia'], ['FROM', 'Indonesia']] },
+        { id: 'rafi', name: 'RAFI WIDYA PRATAMA', lat: 3.121, lon: 101.654, rows: [['STUDIES', 'Mechanical Engineering'], ['AT', 'Universiti Malaya'], ['CITY', 'Kuala Lumpur, Malaysia'], ['FROM', 'Indonesia']] },
+        { id: 'satinize', name: 'SATINIZE', lat: 1.297, lon: 103.776, rows: [['STUDIES', 'Mechanical Engineering'], ['AT', 'National University of Singapore'], ['CITY', 'Singapore'], ['FROM', 'Indonesia']] },
+        { id: 'faiq', name: 'FAIQ', lat: -37.911, lon: 145.134, rows: [['STUDIES', 'Mechanical Engineering'], ['AT', 'Monash University'], ['CITY', 'Melbourne, Australia'], ['FROM', 'Indonesia']] }
+      ] }
+    ];
+  }
+
+  missions() {
+    return [
+      { n: '01', title: 'Wake Kite' },
+      { n: '02', title: 'First Signal' },
+      { n: '03', title: 'Beyond the Rim' }
+    ];
+  }
+
+  saveList() {
+    return [
+      { date: '12/10/2026 22:41', mi: 1, done: 6, played: '16 min', auto: false, resume: 'Activate IRIS' },
+      { date: '12/10/2026 22:38', mi: 1, done: 5, played: '13 min', auto: true, resume: 'Install the module at IRIS' },
+      { date: '12/10/2026 22:31', mi: 1, done: 4, played: '9 min', auto: true, resume: 'Load the replacement module' },
+      { date: '12/10/2026 22:27', mi: 0, done: 3, played: '7 min', auto: true, resume: 'Downlink the inspection' },
+      { date: '11/10/2026 21:05', mi: 0, done: 1, played: '3 min', auto: true, resume: 'Photograph IRIS’s service panel' }
+    ];
+  }
+
+  thumb(mi) {
+    var scenes = [
+      '<rect width="344" height="188" fill="#16161A"/><rect x="0" y="120" width="344" height="68" fill="#232327"/><path d="M0 120 L60 70 L284 70 L344 120" fill="none" stroke="#3A3A40" stroke-width="2"/><rect x="40" y="40" width="64" height="80" fill="#1F1F24" stroke="#3A3A40"/><rect x="120" y="96" width="120" height="32" rx="3" fill="#C9C4BB"/><rect x="104" y="88" width="24" height="20" fill="#C9C4BB"/><circle cx="140" cy="134" r="12" fill="#2A2A2E"/><circle cx="220" cy="134" r="12" fill="#2A2A2E"/><rect x="226" y="60" width="4" height="36" fill="#C9C4BB"/><ellipse cx="180" cy="40" rx="70" ry="10" fill="#ECE9E3" opacity=".12"/>',
+      '<rect width="344" height="188" fill="#050507"/><circle cx="60" cy="30" r="1" fill="#ECE9E3"/><circle cx="250" cy="22" r="1" fill="#ECE9E3"/><circle cx="300" cy="50" r="1" fill="#ECE9E3"/><path d="M0 110 Q120 96 240 106 T344 102 V188 H0Z" fill="#4A4944"/><path d="M0 146 Q160 130 344 140 V188 H0Z" fill="#5C5A54"/><rect x="200" y="70" width="34" height="38" fill="#B5B2AC"/><path d="M217 70 L217 40" stroke="#B5B2AC" stroke-width="3"/><path d="M204 40 Q217 28 230 40" fill="none" stroke="#B5B2AC" stroke-width="3"/><circle cx="217" cy="86" r="3" fill="#ECE9E3"/><rect x="70" y="122" width="62" height="18" rx="2" fill="#ECE9E3"/><circle cx="80" cy="144" r="7" fill="#2A2A2E"/><circle cx="122" cy="144" r="7" fill="#2A2A2E"/>',
+      '<rect width="344" height="188" fill="#050507"/><circle cx="290" cy="34" r="16" fill="#4C8FD6" opacity=".55"/><path d="M0 96 L90 60 L180 92 L344 80 V188 H0Z" fill="#3E3D39"/><path d="M0 130 Q170 110 344 124 V188 H0Z" fill="#57554F"/><path d="M150 124 Q250 112 344 124 V188 H150Z" fill="#26262A" opacity=".8"/><rect x="250" y="108" width="10" height="14" fill="#ECE9E3"/><path d="M255 108 V96" stroke="#ECE9E3" stroke-width="2"/>'
+    ];
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="344" height="188" viewBox="0 0 344 188">' + scenes[mi] + '</svg>';
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  unlocked() {
+    var p = this.props.progress || 'game finished';
+    return { moon: true, mars: p !== 'moon only', earth: p === 'game finished' };
+  }
+
+  noise3(x, y, z) {
+    var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    var xf = x - xi, yf = y - yi, zf = z - zi;
+    var u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+    var h = function (i, j, k) {
+      var n = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(k, 1440662683);
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      n ^= n >>> 16;
+      return (n >>> 0) / 4294967295;
+    };
+    var a = h(xi, yi, zi), b = h(xi + 1, yi, zi), c = h(xi, yi + 1, zi), d = h(xi + 1, yi + 1, zi);
+    var e = h(xi, yi, zi + 1), f = h(xi + 1, yi, zi + 1), g = h(xi, yi + 1, zi + 1), k = h(xi + 1, yi + 1, zi + 1);
+    var x1 = a + (b - a) * u, x2 = c + (d - c) * u, x3 = e + (f - e) * u, x4 = g + (k - g) * u;
+    var y1 = x1 + (x2 - x1) * v, y2 = x3 + (x4 - x3) * v;
+    return y1 + (y2 - y1) * w;
+  }
+
+  fbm(x, y, z) {
+    var s = 0, amp = 0.5, f = 1;
+    for (var o = 0; o < 4; o++) { s += amp * this.noise3(x * f, y * f, z * f); f *= 2.1; amp *= 0.5; }
+    return s / 0.9375;
+  }
+
+  blobField(list, W, H, wobAmp, wobFreq, softness) {
+    var PI = Math.PI, D = PI / 180, out = new Float32Array(W * H), self = this;
+    var mv = list.map(function (m) { var la = m[0] * D, lo = m[1] * D; return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo), m[2], m.length > 3 ? m[3] : 1]; });
+    for (var y = 0; y < H; y++) {
+      var lat = (0.5 - (y + 0.5) / H) * PI, cl = Math.cos(lat), sl = Math.sin(lat);
+      for (var x = 0; x < W; x++) {
+        var lon = ((x + 0.5) / W) * 2 * PI - PI;
+        var px = cl * Math.sin(lon), py = sl, pz = cl * Math.cos(lon);
+        var wob = (self.fbm(px * wobFreq + 40, py * wobFreq, pz * wobFreq) - 0.5) * wobAmp;
+        var m = 0;
+        for (var i = 0; i < mv.length; i++) {
+          var q = mv[i];
+          var dd = Math.acos(Math.max(-1, Math.min(1, px * q[0] + py * q[1] + pz * q[2]))) / D + wob;
+          var r = q[3], s = (r * 1.1 - dd) / (r * softness);
+          s = s < 0 ? 0 : s > 1 ? 1 : s * s * (3 - 2 * s);
+          s *= q[4];
+          if (s > m) m = s;
+        }
+        out[y * W + x] = m;
+      }
+    }
+    return out;
+  }
+
+  craters(field, W, H, count, seedV, rimAmp, floorMul) {
+    var PI = Math.PI, D = PI / 180, seed = seedV;
+    var rnd = function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var z = Math.imul(seed ^ seed >>> 15, 1 | seed); z = z + Math.imul(z ^ z >>> 7, 61 | z) ^ z; return ((z ^ z >>> 14) >>> 0) / 4294967296; };
+    var self = this;
+    var stamp = function (clat, clon, r, halo, rays) {
+      var la = clat * D, lo = clon * D;
+      var c = [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)];
+      var e = [Math.cos(lo), 0, -Math.sin(lo)], nn = [-Math.sin(la) * Math.sin(lo), Math.cos(la), -Math.sin(la) * Math.cos(lo)];
+      var reach = rays ? 40 : halo ? r * 3.5 : r * 1.4;
+      var y0 = Math.max(0, Math.floor((90 - clat - reach) / 180 * H)), y1 = Math.min(H - 1, Math.ceil((90 - clat + reach) / 180 * H));
+      for (var yy = y0; yy <= y1; yy++) {
+        var lat2 = (0.5 - (yy + 0.5) / H) * PI, c2 = Math.cos(lat2), s2 = Math.sin(lat2);
+        var span = Math.min(180, reach / Math.max(0.05, c2));
+        var xa = Math.floor((clon - span + 180) / 360 * W), xb = Math.ceil((clon + span + 180) / 360 * W);
+        for (var xx = xa; xx <= xb; xx++) {
+          var wx = ((xx % W) + W) % W;
+          var lon2 = ((wx + 0.5) / W) * 2 * PI - PI;
+          var p0 = c2 * Math.sin(lon2), p1 = s2, p2 = c2 * Math.cos(lon2);
+          var d = Math.acos(Math.max(-1, Math.min(1, p0 * c[0] + p1 * c[1] + p2 * c[2]))) / D;
+          if (d > reach) continue;
+          var idx = yy * W + wx, q = d / r, v = field[idx];
+          if (q < 0.85) v *= floorMul;
+          v += rimAmp * Math.exp(-((q - 1) * (q - 1)) / 0.02);
+          if (halo) v += halo * Math.exp(-(d * d) / (r * r * 4));
+          if (rays && d > r) {
+            var b = Math.atan2(p0 * e[0] + p1 * e[1] + p2 * e[2], p0 * nn[0] + p1 * nn[1] + p2 * nn[2]);
+            v += rays * Math.pow(0.5 + 0.5 * Math.sin(b * 11 + 2.5 * Math.sin(b * 3) + self.noise3(b * 2, 0, 1) * 4), 14) * Math.exp(-d / 16);
+          }
+          field[idx] = v;
+        }
+      }
+    };
+    for (var k = 0; k < count; k++) {
+      var cy = Math.asin(rnd() * 2 - 1) / D, cx = rnd() * 360 - 180;
+      stamp(cy, cx, 0.25 + 4.2 * Math.pow(rnd(), 3), 0, 0);
+    }
+    return stamp;
+  }
+
+  eachPixel(W, H, fn) {
+    var PI = Math.PI;
+    for (var y = 0; y < H; y++) {
+      var lat = (0.5 - (y + 0.5) / H) * PI, cl = Math.cos(lat), sl = Math.sin(lat);
+      for (var x = 0; x < W; x++) {
+        var lon = ((x + 0.5) / W) * 2 * PI - PI;
+        fn(y * W + x, cl * Math.sin(lon), sl, cl * Math.cos(lon), lat * 180 / PI);
+      }
+    }
+  }
+
+  buildMoon() {
+    var W = 1024, H = 512, self = this;
+    var mare = this.blobField([[10, -55, 24], [-2, -42, 14], [33, -16, 15], [28, 17, 9], [8, 31, 11], [17, 59, 7], [-8, 51, 8], [-15, 35, 5], [-21, -17, 9], [-24, -39, 5], [-10, -22, 6], [13, 4, 4], [7, -31, 7], [56, -40, 5], [56, -15, 5], [56, 10, 5], [55, 30, 5], [20, -60, 9]], W, H, 7, 9, 0.4);
+    var a = new Float32Array(W * H);
+    this.eachPixel(W, H, function (i, px, py, pz) {
+      var n = self.fbm(px * 5 + 11, py * 5 + 3, pz * 5), fine = self.noise3(px * 60, py * 60, pz * 60);
+      var hi = 0.66 * (0.78 + 0.36 * n + 0.1 * fine), ma = 0.29 * (0.82 + 0.36 * n + 0.08 * fine);
+      a[i] = hi + (ma - hi) * mare[i];
+    });
+    var stamp = this.craters(a, W, H, 900, 7, 0.13, 0.86);
+    stamp(-43.3, -11.4, 2.6, 0.22, 0.22);
+    stamp(9.6, -20.1, 2.9, 0.16, 0.13);
+    stamp(8.1, -38.0, 1.3, 0.14, 0);
+    stamp(23.7, -47.4, 1.2, 0.3, 0);
+    var rgb = new Float32Array(W * H * 3);
+    for (var j = 0; j < W * H; j++) {
+      var v = Math.max(0.05, Math.min(1.05, a[j]));
+      rgb[j * 3] = v * 1.03; rgb[j * 3 + 1] = v; rgb[j * 3 + 2] = v * 0.94;
+    }
+    return { data: rgb, W: W, H: H, atmo: null };
+  }
+
+  buildMars() {
+    var W = 512, H = 256, self = this;
+    var valles = [];
+    for (var lo = -96; lo <= -40; lo += 2) valles.push([-8 - (lo + 96) * 0.08, lo, 1.4, 0.9]);
+    var dark = this.blobField([[9, 70, 9], [17, 66, 6], [46, -25, 13], [55, -40, 8], [-25, -40, 13], [-22, -15, 9], [-3, 2, 6], [-6, -10, 5], [-15, 100, 11], [-25, 145, 12], [-28, 170, 9], [-30, -150, 10], [45, 110, 9, 0.45], [1.5, -113, 2, 0.8], [11.9, -104.1, 2, 0.8], [-8.3, -120.1, 2, 0.8]].concat(valles), W, H, 8, 6, 0.5);
+    var shade = new Float32Array(W * H);
+    for (var s0 = 0; s0 < W * H; s0++) shade[s0] = 1;
+    var stamp = this.craters(shade, W, H, 380, 19, 0.08, 0.85);
+    stamp(18.65, -133.8, 5, 0.18, 0);
+    stamp(-42.4, 70.5, 10, 0.12, 0);
+    stamp(-49.7, -43, 6, 0.1, 0);
+    var rgb = new Float32Array(W * H * 3);
+    this.eachPixel(W, H, function (i, px, py, pz, latD) {
+      var n = self.fbm(px * 4 + 3, py * 4, pz * 4 + 7), m = dark[i];
+      var r = 0.80 + (0.36 - 0.80) * m, g = 0.46 + (0.21 - 0.46) * m, b = 0.27 + (0.15 - 0.27) * m;
+      var k = (0.78 + 0.4 * n) * shade[i];
+      r *= k; g *= k; b *= k;
+      var capN = (latD - 78 + (n - 0.5) * 8) / 4, capS = (-latD - 82 + (n - 0.5) * 6) / 3;
+      var cap = Math.max(0, Math.min(1, Math.max(capN, capS)));
+      rgb[i * 3] = r + (0.93 - r) * cap; rgb[i * 3 + 1] = g + (0.92 - g) * cap; rgb[i * 3 + 2] = b + (0.9 - b) * cap;
+    });
+    return { data: rgb, W: W, H: H, atmo: 'rgba(230,150,110,' };
+  }
+
+  buildEarth() {
+    var W = 512, H = 256, self = this;
+    var land = this.blobField([
+      [-25, 134, 14], [-20, 124, 8], [-31, 146, 8], [-17, 141, 6], [-42, 146, 2.5],
+      [1, 114, 4.5], [0, 101, 3.2], [-3, 104, 3], [-7.4, 110, 2.2], [-7.6, 113, 2], [-8.5, 117.5, 1.5], [-9, 121, 1.4], [-2, 121, 2.6], [-5, 140, 5], [-6, 146, 3],
+      [4, 102, 2.3], [8, 100, 2], [13, 100, 4], [15, 105, 6], [21, 100, 6], [12, 122, 3], [16, 121, 2.2],
+      [21, 78, 8], [13, 78, 5], [28, 82, 7], [8, 80.7, 1.2],
+      [33, 105, 13], [40, 115, 8], [25, 113, 5], [36, 138, 3], [40, 141, 2], [43, 143, 1.6], [-42, 173, 3], [-38, 176, 2],
+      [55, 90, 22], [60, 120, 18], [55, 50, 18], [50, 20, 12], [46, 5, 8], [40, -4, 5], [42, 13, 3], [62, 15, 6], [65, 28, 6], [53, -2, 3.5],
+      [24, 46, 7], [33, 55, 7], [38, 35, 5],
+      [5, 20, 16], [-12, 26, 13], [20, 10, 14], [24, 26, 8], [-26, 25, 8], [-19, 47, 3.5], [10, 40, 6],
+      [45, -100, 18], [58, -110, 15], [40, -82, 8], [65, -150, 8], [20, -102, 6], [68, -45, 10], [62, -75, 7], [50, -65, 6],
+      [-10, -60, 14], [-22, -58, 10], [-35, -66, 7], [-48, -70, 4], [4, -68, 7], [-5, -40, 6], [9, -82, 2.5]
+    ], W, H, 6, 5, 0.25);
+    var rgb = new Float32Array(W * H * 3);
+    this.eachPixel(W, H, function (i, px, py, pz, latD) {
+      var n = self.fbm(px * 6 + 5, py * 6, pz * 6), L = land[i];
+      if (latD < -66) L = 1;
+      var or = 0.04, og = 0.13 + 0.05 * n, ob = 0.32 + 0.08 * n;
+      var dry = Math.max(0, 1 - Math.abs(Math.abs(latD) - 24) / 12) * (0.6 + 0.8 * (n - 0.5));
+      dry = Math.max(0, Math.min(1, dry));
+      var lr = 0.16 + (0.62 - 0.16) * dry, lg = 0.30 + (0.50 - 0.30) * dry, lb = 0.11 + (0.30 - 0.11) * dry;
+      var ice = Math.max(0, Math.min(1, (Math.abs(latD) - 62 + (n - 0.5) * 10) / 6));
+      if (L > 0.5) { lr += (0.92 - lr) * ice; lg += (0.94 - lg) * ice; lb += (0.97 - lb) * ice; }
+      var r = or + (lr - or) * L, g = og + (lg - og) * L, b = ob + (lb - ob) * L;
+      var cl = self.fbm(px * 3.2 + 20, py * 3.2 + 9, pz * 3.2);
+      var cloud = Math.max(0, Math.min(1, (cl - 0.52) / 0.18)) * 0.85;
+      rgb[i * 3] = r + (0.95 - r) * cloud; rgb[i * 3 + 1] = g + (0.95 - g) * cloud; rgb[i * 3 + 2] = b + (0.97 - b) * cloud;
+    });
+    return { data: rgb, W: W, H: H, atmo: 'rgba(110,170,255,' };
+  }
+
+  tex(id) {
+    if (!this.texCache[id]) this.texCache[id] = id === 'moon' ? this.buildMoon() : id === 'mars' ? this.buildMars() : this.buildEarth();
+    return this.texCache[id];
+  }
+
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 42;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 560; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.6 : m > 0.9 ? 1.1 : 0.7;
+      var a = 0.25 + rnd() * 0.65, hue = rnd();
+      ctx.fillStyle = hue > 0.85 ? 'rgba(190,210,255,' + a + ')' : hue < 0.12 ? 'rgba(255,225,190,' + a + ')' : 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    var g = ctx.createRadialGradient(cv.width * 0.35, cv.height / 2, cv.height * 0.2, cv.width / 2, cv.height / 2, cv.width * 0.8);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+
+  project(view, lat, lon) {
+    var D = Math.PI / 180, la = lat * D, lo = lon * D;
+    var wx = Math.cos(la) * Math.sin(lo), wy = Math.sin(la), wz = Math.cos(la) * Math.cos(lo);
+    var co = Math.cos(view.lon), so = Math.sin(view.lon), cl = Math.cos(view.lat), sl = Math.sin(view.lat);
+    var x1 = wx * co - wz * so, z1 = wx * so + wz * co;
+    return { x: x1, y: wy * cl - z1 * sl, z: wy * sl + z1 * cl };
+  }
+
+  geom(cv) {
+    if (cv === this.menuCv) return { cx: 500, cy: 500, R: 490 };
+    return { cx: cv.width / 2, cy: cv.height / 2, R: cv.width / 2 - 24 };
+  }
+
+  renderPlanet(cv, view, texId, opts) {
+    var ctx = cv.getContext('2d'), Wc = cv.width, Hc = cv.height, gm = this.geom(cv), R = gm.R, cx = gm.cx, cy = gm.cy;
+    if (!cv._img || cv._img.width !== Wc) cv._img = ctx.createImageData(Wc, Hc);
+    var img = cv._img, d = img.data, tex = this.tex(texId), T = tex.data, W = tex.W, H = tex.H, PI = Math.PI;
+    var cl = Math.cos(view.lat), sl = Math.sin(view.lat), co = Math.cos(view.lon), so = Math.sin(view.lon);
+    var Lx = -0.5, Ly = 0.42, Lz = 0.76, dim = opts.locked ? 0.07 : 1;
+    for (var py = 0; py < Hc; py++) {
+      var vy = (cy - py - 0.5) / R;
+      for (var px = 0; px < Wc; px++) {
+        var i4 = (py * Wc + px) * 4;
+        var vx = (px + 0.5 - cx) / R, rr = vx * vx + vy * vy;
+        if (rr >= 1) { d[i4 + 3] = 0; continue; }
+        var vz = Math.sqrt(1 - rr);
+        var y1 = vy * cl + vz * sl, z1 = -vy * sl + vz * cl;
+        var x2 = vx * co + z1 * so, z2 = -vx * so + z1 * co;
+        var lat = Math.asin(y1), lon = Math.atan2(x2, z2);
+        var u = ((lon + PI) / (2 * PI) * W) | 0, w = ((PI / 2 - lat) / PI * H) | 0;
+        if (u >= W) u = W - 1; if (w >= H) w = H - 1; if (w < 0) w = 0;
+        var dif = vx * Lx + vy * Ly + vz * Lz;
+        var sh = (0.1 + 1.0 * (dif > 0 ? dif : 0)) * 255 * dim;
+        var t3 = (w * W + u) * 3;
+        var edge = (1 - Math.sqrt(rr)) * R;
+        d[i4] = T[t3] * sh; d[i4 + 1] = T[t3 + 1] * sh; d[i4 + 2] = T[t3 + 2] * sh;
+        d[i4 + 3] = edge < 1 ? edge * 255 : 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    if (tex.atmo || opts.locked) {
+      var col = opts.locked ? 'rgba(236,233,227,' : tex.atmo;
+      var g = ctx.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.08);
+      g.addColorStop(0, col + '0)');
+      g.addColorStop(0.35, col + (opts.locked ? '0.12)' : '0.35)'));
+      g.addColorStop(1, col + '0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, R * 1.08, 0, PI * 2); ctx.fill();
+    }
+    if (!opts.sites) return;
+    var sel = (this.state || {}).sel, proj = [];
+    for (var k = 0; k < opts.sites.length; k++) {
+      var s = opts.sites[k], p = this.project(view, s.lat, s.lon);
+      if (p.z < 0.08) continue;
+      var x = cx + p.x * R, y = cy - p.y * R, isSel = sel === s.id, special = !!s.badge;
+      proj.push({ id: s.id, x: x, y: y });
+      ctx.fillStyle = special ? 'rgba(63,185,80,0.28)' : 'rgba(236,233,227,0.22)';
+      ctx.beginPath(); ctx.arc(x, y, isSel ? 13 : 9, 0, PI * 2); ctx.fill();
+      ctx.fillStyle = special ? '#3FB950' : '#ECE9E3';
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(5,5,7,0.85)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, 4.75, 0, PI * 2); ctx.stroke();
+      if (isSel) {
+        ctx.strokeStyle = '#ECE9E3'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y, 17, 0, PI * 2); ctx.stroke();
+      }
+    }
+    this.proj = proj;
+  }
+
+  renderEarthBg(cv, cx, cy, R, view) {
+    var ctx = cv.getContext('2d'), W = cv.width, H = cv.height, PI = Math.PI;
+    if (!cv._img) cv._img = ctx.createImageData(W, H);
+    var img = cv._img, d = img.data;
+    var bx = cv._box;
+    if (bx) { for (var yy = bx[1]; yy < bx[3]; yy++) d.fill(0, (yy * W + bx[0]) * 4, (yy * W + bx[2]) * 4); }
+    var x0 = Math.max(0, Math.floor(cx - R - 2)), x1 = Math.min(W, Math.ceil(cx + R + 2));
+    var y0 = Math.max(0, Math.floor(cy - R - 2)), y1 = Math.min(H, Math.ceil(cy + R + 2));
+    cv._box = [x0, y0, x1, y1];
+    var area = (x1 - x0) * (y1 - y0), step = Math.max(1, Math.ceil(Math.sqrt(area / 260000)));
+    var tex = this.tex('earth'), T = tex.data, TW = tex.W, TH = tex.H;
+    var cl = Math.cos(view.lat), sl = Math.sin(view.lat), co = Math.cos(view.lon), so = Math.sin(view.lon);
+    var Lx = -0.62, Ly = 0.3, Lz = 0.72;
+    for (var py = y0; py < y1; py += step) {
+      var vy = (cy - py - step / 2) / R;
+      for (var px = x0; px < x1; px += step) {
+        var vx = (px + step / 2 - cx) / R, rr = vx * vx + vy * vy;
+        if (rr >= 1) continue;
+        var vz = Math.sqrt(1 - rr);
+        var y1v = vy * cl + vz * sl, z1 = -vy * sl + vz * cl;
+        var x2 = vx * co + z1 * so, z2 = -vx * so + z1 * co;
+        var lat = Math.asin(y1v), lon = Math.atan2(x2, z2);
+        var u = ((lon + PI) / (2 * PI) * TW) | 0, w = ((PI / 2 - lat) / PI * TH) | 0;
+        if (u >= TW) u = TW - 1; if (w >= TH) w = TH - 1;
+        var dif = vx * Lx + vy * Ly + vz * Lz;
+        var sh = (0.03 + 1.05 * (dif > 0 ? Math.pow(dif, 0.8) : 0)) * 255;
+        var t3 = (w * TW + u) * 3, edge = (1 - Math.sqrt(rr)) * R / step;
+        var r = T[t3] * sh, g = T[t3 + 1] * sh, b = T[t3 + 2] * sh, a = edge < 1 ? edge * 255 : 255;
+        var ex = Math.min(x1, px + step), ey = Math.min(y1, py + step);
+        for (var by = py; by < ey; by++) {
+          var row = by * W;
+          for (var bxx = px; bxx < ex; bxx++) {
+            var i4 = (row + bxx) * 4;
+            d[i4] = r; d[i4 + 1] = g; d[i4 + 2] = b; d[i4 + 3] = a;
+          }
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    var g2 = ctx.createRadialGradient(cx, cy, R * 0.97, cx, cy, R * 1.07);
+    g2.addColorStop(0, 'rgba(110,170,255,0)');
+    g2.addColorStop(0.3, 'rgba(110,170,255,0.4)');
+    g2.addColorStop(1, 'rgba(110,170,255,0)');
+    ctx.fillStyle = g2;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.07, 0, PI * 2); ctx.fill();
+  }
+
+  current() {
+    var st = this.state || {}, id = st.planet || 'moon';
+    return this.planets().filter(function (p) { return p.id === id; })[0];
+  }
+
+  placeTip() {
+    var tip = this.tipEl, pl = this.current(), cv = this.cvs[pl.id], st = this.state || {};
+    if (!tip || !cv || !st.sel) return;
+    var s = pl.sites.filter(function (x) { return x.id === st.sel; })[0];
+    if (!s) return;
+    var p = this.project(this.views[pl.id], s.lat, s.lon), gm = this.geom(cv), sc = 640 / cv.width;
+    var x = (gm.cx + p.x * gm.R) * sc, y = (gm.cy - p.y * gm.R) * sc;
+    var left = x + 28;
+    if (left + 300 > 640 + 340) left = x - 328;
+    tip.style.left = left + 'px';
+    tip.style.top = (y - 40) + 'px';
+    tip.style.opacity = p.z < 0.08 ? '0' : '1';
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.texCache = {};
+    this.cvs = {};
+    this.views = { menu: { lat: -0.32, lon: 0.38 } };
+    this.planets().forEach(function (p) { self.views[p.id] = { lat: p.view.lat, lon: p.view.lon }; });
+    this.target = null;
+    this.drag = null;
+    this.idleAt = 0;
+    this.lastT = 0;
+    this.tex('moon');
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    this.setMenu = function (el) { self.menuCv = el; };
+    this.setEarthBg = function (el) { self.earthBgCv = el; };
+    this.views.earthBg = { lat: -0.12, lon: 1.95 };
+    this.introStart = performance.now();
+    this.setMoon = function (el) { self.cvs.moon = el; };
+    this.setMars = function (el) { self.cvs.mars = el; };
+    this.setEarth = function (el) { self.cvs.earth = el; };
+    this.setTip = function (el) { self.tipEl = el; if (el) self.placeTip(); };
+    this.playLoad = function (mi, line) {
+      if (self.playTimer) clearTimeout(self.playTimer);
+      self.setState({ screen: 'loading', play: false, tmi: mi, titleLine: line, stage: 'LOADING TERRAIN' });
+      self.playTimer = setTimeout(function () {
+        self.setState({ stage: 'PREPARING THE WORKSHOP' });
+        self.playTimer = setTimeout(function () { self.setState({ screen: 'title' }); }, 1700);
+      }, 1500);
+    };
+    this.openPlay = function () { self.setState({ play: true, psel: 0 }); };
+    this.closePlay = function () { self.setState({ play: false }); };
+    this.restart = function () { if (self.playTimer) clearTimeout(self.playTimer); self.setState({ screen: 'menu', play: false }); };
+    this.startCampaign = function () { self.playLoad(0, 'Repair Kite and inspect IRIS'); };
+    this.loop = function (t) {
+      var dt = self.lastT ? Math.min(0.05, (t - self.lastT) / 1000) : 0.016;
+      self.lastT = t;
+      var st = self.state || {}, idle = !self.drag && t - self.idleAt > 1200;
+      if (self.menuCv) {
+        if (idle) self.views.menu.lon += (st.hover ? 0.015 : 0.035) * dt;
+        self.renderPlanet(self.menuCv, self.views.menu, 'moon', {});
+      }
+      if (false) {
+        var it = st.introDone ? 99 : (t - self.introStart) / 1000;
+        var pr = Math.max(0, Math.min(1, (it - 1.2) / 5.2));
+        var e = pr < 0.5 ? 4 * pr * pr * pr : 1 - Math.pow(-2 * pr + 2, 3) / 2;
+        var R = 980 * Math.pow(62 / 980, e);
+        var cx = 800 + (952 - 800) * e, cy = 450 + (168 - 450) * e;
+        self.views.earthBg.lon += (0.025 + 0.06 * (1 - e)) * dt;
+        self.renderEarthBg(self.earthBgCv, cx, cy, R, self.views.earthBg);
+      }
+      if ((st.screen || 'menu') === 'explore') {
+        var pl = self.current(), cv = self.cvs[pl.id], v = self.views[pl.id];
+        if (cv) {
+          var locked = !self.unlocked()[pl.id];
+          if (self.target && !self.drag) {
+            var dl = Math.atan2(Math.sin(self.target.lon - v.lon), Math.cos(self.target.lon - v.lon)), k = Math.min(1, dt * 3.5);
+            v.lon += dl * k;
+            v.lat += (self.target.lat - v.lat) * k;
+          } else if (idle && !st.sel) {
+            v.lon += 0.06 * dt;
+          }
+          self.renderPlanet(cv, v, pl.id, { sites: locked ? null : pl.sites, locked: locked });
+          self.placeTip();
+        }
+      }
+      self.raf = requestAnimationFrame(self.loop);
+    };
+    this.local = function (e, cv) {
+      var rect = cv.getBoundingClientRect(), sc = cv.width / rect.width;
+      return { x: (e.clientX - rect.left) * sc, y: (e.clientY - rect.top) * sc };
+    };
+    this.onDisc = function (e, cv) {
+      var p = self.local(e, cv), gm = self.geom(cv);
+      return (p.x - gm.cx) * (p.x - gm.cx) + (p.y - gm.cy) * (p.y - gm.cy) < gm.R * gm.R;
+    };
+    this.down = function (e) {
+      var cv = e.currentTarget, isMenu = cv === self.menuCv;
+      if (isMenu && !self.onDisc(e, cv)) return;
+      var pl = self.current(), locked = !isMenu && !self.unlocked()[pl.id];
+      var view = isMenu ? self.views.menu : self.views[pl.id];
+      var gm = self.geom(cv), rw = cv.getBoundingClientRect().width;
+      var mode = isMenu || (!locked && self.onDisc(e, cv)) ? 'rotate' : 'swipe';
+      self.drag = { x: e.clientX, y: e.clientY, moved: 0, dx: 0, lat: view.lat, lon: view.lon, cv: cv, view: view, mode: mode, pxR: gm.R * rw / cv.width };
+      if (mode === 'rotate') self.target = null;
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      self.setState({ dragging: true });
+    };
+    this.move = function (e) {
+      var dr = self.drag;
+      if (!dr) {
+        var cv = e.currentTarget;
+        if (cv === self.menuCv) {
+          var on = self.onDisc(e, cv);
+          if (on !== !!(self.state || {}).hover) self.setState({ hover: on });
+        }
+        return;
+      }
+      var dx = e.clientX - dr.x, dy = e.clientY - dr.y;
+      dr.dx = dx;
+      dr.moved = Math.max(dr.moved, Math.abs(dx) + Math.abs(dy));
+      if (dr.mode !== 'rotate') return;
+      var k = 1.4 / dr.pxR;
+      dr.view.lon = dr.lon - dx * k;
+      dr.view.lat = Math.max(-1.3, Math.min(1.3, dr.lat + dy * k));
+    };
+    this.up = function (e) {
+      var dr = self.drag;
+      if (!dr) return;
+      self.drag = null;
+      self.idleAt = performance.now();
+      if (dr.mode === 'swipe' && Math.abs(dr.dx) > 80) {
+        self.setState({ dragging: false });
+        self.step(dr.dx < 0 ? 1 : -1);
+        return;
+      }
+      if (dr.moved < 5) {
+        if (dr.cv === self.menuCv) {
+          self.setState({ dragging: false, screen: 'explore', hover: false, planet: 'moon', dir: 'r', sel: null });
+          return;
+        }
+        if (dr.mode === 'rotate') {
+          var p = self.local(e, dr.cv), best = null, bd = 18;
+          (self.proj || []).forEach(function (m) { var dd = Math.hypot(m.x - p.x, m.y - p.y); if (dd < bd) { bd = dd; best = m; } });
+          if (best) { self.select(best.id); self.setState({ dragging: false }); return; }
+          self.target = null;
+          self.setState({ dragging: false, sel: null });
+          return;
+        }
+      }
+      self.setState({ dragging: false });
+    };
+    this.leave = function () { if ((self.state || {}).hover) self.setState({ hover: false }); };
+    this.back = function () { self.target = null; self.tipEl = null; self.setState({ screen: 'menu', sel: null }); };
+    this.prev = function () { self.step(-1); };
+    this.skipIntro = function () { if (self.introTimer) clearTimeout(self.introTimer); self.setState({ introDone: true }); };
+    this.next = function () { self.step(1); };
+  }
+
+  step(delta) {
+    var ids = this.planets().map(function (p) { return p.id; });
+    var i = ids.indexOf((this.state || {}).planet || 'moon') + delta;
+    if (i < 0 || i >= ids.length) return;
+    this.go(ids[i]);
+  }
+
+  go(id) {
+    var ids = this.planets().map(function (p) { return p.id; });
+    var cur = ids.indexOf((this.state || {}).planet || 'moon'), nxt = ids.indexOf(id);
+    if (nxt === cur) return;
+    this.target = null;
+    this.tipEl = null;
+    this.proj = null;
+    this.setState({ planet: id, sel: null, dir: nxt > cur ? 'r' : 'l' });
+  }
+
+  select(id) {
+    var s = this.current().sites.filter(function (x) { return x.id === id; })[0];
+    if (!s) return;
+    var D = Math.PI / 180;
+    this.target = { lat: s.lat * D, lon: s.lon * D };
+    this.setState({ sel: id });
+  }
+
+  componentDidMount() {
+    this.ensure();
+    var self = this;
+    this.introTimer = setTimeout(function () { self.setState({ introDone: true }); }, 10300);
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  componentDidUpdate(prev) {
+    if (prev.replayIntro !== this.props.replayIntro) this.replay();
+  }
+
+  replay() {
+    var self = this;
+    if (this.introTimer) clearTimeout(this.introTimer);
+    this.target = null;
+    this.tipEl = null;
+    this.setState({ introDone: true, screen: 'menu', sel: null }, function () {
+      requestAnimationFrame(function () {
+        self.introStart = performance.now();
+        self.setState({ introDone: false });
+        self.introTimer = setTimeout(function () { self.setState({ introDone: true }); }, 10300);
+      });
+    });
+  }
+
+  componentWillUnmount() {
+    if (this.playTimer) clearTimeout(this.playTimer);
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.introTimer) clearTimeout(this.introTimer);
+  }
+
+  renderVals() {
+    this.ensure();
+    var st = this.state || {}, self = this;
+    var screen = st.screen || 'menu', logo = this.props.logo || 'C', un = this.unlocked();
+    var pl = this.current(), ids = this.planets().map(function (p) { return p.id; }), idx = ids.indexOf(pl.id);
+    var locked = !un[pl.id];
+    var sel = null;
+    if (st.sel && !locked) {
+      var s = pl.sites.filter(function (x) { return x.id === st.sel; })[0];
+      if (s) {
+        var rows = s.rows.map(function (r) { return { k: r[0], v: r[1] }; });
+        if (pl.id !== 'earth') rows.push({ k: 'COORDS', v: Math.abs(s.lat).toFixed(2) + '°' + (s.lat >= 0 ? 'N' : 'S') + '  ' + Math.abs(s.lon).toFixed(2) + '°' + (s.lon >= 0 ? 'E' : 'W') });
+        sel = { name: s.name, rows: rows, note: s.note || '', hasNote: !!s.note, badge: s.badge || '', hasBadge: !!s.badge };
+      }
+    }
+    var hasSave = (this.props.saveFile || 'Has save files') !== 'No save file', inMenu = screen === 'menu';
+    var pms = this.missions(), ptotal = 16, psel = st.psel || 0;
+    var saves = this.saveList().map(function (s, i) {
+      var segs = [];
+      for (var k = 0; k < ptotal; k++) segs.push({ cls: 'll-sg' + (k < s.done ? ' on' : '') });
+      return {
+        date: s.date, title: pms[s.mi].title, played: s.played + ' played', auto: s.auto,
+        pct: Math.round(s.done / ptotal * 100) + '%', segs: segs, img: self.thumb(s.mi),
+        cls: 'll-save' + (i === psel ? ' is-on' : ''),
+        pick: function () { if ((self.state || {}).psel !== i) self.setState({ psel: i }); },
+        load: function () { self.playLoad(s.mi, 'Resuming · ' + s.resume); }
+      };
+    });
+    var tm = pms[st.tmi || 0];
+    var tabs = this.planets().map(function (p) {
+      var lk = !un[p.id];
+      return { label: p.tab, locked: lk, cls: 'll-tab t-' + p.id + (p.id === pl.id ? ' is-on' : '') + (lk ? ' is-locked' : ''), go: function () { self.go(p.id); } };
+    });
+    return {
+      isMenu: screen === 'menu',
+      playOpen: inMenu && !!st.play,
+      showNoSave: inMenu && !!st.play && !hasSave,
+      showSaves: inMenu && !!st.play && hasSave,
+      isLoading: screen === 'loading', isTitle: screen === 'title',
+      saves: saves, tm: { n: tm.n, upper: tm.title.toUpperCase() },
+      titleLine: st.titleLine || '', loadStage: st.stage || 'LOADING TERRAIN',
+      openPlay: this.openPlay, closePlay: this.closePlay, restart: this.restart, startCampaign: this.startCampaign,
+      menuWrapCls: 'll-fade ll-blurwrap' + (st.introDone ? '' : ' ll-intro') + (st.play && screen === 'menu' ? ' on' : ''),
+      showIntro: !st.introDone,
+      skipIntro: this.skipIntro,
+      isExplore: screen === 'explore',
+      logoA: logo === 'A', logoB: logo === 'B', logoC: logo === 'C', logoD: logo === 'D',
+      menuCls: 'll-m ll-m' + logo,
+      bigCls: 'll-big ll-i-moon' + (st.hover ? ' is-hover' : '') + (st.dragging ? ' is-drag' : ''),
+      expCls: 'll-moon' + (st.dragging ? ' is-drag' : ''),
+      slideCls: st.dir === 'l' ? 'll-in-l' : 'll-in-r',
+      showMoon: pl.id === 'moon', showMars: pl.id === 'mars', showEarth: pl.id === 'earth',
+      p: { title: pl.title, isEarth: pl.id === 'earth' && !locked, locked: locked, lockHint: pl.lockHint },
+      hasPrev: idx > 0, hasNext: idx < ids.length - 1,
+      tabs: tabs,
+      hasSel: !!sel,
+      sel: sel || { name: '', rows: [], note: '', hasNote: false, badge: '', hasBadge: false },
+      setBg: this.setBg, setMenu: this.setMenu, setEarthBg: this.setEarthBg, setMoon: this.setMoon, setMars: this.setMars, setEarth: this.setEarth, setTip: this.setTip,
+      down: this.down, move: this.move, up: this.up, leave: this.leave, back: this.back, prev: this.prev, next: this.next
+    };
+  }
+}
+</script>
+</body>
+</html>

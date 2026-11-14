@@ -2,6 +2,8 @@
 
 This document explains how the current game works: boot sequence, global state, UI, level loading, the player, and the small dialog/interaction systems. It is written for both humans and AI agents. Everything here was verified against the code in `src/` (see [Known issues](#13-known-issues--gotchas--todos) for places where code and intent disagree).
 
+**Planning and design docs** (the target, not a description of the current code): [START_HERE](../START_HERE.md) (final story handoff, 11 October 2026), [game and story plan](../Tandborste-Game-and-Story-Plan.md), [gameplay contract and acceptance checks](README_GAMEPLAY.md), [story script](docs/STORY_SCRIPT.md), [asset brief](docs/ASSET_BRIEF.md), [science and data](docs/SCIENCE_AND_DATA.md), [voice and audio](docs/VOICE_AND_AUDIO.md), [example mission definitions](docs/examples/MISSIONS.json), [instructions for AI assistants](../README_AI.md), [team message](../TEAM_MESSAGE.md), [UI design](../docs/ui/README.md).
+
 ## 0. Reading order (start here)
 
 Follow the code in this order and the whole game will make sense:

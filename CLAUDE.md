@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 - Game architecture and gotchas: `game/README.md`.
+- Planned gameplay and story (the target, not the current code): `README_AI.md`, `game/README_GAMEPLAY.md`
+  and `game/docs/`. UI design: `docs/ui/README.md` (spec, boards, prompts).
 - Rover 3D kit (Blender parts for the drivable rover): follow `tools/blender/ROVER_KIT.md` for every
   part: layout, naming, origins, connectors, clearances, triangle budget, materials and export.
 - Part generators live in `tools/blender/scripts/` (shared helpers in `rover_kit_common.py`). Run

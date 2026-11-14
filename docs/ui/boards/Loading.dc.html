@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light loading screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Exo+2:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+@keyframes llFloat{0%{transform:translate(0,0) rotate(-2deg)}25%{transform:translate(7px,-14px) rotate(1.5deg)}50%{transform:translate(2px,-22px) rotate(4deg)}75%{transform:translate(-6px,-10px) rotate(.5deg)}100%{transform:translate(0,0) rotate(-2deg)}}
+.ll-float{transform-origin:55% 45%;animation:llFloat 7s ease-in-out infinite}
+@keyframes llFactIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ll-fact{animation:llFactIn .8s ease both}
+@keyframes llPulse{0%,100%{opacity:.45}50%{opacity:1}}
+.ll-pulse{animation:llPulse 1.8s ease-in-out infinite}
+.ll-dot{width:6px;height:6px;border-radius:50%;background:#2E2E33;transition:background .3s}
+.ll-dot.is-on{background:#ECE9E3}
+.ll-go{background:none;border:0;min-height:44px;padding:10px 0;font-family:Michroma,sans-serif;font-size:15px;letter-spacing:8px;color:#ECE9E3;cursor:pointer;position:relative}
+.ll-go::after{content:"";position:absolute;left:0;bottom:6px;height:1px;width:calc(100% - 8px);background:#ECE9E3;transform-origin:left;transform:scaleX(.25);transition:transform .35s}
+.ll-go:hover::after,.ll-go:focus-visible::after{transform:scaleX(1)}
+.ll-go:focus-visible{outline:none}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507; font-family: 'IBM Plex Mono', monospace; color: #ECE9E3">
+<canvas ref="{{setBg}}" width="1600" height="900" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+
+<div style="position: absolute; left: 150px; top: 150px; width: 820px; display: flex; flex-direction: column; gap: 40px">
+<p style="margin: 0; font-family: 'Exo 2', sans-serif; font-size: 22px; font-weight: 600; color: #C9C4BB">Did you know?</p>
+<sc-if value="{{even}}" hint-placeholder-val="{{true}}">
+<div class="ll-fact" style="display: flex; flex-direction: column; gap: 22px">
+<p style="margin: 0; font-family: Michroma, sans-serif; font-size: 30px; line-height: 1.55; letter-spacing: 1px; color: #ECE9E3">{{f.text}}</p>
+<p style="margin: 0; font-family: 'Exo 2', sans-serif; font-size: 16px; font-weight: 500; color: #8A8783">{{f.tag}}</p>
+</div>
+</sc-if>
+<sc-if value="{{odd}}" hint-placeholder-val="{{false}}">
+<div class="ll-fact" style="display: flex; flex-direction: column; gap: 22px">
+<p style="margin: 0; font-family: Michroma, sans-serif; font-size: 30px; line-height: 1.55; letter-spacing: 1px; color: #ECE9E3">{{f.text}}</p>
+<p style="margin: 0; font-family: 'Exo 2', sans-serif; font-size: 16px; font-weight: 500; color: #8A8783">{{f.tag}}</p>
+</div>
+</sc-if>
+<div style="display: flex; gap: 10px">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="8">
+<span class="{{d.cls}}"></span>
+</sc-for>
+</div>
+</div>
+
+<img class="ll-float" src="/_blob/bb123daca0826d320dc695b61684775a" alt="" aria-hidden="true" style="position: absolute; right: 190px; top: 250px; width: 210px; height: 238px">
+
+<div style="position: absolute; left: 150px; right: 150px; bottom: 96px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<sc-if value="{{loading}}" hint-placeholder-val="{{true}}">
+<p class="ll-pulse" style="margin: 0; font-size: 12px; letter-spacing: 5px; color: #B5B2AC">{{stage}}</p>
+</sc-if>
+<sc-if value="{{done}}" hint-placeholder-val="{{false}}">
+<button class="ll-go" type="button" onClick="{{restart}}">CONTINUE</button>
+</sc-if>
+<p style="margin: 0; font-size: 12px; letter-spacing: 3px; color: #8A8783">{{pct}}</p>
+</div>
+<div style="position: relative; height: 2px; background: #1E1E22">
+<div ref="{{setBar}}" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ECE9E3"></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  facts() {
+    return [
+      { text: 'Apollo 12 landed within walking distance of Surveyor 3, a robotic lander that had been waiting there for 31 months.', tag: 'Apollo 12, November 1969' },
+      { text: 'The Apollo 12 crew cut parts off Surveyor 3, including its camera, and brought them back to Earth.', tag: 'Apollo 12 and Surveyor 3' },
+      { text: 'With no air on the Moon, dust kicked up by a wheel flies in a clean arc and falls straight back down. It never hangs in a cloud.', tag: 'The lunar surface' },
+      { text: 'There is no wind or rain on the Moon, so the Apollo footprints and rover tracks are still there today.', tag: 'The lunar surface' },
+      { text: 'From the Moon’s near side, Earth stays in roughly the same spot in the sky. It never rises or sets.', tag: 'Earth from the Moon' },
+      { text: 'Earth seen from the Moon looks almost four times wider than the full Moon looks from Earth.', tag: 'Earth from the Moon' },
+      { text: 'One day on the Moon, from sunrise to sunrise, lasts about 29.5 Earth days.', tag: 'A day on the Moon' },
+      { text: 'The Moon’s surface swings from over 120 °C in sunlight to below −170 °C at night.', tag: 'The lunar surface' }
+    ];
+  }
+
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 77;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 500; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.6 : m > 0.9 ? 1.1 : 0.7, a = 0.2 + rnd() * 0.6;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    this.setBar = function (el) { self.bar = el; };
+    this.restart = function () { self.start = performance.now(); self.setState({ fact: ((self.state || {}).fact || 0) + 1, done: false }); };
+    this.start = performance.now();
+    this.loop = function (t) {
+      var st = self.state || {}, el = (t - self.start) / 1000, total = 16;
+      var p = Math.min(1, el / total);
+      var eased = 1 - Math.pow(1 - p, 1.6);
+      if (self.bar) self.bar.style.width = (eased * 100).toFixed(2) + '%';
+      var pct = Math.round(eased * 100) + '%';
+      var fact = Math.floor(el / 7) + (st.factBase || 0);
+      var stage = p < 0.3 ? 'LOADING TERRAIN' : p < 0.6 ? 'PREPARING THE WORKSHOP' : p < 0.9 ? 'WAKING UP ROOK' : 'ALMOST THERE';
+      if (pct !== st.pct || stage !== st.stage || (p >= 1) !== !!st.done || fact !== st.factTick) {
+        self.setState({ pct: pct, stage: stage, done: p >= 1, factTick: fact });
+      }
+      self.raf = requestAnimationFrame(self.loop);
+    };
+  }
+
+  componentDidMount() {
+    this.ensure();
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  componentWillUnmount() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
+
+  renderVals() {
+    this.ensure();
+    var st = this.state || {}, fs = this.facts();
+    var idx = (((st.factTick || 0) + (st.fact || 0)) % fs.length + fs.length) % fs.length;
+    var f = fs[idx];
+    return {
+      f: { text: f.text, tag: f.tag },
+      even: idx % 2 === 0,
+      odd: idx % 2 === 1,
+      dots: fs.map(function (_, i) { return { cls: 'll-dot' + (i === idx ? ' is-on' : '') }; }),
+      pct: st.pct || '0%',
+      stage: st.stage || 'LOADING TERRAIN',
+      loading: !st.done,
+      done: !!st.done,
+      setBg: this.setBg, setBar: this.setBar, restart: this.restart
+    };
+  }
+}
+</script>
+</body>
+</html>

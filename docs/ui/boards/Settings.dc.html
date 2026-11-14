@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+@keyframes llIn{from{opacity:0}to{opacity:1}}
+@keyframes llPanel{from{transform:translateX(-110%)}to{transform:none}}
+@keyframes llItem{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+.ll-in{animation:llIn .3s ease both}
+.ll-panel{animation:llPanel .45s cubic-bezier(.2,.8,.2,1) both}
+.ll-item{animation:llItem .45s cubic-bezier(.2,.8,.2,1) both}
+.ll-scene{transition:filter .45s ease,transform .45s ease}
+.ll-scene.is-paused{filter:blur(6px) brightness(.5) saturate(.6);transform:scale(1.02)}
+.ll-scene.is-settings{filter:blur(10px) brightness(.3) saturate(.5);transform:scale(1.03)}
+.ll-slant{clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+.ll-pm{display:inline-flex;align-items:center;align-self:flex-start;min-height:40px;padding:0 22px 0 18px;background:transparent;border:0;font-family:Michroma,sans-serif;font-size:12px;letter-spacing:4px;color:#141417;cursor:pointer;transition:background .18s,color .18s,padding .18s}
+.ll-pm:hover,.ll-pm:focus-visible{background:#141417;color:#ECE9E3;padding-left:26px;outline:none}
+.ll-tab{min-height:36px;padding:0 22px;border:0;background:#1B1B1F;font-family:Michroma,sans-serif;font-size:11px;letter-spacing:4px;color:#8A8783;cursor:pointer;transition:background .18s,color .18s}
+.ll-tab:hover,.ll-tab:focus-visible{color:#ECE9E3;outline:none}
+.ll-tab.is-on{background:#ECE9E3;color:#141417}
+.ll-btn{min-height:36px;padding:0 22px;border:0;background:#ECE9E3;font-family:Michroma,sans-serif;font-size:11px;letter-spacing:4px;color:#141417;cursor:pointer;transition:background .18s}
+.ll-btn:hover,.ll-btn:focus-visible{background:#FFFFFF;outline:none}
+.ll-ghost{min-height:44px;padding:0 22px;border:0;background:#1B1B1F;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:4px;color:#B5B2AC;cursor:pointer}
+.ll-ghost:hover,.ll-ghost:focus-visible{color:#ECE9E3;background:#26262B;outline:none}
+.ll-row{display:grid;grid-template-columns:220px 300px minmax(0,1fr);align-items:center;column-gap:20px;min-height:40px;border-bottom:1px solid #1C1C20}
+.ll-label{font-size:12px;letter-spacing:1px;color:#C9C4BB}
+.ll-sel-wrap{position:relative;width:300px}
+.ll-sel{width:100%;height:30px;appearance:none;-webkit-appearance:none;border:0;border-radius:0;background:#ECE9E3;color:#141417;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:0 36px 0 18px;cursor:pointer}
+.ll-sel:focus-visible{outline:2px solid #8A8783;outline-offset:2px}
+.ll-chev{position:absolute;right:18px;top:10px;pointer-events:none}
+.ll-sw{position:relative;width:52px;height:22px;border:0;background:#2A2A2E;cursor:pointer;transition:background .2s}
+.ll-sw::after{content:"";position:absolute;top:5px;left:13px;width:12px;height:12px;background:#6B6863;transition:left .2s,background .2s}
+.ll-sw.is-on{background:#ECE9E3}
+.ll-sw.is-on::after{left:28px;background:#141417}
+.ll-sw:focus-visible{outline:2px solid #8A8783;outline-offset:3px}
+.ll-range{width:260px;accent-color:#ECE9E3;cursor:pointer}
+.ll-val{font-size:12px;color:#ECE9E3}
+.ll-note{font-size:11px;letter-spacing:1px;color:#6B6863}
+.ll-key{width:300px;height:30px;border:0;background:#ECE9E3;font-family:Michroma,sans-serif;font-size:11px;letter-spacing:3px;color:#141417;cursor:pointer;transition:background .18s}
+.ll-key:hover{background:#FFFFFF}
+.ll-key:focus-visible{outline:2px solid #8A8783;outline-offset:2px}
+.ll-key.is-listen{background:#3A3A40;color:#ECE9E3;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:4px}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507; font-family: 'IBM Plex Mono', monospace; color: #ECE9E3">
+
+<div class="{{sceneCls}}" aria-hidden="true" style="position: absolute; inset: 0">
+<canvas ref="{{setBg}}" width="1600" height="900" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+
+</div>
+
+<sc-if value="{{isPlaying}}" hint-placeholder-val="{{false}}">
+<button class="ll-ghost ll-slant ll-in" type="button" onClick="{{pause}}" style="position: absolute; right: 40px; top: 36px">PAUSE (ESC)</button>
+</sc-if>
+
+<sc-if value="{{isPaused}}" hint-placeholder-val="{{true}}">
+<div class="ll-in" style="position: absolute; inset: 0">
+<div class="ll-panel" style="position: absolute; left: 0; top: 0; width: 460px; height: 900px">
+<div style="position: absolute; inset: 0; background: #ECE9E3; clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%)"></div>
+<div style="position: absolute; inset: 0; background: #C9C4BB; clip-path: polygon(0 62%, 70% 100%, 0 100%)"></div>
+<div style="position: absolute; left: 100px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 28px">
+<span class="ll-item" style="font-family: Michroma, sans-serif; font-size: 22px; line-height: 1; letter-spacing: 12px; color: #141417; padding-left: 18px; animation-delay: .12s">PAUSED</span>
+<nav aria-label="Pause menu" style="display: flex; flex-direction: column; gap: 4px">
+<button class="ll-pm ll-slant ll-item" type="button" onClick="{{resume}}" style="animation-delay: .16s">RESUME</button>
+<button class="ll-pm ll-slant ll-item" type="button" style="animation-delay: .2s">SWITCH TO TEST LEVEL</button>
+<button class="ll-pm ll-slant ll-item" type="button" onClick="{{openSettings}}" style="animation-delay: .24s">SETTINGS</button>
+<button class="ll-pm ll-slant ll-item" type="button" style="animation-delay: .28s">QUIT TO MENU</button>
+<button class="ll-pm ll-slant ll-item" type="button" style="animation-delay: .32s">QUIT TO DESKTOP</button>
+</nav>
+</div>
+</div>
+
+</div>
+</sc-if>
+
+<sc-if value="{{isSettings}}" hint-placeholder-val="{{false}}">
+<div class="ll-in" style="position: absolute; inset: 24px; background: rgba(9, 9, 12, 0.72); border: 1px solid #26262B; padding: 40px 64px 36px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="font-family: Michroma, sans-serif; font-size: 18px; letter-spacing: 10px; color: #ECE9E3">SETTINGS</span>
+</div>
+<div role="tablist" aria-label="Settings sections" style="display: flex; gap: 6px">
+<sc-for list="{{tabs}}" as="tab" hint-placeholder-count="4">
+<button class="{{tab.cls}}" type="button" role="tab" aria-selected="{{tab.on}}" onClick="{{tab.go}}">{{tab.label}}</button>
+</sc-for>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column">
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+<div class="ll-row">
+<label class="ll-label" for="{{row.id}}">{{row.label}}</label>
+<div style="display: flex; align-items: center; gap: 16px">
+<sc-if value="{{row.isSelect}}" hint-placeholder-val="{{false}}">
+<div class="ll-sel-wrap ll-slant">
+<select id="{{row.id}}" class="ll-sel" value="{{row.value}}" onChange="{{row.onSelect}}">
+<sc-for list="{{row.options}}" as="o" hint-placeholder-count="3"><option value="{{o.v}}">{{o.v}}</option></sc-for>
+</select>
+<svg class="ll-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#141417" stroke-width="2.4" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>
+</div>
+</sc-if>
+<sc-if value="{{row.isToggle}}" hint-placeholder-val="{{true}}">
+<button id="{{row.id}}" class="{{row.swCls}}" type="button" role="switch" aria-checked="{{row.on}}" onClick="{{row.onToggle}}"></button>
+</sc-if>
+<sc-if value="{{row.isSlider}}" hint-placeholder-val="{{false}}">
+<input id="{{row.id}}" class="ll-range" type="range" min="{{row.min}}" max="{{row.max}}" value="{{row.value}}" onChange="{{row.onSlide}}">
+</sc-if>
+<sc-if value="{{row.isKey}}" hint-placeholder-val="{{false}}">
+<button id="{{row.id}}" class="{{row.keyCls}}" type="button" onClick="{{row.onListen}}" onKeyDown="{{row.onKey}}" onBlur="{{row.onBlur}}">{{row.keyLabel}}</button>
+</sc-if>
+</div>
+<span class="ll-val">{{row.display}}<span class="ll-note">{{row.note}}</span></span>
+</div>
+</sc-for>
+<sc-if value="{{hasReset}}" hint-placeholder-val="{{true}}">
+<div style="padding-top: 22px">
+<button class="ll-btn ll-slant" type="button" onClick="{{reset}}">{{resetLabel}}</button>
+</div>
+</sc-if>
+</div>
+
+<div>
+<button class="ll-btn ll-slant" type="button" onClick="{{closeSettings}}">BACK</button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  defaults() {
+    return {
+      language: 'English', subtitles: true, subtitleSize: 100, cameraShake: true, tooltips: true, fps: false,
+      master: 80, music: 75, effects: 80, voice: 90, ui: 50, muteUnfocused: true, speakers: 'Stereo',
+      displayMode: 'Windowed', resolution: '1280x720', quality: 'Low', terrain: 'High (fine ground shadows)', dust: 'High', vsync: true, fpsLimit: '30', fov: 90, brightness: 50, motionBlur: false,
+      sensitivity: 40, invertY: false, toggleCrouch: false,
+      kForward: 'W', kBack: 'S', kLeft: 'A', kRight: 'D', kJump: 'Space', kCrouch: 'Ctrl', kInteract: 'E'
+    };
+  }
+
+  layout() {
+    return {
+      general: [
+        { k: 'language', label: 'Language', type: 'select', options: ['English', 'Bahasa Indonesia'] },
+        { k: 'subtitles', label: 'Subtitles', type: 'toggle' },
+        { k: 'subtitleSize', label: 'Subtitle Size', type: 'slider', min: 50, max: 200, unit: '%' },
+        { k: 'cameraShake', label: 'Camera Shake', type: 'toggle' },
+        { k: 'tooltips', label: 'Show Tooltips', type: 'toggle' },
+        { k: 'fps', label: 'Show FPS Counter', type: 'toggle' }
+      ],
+      audio: [
+        { k: 'master', label: 'Master Volume', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'music', label: 'Music Volume', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'effects', label: 'Effects Volume', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'voice', label: 'Voice Volume', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'ui', label: 'Interface Volume', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'muteUnfocused', label: 'Mute When Unfocused', type: 'toggle' },
+        { k: 'speakers', label: 'Speaker Setup', type: 'select', options: ['Stereo', 'Headphones', 'Mono', 'Surround 5.1'] }
+      ],
+      video: [
+        { k: 'displayMode', label: 'Display Mode', type: 'select', options: ['Windowed', 'Borderless', 'Fullscreen'] },
+        { k: 'resolution', label: 'Resolution', type: 'select', options: ['1280x720', '1600x900', '1920x1080', '2560x1440'] },
+        { k: 'quality', label: 'Quality Preset', type: 'select', options: ['Low', 'Medium', 'High', 'Ultra'] },
+        { k: 'terrain', label: 'Terrain Detail', type: 'select', options: ['High (fine ground shadows)', 'Low (no fine ground shadows, weaker computers)'], note: '  (next level load)' },
+        { k: 'dust', label: 'Dust and Tracks', type: 'select', options: ['High', 'Low', 'Off'], note: '  (next level load)' },
+        { k: 'vsync', label: 'VSync', type: 'toggle' },
+        { k: 'fpsLimit', label: 'Frame Rate Limit', type: 'select', options: ['30', '60', '120', '144', 'Unlimited'] },
+        { k: 'fov', label: 'Field Of View', type: 'slider', min: 60, max: 120, unit: '' },
+        { k: 'brightness', label: 'Brightness', type: 'slider', min: 0, max: 100, unit: '%' },
+        { k: 'motionBlur', label: 'Motion Blur', type: 'toggle' }
+      ],
+      controls: [
+        { k: 'sensitivity', label: 'Mouse Sensitivity', type: 'slider', min: 1, max: 100, unit: '' },
+        { k: 'invertY', label: 'Invert Y Axis', type: 'toggle' },
+        { k: 'toggleCrouch', label: 'Toggle Crouch', type: 'toggle' },
+        { k: 'kForward', label: 'Move Forward', type: 'key' },
+        { k: 'kBack', label: 'Move Backward', type: 'key' },
+        { k: 'kLeft', label: 'Move Left', type: 'key' },
+        { k: 'kRight', label: 'Move Right', type: 'key' },
+        { k: 'kJump', label: 'Jump', type: 'key' },
+        { k: 'kCrouch', label: 'Crouch', type: 'key' },
+        { k: 'kInteract', label: 'Interact', type: 'key' }
+      ]
+    };
+  }
+
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 9;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 380; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.6 : m > 0.9 ? 1.1 : 0.7, a = 0.2 + rnd() * 0.6;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  keyName(e) {
+    var k = e.key;
+    if (k === ' ') return 'Space';
+    if (k === 'Control') return 'Ctrl';
+    if (k === 'Escape') return null;
+    if (k.length === 1) return k.toUpperCase();
+    return k.replace('Arrow', '') ;
+  }
+
+  renderVals() {
+    var self = this, st = this.state || {};
+    if (!this._init) {
+      this._init = true;
+      this.setBg = function (el) { if (el) self.drawStars(el); };
+      this.pause = function () { self.setState({ view: 'paused' }); };
+      this.resume = function () { self.setState({ view: 'playing' }); };
+      this.openSettings = function () { self.setState({ view: 'settings' }); };
+      this.closeSettings = function () { self.setState({ listen: null, tab: 'general' }); };
+      this.setVal = function (k, v) { var vals = Object.assign({}, (self.state || {}).vals || self.defaults()); vals[k] = v; self.setState({ vals: vals }); };
+      this.reset = function () {
+        var s = self.state || {}, tab = s.tab || 'general', d = self.defaults(), vals = Object.assign({}, s.vals || d);
+        self.layout()[tab].forEach(function (r) { vals[r.k] = d[r.k]; });
+        self.setState({ vals: vals, listen: null });
+      };
+    }
+    var view = 'settings', tab = st.tab || 'general', vals = st.vals || this.defaults();
+    var tabs = [['general', 'GENERAL'], ['audio', 'AUDIO'], ['video', 'VIDEO'], ['controls', 'CONTROLS']].map(function (t) {
+      return { label: t[1], on: tab === t[0] ? 'true' : 'false', cls: 'll-tab ll-slant' + (tab === t[0] ? ' is-on' : ''), go: function () { self.setState({ tab: t[0], listen: null }); } };
+    });
+    var rows = this.layout()[tab].map(function (r) {
+      var v = vals[r.k];
+      return {
+        id: 'set-' + r.k,
+        label: r.label,
+        isSelect: r.type === 'select', isToggle: r.type === 'toggle', isSlider: r.type === 'slider', isKey: r.type === 'key',
+        options: (r.options || []).map(function (o) { return { v: o }; }),
+        value: v,
+        on: v ? 'true' : 'false',
+        swCls: 'll-sw ll-slant' + (v ? ' is-on' : ''),
+        min: r.min, max: r.max,
+        display: r.type === 'slider' ? v + (r.unit || '') : '',
+        note: r.note || '',
+        keyLabel: st.listen === r.k ? 'PRESS A KEY' : v,
+        keyCls: 'll-key ll-slant' + (st.listen === r.k ? ' is-listen' : ''),
+        onSelect: function (e) { self.setVal(r.k, e.target.value); },
+        onToggle: function () { self.setVal(r.k, !v); },
+        onSlide: function (e) { self.setVal(r.k, Number(e.target.value)); },
+        onListen: function () { self.setState({ listen: (self.state || {}).listen === r.k ? null : r.k }); },
+        onBlur: function () { if ((self.state || {}).listen === r.k) self.setState({ listen: null }); },
+        onKey: function (e) {
+          if ((self.state || {}).listen !== r.k) return;
+          e.preventDefault();
+          var name = self.keyName(e);
+          if (name) self.setVal(r.k, name);
+          self.setState({ listen: null });
+        }
+      };
+    });
+    return {
+      isPlaying: view === 'playing',
+      isPaused: view === 'paused',
+      isSettings: view === 'settings',
+      sceneCls: 'll-scene',
+      tabs: tabs,
+      rows: rows,
+      hasReset: tab === 'general' || tab === 'controls',
+      resetLabel: tab === 'controls' ? 'RESET BINDINGS' : 'RESET TO DEFAULTS',
+      setBg: this.setBg, pause: this.pause, resume: this.resume, openSettings: this.openSettings, closeSettings: this.closeSettings, reset: this.reset
+    };
+  }
+}
+</script>
+</body>
+</html>

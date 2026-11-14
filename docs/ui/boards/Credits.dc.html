@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Light credits</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#8A8783}a:hover{color:#ECE9E3}
+@keyframes llRoll{from{transform:translateY(900px)}to{transform:translateY(-100%)}}
+.ll-roll{animation:llRoll 48s linear both}
+@keyframes llFloat{0%{transform:translate(0,0) rotate(-2deg)}25%{transform:translate(7px,-14px) rotate(1.5deg)}50%{transform:translate(2px,-22px) rotate(4deg)}75%{transform:translate(-6px,-10px) rotate(.5deg)}100%{transform:translate(0,0) rotate(-2deg)}}
+.ll-float{transform-origin:55% 45%;animation:llFloat 7s ease-in-out infinite}
+@keyframes llDrift{from{transform:translate(-260px,120px) rotate(-20deg)}to{transform:translate(160px,-80px) rotate(12deg)}}
+.ll-drift{animation:llDrift 48s linear both}
+@keyframes llIn{from{opacity:0}to{opacity:1}}
+.ll-end{animation:llIn 1.6s ease both}
+.ll-end-2{animation:llIn 1.2s ease 1.4s both}
+.ll-m{display:inline-flex;align-items:center;background:none;border:0;font-family:Michroma,sans-serif;color:#8A8783;cursor:pointer;min-height:48px;position:relative;font-size:15px;letter-spacing:8px;padding:10px 0;transition:color .25s}
+.ll-m:hover,.ll-m:focus-visible{color:#ECE9E3;outline:none}
+.ll-m::after{content:"";position:absolute;left:0;bottom:6px;height:1px;width:0;background:#ECE9E3;transition:width .35s}
+.ll-m:hover::after,.ll-m:focus-visible::after{width:calc(100% - 8px)}
+.ll-sec{display:flex;flex-direction:column;align-items:center;gap:22px}
+.ll-h{margin:0;font-size:12px;letter-spacing:6px;color:#8A8783}
+.ll-row{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ll-name{margin:0;font-family:Michroma,sans-serif;font-size:22px;letter-spacing:6px;color:#ECE9E3}
+.ll-sub{margin:0;font-size:13px;letter-spacing:2px;color:#8A8783}
+.ll-line{margin:0;font-size:15px;line-height:1.7;color:#C9C4BB;text-align:center}
+</style>
+</helmet>
+<div style="position: relative; width: 1600px; height: 900px; overflow: hidden; background: #050507; font-family: 'IBM Plex Mono', monospace; color: #ECE9E3">
+<canvas ref="{{setBg}}" width="1600" height="900" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1600px; height: 900px"></canvas>
+
+<sc-if value="{{rollA}}" hint-placeholder-val="{{true}}">
+<div class="ll-drift" aria-hidden="true" style="position: absolute; left: 180px; top: 330px"><img class="ll-float" src="/_blob/bb123daca0826d320dc695b61684775a" alt="" style="display: block; width: 120px; height: 136px; opacity: 0.85"></div>
+<div class="ll-roll" style="position: absolute; left: 400px; right: 400px; top: 0; display: flex; flex-direction: column; align-items: center; gap: 120px; padding-bottom: 200px">
+
+<div class="ll-sec" style="gap: 28px">
+<img src="/_blob/bb123daca0826d320dc695b61684775a" alt="" style="width: 132px; height: 150px">
+<span style="font-family: Michroma, sans-serif; font-size: 36px; letter-spacing: 20px; margin-right: -20px; color: #ECE9E3">LAST LIGHT</span>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">A GAME BY</p>
+<p class="ll-name" style="font-size: 28px; letter-spacing: 10px">TANDBORSTE</p>
+<p class="ll-sub">Made for the NASA Space Apps Challenge 2026</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">TEAM</p>
+<div class="ll-row"><p class="ll-name">FAHD</p><p class="ll-sub">Institut Teknologi Bandung · Indonesia</p></div>
+<div class="ll-row"><p class="ll-name">RAFI WIDYA PRATAMA</p><p class="ll-sub">Universiti Malaya · Malaysia</p></div>
+<div class="ll-row"><p class="ll-name">FAIQ</p><p class="ll-sub">Monash University · Australia</p></div>
+<div class="ll-row"><p class="ll-name">SATINIZE</p><p class="ll-sub">National University of Singapore · Singapore</p></div>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">REAL DATA</p>
+<p class="ll-line">Apollo 12 site terrain and imagery<br>NASA Lunar Reconnaissance Orbiter · LROC, Arizona State University</p>
+<p class="ll-line">Wider lunar terrain<br>NASA LOLA · SLDEM2015</p>
+<p class="ll-line">Star map<br>NASA/Goddard Scientific Visualization Studio, Deep Star Maps 2020<br>Gaia data: ESA/Gaia/DPAC</p>
+<p class="ll-line">Earth<br>NASA Blue Marble</p>
+<p class="ll-line">Sun, Earth and sky positions<br>NASA JPL Horizons</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">BUILT WITH</p>
+<p class="ll-line">Godot Engine<br>Blender</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">TYPE</p>
+<p class="ll-line">Michroma by Vernon Adams<br>IBM Plex Mono by IBM<br>SIL Open Font License</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">MUSIC AND SOUND</p>
+<p class="ll-line">Tandborste</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-h">SPECIAL THANKS</p>
+<p class="ll-line">[YOUR SPECIAL THANKS]</p>
+</div>
+
+<div class="ll-sec">
+<p class="ll-line" style="max-width: 640px; color: #8A8783">The Apollo 12 site, Surveyor 3 and the sky are recreated from real NASA data for the second moonwalk of Apollo 12, November 1969. The workshop, ROOK, Kite and their mission are fiction.</p>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ended}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 56px">
+<div class="ll-end" style="display: flex; flex-direction: column; align-items: center; gap: 22px">
+<span style="font-family: Michroma, sans-serif; font-size: 34px; letter-spacing: 18px; margin-right: -18px; color: #ECE9E3">THANK YOU FOR PLAYING</span>
+<p style="margin: 0; font-size: 13px; letter-spacing: 4px; color: #4C8FD6">EARTH UNLOCKED · VISIT IT FROM THE MAIN MENU</p>
+</div>
+<div class="ll-end-2" style="display: flex; gap: 56px">
+<button class="ll-m" type="button" onClick="{{replay}}">WATCH AGAIN</button>
+<button class="ll-m" type="button">MAIN MENU</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{rolling}}" hint-placeholder-val="{{true}}">
+<button class="ll-m" type="button" onClick="{{skip}}" style="position: absolute; right: 48px; bottom: 32px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 4px; color: #6B6863">SKIP</button>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":900}}'>
+class Component extends DCLogic {
+  drawStars(cv) {
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#050507';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    var seed = 123;
+    var rnd = function () { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (var i = 0; i < 520; i++) {
+      var x = rnd() * cv.width, y = rnd() * cv.height, m = rnd();
+      var r = m > 0.985 ? 1.6 : m > 0.9 ? 1.1 : 0.7, a = 0.2 + rnd() * 0.6;
+      ctx.fillStyle = 'rgba(236,233,227,' + a + ')';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ensure() {
+    if (this._init) return;
+    this._init = true;
+    var self = this;
+    this.setBg = function (el) { if (el) self.drawStars(el); };
+    this.startTimer = function () {
+      if (self.timer) clearTimeout(self.timer);
+      self.timer = setTimeout(function () { self.setState({ ended: true }); }, 48000);
+    };
+    this.skip = function () { if (self.timer) clearTimeout(self.timer); self.setState({ ended: true }); };
+    this.replay = function () {
+      self.setState({ ended: false, run: ((self.state || {}).run || 0) + 1 });
+      self.startTimer();
+    };
+  }
+
+  componentDidMount() {
+    this.ensure();
+    this.startTimer();
+  }
+
+  componentWillUnmount() {
+    if (this.timer) clearTimeout(this.timer);
+  }
+
+  renderVals() {
+    this.ensure();
+    var st = this.state || {};
+    return {
+      rollA: !st.ended,
+      rolling: !st.ended,
+      ended: !!st.ended,
+      setBg: this.setBg, skip: this.skip, replay: this.replay
+    };
+  }
+}
+</script>
+</body>
+</html>
