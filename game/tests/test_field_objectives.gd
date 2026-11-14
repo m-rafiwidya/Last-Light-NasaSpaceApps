@@ -67,6 +67,15 @@ func _mount(part: Node) -> void:
 	await physics_frame
 
 
+func _mount_then_check(guidance: Node, condition: Dictionary) -> bool:
+	var part: Node = load(LOGGER).instantiate()
+	await _mount(part)
+	var met: bool = guidance.is_met(condition)
+	_empty_socket()
+	part.free()
+	return met
+
+
 func _empty_socket() -> void:
 	var old: Node = socket.unmount()
 	if old and old.name != "FarLogger":
@@ -163,8 +172,13 @@ func _run() -> void:
 	_check("[guidance] part:radio_module finds the module wherever it is", guidance.resolve("part:radio_module") == module_part)
 	module_part.free()
 	var logger_steps: Array = guidance.steps("m3.logger_recovered")
-	_check("[guidance] logger: the FarLogger part", logger_steps.size() == 1 and not logger_steps[0].has("placeholder")
-		and guidance.resolve(logger_steps[0]["target"]) == far_logger, str(logger_steps))
+	_check("[guidance] logger: empty the cargo mount, then the FarLogger part", logger_steps.size() == 2
+		and not str(logger_steps).contains("placeholder") and logger_steps[0]["done_when"] == {"unmounted": "kite:CargoSocket"}
+		and guidance.resolve(logger_steps[0]["target"]) == socket.get_node("PartCapture")
+		and guidance.resolve(logger_steps[1]["target"]) == far_logger and logger_steps[1]["key"] == "interact_use",
+		str(logger_steps))
+	_check("[guidance] logger: the empty-mount step is met only with the mount empty",
+		guidance.is_met(logger_steps[0]["done_when"]) and not (await _mount_then_check(guidance, logger_steps[0]["done_when"])))
 
 	# 3. Restoring a save
 	if not await _load_level("m2", M1_DONE + ["m2.cargo_ordered"], ["m1"], MODULE):
@@ -187,6 +201,12 @@ func _run() -> void:
 	_empty_socket()
 	await _mount(level.get_node("FarLogger"))
 	_check("[restore] a new mount afterwards does", CS.is_objective_done("m3.logger_recovered"), str(completed))
+	if not await _load_level("m3", M1_DONE + M2_DONE + ["m3.logger_recovered"], ["m1", "m2"], LOGGER):
+		_check("[restore] the Moon level comes up (logger recovered)", false)
+		_finish()
+		return
+	_check("[restore] logger recovered: the field copy is gone, the one on Kite stays", level.get_node_or_null("FarLogger") == null
+		and socket.part != null and socket.part.get_catalog_id() == "field_logger" and level.find_children("*", "HotswapPart", true, false).filter(func(n: Node) -> bool: return n.get_catalog_id() == "field_logger").size() == 1)
 	_finish()
 
 
