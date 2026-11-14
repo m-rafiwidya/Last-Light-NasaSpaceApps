@@ -23,9 +23,17 @@ enum PartType { WHEEL, MOTOR, BATTERY, MAST_HEAD, ARM_TOOL, ANTENNA }
 @export var tint_material: StringName = &"rover_body"
 ## Local offset from the socket's mount point while mounted
 @export var mount_offset: Vector3 = Vector3.ZERO
+## Rolling resistance coefficient while loose: loose regolith gives way under a rolling part, so
+## a round part (a wheel on its tread, the battery on its side) only rolls down slopes steeper
+## than atan(this): 17 degrees at 0.3. Jolt has no rolling friction of its own; flat-sided parts
+## are held by ordinary friction.
+@export var rolling_resistance: float = 0.3
 
 ## The socket this part is plugged into, null while loose
 var socket: HotswapSocket = null
+
+# Below this speed (m/s), a part whose spin the rolling resistance has stopped is at rest
+const REST_SPEED: float = 0.02
 
 var _free_layer: int = 0
 var _free_mask: int = 0
@@ -34,6 +42,36 @@ var _free_mask: int = 0
 func _ready() -> void:
 	_adopt_model_collision()
 	_apply_tint()
+	# Rolling resistance needs to know when the part touches something
+	contact_monitor = true
+	max_contacts_reported = maxi(max_contacts_reported, 4)
+
+
+# Rolling resistance (see rolling_resistance) as a Coulomb friction torque against the part's
+# spin while it touches something: up to coefficient * weight * the distance from the centre of
+# mass to the contact. It stops the spin within the step if it can; a part it has stopped that
+# is also barely moving is put to sleep (setting its velocity every step would otherwise keep it
+# awake, and Jolt's friction lets an awake body on a slope drift a few mm/s). Anything touching
+# it or picking it up wakes it as usual.
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if rolling_resistance <= 0.0 or freeze or state.get_contact_count() == 0:
+		return
+	var spin: Vector3 = state.angular_velocity
+	var speed: float = spin.length()
+	if speed < 1e-6:
+		return
+	var axis: Vector3 = spin / speed
+	var centre: Vector3 = state.transform.origin + state.center_of_mass
+	var lever: float = (state.get_contact_collider_position(0) - centre).length()
+	var torque: float = rolling_resistance * mass * state.total_gravity.length() * lever
+	var change: float = torque * (state.inverse_inertia_tensor * axis).dot(axis) * state.step
+	if speed > change:
+		state.angular_velocity = spin - axis * change
+		return
+	state.angular_velocity = Vector3.ZERO
+	if state.linear_velocity.length() < REST_SPEED:
+		state.linear_velocity = Vector3.ZERO
+		state.sleeping = true
 
 
 # Gives every surface that uses `tint_material` (in any mesh under "Model") one tinted copy

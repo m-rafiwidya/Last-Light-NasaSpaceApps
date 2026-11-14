@@ -48,10 +48,22 @@ extends RigidBody3D
 # reverse (no clutch).
 @export var gear_ratio: float = 1.0
 @export var final_drive: float = 5.0
-# Rolling resistance at the ground (N), applied through the driven wheels. It is
-# what finally stops the robot once the motor's back-EMF braking has faded out, and
-# it pulls the loaded top speed a little below the motor's no-load speed.
+# Rolling resistance at the ground (N), applied through the driven wheels as a Coulomb
+# friction torque: it opposes the wheels' turning and holds them still while the other torques
+# on them are smaller (a parked rover stays put up to asin(force / weight): 5.3 degrees on the
+# Moon, 0.9 on Earth). It is what finally stops the robot once the motor's back-EMF braking has
+# faded out, and it pulls the loaded top speed a little below the motor's no-load speed.
 @export var rolling_resistance_force: float = 12.0
+# Automatic brake: once there is no throttle (|desired_speed| under brake_input_deadzone) and the
+# rover is slower than brake_speed (m/s), or rolls back against the way it was last driven (hill
+# hold), every wheel is held by a Coulomb brake of up to brake_torque (Nm per wheel: 25, about 3
+# times what a 45 degree slope needs on Earth). It stays on until there is throttle again, also
+# if something knocks the rover faster (it starts on, like a parked car), so a parked rover can't
+# run away; coasting on in the direction it was driven is unchanged until it slows to brake_speed.
+@export var auto_brake: bool = true
+@export var brake_torque: float = 25.0
+@export var brake_speed: float = 0.3
+@export var brake_input_deadzone: float = 0.02
 # Traction control (see _update_traction_factors): while a wheel's drive torque pushes its
 # normalized slip (RunningGear.WheelState.NORMALIZED_SLIP, tyre force peaks near 2.7) past
 # traction_slip_target, the torque is scaled down linearly, to nothing at traction_slip_limit,
@@ -79,10 +91,6 @@ const AXLES: Array = [
 	[RunningGear.Wheel.MIDDLE_LEFT, RunningGear.Wheel.MIDDLE_RIGHT],
 	[RunningGear.Wheel.REAR_LEFT, RunningGear.Wheel.REAR_RIGHT],
 ]
-# Rolling resistance fades in over 1 / this rad/s of wheel speed so it can't
-# flip the wheel's direction at near-zero speed.
-const ROLLING_RESISTANCE_SLIP_GAIN: float = 0.5
-
 # Drivetrain state (one motor per driven wheel, see _step_drivetrain)
 # Traction control: 0..1 multiplier on each driven wheel's motor torque. Read by the HUD.
 var traction_factors: Dictionary = {}
@@ -90,6 +98,12 @@ var traction_factors: Dictionary = {}
 var motor_angular_velocity: float = 0.0
 # Total torque (Nm) of the wheel motors this step. Read by engine_sound.gd
 var motor_torque: float = 0.0
+## True while the automatic brake holds the wheels (see auto_brake). Read by the robot HUD.
+var braking: bool = true
+# The direction (+1 forwards, -1 backwards) of the last throttle, for the brake's hill hold
+var _last_drive_sign: float = 1.0
+# Moving back against the last throttle faster than this (m/s) counts as rolling back
+const ROLL_BACK_SPEED: float = 0.05
 
 var wheel_sockets: Dictionary = {}
 # Physics wheel centre (robot space) per RunningGear.Wheel, from the last physics step's ground
@@ -428,6 +442,11 @@ func _step_drivetrain(step: float) -> void:
 	motor_angular_velocity = 0.0
 	motor_torque = 0.0
 	electrical_power = 0.0
+	var throttle: bool = absf(controller.desired_speed) >= brake_input_deadzone
+	if throttle:
+		_last_drive_sign = signf(controller.desired_speed)
+	var rolling_back: bool = linear_velocity.dot(-global_basis.z) * _last_drive_sign < -ROLL_BACK_SPEED
+	braking = auto_brake and not throttle and (braking or rolling_back or linear_velocity.length() < brake_speed)
 	var torques: Dictionary = {}
 	for wheel in DRIVEN_WHEELS:
 		var wheel_motor_speed: float = running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] * combined_gear_ratio
@@ -442,16 +461,19 @@ func _step_drivetrain(step: float) -> void:
 		motor_angular_velocity += wheel_motor_speed * share
 		motor_torque += wheel_motor_torque
 
-		# This wheel's share of the rolling resistance, plus the tyre's reaction torque
+		# The motor and the tyre's reaction turn the wheel; this wheel's share of the rolling
+		# resistance and the brake are Coulomb friction: they stop the wheel within the step if
+		# they can, and otherwise take off their full torque against its turning
 		var radius: float = running_gear.wheel_properties[wheel][RunningGear.WheelProperty.EFFECTIVE_RADIUS]
-		var resistance_torque: float = (
-			rolling_resistance_force * share * radius *
-			clamp(wheel_speed * ROLLING_RESISTANCE_SLIP_GAIN, -1.0, 1.0) +
-			wheel_state[RunningGear.WheelState.TORQUE]
+		var inertia: float = _get_wheel_drivetrain_inertia(wheel)
+		var free_speed: float = wheel_speed + (
+			(wheel_motor_torque * combined_gear_ratio - wheel_state[RunningGear.WheelState.TORQUE])
+			/ inertia * step
 		)
-		wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY] = wheel_speed + (
-			(wheel_motor_torque * combined_gear_ratio - resistance_torque)
-			/ _get_wheel_drivetrain_inertia(wheel) * step
+		var friction_torque: float = rolling_resistance_force * share * radius + (brake_torque if braking else 0.0)
+		var friction_change: float = friction_torque / inertia * step
+		wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY] = (
+			0.0 if absf(free_speed) <= friction_change else free_speed - signf(free_speed) * friction_change
 		)
 
 	if battery:

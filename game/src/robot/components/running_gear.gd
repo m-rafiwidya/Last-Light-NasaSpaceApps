@@ -26,6 +26,20 @@ const LONGITUDINAL_STABILITY_FACTOR: float = 0.5
 # standstill the tyre acts like smooth viscous friction instead of flipping its
 # force every tick. Higher = calmer at low speed, but weaker grip there.
 @export var low_speed_threshold: float = 1.5
+@export_subgroup("Static friction")
+# The Pacejka model above is a sliding model: near a standstill its force is proportional to
+# the slip speed, so any steady pull (gravity on a slope) leaves a steady creep. While the wheel
+# rolls slower than static_friction_speed_full (the slower of the ground passing along the
+# heading and the tread turning) the tyre instead holds like a stiff spring at the contact patch: the patch's displacement from where it stuck (longitudinal: the tread's slip
+# past the ground; lateral: the patch's sideways travel) times static_friction_stiffness, plus
+# damping, up to the friction limit (friction * load, the same ellipse as the sliding model);
+# past the limit the patch slides (with the full friction force, Coulomb style) and its anchor
+# moves with it. Between full and static_friction_speed_none the two models blend, above it only
+# the sliding model acts, so driving is unchanged. Per wheel: about 0.5 mm of give for a parked rover on a 25 degree slope.
+@export var static_friction_stiffness: float = 20000.0
+@export var static_friction_damping: float = 600.0
+@export var static_friction_speed_full: float = 0.05
+@export var static_friction_speed_none: float = 0.25
 
 @export_group("Chassis")
 @export var wheel_base: float = 1.0
@@ -104,6 +118,9 @@ enum WheelState{
 	# The tyre force peaks near 2.7 (pacejka_b / c / e); 0 without a loaded contact.
 	# Read by the Robot's traction control.
 	NORMALIZED_SLIP,
+	# Static friction (see static_friction_stiffness): the contact patch's displacement from where
+	# it stuck, x along the tread (slip), y sideways (m). Zero while sliding fast or off the ground.
+	STICK_DISPLACEMENT,
 }
 
 var wheel_states: Dictionary = {}
@@ -122,6 +139,7 @@ func _init() -> void:
 			WheelState.CENTER_HEIGHT: 0.0,
 			WheelState.GROUND_BODY: null,
 			WheelState.NORMALIZED_SLIP: 0.0,
+			WheelState.STICK_DISPLACEMENT: Vector2.ZERO,
 		}
 
 enum WheelProperty{
@@ -175,6 +193,7 @@ func _clear_wheel_contact(wheel: Wheel) -> void:
 	wheel_states[wheel][WheelState.TORQUE] = 0.0
 	wheel_states[wheel][WheelState.GROUND_BODY] = null
 	wheel_states[wheel][WheelState.NORMALIZED_SLIP] = 0.0
+	wheel_states[wheel][WheelState.STICK_DISPLACEMENT] = Vector2.ZERO
 
 
 # Touching the ground without being held up by it (a wall, or the spring extending faster
@@ -467,13 +486,33 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, 
 		longitudinal_force_magnitude = clamp(
 			longitudinal_force_magnitude, -max_longitudinal_force, max_longitudinal_force
 		)
-		var longitudinal_force: Vector3 = wheel_direction * longitudinal_force_magnitude
-		var lateral_force: Vector3 = (
-			wheel_direction.rotated(y_basis, PI/2.0) *
+		var lateral_force_magnitude: float = (
 			suspension_load.dot(y_basis) *
 			lateral_friction *
 			normalized_lateral_force
 		)
+
+		# Static friction while the wheel isn't rolling, blended in by rolling speed (see
+		# static_friction_stiffness): the slower of the ground passing along the heading and the
+		# tread turning. A wheel skidding sideways, or locked while the rover slides along, isn't
+		# rolling, so it gets the static model's Coulomb limit instead of the sliding model's
+		# low-speed (viscous) force, which would let it slide on at a steady speed.
+		var rolling_speed: float = minf(absf(velocity_longitudinal), absf(wheel_speed))
+		var stick_weight: float = clampf(
+			(static_friction_speed_none - rolling_speed) / (static_friction_speed_none - static_friction_speed_full), 0.0, 1.0)
+		if stick_weight > 0.0:
+			var stick: Vector2 = _static_friction(
+				wheel, Vector2(slip_velocity, velocity_lateral), suspension_load.dot(y_basis),
+				longitudinal_friction, lateral_friction, state.step)
+			longitudinal_force_magnitude = lerpf(longitudinal_force_magnitude, stick.x, stick_weight)
+			lateral_force_magnitude = lerpf(lateral_force_magnitude, stick.y, stick_weight)
+		else:
+			wheel_states[wheel][WheelState.STICK_DISPLACEMENT] = Vector2.ZERO
+
+		var longitudinal_force: Vector3 = wheel_direction * longitudinal_force_magnitude
+		# (along the left of the wheel's heading; the sliding model's lateral force opposes the
+		# lateral velocity measured to the right)
+		var lateral_force: Vector3 = wheel_direction.rotated(y_basis, PI/2.0) * lateral_force_magnitude
 		var total_force: Vector3 = (
 			longitudinal_force + lateral_force
 		)
@@ -491,6 +530,25 @@ func simulate_suspensions(state, steer: float, wheel_inertias: Dictionary = {}, 
 				/ wheel_properties[wheel][WheelProperty.INERTIA]
 				* state.step
 			)
+
+
+# The static friction force (x forwards along the tread, y to the left of the heading, N), with
+# the same signs as the sliding model: `velocity` x is the tread's slip speed (+ = the wheel turns
+# faster than the ground passes, pushing the rover forwards), y the patch's speed to the right
+# (pushing back to the left). The patch's spring and damper, limited to the friction ellipse
+# (friction * load each way); past the limit the patch slides and its anchor moves with it, so
+# the spring just carries the limit.
+func _static_friction(wheel: Wheel, velocity: Vector2, load: float, longitudinal_friction: float,
+		lateral_friction: float, step: float) -> Vector2:
+	var displacement: Vector2 = wheel_states[wheel][WheelState.STICK_DISPLACEMENT] + velocity * step
+	var force: Vector2 = displacement * static_friction_stiffness + velocity * static_friction_damping
+	var limit := Vector2(longitudinal_friction, lateral_friction) * maxf(load, 0.0)
+	var usage: float = Vector2(force.x / maxf(limit.x, 0.001), force.y / maxf(limit.y, 0.001)).length()
+	if usage > 1.0:
+		force /= usage
+		displacement = (force - velocity * static_friction_damping) / static_friction_stiffness
+	wheel_states[wheel][WheelState.STICK_DISPLACEMENT] = displacement
+	return force
 
 
 func multiplier(combined_normalized_slip: float, mu_zero: float) -> float:

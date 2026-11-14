@@ -22,7 +22,8 @@ func _process(_delta: float) -> void:
 		return
 	var looking_at_prop: bool = false
 	if is_instance_valid(Debug.current_robot):
-		%Speed.text = "SPEED  %4.1f m/s" % Debug.current_robot.linear_velocity.length()
+		%Speed.text = "SPEED  %4.1f m/s%s" % [Debug.current_robot.linear_velocity.length(),
+			"  BRAKE" if Debug.current_robot.braking else ""]
 		var looking_at = Debug.current_robot.looking_at_object
 		looking_at_prop = looking_at is RigidBody3D
 		var holding: bool = looking_at != null and looking_at == Debug.current_robot.holder.held_object
