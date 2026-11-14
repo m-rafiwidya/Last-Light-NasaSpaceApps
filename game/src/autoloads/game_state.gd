@@ -4,7 +4,7 @@ signal state_changed(old_state, new_state)
 
 ## IN_GAME_PLAYER: the first-person player is controlled (default in-game state).
 ## IN_GAME_ROBOT: the robot is driven instead.
-enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}
+enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE, CREDITS}
 
 var state: State = State.LOADING
 ## The in-game state we were last in; PAUSED / MISSION_CONSOLE return to it.
@@ -37,7 +37,14 @@ func drive(rover: Robot) -> void:
 	change_state_to(State.IN_GAME_ROBOT)
 
 
-## Leave a menu-like state (pause, mission console) and go back to whichever
+## Plays the credits over the game (CREDITS: the game is paused behind them); in-game only. Leaving
+## them (UIManager, when the roll is closed) returns to the state they were opened from.
+func open_credits() -> void:
+	if is_in_game():
+		change_state_to(State.CREDITS)
+
+
+## Leave a menu-like state (pause, mission console, credits) and go back to whichever
 ## in-game state (player or robot) was active before it.
 func return_to_game() -> void:
 	change_state_to(last_in_game_state)
@@ -62,7 +69,7 @@ func _on_state_exit(_state: State):
 			pass
 		State.IN_GAME_ROBOT:
 			pass
-		State.PAUSED:
+		State.PAUSED, State.CREDITS:
 			unpause_game()
 		State.MISSION_CONSOLE:
 			pass
@@ -73,7 +80,7 @@ func _on_state_enter(_state: State):
 	match _state:
 		State.IN_GAME_PLAYER, State.IN_GAME_ROBOT:
 			last_in_game_state = _state
-		State.PAUSED:
+		State.PAUSED, State.CREDITS:
 			pause_game()
 
 

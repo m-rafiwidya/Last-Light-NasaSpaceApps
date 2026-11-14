@@ -1,7 +1,8 @@
 extends RoverLevel
 
 ## The test level: the rovers, their Drive Robot triggers and the parts pile come from
-## RoverLevel; this adds the intro dialog and the mission console.
+## RoverLevel; this adds the intro dialog, the mission console and the CREDITS TEST box (plays the credits, then
+## returns here).
 
 ## Played when the player interacts with the DialogTrigger. Authored as a .tres resource.
 @export var intro_dialog: DialogSequence
@@ -11,6 +12,7 @@ func _ready() -> void:
 	super()
 	$DialogTrigger.interacted.connect(_on_dialog_trigger_interacted)
 	$MissionConsoleTrigger.interacted.connect(_on_mission_console_trigger_interacted)
+	$CreditsTrigger.interacted.connect(func(_player: Player) -> void: GameState.open_credits())
 
 
 func _on_mission_console_trigger_interacted(_player: Player):

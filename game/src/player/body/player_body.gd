@@ -155,7 +155,8 @@ func _ready() -> void:
 func _on_game_state_changed(_old, new_state) -> void:
 	# While driving (and paused from driving), the console's seated operator is the player's
 	# body (Workshop), and the player stands at the console where it sits
-	var menu: bool = new_state == GameState.State.PAUSED or new_state == GameState.State.IN_GAME_MENU
+	var menu: bool = (new_state == GameState.State.PAUSED or new_state == GameState.State.IN_GAME_MENU
+			or new_state == GameState.State.CREDITS)
 	visible = not (new_state == GameState.State.IN_GAME_ROBOT
 		or (menu and GameState.last_in_game_state == GameState.State.IN_GAME_ROBOT))
 

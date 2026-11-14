@@ -1,6 +1,6 @@
 extends SceneTree
-## The credits screen: its text (CreditsData reads the "## Credits screen" section of CREDITS.md),
-## the `credits` console command (main menu only), the 48 s linear roll, SKIP / Esc to the ending,
+## The credits screen: its text (CreditsData reads res://res/credits.md), the `credits` console
+## command on the main menu, the 48 s linear roll, SKIP / Esc to the ending,
 ## WATCH AGAIN and MAIN MENU.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_credits.gd
@@ -65,6 +65,9 @@ func _run() -> void:
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
 	_check("A GAME BY: the studio and the event", by_title.get("A GAME BY", [{}])[0].get("name", "") == "TANDBORSTE"
 		and (by_title["A GAME BY"][0]["sub"] as String).contains("NASA Space Apps Challenge 2026"))
+	var type_text: String = by_title.get("TYPE", [{}])[0].get("text", "")
+	_check("TYPE names Michroma, Exo 2 and IBM Plex Mono", type_text.contains("Michroma") and type_text.contains("Exo 2")
+		and type_text.contains("IBM Plex Mono"))
 	_check("SPECIAL THANKS keeps its placeholder", by_title.get("SPECIAL THANKS", [{}])[0].get("text", "") == "[YOUR SPECIAL THANKS]")
 	_check("closing note: real data and fiction", (by_title.get("", [{}])[0].get("text", "") as String).contains("are fiction."))
 

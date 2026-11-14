@@ -216,12 +216,13 @@ Key points:
 
 ## 5. Game state machine
 
-Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
+Defined in `GameState` (`enum State {MAIN_MENU, LOADING, IN_GAME_PLAYER, IN_GAME_ROBOT, PAUSED, IN_GAME_MENU, MISSION_CONSOLE, CREDITS}`). Initial value: `LOADING`. `IN_GAME_MENU` is declared but not used anywhere yet.
 
 - `IN_GAME_PLAYER` is the default in-game state (first-person player active). A gameplay level always loads into it.
 - `IN_GAME_ROBOT` means the robot is being driven. It is entered from `IN_GAME_PLAYER` by the `RobotTrigger` in the test level and left with Esc (`ui_cancel`), which goes back to `IN_GAME_PLAYER` (not to pause).
-- `GameState.last_in_game_state` remembers which of the two was active. `PAUSED` and `MISSION_CONSOLE` leave through `GameState.return_to_game()` (Esc, Resume, the console's X button), which returns to it. `GameState.is_in_game()` is true for both.
+- `GameState.last_in_game_state` remembers which of the two was active. `PAUSED`, `MISSION_CONSOLE` and `CREDITS` leave through `GameState.return_to_game()` (Esc, Resume, the console's X button), which returns to it. `GameState.is_in_game()` is true for both.
 - `MISSION_CONSOLE` is entered from `IN_GAME_PLAYER` by the `MissionConsoleTrigger` in the test level.
+- `CREDITS` plays the credits over the game (`GameState.open_credits()`, in-game only): from the test level's CREDITS TEST box (`CreditsTrigger`, Interact) or the `credits` console command. The game is paused behind it like `PAUSED`; closing the roll (SKIP then MAIN MENU, Esc, or MAIN MENU) returns to `last_in_game_state`, i.e. the level and the spot the player was in. (On the main menu the credits open without a state: `Credits.open()`.)
 
 ```mermaid
 stateDiagram-v2
@@ -234,6 +235,8 @@ stateDiagram-v2
     IN_GAME_ROBOT --> IN_GAME_PLAYER: Esc
     IN_GAME_PLAYER --> MISSION_CONSOLE: MissionConsoleTrigger interacted
     MISSION_CONSOLE --> IN_GAME_PLAYER: Esc or X
+    IN_GAME_PLAYER --> CREDITS: CreditsTrigger / credits command
+    CREDITS --> IN_GAME_PLAYER: roll closed
     PAUSED --> IN_GAME_PLAYER: Esc or Resume
     PAUSED --> LOADING: Switch to <level> / Quit To Menu
 ```
@@ -249,6 +252,7 @@ stateDiagram-v2
 | `IN_GAME_PLAYER` | Mouse `CAPTURED`; remembered as `last_in_game_state` | - | `HUD` |
 | `IN_GAME_ROBOT` | Mouse `CAPTURED`; remembered as `last_in_game_state`; robot camera becomes current | - | `RobotHUD` |
 | `PAUSED` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `PauseMenu` |
+| `CREDITS` | Mouse `VISIBLE`, `pause_game()` | `unpause_game()` | `Credits` (the HUD fades out) |
 | `MISSION_CONSOLE` | Mouse `VISIBLE` | - | `MissionConsole` (computer-theme window with hardcoded dummy mission list, X button closes, opacity fade) |
 
 ### Input lock
@@ -394,9 +398,9 @@ Restyled to `docs/ui/UI_SPEC.md` "Loading" (design x 1.2, `res/ui_theme_v2.tres`
 
 `docs/ui/UI_SPEC.md` "Credits" (design x 1.2, `res/ui_theme_v2.tres`, `Starfield`, `UnderlineButton`, the theme's `SkipButton`). `CreditsScreen` (`UIScreen`, canvas layer 100, instanced under `UIManager`, hidden) rolls for `ROLL_TIME` (48 s, linear): the logo and "LAST LIGHT", then the sections, while the astronaut drifts across (from -312,144 / -20 deg to 192,-96 / 12 deg) and floats with the main menu's `FLOAT_KEYS`. It ends on THANK YOU FOR PLAYING, the Earth line and WATCH AGAIN / MAIN MENU (text 1.6 s, buttons 1.2 s after 1.4 s). SKIP (bottom-right) or Esc jumps to the ending; Esc there, or MAIN MENU, closes it (`closed` signal). While it is open SKIP holds the keyboard focus, so Enter can't press a button of the screen underneath; the focus goes back on close.
 
-- **Text**: `CreditsData` reads the `## Credits screen` section of `CREDITS.md` in the repository root (outside the Godot project: `res://../CREDITS.md`, so an exported build won't find it yet and shows the logo only). Each `###` heading is a section; blank-line separated blocks are entries; a block of `NAME | small line` lines becomes name rows (team, studio), any other block is centred text with its line breaks; `CLOSING NOTE` has no title. `[YOUR SPECIAL THANKS]` is the placeholder to replace before release.
-- **Opening**: the `credits` console command, main menu only for now (it closes the console and calls `open()`); `play()` restarts the roll, `skip()` ends it.
-- `tests/test_credits.gd`.
+- **Text**: `CreditsData` reads `res://res/credits.md` (the root `CREDITS.md` points to it; an exported build needs `*.md` in the export preset's resource filters, there is no preset yet). Each `###` heading is a section; blank-line separated blocks are entries; a block of `NAME | small line` lines becomes name rows (team, studio), any other block is centred text with its line breaks; `CLOSING NOTE` has no title. `[YOUR SPECIAL THANKS]` is the placeholder to replace before release.
+- **Opening**: the `credits` console command (main menu: `open()`; in a level: `GameState.open_credits()`, state `CREDITS`) and the test level's CREDITS TEST box. `UIManager` shows it on `CREDITS` and, when it is `closed` in that state, calls `return_to_game()`; `UIManager._process` counts it as an open popup so the Esc that closes it doesn't also pause. `play()` restarts the roll, `skip()` ends it.
+- `tests/test_credits.gd`, `tests/test_credits_in_game.gd`.
 
 ### 6.8 Button components (`ui/button_style_components/`)
 
@@ -814,7 +818,7 @@ Ways to trigger today: the `say <text>` console command (see below), and the `Di
 | `say <text...>` | creates a temporary `Dialog` with that subtitle and plays it via `DialogServer` |
 | `fullbright` | toggles `Viewport.DEBUG_DRAW_UNSHADED` |
 | `intro` | plays the main menu's opening sequence again (main menu only) |
-| `credits` | plays the credits roll over the main menu (main menu only) |
+| `credits` | plays the credits roll over the main menu or the level (state `CREDITS`; back to where you were) |
 | `testlevel` | loads the test level (it is no longer on the main menu) |
 | `fakesaves` | writes the five sample save metadata files of the UI board (`user://saves/fake_01..05.meta.json`) so the PLAY popup's list can be previewed |
 | `clearsaves` | removes the fake saves (`fake_*.meta.json` only; other files are left alone) |

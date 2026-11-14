@@ -2,42 +2,32 @@ class_name CreditsData
 
 extends RefCounted
 
-## The credits roll's text, read from the "## Credits screen" section of CREDITS.md in the
-## repository root (one level above the Godot project; the format is described there).
+## The credits roll's text, read from res://res/credits.md (the format is described there; the
+## repository's CREDITS.md points to it).
 ## sections() returns one Dictionary per "###" heading:
 ##   title    the heading, "" for the headerless CLOSING NOTE
 ##   entries  Array of {"name", "sub"} (a "NAME | small line" row) or {"text"} (a block, \n kept)
 
-const SOURCE: String = "../CREDITS.md"
-const SECTION: String = "## Credits screen"
+const SOURCE: String = "res://res/credits.md"
 const CLOSING_NOTE: String = "CLOSING NOTE"
 const ROW_SEPARATOR: String = " | "
 
 
 static func sections() -> Array[Dictionary]:
-	var path: String = ProjectSettings.globalize_path("res://").path_join(SOURCE).simplify_path()
-	var file := FileAccess.open(path, FileAccess.READ)
+	var file := FileAccess.open(SOURCE, FileAccess.READ)
 	if file == null:
-		push_warning("Credits: %s not found, the roll shows only its fixed parts" % path)
+		push_warning("Credits: %s not found, the roll shows only its fixed parts" % SOURCE)
 		return []
 	return parse(file.get_as_text())
 
 
 static func parse(markdown: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	var in_section: bool = false
 	var current: Dictionary = {}
 	var block: PackedStringArray = []
 	for raw in markdown.split("\n"):
 		var line: String = raw.strip_edges()
-		if line.begins_with("## "):
-			_end_block(current, block)
-			block = []
-			in_section = line == SECTION
-			current = {}
-		elif not in_section:
-			continue
-		elif line.begins_with("### "):
+		if line.begins_with("### "):
 			_end_block(current, block)
 			block = []
 			var title: String = line.trim_prefix("### ")
