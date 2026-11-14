@@ -3,9 +3,12 @@ class_name LunarSky
 
 extends WorldEnvironment
 
-## The Moon level's sky and sun, as seen from the lunar south pole: the stars of NASA's Deep Star
-## Maps 2020 with the south ecliptic pole straight overhead (the Moon's spin axis is only 1.5
-## degrees from it), so the ecliptic, and with it the sun and Earth, runs along the horizon.
+## The Moon level's sky and sun: the stars of NASA's Deep Star Maps 2020, oriented either
+## - for one moment at one site (`use_fixed_orientation`, `fixed_world_to_equatorial`: the terrain
+##   pipeline's `sky.world_to_equatorial` from JPL Horizons; the Moon level: Apollo 12's site at
+##   the EVA 2 midpoint, 1969-11-20 05:49 UTC), or
+## - as from the lunar south pole: the south ecliptic pole straight overhead (the Moon's spin axis
+##   is only 1.5 degrees from it), turned about it by `forward_ecliptic_longitude` (some moment).
 ## Places the `sun` light at `sun_elevation` / `sun_azimuth` and Earth along the level's
 ## `earth_direction` (RoverLevel: the rovers' antennas track the same direction), and feeds both
 ## to lunar_sky.gdshader, which lights Earth with the sun, so its phase is right.
@@ -20,7 +23,7 @@ signal sun_changed
 		sun = value
 		_update()
 ## Sun height above the horizon (degrees). At the south pole it is never more than about 1.5
-## (the Moon's axis is tilted 1.54 degrees); higher, e.g. 9, trades realism for visibility
+## (the Moon's axis is tilted 1.54 degrees); at Apollo 12's site during EVA 2 it was 16.7
 @export_range(0.0, 90.0, 0.1) var sun_elevation: float = 1.5:
 	set(value):
 		sun_elevation = value
@@ -29,8 +32,19 @@ signal sun_changed
 	set(value):
 		sun_azimuth = value
 		_update()
-## Ecliptic longitude (degrees) on the horizon towards -Z. At the pole the stars turn round the
-## zenith once a sidereal month, so any value is some moment of it
+## Use fixed_world_to_equatorial (one moment at one site) instead of the south pole orientation
+@export var use_fixed_orientation: bool = false:
+	set(value):
+		use_fixed_orientation = value
+		_update()
+## World direction -> equatorial (x towards RA 0h, z the north celestial pole), from the terrain
+## pipeline (terrain.json `sky.world_to_equatorial`: its rows are this basis's rows)
+@export var fixed_world_to_equatorial: Basis = Basis.IDENTITY:
+	set(value):
+		fixed_world_to_equatorial = value
+		_update()
+## South pole orientation only: the ecliptic longitude (degrees) on the horizon towards -Z. At the
+## pole the stars turn round the zenith once a sidereal month, so any value is some moment of it
 @export_range(-180.0, 180.0, 0.1) var forward_ecliptic_longitude: float = 0.0:
 	set(value):
 		forward_ecliptic_longitude = value
@@ -93,8 +107,11 @@ func _ready() -> void:
 
 
 ## World direction -> equatorial coordinates (x towards RA 0h, z the north celestial pole).
-## World up is the south ecliptic pole; the horizon towards -Z is at forward_ecliptic_longitude.
+## Fixed: the pipeline's. Otherwise world up is the south ecliptic pole and the horizon towards -Z
+## is at forward_ecliptic_longitude.
 func world_to_equatorial() -> Basis:
+	if use_fixed_orientation:
+		return fixed_world_to_equatorial.orthonormalized()
 	# World (x, y, z) -> ecliptic (x, z, -y): up is the south ecliptic pole, and +X is at
 	# ecliptic longitude 0; then turn about the pole so -Z is at forward_ecliptic_longitude
 	var world_to_ecliptic := Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0))

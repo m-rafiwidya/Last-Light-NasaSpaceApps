@@ -2,7 +2,10 @@ extends SceneTree
 ## Measures the Moon level's frame rate in a window: the rover drives a full-throttle circle
 ## with its headlights on, SECONDS each in the chase and the mast view, then the player walks
 ## on foot with the helmet light on, then stands facing the parked rover, its headlights and the
-## helmet light both in view (the player's helmet light is on throughout). Prints per phase the mean frame rate and the 99th percentile and worst frame times.
+## helmet light both in view (the player's helmet light is on throughout). Prints per phase the mean frame rate and the 99th percentile and worst frame times
+## and the triangles drawn per frame; before that the load time (main menu to playing, and the
+## terrain's own data / mesh times: the meshes come from user://terrain_cache after the first load)
+## and the memory in use (static and video) on the menu and once the level is in.
 ## Vsync is off unless `vsync` is given, so the numbers show the headroom.
 ##
 ##     Godot --path game -s res://tools/measure_moon_fps.gd --resolution 1920x1080
@@ -40,10 +43,29 @@ func _run() -> void:
 
 	while GS.state != GS.State.MAIN_MENU:
 		await process_frame
+	for i in 30:
+		await process_frame
+	var menu_static: float = Performance.get_monitor(Performance.MEMORY_STATIC)
+	var menu_video: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)
+	var load_start: int = Time.get_ticks_msec()
 	SL.load_scene("moon_level")
 	while not (GS.state == GS.State.IN_GAME_PLAYER and SL.current_level_id == "moon_level"):
 		await process_frame
+	var load_ms: int = Time.get_ticks_msec() - load_start
 	var level: Node = SL.current_scene
+	for i in 30:
+		await process_frame
+	var terrain: Node = level.get_node("Terrain")
+	print("LOAD %.2f s from the menu to playing (includes the loading screen's 0.5 s fade); terrain data and collision %d ms, meshes %.2f s for %d chunks" % [
+		load_ms / 1000.0, terrain.data_ms, terrain.build_seconds, terrain.chunk_count])
+	var mb := func(bytes: float) -> float: return bytes / 1048576.0
+	var level_static: float = Performance.get_monitor(Performance.MEMORY_STATIC)
+	var level_video: float = Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)
+	# (RENDER_TEXTURE_MEM_USED reads as garbage on Metal in 4.7: the rest of the video memory is shown instead)
+	var buffers: float = Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED)
+	print("MEMORY static %.0f MB (menu %.0f, +%.0f for the level); video %.0f MB (menu %.0f, +%.0f): buffers %.0f MB, textures and the rest %.0f MB" % [
+		mb.call(level_static), mb.call(menu_static), mb.call(level_static - menu_static), mb.call(level_video), mb.call(menu_video),
+		mb.call(level_video - menu_video), mb.call(buffers), mb.call(level_video - buffers)])
 	var sky: Node = level.get_node("WorldEnvironment")
 	if args.has("sun"):
 		sky.sun_elevation = float(args["sun"])
@@ -96,6 +118,7 @@ func _measure(phase: String) -> void:
 	while Time.get_ticks_usec() - start < WARM_UP * 1e6:
 		await process_frame
 	var frame_times: Array[float] = []
+	var primitives: float = 0.0
 	var unfocused: int = 0
 	var last: int = Time.get_ticks_usec()
 	start = last
@@ -103,15 +126,16 @@ func _measure(phase: String) -> void:
 		await process_frame
 		var now: int = Time.get_ticks_usec()
 		frame_times.append((now - last) / 1000.0)
+		primitives += Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 		last = now
 		if not DisplayServer.window_is_focused():
 			unfocused += 1
 	var sorted: Array[float] = frame_times.duplicate()
 	sorted.sort()
 	var mean: float = (last - start) / 1000.0 / frame_times.size()
-	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames%s" % [
+	print("FPS %-22s mean %6.1f fps (%5.2f ms)  p99 %5.2f ms  worst %6.2f ms  %d frames  %.2f M triangles a frame%s" % [
 		phase, 1000.0 / mean, mean, sorted[int(sorted.size() * 0.99)], sorted[-1],
-		frame_times.size(), "" if unfocused == 0 else "  (%d unfocused: throttled)" % unfocused])
+		frame_times.size(), primitives / frame_times.size() / 1e6, "" if unfocused == 0 else "  (%d unfocused: throttled)" % unfocused])
 
 
 # A hang fails the run instead of stalling it (the windowed tools wait for a level to load)

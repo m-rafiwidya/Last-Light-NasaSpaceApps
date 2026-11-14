@@ -4,7 +4,10 @@ render_mode specular_disabled;
 // Lunar regolith, procedural (no photo textures: they have shadows baked in). Everything is in
 // world space, so terrain chunks and rocks match. MoonTerrain sets the uniforms per tier.
 // - Albedo: grey regolith mottled at about 120 m, 15 m and 2 m, brighter on steep slopes and
-//   around fresh craters (freshness map from the terrain pipeline, play tier only).
+//   around fresh craters (freshness map from the terrain pipeline, play tier only), times the
+//   site's brightness pattern where the pipeline made one (Apollo 12: the LROC orthophoto divided
+//   by the DTM's own shading under the image's sun, blurred to 8 m; approximate, not albedo, and
+//   shading only).
 // - Detail relief below the mesh's 1 m: the terrain pipeline's roughness spectrum (Hurst 0.9, 3
 //   degrees RMS slope from 10 m to 1 m) carried on down to 3 cm, as four value-noise octaves fitted
 //   to its bands (5.5 mm RMS height, 5.3 degrees RMS slope in all). Drawn through its normals and
@@ -49,6 +52,12 @@ uniform sampler2D freshness : filter_linear, repeat_disable, hint_default_black;
 uniform bool use_freshness = false;
 uniform float freshness_half = 512.0;
 uniform float freshness_brightening = 0.35;
+
+// Site brightness: 8-bit, brightness = 1 + range * (value * 2 - 1), covering [-half, half]
+uniform sampler2D site_brightness : filter_linear, repeat_disable, hint_default_white;
+uniform bool use_site_brightness = false;
+uniform float site_brightness_half = 512.0;
+uniform float site_brightness_range = 0.3;
 
 // Detail relief: the noise period (m) and amplitude (m) of each octave, each fitted to the RMS height
 // and RMS slope of one octave band of the pipeline's spectrum (1-0.5, 0.5-0.25, 0.25-0.125 and
@@ -215,6 +224,12 @@ void fragment() {
 		vec2 fuv = (p.xz + freshness_half) / (2.0 * freshness_half);
 		float fresh = max(texture(freshness, fuv).r * 2.0 - 1.0, 0.0);
 		albedo *= 1.0 + freshness_brightening * fresh;
+	}
+	if (use_site_brightness) {
+		vec2 buv = (p.xz + site_brightness_half) / (2.0 * site_brightness_half);
+		if (all(greaterThanEqual(buv, vec2(0.0))) && all(lessThanEqual(buv, vec2(1.0)))) {
+			albedo *= 1.0 + site_brightness_range * (texture(site_brightness, buv).r * 2.0 - 1.0);
+		}
 	}
 	ALBEDO = albedo;
 	ROUGHNESS = 1.0;

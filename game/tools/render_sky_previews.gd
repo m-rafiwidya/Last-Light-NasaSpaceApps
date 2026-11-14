@@ -4,7 +4,7 @@ extends SceneTree
 ## (not --headless):
 ##
 ##     Godot --path game -s res://tools/render_sky_previews.gd --resolution 1920x1080
-##     (append `-- elevations=1.5,2.1,9` to pick the sun elevations, `only=<shot>` for one shot,
+##     (append `-- elevations=5.1,16.7` to pick the sun elevations, `only=<shot>` for one shot,
 ##     `energy=<sun energy>`, `exposure=<e1>,<e2>` (one per elevation) and `tonemap=<mode>` to
 ##     try other lighting than the level's)
 ##
@@ -14,20 +14,23 @@ extends SceneTree
 ##   chase_toward_sun                 the rover facing the sun on the horizon, backlit
 ##   chase_far_shadows                1 m posts 10 to 400 m ahead, shadows on every cascade
 ##   mast_earth / mast_earth_zoom     the mast camera on Earth, unzoomed and at full zoom
-##   mast_zenith                      the mast camera straight up: the south ecliptic pole,
-##                                    the Large Magellanic Cloud and Canopus
-## It also checks the star map's orientation: Canopus must be the brightest point near the
-## direction LunarSky computes for it (prints RESULT ... PASS / FAIL).
+##   mast_zenith                      the mast camera straight up (Apollo 12, EVA 2 midpoint:
+##                                    RA 164.8, Dec +3.1, between Leo and Crater)
+## It also checks the star map's orientation: Sirius (24 degrees up in the south-west at the
+## level's moment) must be the brightest point near the direction LunarSky computes for it
+## (prints RESULT ... PASS / FAIL).
 
-const SUN_ELEVATIONS: Array = [1.5, 2.1, 9.0]
+# The level's (EVA 2) and the landing's
+const SUN_ELEVATIONS: Array = [16.7, 5.1]
 const OUT_DIR: String = "res://../tools/previews/sky"
 # At the base (x, z; the height comes from the Moon's terrain), and 120 m west of it for the far
 # shadows
-const ROVER_AT := Vector3(-336.0, 0.35, -300.4)
-const FAR_SHADOWS_AT := Vector3(-430.0, 0.35, -300.0)
-# Canopus (alpha Carinae), J2000
-const CANOPUS_RA: float = 95.988
-const CANOPUS_DEC: float = -52.696
+const ROVER_AT := Vector3(-299.0, 0.35, 247.6)
+const FAR_SHADOWS_AT := Vector3(-420.0, 0.35, 248.0)
+# Sirius (alpha Canis Majoris), J2000
+const STAR_NAME: String = "Sirius"
+const STAR_RA: float = 101.287
+const STAR_DEC: float = -16.716
 # RoverCamera.View and MAST_FOV_MIN / _MAX (this script compiles before the game's
 # autoloads exist, so it names none of the game's classes)
 const CHASE: int = 0
@@ -191,9 +194,9 @@ func _add_posts(level: Node, sky: Node) -> void:
 		post.global_position = Vector3(spot.x, (terrain.height_at(spot.x, spot.z) if terrain else 0.0) + 1.0, spot.z)
 
 
-## Canopus must be the brightest thing in a 4 degree view centred on where LunarSky puts it
+## The check star must be the brightest thing in a 4 degree view centred on where LunarSky puts it
 func _check_star_orientation(sky: Node, level: Node) -> void:
-	var direction: Vector3 = sky.star_direction(CANOPUS_RA, CANOPUS_DEC)
+	var direction: Vector3 = sky.star_direction(STAR_RA, STAR_DEC)
 	# Its own viewport on the level's world, so the HUD isn't in the picture
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(512, 512)
@@ -225,7 +228,7 @@ func _check_star_orientation(sky: Node, level: Node) -> void:
 	var off_degrees: float = (brightest - Vector2(size) / 2.0).length() / size.y * camera.fov
 	# A black or uniform view (e.g. the sky shader failed) has no star to find
 	var is_star: bool = best > 0.3 and count < size.x * size.y / 100
-	_check("star map orientation: Canopus at its computed direction", is_star and off_degrees < 0.3,
+	_check("star map orientation: %s at its computed direction" % STAR_NAME, is_star and off_degrees < 0.3,
 		"(brightest spot %.2f deg from the centre, peak %.2f over %d px, elevation %.1f deg)" % [off_degrees, best, count, rad_to_deg(asin(direction.y))])
 	viewport.queue_free()
 

@@ -1,33 +1,43 @@
 extends SceneTree
-## Headless test: the Moon level's real terrain (MoonTerrain, data from tools/terrain/).
+## Headless test: the Moon level's real terrain (MoonTerrain, data from tools/terrain/: the Apollo
+## 12 site, LROC NAC DTM).
 ##   1. Data and layout: the terrain is ready before the player spawns, its collision is the play
-##      tier at the configured detail, the spawn, the rover and the parts pile stand on flat ground
-##      (under 3 degrees) and nothing fell through after 4 s.
-##   2. What you see is what the wheels stand on: play-tier chunk meshes (at the base, the pad and
-##      the crater) agree with the collision to 1 mm at every triangle's centre.
-##   3. Light: with the level's sun, the permanently shadowed crater's floor is dark and the base
-##      and the pad are lit (the baked horizon map, whose first azimuth is the sun's).
+##      tier's measured 2 m posts (at either Terrain Detail: Low never thins a measured tier) and
+##      equals the pipeline's play.f32, which is the untouched DTM (play_measured.f32) everywhere but
+##      the graded base; the spawn, the rover and the parts pile stand on flat ground (under 3
+##      degrees) and nothing fell through after 4 s.
+##   2. What you see is what the wheels stand on: play-tier chunk meshes (at the base, near the LM,
+##      Surveyor crater, Head crater, the centre) agree with the collision to 1 mm at every
+##      triangle's centre.
+##   3. Light: the horizon maps start at the sun's azimuth (the EVA 2 sun from terrain.json), the
+##      base is in sunlight, and the share of the play area in sunlight is the pipeline's.
 ##   4. The boundary: the rover at full throttle and the player walking towards it are stopped
 ##      inside the play area, and the HUD warns them.
-##   5. A drive over the real ground: from the rover's parking past the pad, down into the
-##      shadowed crater and out again, holding about 2.4 m/s, steering for each waypoint, checking the
-##      wheel contact every tick and the visible wheels every frame as test_wheel_contact.gd
-##      does (no wheel airborne within 5 mm of the ground, none in contact inside it, no wheel
-##      mesh over 1 cm in it). It must reach every waypoint.
+##   5. A drive over the real ground: from the base along the EVA 2 route in reverse (past Bench
+##      crater, south of Surveyor crater, its west rim), down into Head crater and out to the
+##      west, never within 75 m of the LM, the ALSEP or Surveyor 3, holding about 2.4 m/s, steering
+##      for each waypoint, checking the wheel contact every tick and the visible wheels every frame
+##      as test_wheel_contact.gd does (no wheel airborne within 5 mm of the ground, none in contact
+##      inside it, no wheel mesh over 1 cm in it). It must reach every waypoint.
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_terrain.gd
 ##     (append `-- terrain_detail=low` for the 1 m ground)
 
 const TICKS: int = 240
-const DATA: String = "res://res/terrain/moon_site01/"
+const DATA: String = "res://res/terrain/moon_apollo12/"
 const GROUND_MASK: int = 1 | 4
 const WHEEL_RADIUS: float = 0.15
 const WHEEL_WIDTH: float = 0.24
 const TOUCH_MARGIN: float = 0.005
 const MESH_MARGIN: float = 0.01
-# Waypoints (x, z): the pad, the shadowed crater's rim, its floor, and back out to the north-west
-const ROUTE: Array = [Vector2(-246, -357), Vector2(60, 180), Vector2(150, 330), Vector2(192, 384), Vector2(60, 180)]
+# Waypoints (x, z, play coordinates): north-east from the base, west of Bench crater, south of
+# Surveyor crater (towards Halo), Surveyor crater's west rim, Head crater's floor, out to the west.
+# The straight lines between them keep 96 m from the LM, 134 m from the ALSEP, 162 m from Surveyor 3
+const ROUTE: Array = [Vector2(-230, 90), Vector2(-150, 115), Vector2(57, 140), Vector2(57, 5), Vector2(-37, -42), Vector2(-125, -60)]
+const HEAD_CRATER_FLOOR := Vector2(-37, -42)
+const KEEP_OUT: float = 75.0
+const BOUNDARY_Z: float = 50.0
 const WAYPOINT_RADIUS: float = 12.0
 const STUCK_SECONDS: float = 25.0
 # Throttle: held to drive_speed like a driver would (more when slower, uphill; less when faster),
@@ -108,14 +118,30 @@ func _run() -> void:
 			drive_speed = arg.trim_prefix("drive_speed=").to_float()
 	var settings: GDScript = load("res://src/settings/graphics_settings.gd")
 	var low: bool = settings.get_terrain_detail() == 1
-	print("INFO terrain detail %s; %d rocks, %d with collision; driving at %.1f m/s" % ["low (1 m)" if low else "high (0.5 m)", terrain.get_node("Rocks").count, terrain.get_node("Rocks").with_collision, drive_speed])
+	print("INFO terrain detail %s; %d rocks, %d with collision; driving at %.1f m/s" % ["low" if low else "high", terrain.get_node("Rocks").count, terrain.get_node("Rocks").with_collision, drive_speed])
 
 	# 1. Data and layout
 	_check("terrain ready before the player spawned", terrain.is_content_ready and GS.player != null)
 	var heightmap: HeightMapShape3D = terrain.get_node("Ground").get_child(0).shape
-	var expected: int = 1025 if low else 2049
-	_check("collision: the play tier at the configured detail", heightmap.map_width == expected and heightmap.map_depth == expected,
-		"%d x %d" % [heightmap.map_width, heightmap.map_depth])
+	var play_meta: Dictionary = meta["tiers"][0]
+	var expected: int = play_meta["size"]
+	_check("collision: the play tier's measured 2 m posts at either detail", heightmap.map_width == expected and heightmap.map_depth == expected
+		and is_equal_approx(terrain.get_node("Ground").get_child(0).scale.x, 2.0), "%d x %d" % [heightmap.map_width, heightmap.map_depth])
+	var stored: PackedFloat32Array = FileAccess.get_file_as_bytes(DATA + play_meta["file"]).to_float32_array()
+	var measured: PackedFloat32Array = FileAccess.get_file_as_bytes(DATA + meta["provenance"]["measured_file"]).to_float32_array()
+	_check("collision heights are the pipeline's play tier, bit for bit", heightmap.map_data == stored)
+	var changed: int = 0
+	var outside_base: int = 0
+	var base: Dictionary = meta["protected"][0]
+	for i in measured.size():
+		if measured[i] != stored[i]:
+			changed += 1
+			var x: float = -512.0 + (i % expected) * 2.0
+			var z: float = -512.0 + (i / expected) * 2.0
+			if absf(x - base["centre"][0]) > base["size"][0] / 2.0 + base["blend"] or absf(z - base["centre"][1]) > base["size"][1] / 2.0 + base["blend"]:
+				outside_base += 1
+	_check("the measured DTM is untouched outside the graded base", outside_base == 0 and changed == meta["authored_changes"][0]["posts_changed"],
+		"%d posts changed, %d outside the base" % [changed, outside_base])
 	# Headless runs build no materials: build them as a window would, to check the setting
 	if terrain.materials.is_empty():
 		terrain._make_materials()
@@ -140,13 +166,14 @@ func _run() -> void:
 	_check("parts pile's spot is flat", steepest < 3.0, "%.1f deg" % steepest)
 
 	# 2. Mesh = collision
-	var spots: Array = [Vector2(-336, -300), Vector2(-246, -357), Vector2(192, 384), Vector2(0, 0)]
+	var lm: Array = meta["artifacts"]["lm"]["position"]
+	var spots: Array = [Vector2(-300, 252), Vector2(lm[0] - 30.0, lm[2]), Vector2(155, 23), HEAD_CRATER_FLOOR, Vector2(0, 0)]
 	var play: Dictionary = terrain.tiers[0]
 	var worst_diff: float = 0.0
 	var samples: int = 0
 	for spot in spots:
-		var cell: int = int((spot.y + 512.0) / play["spacing"]) / terrain.CHUNK_CELLS
-		var col: int = int((spot.x + 512.0) / play["spacing"]) / terrain.CHUNK_CELLS
+		var cell: int = int((spot.y + play["half"]) / play["spacing"]) / terrain.CHUNK_CELLS
+		var col: int = int((spot.x + play["half"]) / play["spacing"]) / terrain.CHUNK_CELLS
 		var mesh: Mesh = terrain.build_chunk(0, cell, col)
 		var arrays: Array = mesh.surface_get_arrays(0)
 		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -175,17 +202,22 @@ func _run() -> void:
 		var j: int = clampi(roundi((x + play_h["half_size"]) / play_h["metres_per_pixel"]), 0, size - 1)
 		return -10.0 + image.get_pixel(j, i).r * 60.0
 	_check("the horizon maps start at the sun's azimuth", is_equal_approx(horizons["first_azimuth"], sun["azimuth"]))
-	var floor_lowest: float = 90.0
-	for dx in range(-60, 61, 10):
-		for dz in range(-60, 61, 10):
-			if Vector2(dx, dz).length() <= 60.0:
-				floor_lowest = minf(floor_lowest, horizon_at.call(192.0 + dx, 384.0 + dz))
-	var top_of_sun: float = sun["elevation"] + 0.27
-	_check("the shadowed crater's floor is dark", floor_lowest > top_of_sun, "lowest horizon %.2f deg, top of the sun %.2f" % [floor_lowest, top_of_sun])
 	var base_highest: float = -90.0
-	for p in [Vector2(-336, -300), Vector2(-328, -302), Vector2(-334, -294), Vector2(-246, -357), Vector2(-280, -390), Vector2(-210, -320)]:
-		base_highest = maxf(base_highest, horizon_at.call(p.x, p.y))
-	_check("the base and the pad are in sunlight", base_highest < sun["elevation"] - 0.27, "highest horizon %.2f deg, sun %.1f" % [base_highest, sun["elevation"]])
+	for dx in range(-23, 24, 4):
+		for dz in range(-16, 17, 4):
+			base_highest = maxf(base_highest, horizon_at.call(base["centre"][0] + dx, base["centre"][1] + dz))
+	_check("the base is in sunlight", base_highest < sun["elevation"] - 0.27, "highest horizon %.2f deg, sun %.2f" % [base_highest, sun["elevation"]])
+	var lit: int = 0
+	var points: int = 0
+	var limit: int = int(meta["boundary_half_size"])
+	for x in range(-limit + 8, limit, 16):
+		for z in range(-limit + 8, limit, 16):
+			points += 1
+			if horizon_at.call(x, z) < sun["elevation"]:
+				lit += 1
+	var lit_share: float = float(lit) / points
+	_check("the play area's sunlit share is the pipeline's", absf(lit_share - sun["play_area_lit_fraction"]) < 0.02,
+		"%.3f (pipeline %.3f)" % [lit_share, sun["play_area_lit_fraction"]])
 
 	# 4. Boundary
 	await _boundary_checks()
@@ -217,9 +249,10 @@ func _hint_text() -> String:
 
 func _boundary_checks() -> void:
 	var limit: float = meta["boundary_half_size"]
-	# The player, walking west from 15 m inside
+	# The player, walking west from 15 m inside, on flat ground (under 3 degrees out to the wall at
+	# z = 50; further south the west wall cuts a big subdued crater)
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
-	_place(GS.player, -limit + 15.0, -300.0, 90.0, 1.0)
+	_place(GS.player, -limit + 15.0, BOUNDARY_Z, 90.0, 1.0)
 	await _ticks(1.0)
 	var hint: String = _hint_text()
 	Input.action_press("move_forward")
@@ -229,19 +262,19 @@ func _boundary_checks() -> void:
 	_check("the boundary stops the player", x > -limit, "x %.2f (boundary at %.0f)" % [x, -limit])
 	_check("the HUD warns the player near the boundary", hint.begins_with("Survey area boundary"), "\"%s\"" % hint)
 	# The rover at full throttle, from 15 m inside
-	_place(rover, -limit + 15.0, -300.0, 90.0, 0.4)
+	_place(rover, -limit + 15.0, BOUNDARY_Z, 90.0, 0.4)
 	GS.drive(rover)
 	await _ticks(1.0)
 	Input.action_press("move_forward")
 	await _ticks(20.0)
 	Input.action_release("move_forward")
 	var rover_x: float = rover.global_position.x
-	_check("the boundary stops the rover at full throttle", rover_x > -limit, "x %.2f, upright %s" % [rover_x, rover.global_basis.y.y > 0.7])
+	_check("the boundary stops the rover at full throttle", rover_x > -limit and rover_x < -limit + 5.0, "x %.2f, upright %s" % [rover_x, rover.global_basis.y.y > 0.7])
 	_check("the HUD warns the driver near the boundary", _hint_text().begins_with("Survey area boundary"), "\"%s\"" % _hint_text())
 
 
 func _drive() -> void:
-	_place(rover, -336.0, -300.4, 0.0, 0.4)
+	_place(rover, -299.0, 247.6, 30.0, 0.4)
 	GS.drive(rover)
 	await _ticks(2.0)
 	drive_stats = {"ticks": 0, "frames": 0, "touching_airborne": 0, "inside_terrain": 0, "mesh_in_ground": 0, "worst_mesh": 0.0, "lowest": INF}
@@ -279,15 +312,20 @@ func _drive() -> void:
 			elif steer < -0.05:
 				Input.action_press("move_left", -steer)
 			drive_stats["lowest"] = minf(drive_stats["lowest"], rover.global_position.y)
+			for hardware in meta["artifacts"].values():
+				var at: Array = hardware["position"]
+				drive_stats["closest_hardware"] = minf(drive_stats.get("closest_hardware", INF), Vector2(at[0] - rover.global_position.x, at[2] - rover.global_position.z).length())
 		print("INFO waypoint %s: %s after %.0f s, rover at %s" % [target, "reached" if distance_ok(target) else "NOT reached", t, rover.global_position.snapped(Vector3.ONE * 0.1)])
 		if not distance_ok(target):
 			break
 	for a in ["move_forward", "move_left", "move_right"]:
 		Input.action_release(a)
 	driving = false
-	var floor_y: float = terrain.height_at(192.0, 384.0)
-	_check("the drive reaches every waypoint (pad, crater floor, out again)", reached == ROUTE.size(), "%d of %d in %.0f s" % [reached, ROUTE.size(), t])
-	_check("the drive gets down to the crater floor", drive_stats["lowest"] < floor_y + 5.0, "lowest %.1f m, floor %.1f m" % [drive_stats["lowest"], floor_y])
+	var floor_y: float = terrain.height_at(HEAD_CRATER_FLOOR.x, HEAD_CRATER_FLOOR.y)
+	_check("the drive reaches every waypoint (EVA 2 route, Head crater, out again)", reached == ROUTE.size(), "%d of %d in %.0f s" % [reached, ROUTE.size(), t])
+	_check("the drive gets down to Head crater's floor", drive_stats["lowest"] < floor_y + 5.0, "lowest %.1f m, floor %.1f m" % [drive_stats["lowest"], floor_y])
+	_check("the drive keeps 75 m from the LM, the ALSEP and Surveyor 3", drive_stats.get("closest_hardware", INF) >= KEEP_OUT,
+		"closest %.0f m" % drive_stats.get("closest_hardware", INF))
 	_check("wheels: none airborne within 5 mm of the ground", drive_stats["touching_airborne"] == 0, "%d of %d wheel-ticks" % [drive_stats["touching_airborne"], drive_stats["ticks"] * 6])
 	_check("wheels: none in contact inside the ground", drive_stats["inside_terrain"] == 0, "%d" % drive_stats["inside_terrain"])
 	_check("wheels: no visible wheel over 1 cm in the ground", drive_stats["mesh_in_ground"] == 0,

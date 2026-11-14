@@ -19,7 +19,7 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
 shader = ExtResource("9_sky_shader")
 shader_parameter/star_map = ExtResource("10_stars")
-shader_parameter/star_energy = 0.1026
+shader_parameter/star_energy = 0.4324
 shader_parameter/earth_map = ExtResource("11_earth")
 
 [sub_resource type="Sky" id="Sky_moon"]
@@ -31,10 +31,10 @@ background_mode = 2
 sky = SubResource("Sky_moon")
 ambient_light_source = 2
 ambient_light_color = Color(0.62, 0.68, 0.8, 1)
-ambient_light_energy = 0.0094
+ambient_light_energy = 0.0736
 reflected_light_source = 2
 tonemap_mode = 4
-tonemap_exposure = 2.0
+tonemap_exposure = 1.3875
 
 [sub_resource type="BoxMesh" id="BoxMesh_xa74p"]
 
@@ -45,8 +45,8 @@ script = ExtResource("1_level")
 gravity = 1.62
 jump_height = 1.2
 ground_friction = 1.6
-earth_direction = Vector3(-0.060714, 0.104528, -0.992667)
-camera_far = 200000.0
+earth_direction = Vector3(0.480189, 0.877163, 0.002010)
+camera_far = 50000.0
 rover_suspension = {
 "front_spring_stiffness": 440.8,
 "middle_spring_stiffness": 440.8,
@@ -57,7 +57,7 @@ rover_suspension = {
 }
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.9396926, 0.01253289, -0.3417904, -0, 0.9993284, 0.03664371, 0.3420201, -0.03443382, 0.9390615, 0, 0, 0)
+transform = Transform3D(0.01090286, -0.2877262, 0.9576506, 0, 0.9577076, 0.2877433, -0.9999406, -0.003137224, 0.01044175, 0, 0, 0)
 light_energy = 2.0
 light_angular_distance = 0.0
 shadow_enabled = true
@@ -72,17 +72,21 @@ directional_shadow_max_distance = 500.0
 environment = SubResource("Environment_moon")
 script = ExtResource("8_lunar_sky")
 sun = NodePath("../Sun")
-sun_elevation = 2.1
-sun_azimuth = 200.0
+sun_elevation = 16.7229
+sun_azimuth = 90.6247
+use_fixed_orientation = true
+fixed_world_to_equatorial = Basis(-0.263329046, -0.963672398, 0.04464665, -0.895427769, 0.261378184, 0.360403322, -0.358980394, 0.0549268128, -0.931727493)
+earth_angular_diameter = 1.9195
+earth_facing_longitude = -135.077
 
 [node name="SpawnPoint" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -334.5, 51, -294.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -297.5, -4.41, 253.8)
 
 [node name="Terrain" type="Node3D" parent="."]
 script = ExtResource("2_terrain")
 
 [node name="ReadyRoverTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -336, 50.93, -302.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -299, -4.35, 245.8)
 script = ExtResource("4_t1chq")
 tooltip = "Press \"E\" to drive this rover"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
@@ -109,12 +113,12 @@ text = "Ready to drive"
 script = ExtResource("7_robotctl")
 
 [node name="ReadyRover" parent="." node_paths=PackedStringArray("controller") instance=ExtResource("6_robot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -336, 50.45, -300.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -299, -4.86, 247.6)
 controller = NodePath("../ReadyRoverController")
 start_assembled = true
 
 [node name="RespawnPartsTrigger" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -325.7, 50.83, -302)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -288.7, -4.41, 246)
 script = ExtResource("4_t1chq")
 tooltip = "Press \"E\" to respawn the parts pile"
 metadata/_custom_type_script = "uid://b3epixqjbcndx"
@@ -138,7 +142,7 @@ font_size = 64
 text = "Respawn parts"
 
 [node name="PartsPile" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -346.5, 49.9, -299.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -309.5, -5.49, 248.8)
 
 [node name="WheelPart" parent="PartsPile" instance=ExtResource("21_wheel")]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 17, 0.5, -0.5)

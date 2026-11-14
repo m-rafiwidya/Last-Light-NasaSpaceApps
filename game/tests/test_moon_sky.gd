@@ -1,15 +1,16 @@
 extends SceneTree
 ## Headless test: the Moon level's sky, sun and Earth, the antenna target as a level setting,
 ## and the lights.
-##   1. Sky orientation (LunarSky.world_to_equatorial): the south ecliptic pole is straight up,
-##      Canopus (14 degrees from it) is 75.8 degrees up, the ecliptic (where the sun and Earth
-##      are) runs along the horizon, and Earth's north pole points below the horizon.
-##   2. The sun light shines from sun_elevation / sun_azimuth (where the terrain pipeline chose it),
-##      the exposure follows the sun's height, and the sky shader gets the level's Earth direction,
-##      about 2 degrees across, where Earth can be from this site and above the skyline from the
-##      base, lit to the phase its angle to the sun gives.
-##   3. The assembled rover's high-gain antenna points at the level's Earth: the Moon's, low
-##      over the horizon; the test level keeps the old fixed direction 35 degrees up.
+##   1. Sky orientation (LunarSky.world_to_equatorial): the terrain pipeline's, for the Apollo 12
+##      site at the EVA 2 midpoint (JPL Horizons): the star map puts the sun's, Earth's and
+##      Jupiter's catalogue directions (RA / Dec) where Horizons saw them from the site, within 0.05
+##      degrees, and the north celestial pole at its computed azimuth / elevation.
+##   2. The sun light shines from sun_elevation / sun_azimuth (terrain.json's), the exposure and
+##      fill follow the sun's height, and the sky shader gets the level's Earth direction (Horizons'
+##      azimuth / elevation), Horizons' angular diameter and facing longitude, lit to the phase its
+##      angle to the sun gives (Horizons' illuminated fraction).
+##   3. The assembled rover's high-gain antenna points at the level's Earth: the Moon's, 61
+##      degrees up in the east; the test level keeps the old fixed direction 35 degrees up.
 ##   4. In both levels, L (the `lights` action, sent as real key events) toggles the player's
 ##      helmet light on foot (a shadowed spotlight on the head, aimed with the view) and the driven
 ##      rover's headlights while driving, each keeping its state while the other mode is used
@@ -19,9 +20,7 @@ extends SceneTree
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_moon_sky.gd
 
 const TICKS: int = 240
-# Canopus (alpha Carinae) and the south ecliptic pole (RA 6h, Dec -66.56), J2000
-const CANOPUS := Vector2(95.988, -52.696)
-const SOUTH_ECLIPTIC_POLE := Vector2(90.0, -66.561)
+const TERRAIN: String = "res://res/terrain/moon_apollo12/terrain.json"
 # RoverVisuals.DEFAULT_EARTH_DIRECTION (this script compiles before the game's autoloads
 # exist, so it names none of the game's classes)
 const TEST_LEVEL_EARTH := Vector3(0.46, 0.57, -0.68)
@@ -90,21 +89,37 @@ func _run() -> void:
 	quit(1 if failures else 0)
 
 
+func _azimuth(direction: Vector3) -> float:
+	return fposmod(rad_to_deg(atan2(direction.x, -direction.z)), 360.0)
+
+
 func _check_sky(sky: Node, level: Node) -> void:
-	var pole: Vector3 = sky.star_direction(SOUTH_ECLIPTIC_POLE.x, SOUTH_ECLIPTIC_POLE.y)
-	_check("south ecliptic pole straight overhead", _elevation(pole) > 89.9, "%.2f deg up" % _elevation(pole))
-	var canopus: float = _elevation(sky.star_direction(CANOPUS.x, CANOPUS.y))
-	_check("Canopus 75.8 deg up (its ecliptic latitude)", absf(canopus - 75.8) < 0.1, "%.2f deg up" % canopus)
-	var worst: float = 0.0
-	for longitude in range(0, 360, 15):
-		# A point on the ecliptic, in equatorial coordinates
-		var l: float = deg_to_rad(longitude)
-		var e: float = sky.OBLIQUITY
-		var equatorial := Vector3(cos(l), sin(l) * cos(e), sin(l) * sin(e))
-		worst = maxf(worst, absf(_elevation(sky.world_to_equatorial().inverse() * equatorial)))
-	_check("the ecliptic runs along the horizon", worst < 0.01, "at most %.3f deg off" % worst)
+	var terrain_meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TERRAIN))
+	var sky_meta: Dictionary = terrain_meta["sky"]
+	var sun_meta: Dictionary = terrain_meta["sun"]
+	var earth_meta: Dictionary = terrain_meta["earth"]
+	_check("the sky uses the pipeline's orientation", sky.use_fixed_orientation)
+	var m: Array = sky_meta["world_to_equatorial"]
+	var worst_matrix: float = 0.0
+	for axis in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+		var expected := Vector3(m[0][0] * axis.x + m[0][1] * axis.y + m[0][2] * axis.z, m[1][0] * axis.x + m[1][1] * axis.y + m[1][2] * axis.z,
+			m[2][0] * axis.x + m[2][1] * axis.y + m[2][2] * axis.z)
+		worst_matrix = maxf(worst_matrix, (sky.world_to_equatorial() * axis - expected).length())
+	_check("orientation = terrain.json sky.world_to_equatorial", worst_matrix < 1e-6, "%.9f" % worst_matrix)
+	var sun_star: Vector3 = sky.star_direction(sky_meta["sun_ra_dec"][0], sky_meta["sun_ra_dec"][1])
+	var off: float = rad_to_deg(sun_star.angle_to(sky.sun_direction()))
+	_check("the star map's sun position is the sun light's", off < 0.05, "%.4f deg apart" % off)
+	var earth_star: Vector3 = sky.star_direction(sky_meta["earth_ra_dec"][0], sky_meta["earth_ra_dec"][1])
+	off = rad_to_deg(earth_star.angle_to(level.earth_direction.normalized()))
+	_check("the star map's Earth position is the level's Earth", off < 0.05, "%.4f deg apart" % off)
+	var jupiter: Dictionary = sky_meta["checks"]["599"]
+	var jupiter_star: Vector3 = sky.star_direction(jupiter["ra"], jupiter["dec"])
+	off = rad_to_deg(jupiter_star.angle_to(sky.sky_direction(jupiter["azimuth"], jupiter["elevation"])))
+	_check("Jupiter (not in the fit) where Horizons saw it", off < 0.05, "%.4f deg off, %.1f deg up" % [off, jupiter["elevation"]])
 	var north: Vector3 = sky.world_to_equatorial().inverse() * Vector3.BACK
-	_check("the celestial north pole is below the horizon", absf(_elevation(north) + 66.56) < 0.1, "%.2f deg" % _elevation(north))
+	var ncp: Array = sky_meta["north_celestial_pole_az_el"]
+	_check("the celestial north pole at its computed place", absf(_azimuth(north) - ncp[0]) < 0.05 and absf(_elevation(north) - ncp[1]) < 0.05,
+		"azimuth %.2f, %.2f deg up" % [_azimuth(north), _elevation(north)])
 
 	var sun: DirectionalLight3D = sky.sun
 	var towards_sun: Vector3 = sun.global_basis.z
@@ -129,20 +144,14 @@ func _check_sky(sky: Node, level: Node) -> void:
 	var material: ShaderMaterial = sky.environment.sky.sky_material
 	var shader_earth: Vector3 = material.get_shader_parameter("earth_direction")
 	_check("sky draws Earth along the level's earth_direction", shader_earth.is_equal_approx(level.earth_direction.normalized()))
-	# The terrain pipeline puts Earth where it can be from this site (libration: azimuth within 8
-	# degrees of longitude 0, elevation -7.1 to 6.2) and above the skyline seen from the base
-	var terrain_meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://res/terrain/moon_site01/terrain.json"))
-	var earth_meta: Dictionary = terrain_meta["earth"]
-	var earth_azimuth: float = rad_to_deg(atan2(shader_earth.x, -shader_earth.z))
-	_check("Earth where it can be from this site", absf(earth_azimuth) <= 8.0 and _elevation(shader_earth) >= -7.1 and _elevation(shader_earth) <= 6.2,
-		"azimuth %.1f, %.1f deg up" % [earth_azimuth, _elevation(shader_earth)])
-	_check("Earth above the skyline seen from the base", _elevation(shader_earth) - earth_meta["horizon_degrees"] >= 1.5,
-		"%.1f deg over the skyline" % (_elevation(shader_earth) - earth_meta["horizon_degrees"]))
-	var sun_meta: Dictionary = terrain_meta["sun"]
-	_check("the sun where the terrain pipeline chose it", is_equal_approx(sky.sun_azimuth, sun_meta["azimuth"]) and is_equal_approx(sky.sun_elevation, sun_meta["elevation"]),
+	_check("Earth where Horizons puts it", absf(_azimuth(shader_earth) - earth_meta["azimuth"]) < 0.01 and absf(_elevation(shader_earth) - earth_meta["elevation"]) < 0.01,
+		"azimuth %.2f, %.2f deg up" % [_azimuth(shader_earth), _elevation(shader_earth)])
+	_check("Earth's facing longitude from Horizons", absf(wrapf(sky.earth_facing_longitude - earth_meta["facing_longitude_east"], -180.0, 180.0)) < 0.01,
+		"%.2f deg east" % sky.earth_facing_longitude)
+	_check("the sun where the terrain pipeline put it", is_equal_approx(sky.sun_azimuth, sun_meta["azimuth"]) and is_equal_approx(sky.sun_elevation, sun_meta["elevation"]),
 		"azimuth %.1f, %.1f deg up" % [sky.sun_azimuth, sky.sun_elevation])
 	var diameter: float = rad_to_deg(material.get_shader_parameter("earth_angular_radius")) * 2.0
-	_check("Earth about 2 deg across", absf(diameter - 1.9) < 0.05, "%.2f deg" % diameter)
+	_check("Earth's angular diameter from Horizons", absf(diameter - earth_meta["angular_diameter_degrees"]) < 0.001, "%.3f deg" % diameter)
 	# Earth's lit fraction as seen from here follows from its angle to the sun
 	var separation: float = rad_to_deg(shader_earth.angle_to(towards_sun))
 	var lit: float = (1.0 + cos(deg_to_rad(180.0 - separation))) / 2.0

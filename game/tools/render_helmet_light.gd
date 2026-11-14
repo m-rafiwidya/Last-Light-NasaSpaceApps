@@ -4,14 +4,15 @@ extends SceneTree
 ##
 ##     Godot --path game -s res://tools/render_helmet_light.gd --resolution 1920x1080
 ##
-## Shots: on the floor of the Moon level's permanently shadowed crater, a wheel, a motor and a
+## Shots: in the shadow on Head crater's floor (the largest shadow in the Moon level's play area at
+## its EVA 2 sun: the crater's east rim hides the sun), a wheel, a motor and a
 ## battery on the ground 2.5, 5 and 8 m ahead, looking down at them, with the helmet light off
 ## and on; the same with the driven rover's headlights on too (from the player's view); and the
 ## test level in daylight with the light on. Prints a MEASURE line per part: its mean brightness on
 ## screen (0-1, the middle of the part) with the light off and on, and the ground's beside it.
 
 const OUT_DIR: String = "res://../tools/previews/helmet_light"
-const CRATER := Vector2(192.0, 384.0)
+const CRATER := Vector2(-24.0, -48.0)
 const LOOK_DOWN: float = -28.0
 const PARTS: Array = [["wheel", 2.5], ["motor", 5.0], ["battery", 8.0]]
 const SAMPLE: int = 6   # half the side of the sampled square, pixels

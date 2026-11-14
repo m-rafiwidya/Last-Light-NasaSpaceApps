@@ -3,26 +3,27 @@ extends SceneTree
 ## tools/previews/terrain/ (repo root). Needs a window (not --headless):
 ##
 ##     Godot --path game -s res://tools/render_terrain_previews.gd --resolution 1920x1080
-##     (append `-- terrain_detail=low` for the 1 m ground: the files get a `low_` prefix)
+##     (append `-- terrain_detail=low` for Low: the files get a `low_` prefix)
 ##
-## Shots: the player's view from the spawn; the rover at the base towards and away from the sun;
-## the permanently shadowed crater (in the terrain's shadow) from its rim and from its floor,
-## headlights on; Earth over the
-## skyline from the mast camera, unzoomed and zoomed; from the highest ground in the play area
-## towards Shackleton.
+## Shots (Apollo 12 site): the player's view from the spawn; the rover at the base towards and away
+## from the sun and towards Head crater; Head crater from its rim and from its floor (its shadowed
+## east side), headlights on; Earth from the mast camera, unzoomed and zoomed; from the highest
+## ground in the play area towards the LM and Surveyor crater.
 
 const OUT_DIR: String = "res://../tools/previews/terrain"
-const DATA: String = "res://res/terrain/moon_site01/terrain.json"
+const DATA: String = "res://res/terrain/moon_apollo12/terrain.json"
 # RoverCamera.View and its zoom limit (this script compiles before the game's autoloads exist)
 const CHASE: int = 0
 const MAST: int = 1
 const MAST_FOV_MIN: float = 20.0
 const MAST_FOV_MAX: float = 90.0
 # On the graded base, clear of the rover's sign, the pile and the player
-const BASE := Vector2(-352.0, -283.0)
-const CRATER := Vector2(192.0, 384.0)
-const CRATER_RIM := Vector2(130.0, 310.0)
-const SHACKLETON_AZIMUTH: float = 71.0
+const BASE := Vector2(-315.0, 262.0)
+# Head crater: the shadowed part of its floor, and its west rim
+const CRATER := Vector2(-24.0, -48.0)
+const CRATER_RIM := Vector2(-95.0, -40.0)
+# From the highest ground: towards the LM (Surveyor crater is just beyond it)
+const LM := Vector2(100.7, -80.8)
 
 var GS: Node
 var SL: Node
@@ -76,7 +77,7 @@ func _run() -> void:
 	await _rover_shot("base_towards_sun", terrain, rover, rig, CHASE, BASE, sun["azimuth"], 0.0, 0.0)
 	await _rover_shot("base_away_from_sun", terrain, rover, rig, CHASE, BASE, sun["azimuth"] + 180.0, 0.0, 0.0)
 	await _rover_shot("base_towards_crater", terrain, rover, rig, CHASE, BASE, _azimuth(BASE, CRATER), 0.0, 0.0)
-	# The crater and the ground around it are in the terrain's shadow at this sun: headlights
+	# Head crater's floor is partly in its east rim's shadow at this sun: headlights
 	rover.headlights_on = true
 	await _rover_shot("crater_from_rim_headlights", terrain, rover, rig, CHASE, CRATER_RIM, _azimuth(CRATER_RIM, CRATER), 0.0, 10.0)
 	await _rover_shot("crater_floor_headlights", terrain, rover, rig, CHASE, CRATER, _azimuth(CRATER, CRATER_RIM) + 150.0, 0.0, 0.0)
@@ -96,7 +97,7 @@ func _run() -> void:
 				best_height = h
 				best = Vector2(x, z)
 	print("INFO highest ground at %s, %.1f m" % [best, best_height])
-	await _rover_shot("high_ground_towards_shackleton", terrain, rover, rig, MAST, best, SHACKLETON_AZIMUTH, 0.0, 0.0)
+	await _rover_shot("high_ground_towards_lm", terrain, rover, rig, MAST, best, _azimuth(best, LM), 0.0, 0.0)
 	quit()
 
 

@@ -2,9 +2,11 @@ class_name MoonTerrain
 
 extends Node3D
 
-## Real lunar south pole terrain from the terrain pipeline (tools/terrain/build_moon_terrain.py,
-## data in `data_dir`): four tiers of 16-bit heightmaps, finest first (play 0.5 m, near 8 m, mid
-## 128 m, far 512 m), aligned so each outer tier leaves out the cells under the inner one.
+## Real lunar terrain from the terrain pipeline (tools/terrain/build_moon_terrain.py, data in
+## `data_dir`, described by its terrain.json): tiers of heightmaps, finest first, aligned so each
+## outer tier leaves out the cells under the inner one. The Moon level uses the Apollo 12 site: the
+## play tier is the LROC NAC DTM's 2 m posts verbatim (float32), then 8 m and 64 m tiers out to
+## 33 km. (The south pole site's data, moon_site01, had 16-bit tiers at 0.5 / 8 / 128 / 512 m.)
 ## - Collision: the play tier as one HeightMapShape3D on layer 1, built in _ready (before the first
 ##   physics step, so nothing falls through); rocks of 0.2 m and up as convex shapes.
 ## - Meshes: 64 x 64-cell chunks with automatic LODs, with skirts at each tier's outer edge;
@@ -17,7 +19,10 @@ extends Node3D
 ##   workers waited on the main thread hung the loading screen.
 ## - Boundary: walls on layer 7 (Boundary) at `boundary_half_size`, survey stakes every 25 m,
 ##   distance_to_boundary() for the HUDs, and a zone far below that brings back anything lost.
-## GraphicsSettings.terrain_detail LOW uses every other play sample (1 m) for mesh and collision.
+## GraphicsSettings.terrain_detail LOW turns off the regolith relief's own shadows; on a 16-bit
+## play tier finer than 1 m (moon_site01) it also uses every other sample for mesh and collision.
+## A measured float32 tier is never thinned: the wheels stand on the measured 2 m posts at either
+## setting.
 ## The level waits for content_ready before the player spawns (SceneLoader).
 
 signal content_ready
@@ -32,7 +37,7 @@ const CACHE_VERSION: int = 2
 const MESHES_PER_FRAME: int = 48
 const STAKE_SPACING: float = 25.0
 
-@export_dir var data_dir: String = "res://res/terrain/moon_site01"
+@export_dir var data_dir: String = "res://res/terrain/moon_apollo12"
 @export var material_shader: Shader = preload("res://src/levels/terrain/regolith.gdshader")
 ## Builds the meshes even without a display (tests of the visual mesh)
 @export var build_meshes_headless: bool = false
@@ -44,6 +49,8 @@ var boundary_half_size: float = 500.0
 var is_content_ready: bool = false
 var materials: Dictionary = {}   # tier name -> ShaderMaterial
 var build_seconds: float = 0.0
+## How long _ready took to read the data and build the collision (ms)
+var data_ms: int = 0
 var chunk_count: int = 0
 
 var _pending_meshes: Array = []   # [tier index, chunk i, chunk j, chunk arrays (build_chunk_arrays)]
@@ -72,7 +79,8 @@ func _ready() -> void:
 		_start_meshes()
 	else:
 		_finish()
-	print("MoonTerrain: data and collision in %d ms" % (Time.get_ticks_msec() - started))
+	data_ms = Time.get_ticks_msec() - started
+	print("MoonTerrain: data and collision in %d ms" % data_ms)
 
 
 func _visual() -> bool:
@@ -88,14 +96,23 @@ func is_ready_to_play() -> bool:
 func _load_tiers() -> void:
 	var low: bool = GraphicsSettings.get_terrain_detail() == GraphicsSettings.TerrainDetail.LOW
 	for t in meta["tiers"]:
-		var heights: PackedFloat32Array = _read_r16(t)
+		var measured: bool = t.get("format", "uint16") == "float32"
+		var heights: PackedFloat32Array = _read_f32(t) if measured else _read_r16(t)
 		var size: int = t["size"]
 		var spacing: float = t["metres_per_pixel"]
-		if low and t["name"] == "play":
+		if low and t["name"] == "play" and not measured and spacing < 1.0:
 			heights = _every_other(heights, size)
 			size = (size - 1) / 2 + 1
 			spacing *= 2.0
 		tiers.append({"name": t["name"], "size": size, "spacing": spacing, "half": float(t["half_size"]), "heights": heights})
+
+
+# A float32 tier's heights, as stored
+func _read_f32(t: Dictionary) -> PackedFloat32Array:
+	var heights: PackedFloat32Array = FileAccess.get_file_as_bytes(data_dir.path_join(t["file"])).to_float32_array()
+	if heights.size() != t["size"] * t["size"]:
+		push_error("MoonTerrain: %s has %d heights, expected %d" % [t["file"], heights.size(), t["size"] * t["size"]])
+	return heights
 
 
 # Decodes a tier's uint16 heights, cached as float32 in user:// after the first time
@@ -283,6 +300,13 @@ func _make_materials() -> void:
 			m.set_shader_parameter("freshness", load(data_dir.path_join(meta["freshness"]["file"])))
 			m.set_shader_parameter("use_freshness", true)
 			m.set_shader_parameter("freshness_half", t["half"])
+		# The orthophoto's brightness pattern (shading-normalised, approximate, not albedo)
+		if t["name"] == "play" and meta.has("site_brightness"):
+			var b: Dictionary = meta["site_brightness"]
+			m.set_shader_parameter("site_brightness", load(data_dir.path_join(b["file"])))
+			m.set_shader_parameter("use_site_brightness", true)
+			m.set_shader_parameter("site_brightness_half", float(b["half_size"]))
+			m.set_shader_parameter("site_brightness_range", float(b["range"]))
 		materials[t["name"]] = m
 	var sky := get_parent().get_node_or_null("WorldEnvironment") as LunarSky
 	if sky:
