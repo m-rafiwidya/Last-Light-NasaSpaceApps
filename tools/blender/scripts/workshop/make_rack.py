@@ -34,7 +34,7 @@ RAIL = 0.02                     # label rail board thickness, at the front
 FRONTS = [Y_BACK + d for d in ws.SHELF_DEPTHS]
 # Depth (along Y) of each part as it rests on the rack, to stand it 2 cm behind its level's front
 PART_DEPTH = {"wheel_L": 0.248, "motor": 0.128, "power_unit": 0.355, "mast_head": 0.092, "arm_tool": 0.058,
-              "antenna": 0.191, "radio_module": 0.134, None: 0.12}
+              "antenna": 0.191, "radio_module": 0.134, "arm_tool_thermal": 0.058, None: 0.12}
 CRADLE_SPACING, CRADLE_HEIGHT = 0.18, 0.04
 
 # WORKSHOP_KIT.md 6.3: slot -> (level, kit x, part GLB, part name). Wheels stand on their tread.
@@ -43,14 +43,16 @@ SLOTS = {
     4: (0, 0.08, "wheel_L"), 5: (0, 0.43, "wheel_L"), 6: (0, 0.78, "wheel_L"),
     7: (1, -1.12, "wheel_L"), 8: (1, -0.78, "wheel_L"), 9: (1, -0.44, "wheel_L"), 10: (1, -0.10, "wheel_L"),
     11: (1, 0.30, "motor"), 12: (1, 0.78, "power_unit"),
-    13: (2, -0.90, "mast_head"), 14: (2, -0.35, "arm_tool"), 15: (2, 0.25, "antenna"),
+    13: (2, -0.90, "mast_head"), 14: (2, -0.45, "arm_tool"), 15: (2, 0.25, "antenna"),
     16: (2, 0.80, None), 17: (3, -0.60, None), 18: (3, 0.40, "radio_module"),
+    # The thermal sensor turret (M3, make_m3_kit.py) beside the standard one, under the same plate
+    19: (2, -0.20, "arm_tool_thermal"),
 }
 WHEEL_SLOTS = [n for n, s in SLOTS.items() if s[2] == "wheel_L"]
 # label -> (level, x from, x to, text)
 LABELS = {
     1: (0, -1.30, 0.95, "WHEELS"), 2: (1, -1.30, 0.08, "HIGH-GRIP WHEELS"), 3: (1, 0.08, 0.54, "MOTOR"),
-    4: (1, 0.54, 1.10, "BATTERY"), 5: (2, -1.30, -0.62, "MAST CAMERA"), 6: (2, -0.62, -0.05, "TOOL TURRET"),
+    4: (1, 0.54, 1.10, "BATTERY"), 5: (2, -1.30, -0.62, "MAST CAMERA"), 6: (2, -0.62, -0.05, "TOOL TURRETS"),
     7: (2, -0.05, 0.53, "ANTENNA"), 8: (2, 0.53, 1.10, "SPARE"), 9: (3, -1.30, 1.10, "CARTRIDGES AND MODULE"),
 }
 PLATE_GAP = 0.01                # half of the 2 cm gap between neighbouring plates

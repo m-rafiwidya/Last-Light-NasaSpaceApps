@@ -332,7 +332,7 @@ its bottom edge, on the partition's centre plane (x 2.10).
 | Console (A03) | desk x 2.15 to 2.80, y -0.9 to +0.3, against the partition | the operator stands at x about 3.2 and looks west over the screen, through the window, at the docked rover |
 | `spawn_player` | (3.8, 2.0, 0.0), facing -X | |
 | Operator light | `light_operator` (3.4, 0.0, 2.95) | |
-| `anchor_bench` | (4.2, 2.6, 0.9) | the sample bench (`ws_sample_bench`, 0.70 x 0.40 m, tray top at 0.90 m; IRIS_KIT.md 4.1) stands here: the scoop and two sample containers lie on its tray at `slot_sample_a`, `slot_sample_b`, `slot_sample_scoop`. Placed by `Workshop`, not by `ws_layout` |
+| `anchor_bench` | (4.2, 2.6, 0.9) | the sample bench (`ws_sample_bench`, 0.70 x 0.40 m, tray top at 0.90 m; IRIS_KIT.md 4.1) stands here: the scoop and two sample containers lie on its tray at `slot_sample_a`, `slot_sample_b`, `slot_sample_scoop`, and the M3 thermal kit on its low shelf (top 0.25 m) at `slot_thermal_cover`, `slot_heater`; its colliders are the top, the low shelf and the legs. Placed by `Workshop`, not by `ws_layout` |
 
 Clearance: console front (2.80) to east wall (4.8) is **2.00 m**: 0.8 m to stand at the console
 and 1.2 m to walk behind the operator.
@@ -443,10 +443,11 @@ shelf at y -3.55.
 | `slot_11` | 1 | +0.30 | motor | back face down |
 | `slot_12` | 1 | +0.78 | battery (power unit) | on its side: its 0.22 m fin diameter vertical |
 | `slot_13` | 2 | -0.90 | mast camera | upright |
-| `slot_14` | 2 | -0.35 | arm tool turret | upright |
+| `slot_14` | 2 | -0.45 | arm tool turret | upright |
 | `slot_15` | 2 | +0.25 | antenna | upright, dish up |
 | `slot_16` | 2 | +0.80 | light battery (`power_unit_light`, on its side like `slot_12`); A10 module goes elsewhere | |
 | `slot_17`, `slot_18` | 3 | -0.60, +0.40 | cartridge; radio-power module (`radio_module`, lying flat, 0.134 m deep on the 0.14 m the shelf leaves) | upright / flat |
+| `slot_19` | 2 | -0.20 | thermal sensor turret (`arm_tool_thermal`, M3), 40 mm from the standard one | upright |
 
 **Labels.** One plate per group of slots, on the rail under them. Godot puts a `Label3D` 2 mm in
 front of each plate (crisp at any distance, and the text can change).
@@ -458,7 +459,7 @@ front of each plate (crisp at any distance, and the text can change).
 | `label_03` | +0.08 to +0.54 | 1 | MOTOR |
 | `label_04` | +0.54 to +1.10 | 1 | BATTERY |
 | `label_05` | -1.30 to -0.62 | 2 | MAST CAMERA |
-| `label_06` | -0.62 to -0.05 | 2 | TOOL TURRET |
+| `label_06` | -0.62 to -0.05 | 2 | TOOL TURRETS |
 | `label_07` | -0.05 to +0.53 | 2 | ANTENNA |
 | `label_08` | +0.53 to +1.10 | 2 | SPARE |
 | `label_09` | -1.30 to +1.10 | 3 | CARTRIDGES AND MODULE |

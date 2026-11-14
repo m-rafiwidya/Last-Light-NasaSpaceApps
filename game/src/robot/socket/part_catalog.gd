@@ -73,6 +73,26 @@ const ENTRIES: Dictionary = {
 		"description": "Sealed jar with a fill gauge, for the far site on the rim. 0.5 kg empty.",
 		"mounts": "Rides on the rover's cargo mount; stored on the sample bench",
 	},
+	"arm_tool_thermal": {
+		"name": "Thermal sensor turret",
+		"description": "Arm tool turret with an infrared radiometer: reads the ground's surface temperature under it. 5.3 kg, 1 W while reading.",
+		"mounts": "Mounts on the end of the robotic arm",
+	},
+	"field_logger": {
+		"name": "Far logger",
+		"description": "Evan's comparison logger from the far rim, with its stored measurement series. 1.6 kg. Labelled twice.",
+		"mounts": "Rides on the rover's cargo mount, in its cradle",
+	},
+	"thermal_cover": {
+		"name": "Thermal cover",
+		"description": "Insulating blanket for the electronics bay: slows heat loss in shade. 0.9 kg, no power.",
+		"mounts": "Lies on the deck's right rear, beside the antenna; stored on the sample bench",
+	},
+	"thermal_heater": {
+		"name": "Heater",
+		"description": "Keeps the electronics bay warm under the thermal cover. 0.6 kg, 12 W while on.",
+		"mounts": "Sits on the deck in front of the thermal cover; stored on the sample bench",
+	},
 }
 
 ## Default catalog entry per HotswapPart.PartType (by value: WHEEL, MOTOR, BATTERY, MAST_HEAD,

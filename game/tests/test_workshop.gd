@@ -1,8 +1,12 @@
 extends SceneTree
 ## Headless test: the workshop (tools/blender/WORKSHOP_KIT.md) in the Moon level, then in the
 ## test level.
-##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 18
-##      parts on their slots, at rest; every label fits its plate at 50-65 mm caps.
+##   1. Layout: built from the kit; the rover starts in the dock zone; the rack holds its 19
+##      parts on their slots, at rest; every label fits its plate at 50-65 mm caps. The sample
+##      bench holds the sampling kit on its tray and the thermal kit on its low shelf. M3 parts
+##      (make_m3_kit.py): both tool turrets on the rack, the thermal one with its reading point;
+##      catalog entries, masses and types; the far logger's two handwritten labels (Caveat, pen
+##      blue, one on top facing up, one underneath facing down, each fitting its plate).
 ##   2. Reach: from where the player stands (console, between the rover and the rack, the
 ##      charger), a ray from the eye reaches the console, the restock button, rack parts, the
 ##      rover's battery socket and the charger within 3 m, nothing in the way.
@@ -147,7 +151,7 @@ func _layout_checks() -> void:
 		var aabb_centre: Vector3 = _visual_centre(part)
 		worst_slot = maxf(worst_slot, Vector2(aabb_centre.x - slot.x, aabb_centre.z - slot.z).length())
 		fastest = maxf(fastest, (part as RigidBody3D).linear_velocity.length())
-	_check("the rack holds its 18 parts (with the cartridge, the light battery and the radio module)", stock.get_child_count() == 18, "%d" % stock.get_child_count())
+	_check("the rack holds its 19 parts (with the cartridge, the light battery, the radio module and the thermal turret)", stock.get_child_count() == 19, "%d" % stock.get_child_count())
 	var batteries: Array = []
 	for part in stock.get_children():
 		if part.has_method("drain"):  # a BatteryPart (named by method: the class needs the autoloads)
@@ -164,7 +168,7 @@ func _layout_checks() -> void:
 	_check("the rack holds the radio module (12 kg) lying flat on the top shelf", on_shelf,
 		"%d module(s)" % modules.size() + ("" if modules.is_empty() else ", %.1f kg, centre y %.3f vs slot %.3f" % [modules[0].mass, workshop.to_local(_visual_centre(modules[0])).y, workshop.anchors["slot_18"].y]))
 	var bench: Node3D = workshop.bench_stock
-	var bench_ok: bool = bench != null and bench.get_child_count() == 3
+	var bench_ok: bool = bench != null and bench.get_child_count() == 5
 	var bench_detail: String = ""
 	if bench_ok:
 		var origin: Vector3 = workshop.sample_bench.position
@@ -172,12 +176,16 @@ func _layout_checks() -> void:
 		for part in bench.get_children():
 			var c: Vector3 = workshop.to_local(_visual_centre(part))
 			ids.append(part.get_catalog_id())
-			bench_ok = bench_ok and absf(c.x - origin.x) < 0.30 and absf(c.z - origin.z) < 0.16 and c.y > 0.90 and c.y < 1.05 \
+			# The tray's top is at 0.90 m, the low shelf's at 0.25 m (the thermal kit)
+			var low: bool = part.get_catalog_id().begins_with("thermal_")
+			var height_ok: bool = (c.y > 0.25 and c.y < 0.32) if low else (c.y > 0.90 and c.y < 1.05)
+			bench_ok = bench_ok and absf(c.x - origin.x) < (0.32 if low else 0.30) and absf(c.z - origin.z) < (0.17 if low else 0.16) and height_ok \
 				and (part as RigidBody3D).linear_velocity.length() < 0.01
 			bench_detail += " %s (%.2f, %.2f, %.3f)" % [part.name, c.x - origin.x, c.z - origin.z, c.y]
 		ids.sort()
-		bench_ok = bench_ok and ids == ["sample_container", "sample_container_far", "sample_scoop"]
-	_check("the sample bench's tray holds the scoop and the two containers, at rest", bench_ok, bench_detail)
+		bench_ok = bench_ok and ids == ["sample_container", "sample_container_far", "sample_scoop", "thermal_cover", "thermal_heater"]
+	_check("the sample bench: the scoop and the two containers on its tray, the thermal cover and heater on its low shelf, at rest", bench_ok, bench_detail)
+	_m3_part_checks(stock)
 	var fit := true
 	var detail := ""
 	for label in workshop.labels:
@@ -201,6 +209,50 @@ func _visual_centre(part: Node3D) -> Vector3:
 		box = b if first else box.merge(b)
 		first = false
 	return part.global_position if first else box.get_center()
+
+
+# M3 parts (make_m3_kit.py, ASSET_PLAN.md A14, A16, A17)
+func _m3_part_checks(stock: Node3D) -> void:
+	var turrets: Array = stock.get_children().filter(func(p): return p.part_type == 4)
+	var thermal: Array = turrets.filter(func(p): return p.get_catalog_id() == "arm_tool_thermal")
+	_check("the rack holds both tool turrets; the thermal one has its reading point (pivot_reading, pivot_reading_aim)",
+		turrets.size() == 2 and thermal.size() == 1 and thermal[0].find_child("pivot_reading", true, false) != null
+		and thermal[0].find_child("pivot_reading_aim", true, false) != null, "%d turret(s), %d thermal" % [turrets.size(), thermal.size()])
+	var ok := true
+	var detail := ""
+	for item in [["arm_tool_thermal_part", 5.3, 4], ["field_logger_part", 1.6, 6], ["thermal_cover_part", 0.9, 6], ["thermal_heater_part", 0.6, 6]]:
+		var part: RigidBody3D = load("res://src/robot/socket/%s.tscn" % item[0]).instantiate()
+		ok = ok and absf(part.mass - item[1]) < 0.001 and part.part_type == item[2] and part.get_display_name() != "Part" \
+			and not part.get_description().is_empty()
+		detail += " %s (%.1f kg)," % [part.get_display_name(), part.mass]
+		part.free()
+	_check("M3 parts: catalog entries, masses and part types", ok, detail)
+	# The far logger's labels: Evan's handwriting (as on IRIS), on the GLB's text_top / text_under anchors
+	var logger: RigidBody3D = load("res://src/robot/socket/field_logger_part.tscn").instantiate()
+	logger.freeze = true
+	root.add_child(logger)
+	logger.global_position = Vector3(0.0, 50.0, 0.0)
+	# Plates (m, along the logger's X and Z) from make_m3_kit.py's TOP_LABEL / UNDER_LABEL, less 2 mm a side
+	var plates: Dictionary = {"LabelTop": ["text_top", Vector2(0.073, 0.100), 1.0], "LabelUnder": ["text_under", Vector2(0.170, 0.092), -1.0]}
+	ok = true
+	detail = ""
+	for label_name in plates:
+		var label := logger.get_node_or_null(label_name) as Label3D
+		var anchor := logger.find_child(plates[label_name][0], true, false) as Node3D
+		if label == null or anchor == null:
+			ok = false
+			detail += " %s missing;" % label_name
+			continue
+		var size: Vector2 = label.font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, label.font_size) * label.pixel_size
+		var room: Vector2 = plates[label_name][1] - Vector2(0.004, 0.004)
+		var facing: float = label.global_basis.z.normalized().dot(Vector3.UP)
+		var off: float = (label.global_position - anchor.global_position).length()
+		ok = ok and label.font.resource_path.contains("caveat") and label.modulate.is_equal_approx(Color(0.10, 0.14, 0.32)) \
+			and size.x <= room.x and size.y <= room.y and facing * plates[label_name][2] > 0.99 and off < 0.001 and not label.double_sided
+		detail += " %s %.0f x %.0f mm on %.0f x %.0f, facing %+.2f, %.1f mm off its anchor;" % [label_name, size.x * 1000, size.y * 1000,
+			room.x * 1000, room.y * 1000, facing, off * 1000]
+	logger.queue_free()
+	_check("the far logger's two labels: Caveat in pen blue, on top facing up and underneath facing down, each fits its plate", ok, detail)
 
 
 # 2 ---------------------------------------------------------------------------------------------

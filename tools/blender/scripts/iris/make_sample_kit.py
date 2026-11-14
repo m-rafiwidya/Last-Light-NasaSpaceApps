@@ -20,8 +20,9 @@ Scoop (rover palette): origin the grip's centre; the handle runs along +Y, the b
 Empties: anchor_grip (0, 0, 0), anchor_tip (the bowl's leading edge), anchor_pour (the bowl's middle).
 Sample bench (workshop palette): kit footprint 0.70 x 0.40 m, top at 0.90 m, origin the middle of its
 footprint on the floor, to go at anchor_bench (4.2, 2.6). Empties: slot_sample_scoop, slot_sample_a,
-slot_sample_b (where a part's bottom rests: on the tray, 0.90 + 0.012).
-Sample site: a dark reference patch 1.1 m across, its vertices following the terrain (2 cm proud in the middle, 4 mm at its edge), with four
+slot_sample_b (where a part's bottom rests: on the tray, 0.90 + 0.012); slot_thermal_cover, slot_heater on
+the low shelf (0.25; make_m3_kit.py's thermal kit). Colliders: the top, the low shelf, the legs.
+Sample site (make_site; make_m3_kit.py builds the far one with it): a dark reference patch 1.1 m across, its vertices following the terrain (2 cm proud in the middle, 4 mm at its edge), with four
 corner marks. Empties: anchor_sample (the centre), anchor_marker_post (0.75 m from it, where a
 ws_marker_post goes), park_sample (where Kite's origin stops on the ground, heading +X in IRIS's frame:
 the tool turret reaches the scoop's tip to the patch's centre).
@@ -62,6 +63,7 @@ BENCH_HALF = (0.35, 0.20)
 BENCH_TOP = 0.90
 TRAY_HALF = (0.30, 0.16)
 LIP = 0.02
+SHELF_TOP = 0.25
 # Site
 SITE_C = Vector((2.4, 2.6))      # IRIS frame
 SITE_R = 0.55
@@ -196,7 +198,7 @@ def make_bench():
             x, y = sx * (hx - 0.04), sy * (hy - 0.04)
             ws.box(bm, (x - 0.025, x + 0.025), (y - 0.025, y + 0.025), (0.0, t - 0.04), 1)
     ws.box(bm, (-hx, hx), (-hy, hy), (t - 0.04, t), 0)                            # the top
-    ws.box(bm, (-hx + 0.03, hx - 0.03), (-hy + 0.03, hy - 0.03), (0.22, 0.25), 1)     # the low shelf
+    ws.box(bm, (-hx + 0.03, hx - 0.03), (-hy + 0.03, hy - 0.03), (SHELF_TOP - 0.03, SHELF_TOP), 1)     # the low shelf
     th, tw = TRAY_HALF[0], TRAY_HALF[1]
     for x, y in (((-th, th), (-tw, -tw + 0.012)), ((-th, th), (tw - 0.012, tw)), ((-th, -th + 0.012), (-tw, tw)),
                  ((th - 0.012, th), (-tw, tw))):
@@ -210,26 +212,39 @@ def make_bench():
         ws.box(bm, (px - 0.012, px + 0.012), (-0.045, -0.025), (t + 0.004, t + 0.020), 4)
         ws.box(bm, (px - 0.012, px + 0.012), (0.025, 0.045), (t + 0.004, t + 0.020), 4)
     root = ws.make_object("ws_sample_bench", bm, ["ws_panel", "ws_frame", "ws_dark", "ws_label", "ws_accent"])
+    # The low shelf (top at SHELF_TOP) holds the M3 thermal kit: the cover lying flat, turned so its
+    # 0.40 m runs along the bench, and the heater beside it (make_m3_kit.py)
+    for name, x in (("slot_thermal_cover", -0.08), ("slot_heater", 0.20)):
+        ws.add_empty(root, name, (x, 0.0, SHELF_TOP))
     rest = t + 0.004
     ws.add_empty(root, "slot_sample_a", (-0.17, 0.0, rest))
     ws.add_empty(root, "slot_sample_b", (0.0, 0.0, rest))
     # The scoop lies across its cradle posts, grip at -Y, so its centre is over the posts' gap
     ws.add_empty(root, "slot_sample_scoop", (0.19, 0.0, rest))
-    ws.collision_box(root, "ws_sample_bench", (-hx, hx), (-hy, hy), (0.0, t))
+    # The top, the low shelf (it holds the thermal kit) and the legs; open between them
+    ws.collision_box(root, "ws_sample_bench", (-hx, hx), (-hy, hy), (t - 0.04, t))
+    ws.collision_box(root, "ws_sample_bench_shelf", (-hx + 0.03, hx - 0.03), (-hy + 0.03, hy - 0.03), (SHELF_TOP - 0.03, SHELF_TOP))
+    for i, (sx, sy) in enumerate(((-1, -1), (1, -1), (1, 1), (-1, 1))):
+        x, y = sx * (hx - 0.04), sy * (hy - 0.04)
+        ws.collision_box(root, "ws_sample_bench_leg_%d" % i, (x - 0.025, x + 0.025), (y - 0.025, y + 0.025), (0.0, t - 0.04))
     return root
 
 
 # --- Sample site (A15) ------------------------------------------------------------------------
 
-def make_site(park: Vector):
+def make_site(park: Vector, name: str = "sample_site_near", centre: Vector = SITE_C, ground=None, post=None):
+    """A reference patch in some frame: `ground(x, y)` is the terrain's height there (IRIS's frame and
+    iris_kit.ground_local by default), `post` where anchor_marker_post goes (default: POST_OFFSET out)."""
+    ground = ground or iris_kit.ground_local
     bm = ws.new_bmesh()
     rings = [0.0, 0.20, 0.38, SITE_R]
     sides = 16
-    cx, cy = SITE_C
+    cx, cy = centre
+    post = post or (cx + POST_OFFSET, cy - POST_OFFSET * 0.4)
     lifts = [0.020, 0.020, 0.012, 0.004]       # a shallow mound: the render terrain is finer than the 2 m physics grid
 
     def z(x, y, ring=0):
-        return iris_kit.ground_local(x, y) + lifts[ring]
+        return ground(x, y) + lifts[ring]
 
     centre = bm.verts.new((cx, cy, z(cx, cy)))
     grid = [[centre]]
@@ -258,10 +273,10 @@ def make_site(park: Vector):
             xs = (x0 - (half if not dx else 0.0), x1 + (half if not dx else 0.0))
             ys = (y0 - (half if not dy else 0.0), y1 + (half if not dy else 0.0))
             ws.box(bm, xs, ys, (z(px, py, 3) - 0.002, z(px, py, 3) + 0.004), 2)
-    root = ws.make_object("sample_site_near", bm, ["ir_patch", "ir_dust", "ws_accent"], origin=(0.0, 0.0, 0.0))
+    root = ws.make_object(name, bm, ["ir_patch", "ir_dust", "ws_accent"], origin=(0.0, 0.0, 0.0))
     ws.add_empty(root, "anchor_sample", (cx, cy, z(cx, cy)))
-    ws.add_empty(root, "anchor_marker_post", (cx + POST_OFFSET, cy - POST_OFFSET * 0.4, iris_kit.ground_local(cx + POST_OFFSET, cy - POST_OFFSET * 0.4)))
-    ws.add_empty(root, "park_sample", (park.x, park.y, iris_kit.ground_local(park.x, park.y)))
+    ws.add_empty(root, "anchor_marker_post", (post[0], post[1], ground(post[0], post[1])))
+    ws.add_empty(root, "park_sample", (park.x, park.y, ground(park.x, park.y)))
     return root
 
 
@@ -367,6 +382,9 @@ def main() -> None:
         borrow("sample_container", "slot_sample_a")
         borrow("sample_container_full", "slot_sample_b")
         borrow("sample_scoop", "slot_sample_scoop", 90.0)
+        for name, slot, turn in (("thermal_cover", "slot_thermal_cover", 90.0), ("thermal_heater", "slot_heater", 0.0)):
+            if os.path.exists(os.path.join(kit.EXPORT_DIR, name + ".glb")):
+                borrow(name, slot, turn)
         bpy.context.view_layer.update()
         ws.set_preview_colors(True)
         kit.set_preview_colors(True)

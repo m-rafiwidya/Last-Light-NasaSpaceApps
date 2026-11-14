@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://res/models/rover_kit/arm_tool_thermal.glb" id="2_model"]
+
+[node name="ArmToolThermalPart" instance=ExtResource("1_base")]
+mass = 5.3
+part_type = 4
+catalog_id = "arm_tool_thermal"
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("2_model")]
