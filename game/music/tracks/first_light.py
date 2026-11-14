@@ -1,6 +1,8 @@
-"""First Light: C Lydian waltz, 78 BPM, 16-bar loop. Celesta theme, flute answer in the second half."""
+"""First Light: C Lydian waltz, 78 BPM, 16-bar loop. Celesta theme, string answer in the second half."""
 import kit
 from kit import Song
+
+MOOD = "galaxy"
 
 # (bass, upper voicing) per bar. "D/C" is the Lydian II-over-I colour.
 CMAJ7 = ("C2", ["C3", "G3", "E4", "B4"])
@@ -23,7 +25,7 @@ def compose():
     harp = song.instrument("harp")
     strings = song.instrument("strings")
     choir = song.instrument("choir")
-    flute = song.instrument("flute")
+    violins = song.instrument("strings")  # melody line, shares the strings stem
 
     for bar, (bass, upper) in enumerate(CHORDS):
         # Waltz: harp bass on 1, then eighths up and back through the voicing an octave higher.
@@ -47,15 +49,15 @@ def compose():
     song.notes(celesta, 6, [(0, 2, "G5"), (2, 1, "E5")], vel=56)
     song.notes(celesta, 7, [(0, 3, "F#5")], vel=56)
 
-    # Answer (bars 8-15): flute takes the line, celesta sparkles an octave up on the off-bars.
-    song.notes(flute, 8, [(0, 1, "E5"), (1, 1, "F#5"), (2, 1, "G5")], vel=58)
-    song.notes(flute, 9, [(0, 2, "A5"), (2, 1, "F#5")], vel=60)
-    song.notes(flute, 10, [(0, 1.5, "B5"), (1.5, 0.5, "A5"), (2, 1, "G5")], vel=62)
-    song.notes(flute, 11, [(0, 3, "E5")], vel=56)
-    song.notes(flute, 12, [(0, 1, "G5"), (1, 1, "B5"), (2, 1, "D6")], vel=60)
-    song.notes(flute, 13, [(0, 2, "B5"), (2, 1, "A5")], vel=58)
-    song.notes(flute, 14, [(0, 1.5, "F#5"), (1.5, 0.5, "E5"), (2, 1, "D5")], vel=56)
-    song.notes(flute, 15, [(0, 3, "E5")], vel=50)  # sustains into the downbeat of the loop
+    # Answer (bars 8-15): violins take the line, celesta sparkles an octave up on the off-bars.
+    song.notes(violins, 8, [(0, 1, "E5"), (1, 1, "F#5"), (2, 1, "G5")], vel=58)
+    song.notes(violins, 9, [(0, 2, "A5"), (2, 1, "F#5")], vel=60)
+    song.notes(violins, 10, [(0, 1.5, "B5"), (1.5, 0.5, "A5"), (2, 1, "G5")], vel=62)
+    song.notes(violins, 11, [(0, 3, "E5")], vel=56)
+    song.notes(violins, 12, [(0, 1, "G5"), (1, 1, "B5"), (2, 1, "D6")], vel=60)
+    song.notes(violins, 13, [(0, 2, "B5"), (2, 1, "A5")], vel=58)
+    song.notes(violins, 14, [(0, 1.5, "F#5"), (1.5, 0.5, "E5"), (2, 1, "D5")], vel=56)
+    song.notes(violins, 15, [(0, 3, "E5")], vel=50)  # sustains into the downbeat of the loop
     for bar, figure in [(9, ["A6", "F#6", "D6"]), (11, ["E6", "C6", "A5"]),
                         (13, ["F#6", "D6", "B5"]), (15, ["A6", "F#6", "E6"])]:
         song.notes(celesta, bar, [(1 + i * 0.5, 0.5, p) for i, p in enumerate(figure)], vel=44)

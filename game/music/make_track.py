@@ -1,6 +1,7 @@
 """Compose tracks/<name>.py to MIDI and render it: ./track <name> [--lufs N], ./track --list."""
 import argparse
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -25,6 +26,11 @@ def available():
     return sorted(p.stem for p in TRACKS.glob("*.py") if p.stem != "kit" and not p.stem.startswith("_"))
 
 
+def mood(name):
+    m = re.search(r'^MOOD = "(\w+)"', (TRACKS / f"{name}.py").read_text(), re.M)
+    return m.group(1) if m else "?"
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("name", nargs="?")
@@ -32,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--lufs", type=float, default=render.TARGET_LUFS)
     args = parser.parse_args()
     if args.list or not args.name:
-        print("\n".join(available()))
+        print("\n".join(f"{n:24} {mood(n)}" for n in available()))
         sys.exit(0)
     module = load(args.name)
     import kit

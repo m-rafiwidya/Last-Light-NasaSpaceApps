@@ -1,58 +1,103 @@
 # Game music: style guide and pipeline
 
-Every track for this game follows this file. The game is a calm space exploration game; the
-music should feel floating, curious and wondering, never tense or urgent.
+Every track for this game follows this file. The game is a calm space exploration game. Every
+track belongs to exactly one of three moods (Galaxy, Wilds, Journey), declared at the top of the
+track file as `MOOD = "galaxy"`, `"wilds"` or `"journey"` (the pipeline refuses tracks without
+one). Pick the mood from where the track plays, then follow that mood's section and the shared
+rules.
 
-## Originality
+## Originality (all moods)
 
-- Reference feel: Super Mario Galaxy (orchestral, sparkling, spacious, gently playful).
+- Each mood names a game whose music it is inspired by. Borrow the *feel* (instrumentation,
+  texture, pacing), never the notes.
 - Write original melodies, progressions and arrangements only. Never quote, paraphrase or
-  closely imitate a melody or hook from an existing song, from Galaxy or anywhere else. Borrow
-  the mood and the instrumentation, not the notes.
+  closely imitate a melody, hook or recognisable rhythm from an existing song, including the
+  reference games.
 
-## Instruments
+## Mood 1: Galaxy (hub, menus, safe areas)
 
-Use only this palette (General MIDI programs in `soundfonts/GeneralUser-GS.sf2`, 0-based as in
-pretty_midi):
+Feel: magical, floating, wonder at something vast. Inspired by the feel of Super Mario Galaxy:
+orchestral, sparkling, spacious, gently playful.
 
-| Instrument        | GM program                      | Stem group | Typical role                     |
-|-------------------|---------------------------------|------------|----------------------------------|
-| Celesta           | 8                               | `bells`    | Lead melody, sparkles            |
-| Glockenspiel      | 9                               | `bells`    | Doubling accents, octave above   |
-| Harp              | 46 (Orchestral Harp)            | `harp`     | Arpeggios, rolled chords         |
-| Strings           | 48 / 49 (String Ensemble 1 / 2) | `strings`  | Sustained pads, bass, swells     |
-| Soft choir pad    | 52 (Choir Aahs) / 91 (Pad 4 choir) | `choir` | Long held chords, low in the mix  |
-| Flute             | 73                              | `flute`    | Secondary melody, answers phrases |
+| Instrument     | kit name                    | GM program (GeneralUser GS)      | Typical role                   |
+|----------------|-----------------------------|----------------------------------|--------------------------------|
+| Celesta        | `celesta`                   | 8 Celeste                        | Lead melody, sparkles          |
+| Harp           | `harp`                      | 46 Orchestral Harp               | Waltz arpeggios, rolled chords |
+| Glockenspiel   | `glockenspiel`              | 9 Glockenspiel                   | Sparse accents, octave above   |
+| Strings        | `strings` / `strings_slow`  | 48 Fast Strings / 49 Slow Strings | Pads, bass, swells, answers   |
+| Soft choir pad | `choir` / `choir_pad`       | 52 Concert Choir / 91 Space Voice | Long held chords, low in mix  |
 
-Don't add other instruments (no drums, brass, synth leads or distorted sounds) unless the user
-asks for them.
+- Harmony: Lydian mode (major scale with a raised 4th: C Lydian = C D E F# G A B). Let the #4
+  be heard. Major 7th, add9 and maj7#11 chords, and the Lydian II major chord over the tonic
+  (D/C). Good motions: Imaj7 ↔ II/I vamps, Imaj7 → vim7 → Vmaj7 → iiim7 → IIadd9. Avoid strong
+  V7 → I cadences, diminished tension and minor-key drama. Phrases may end on the 9th or #11.
+- Tempo: 70–90 BPM, often a 3/4 waltz (harp or low strings on beat 1, light harp/celesta on
+  2–3); 4/4 for variety.
+- Reference example: `tracks/first_light.py`.
 
-## Harmony
+## Mood 2: Wilds (exploring planets)
 
-- Lydian mode as home: major scale with a raised 4th (C Lydian = C D E F# G A B). Let the #4
-  be heard in melodies and voicings; it is the "wondering" colour.
-- Chords: major 7th (Cmaj7), add9 (Cadd9), maj7#11, and the Lydian II major chord (D/C over a
-  C pedal). Favour open, spread voicings with a 5th or 10th in the bass.
-- Good motions: Imaj7 ↔ II/I vamps, Imaj7 → IVmaj7 → IIImin7 → IIadd9, slow pedal-point
-  movement. Avoid strong dominant V7 → I cadences, diminished tension and minor-key drama.
-- Mood: suspended, floating, unhurried. Phrases can end on the 9th or #11 instead of the root.
+Feel: lonely, peaceful, sparse. Inspired by the feel of Breath of the Wild's field music:
+mostly space and silence, the player's own footsteps matter more than the music.
 
-## Tempo and metre
+| Instrument                | kit name                                     | GM program                                  |
+|---------------------------|----------------------------------------------|---------------------------------------------|
+| Solo piano                | `piano`                                      | 0 Grand Piano                               |
+| Soft pads underneath      | `strings_slow` / `warm_pad` / `halo_pad`     | 49 Slow Strings / 89 Warm Pad / 94 Halo Pad |
+| Occasional bell or flute  | `celesta`, `vibraphone`, `tubular_bells`, `flute` | 8 / 11 / 14 / 73                       |
 
-- Mostly 70–90 BPM. Use 3/4 waltz feel often (harp or low strings on beat 1, light
-  celesta/harp on beats 2–3); 4/4 is fine for variety.
-- Write with a steady tempo; a track's loop length must be whole bars.
+- Texture: short, scattered piano phrases (2–6 notes, a fragment or a few soft chord tones)
+  with long silences between them, often 2–6 bars. Never a continuous melody, never a steady
+  accompaniment pattern. Phrases don't repeat exactly within a loop.
+- The pad holds very quietly underneath (velocity ~30–45), changing chord rarely (every 4–8
+  bars). It may drop out for stretches too.
+- Bell or flute: at most a handful of single notes per loop, as punctuation after a piano
+  phrase, never a melody of its own.
+- Harmony: open and ambiguous rather than functional: sus2/sus4, add9, open fifths, a major 7th
+  over a pedal; modes like Lydian, Mixolydian or Aeolian with no strong cadences.
+- Tempo: free-feeling and slow. Write on a slow grid (50–66 BPM, 4/4) but place notes off the
+  grid (vary onsets by ~0.05–0.3 beats, vary note lengths and velocities 30–70) so nothing feels
+  metric. Loops are long (about 1.5–3 minutes) so the silence pattern doesn't feel repetitive.
 
-## Dynamics and production
+## Mood 3: Journey (traveling, discovery moments)
 
-- Soft dynamics: MIDI velocities about 40–90, nothing above 100. Shape phrases with velocity
-  and string swells (CC11 expression), not loudness jumps.
-- Nothing harsh: no sharp attacks stacked in the same register, keep glockenspiel sparse and
-  soft. `render.py` already softens highs (−3 dB shelf above 8 kHz).
+Feel: adventurous, folky, warm. Inspired by the feel of classic Zelda games like Ocarina of
+Time: a singable wind melody over light, rhythmic accompaniment.
+
+| Instrument           | kit name                          | GM program / kit                       | Typical role                    |
+|----------------------|-----------------------------------|----------------------------------------|---------------------------------|
+| Ocarina or flute     | `ocarina` / `flute` / `pan_flute` | 79 Ocarina / 73 Flute / 75 Pan Flute   | Melody                          |
+| Harp                 | `harp`                            | 46 Orchestral Harp                     | Broken-chord accompaniment      |
+| Pizzicato strings    | `pizzicato`                       | 45 Pizzicato Strings                   | Bass line and offbeat chords    |
+| Light percussion     | `percussion`                      | drum kit 40 Brush                      | Soft hand percussion            |
+
+- Percussion: `song.instrument("percussion")` is a drum track; its notes are names from
+  `kit.PERC` (`shaker`, `tambourine`, `bongo_hi`, `conga_lo`, `woodblock_hi`, `triangle`, …).
+  Keep it light: shaker/tambourine patterns and soft hand drums at velocity ~30–60. No drum
+  kit (kick, snare, cymbals) and no crashes.
+- Harmony: Dorian (C D Eb F G A Bb: minor with a raised 6th, `kit.DORIAN`) or Mixolydian
+  (C D E F G A Bb: major with a flat 7th, `kit.MIXOLYDIAN`). Use the modal chords: Dorian
+  i → IV (Dm → G), Mixolydian I → bVII (C → Bb), avoiding the major V → I cadence that would
+  turn the mode into plain major/minor.
+- Melody: stepwise, singable, folk-like phrases in 2- and 4-bar units, with clear call and
+  answer. Rhythmic but not busy.
+- Tempo: 90–110 BPM, in 6/8 (the pulse is the dotted quarter: `Song(bpm=3 * pulse,
+  beats_per_bar=6, beat_unit=8)`, beats are eighths) or 4/4 (`Song(bpm, 4)`).
+
+## Shared rules (all moods)
+
+- Soft dynamics: MIDI velocities about 30–90 (Wilds lower), nothing above 100. Shape phrases
+  with velocity and swells (`song.swell`, CC11), not loudness jumps.
+- Nothing harsh: no sharp attacks stacked in the same register, no distortion, synth leads,
+  brass stabs or drum kits; keep bells sparse and soft. `render.py` already softens highs
+  (−3 dB shelf above 8 kHz).
 - Large hall reverb on everything: `render.py` renders FluidSynth dry and applies the hall
   (`hall()`) with pedalboard. Tune it there, not per track.
 - Loudness: the mix is normalised to −20 LUFS (peaks capped at −1 dBFS), and the same gain is
-  applied to every stem. Override per track with `./track <name> --lufs N` only if needed.
+  applied to every stem. Override per track with `./track <name> --lufs N` only if needed
+  (e.g. a very sparse Wilds track may need a lower target so its piano notes aren't too loud).
+- Use only the mood's instruments unless the user asks for others.
+- Every track loops seamlessly and ships as an OGG mix plus stems (below).
 
 ## Seamless loops (required for every track)
 
@@ -68,7 +113,7 @@ asks for them.
 
 ## Pipeline and output
 
-- `tracks/<name>.py` (snake_case): composition only. It defines `compose() -> Song` using
+- `tracks/<name>.py` (snake_case): composition only. It sets `MOOD` and defines `compose() -> Song` using
   `tracks/kit.py` (bars/beats timing, `PROGRAMS`, `scale()` with `LYDIAN`, `notes`, `chord`,
   `sustain` for tied pads, `swell` for CC11) and ends with
   `if __name__ == "__main__": kit.main(compose)`. `tracks/first_light.py` is the reference example.

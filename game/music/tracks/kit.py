@@ -9,20 +9,42 @@ from pathlib import Path
 
 import pretty_midi
 
-# General MIDI programs (0-based) in GeneralUser GS for the game's palette.
+# General MIDI programs (0-based) in GeneralUser GS for the game's palette (see CLAUDE.md moods).
 PROGRAMS = {
     "celesta": 8,
     "glockenspiel": 9,
+    "music_box": 10,
+    "vibraphone": 11,
+    "tubular_bells": 14,
+    "piano": 0,
     "harp": 46,
+    "pizzicato": 45,
     "strings": 48,
     "strings_slow": 49,
     "choir": 52,
-    "choir_pad": 91,
+    "choir_pad": 91,     # Space Voice
+    "warm_pad": 89,
+    "halo_pad": 94,
     "flute": 73,
+    "pan_flute": 75,
+    "ocarina": 79,
+}
+
+# Drum kits (MIDI channel 10, bank 128). Brush is the soft one for light percussion.
+DRUM_KITS = {"percussion": 40, "orchestral_percussion": 48}
+
+# GM percussion notes for light hand percussion.
+PERC = {
+    "bongo_hi": 60, "bongo_lo": 61, "conga_hi": 63, "conga_lo": 64, "tambourine": 54,
+    "shaker": 82, "maracas": 70, "cabasa": 69, "claves": 75, "woodblock_hi": 76,
+    "woodblock_lo": 77, "triangle": 81, "triangle_muted": 80, "rim": 37, "brush_tap": 38,
 }
 
 LYDIAN = (0, 2, 4, 6, 7, 9, 11)
 IONIAN = (0, 2, 4, 5, 7, 9, 11)
+DORIAN = (0, 2, 3, 5, 7, 9, 10)
+MIXOLYDIAN = (0, 2, 4, 5, 7, 9, 10)
+MOODS = ("galaxy", "wilds", "journey")
 
 LOOP_END_TEXT = "loop_end"
 OUTPUT = Path(__file__).resolve().parent.parent / "output"
@@ -42,10 +64,13 @@ def scale(root, degree, mode=LYDIAN):
 
 
 class Song:
+    """`bpm` counts the beat unit: Song(84, 4) is 4/4 at quarter = 84; 6/8 at dotted quarter = 100
+    is Song(300, 6, 8), with beats as eighths."""
+
     def __init__(self, bpm, beats_per_bar=3, beat_unit=4):
         self.bpm = bpm
         self.beats_per_bar = beats_per_bar
-        self.midi = pretty_midi.PrettyMIDI(initial_tempo=bpm)
+        self.midi = pretty_midi.PrettyMIDI(initial_tempo=bpm * 4 / beat_unit)  # MIDI tempo is per quarter
         self.midi.time_signature_changes.append(pretty_midi.TimeSignature(beats_per_bar, beat_unit, 0.0))
 
     def t(self, bar, beat=0.0):
@@ -53,13 +78,18 @@ class Song:
         return (bar * self.beats_per_bar + beat) * 60.0 / self.bpm
 
     def instrument(self, name, program=None):
-        """Add a MIDI track; `program` defaults to PROGRAMS[name]."""
-        inst = pretty_midi.Instrument(program=PROGRAMS[name] if program is None else program, name=name)
+        """Add a MIDI track; `program` defaults to PROGRAMS[name], or DRUM_KITS[name] for a drum
+        track (notes are then PERC sounds)."""
+        drum = name in DRUM_KITS
+        if program is None:
+            program = DRUM_KITS[name] if drum else PROGRAMS[name]
+        inst = pretty_midi.Instrument(program=program, is_drum=drum, name=name)
         self.midi.instruments.append(inst)
         return inst
 
     def note(self, inst, p, bar, beat, beats, vel=64):
-        p = pitch(p) if isinstance(p, str) else p
+        if isinstance(p, str):
+            p = PERC[p] if inst.is_drum else pitch(p)
         start = self.t(bar, beat)
         inst.notes.append(pretty_midi.Note(vel, p, start, start + beats * 60.0 / self.bpm))
 
@@ -100,7 +130,10 @@ class Song:
 
 def main(compose):
     """Write output/<track>/<track>.mid for the calling track file and return its path."""
-    name = Path(sys.modules[compose.__module__].__file__).stem
+    module = sys.modules[compose.__module__]
+    name = Path(module.__file__).stem
+    if getattr(module, "MOOD", None) not in MOODS:
+        sys.exit(f"{name}: set MOOD to one of {', '.join(MOODS)} at the top of the track file")
     song = compose()
     out = OUTPUT / name / f"{name}.mid"
     out.parent.mkdir(parents=True, exist_ok=True)
