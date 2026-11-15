@@ -27,7 +27,7 @@ Design reference for the game's menus, screens and HUD. The boards in `boards/` 
 | panel | `#1B1B1F` (hover `#26262B`) | Inactive tabs, ghost buttons |
 | line | `#1E1E22`, `#1C1C20`, `#2A2A2E` | Track of bars, row dividers, icon button borders |
 | warn | `#E5484D` | Low battery, boundary warning, fault dots. The only "alert" colour |
-| moon / mars / earth | `#C9C4BB` / `#C8643A` / `#4C8FD6` | Planet tab underline in the explorer only |
+| moon / earth | `#C9C4BB` / `#4C8FD6` | Planet tab underline in the explorer only |
 
 **No orange anywhere else.** Keep the palette white-on-near-black with greys; red only for warnings.
 
@@ -88,7 +88,7 @@ Common sizes at 1600 × 900 (scale proportionally):
 - **PLAY** opens a popup over the blurred menu:
   - **No save file**: framed popup, "There's no save file.", solid button START NEW CAMPAIGN → loading → mission title card → game.
   - **Save files exist**: "Select save data to load." and a list of save cards (newest first). Each card: mission image (16:9, one image per mission), date and time (DD/MM/YYYY HH:MM), mission name, a small story-progress bar with %, time played top-right, and a slanted "Autosave" tag on autosaves. Hover/focus selects a card (frame + corner brackets). Click/Enter loads → loading → title card ("Resuming · <current objective>"). Under the list: the same START NEW CAMPAIGN button. Footer: "Enter Load", "Esc Cancel". Back button top-left.
-- **Planet explorer**: back button top-left, planet name centred at the top (Michroma 26), the planet globe centred (about 640 px), prev/next chevron buttons either side, tabs MOON / MARS / EARTH at the bottom with a planet-coloured underline on the active one. Locked planets show a lock and a hint ("COMPLETE THE MOON MISSIONS", "FINISH THE GAME"). Markers on the globe open a tooltip card (name, rows such as LANDED / CREW / REGION / COORDS, short note). Apollo 12 is marked "WHERE LAST LIGHT TAKES PLACE". Earth shows the team members' cities. Site data is in the board's `planets()`.
+- **Planet explorer**: back button top-left, planet name centred at the top (Michroma 26), the planet globe centred (about 640 px), prev/next chevron buttons either side, tabs MOON / EARTH at the bottom with a planet-coloured underline on the active one. A locked planet shows a lock and a hint ("FINISH THE GAME"). Markers on the globe open a tooltip card (name, rows such as LANDED / CREW / REGION / COORDS, short note). Apollo 12 is marked "WHERE LAST LIGHT TAKES PLACE". Earth shows the team members' cities. Site data is in the board's `planets()`.
 
 ### Loading (`Loading.dc.html`)
 
@@ -137,6 +137,6 @@ Centred like Pause: mission label, MISSION COMPLETE, 48 px rule, one-line result
 - Underline animation: a 1 px `ColorRect` under the label, width tweened with `Tween` on focus/hover. Make focus and hover identical so keyboard/gamepad navigation looks the same as the mouse.
 - Blur behind popups and pause: a full-screen `ColorRect` with a shader sampling `SCREEN_TEXTURE`/`hint_screen_texture` with mip blur, plus a dark tint.
 - Starfield: one static texture or a `_draw()` on a `Control` with a fixed seed.
-- Main menu Moon: a real 3D sphere in a `SubViewport` (lunar colour texture, slow rotation, mouse drag). Do not replace it with a flat 2D image. The explorer's Moon/Mars/Earth globes are the same idea with clickable site markers.
+- Main menu Moon: a real 3D sphere in a `SubViewport` (lunar colour texture, slow rotation, mouse drag). Do not replace it with a flat 2D image. The explorer's Moon/Earth globes are the same idea with clickable site markers.
 - Design resolution 1600 × 900. Use stretch mode `canvas_items` with aspect `expand` and anchor the HUD to screen corners so it works at 16:9 and 16:10.
 - Key chips should read the real bound key from the InputMap, not hard-coded letters.

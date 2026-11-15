@@ -26,7 +26,7 @@ Every prompt follows the handoff rules in `README_AI.md`: inspect what exists fi
 
 ## 5. Planet explorer
 
-> Read the Planet explorer part of docs/ui/UI_SPEC.md and docs/ui/boards/Main.dc.html (the planets() data has the sites). Clicking the main-menu Moon opens the explorer: back button, planet title, centred 3D globe with clickable site markers and the tooltip card, prev/next buttons, MOON / MARS / EARTH tabs with planet-coloured underlines, and the locked states. Lock state comes from campaign progress (Mars after the Moon chapter, Earth after finishing). Keep it self-contained in the menu scene.
+> Read the Planet explorer part of docs/ui/UI_SPEC.md and docs/ui/boards/Main.dc.html (the planets() data has the sites). Clicking the main-menu Moon opens the explorer: back button, planet title, centred 3D globe with clickable site markers and the tooltip card, prev/next buttons, MOON / EARTH tabs with planet-coloured underlines, and the locked states. Lock state comes from campaign progress (Earth after finishing). Keep it self-contained in the menu scene.
 
 ## 6. Loading screen
 

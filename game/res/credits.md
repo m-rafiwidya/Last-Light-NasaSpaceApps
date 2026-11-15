@@ -37,9 +37,6 @@ Gaia data: ESA/Gaia/DPAC
 Earth
 NASA Blue Marble
 
-Mars
-USGS Astrogeology · NASA Viking Orbiter global colour mosaic
-
 Sun, Earth and sky positions
 NASA JPL Horizons
 

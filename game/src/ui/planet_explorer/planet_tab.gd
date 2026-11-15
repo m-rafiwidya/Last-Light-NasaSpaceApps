@@ -2,8 +2,8 @@ class_name PlanetTab
 
 extends Button
 
-## The explorer's MOON / MARS / EARTH tabs (theme type PlanetTab): mono text that brightens on hover
-## and focus, a 2 px underline in the planet's colour (UIColor moon / mars / earth) under the
+## The explorer's MOON / EARTH tabs (theme type PlanetTab): mono text that brightens on hover
+## and focus, a 2 px underline in the planet's colour (UIColor moon / earth) under the
 ## active one, and a small lock before the label while the planet is locked.
 
 const UNDERLINE: float = 2.0

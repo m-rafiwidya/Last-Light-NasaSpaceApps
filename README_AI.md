@@ -26,7 +26,6 @@ Inspect the current controller and part system before designing a replacement. E
 - M3 must still allow the near sample when it was skipped in M2.
 - Complete the chapter only with IRIS active, the final records received and Kite docked. M2 restoration is an intermediate success.
 - Physical equipment comes from stock or cargo. Earth sends information; photographs and soil do not spawn hardware.
-- Mars is a future-assignment card until the Moon chapter is complete and tested.
 
 The main decisions are wheel choice and battery/load allocation. Necessary mission tools are explicit requirements. Different viable routes/configurations produce different time, energy, risk and delivered-science results within the same campaign, rather than multiplying story levels.
 
@@ -70,7 +69,7 @@ Owners: Goriorio owns rover/control/mission integration; Fahd owns terrain/asset
 
 ## First prompt to paste into your coding assistant
 
-> Implement T02 only: one complete M1 inspection outing using the current rover, parts, cameras, console and dialogue systems. First inspect repository instructions and locate those systems. Report the exact scripts/scenes and existing APIs you will use, then make a focused implementation. Required loop: fit compatible charged battery/wheels, take control, drive to IRIS, capture a valid service-panel inspection record, return, dock, downlink, receive the fault diagnosis, show the result and allow a consistent retry. Use placeholders for missing art. Do not add other missions, a second rover, Mars, a new controller, a parallel state framework or an AI conversation backend. Validate wrong-target scans, early return, duplicate interaction, control exit and reset. Report what changed, how it was checked, and anything that could not be run.
+> Implement T02 only: one complete M1 inspection outing using the current rover, parts, cameras, console and dialogue systems. First inspect repository instructions and locate those systems. Report the exact scripts/scenes and existing APIs you will use, then make a focused implementation. Required loop: fit compatible charged battery/wheels, take control, drive to IRIS, capture a valid service-panel inspection record, return, dock, downlink, receive the fault diagnosis, show the result and allow a consistent retry. Use placeholders for missing art. Do not add other missions, a second rover, a new controller, a parallel state framework or an AI conversation backend. Validate wrong-target scans, early return, duplicate interaction, control exit and reset. Report what changed, how it was checked, and anything that could not be run.
 
 For later tickets, replace the requested ticket and its acceptance checks. Keep each prompt bounded. Do not ask an assistant to “finish the whole game” in one pass.
 

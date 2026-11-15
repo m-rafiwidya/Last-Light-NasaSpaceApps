@@ -3,7 +3,7 @@ extends SceneTree
 ## Moon with its tab focused, the menu's items and Moon fade out and stop rendering), the Moon's
 ## site markers (they sit on the rendered sphere, hide round the back, a press opens the tooltip
 ## with rows, COORDS and the Apollo 12 badge and swings the globe to the site, a click on the empty
-## disc closes it), dragging the globe, prev / next and the tabs (keyboard too), the locks (Mars and
+## disc closes it), dragging the globe, prev / next and the tabs (keyboard too), the locks (
 ## Earth locked with their hints and no markers; `unlockall` unlocks them, Earth shows the team
 ## with no COORDS), and Esc / the back button returning to the menu with PLAY focused.
 ##
@@ -97,7 +97,7 @@ func _run() -> void:
 	UiSettings.section.read_saved = true
 	UiSettings.section.reload()
 	_check("a finished campaign unlocks Earth and survives a reload of the saved setting",
-		UiSettings.campaign_finished() and PlanetData.is_unlocked(&"earth") and not PlanetData.is_unlocked(&"mars"))
+		UiSettings.campaign_finished() and PlanetData.is_unlocked(&"earth"))
 	UiSettings.set_campaign_finished(false)
 	UiSettings.section.read_saved = false
 	_check("Earth is locked again once the setting is cleared", not PlanetData.is_unlocked(&"earth"))
@@ -112,9 +112,9 @@ func _run() -> void:
 	_check("it opens on the Moon, title THE MOON", explorer.current_planet().id == &"moon"
 		and explorer.find_child("Title", true, false).text == "THE MOON")
 	var tabs: Array = explorer.find_child("Tabs", true, false).get_children()
-	_check("three tabs MOON / MARS / EARTH", tabs.map(func(t: Button) -> String: return t.text) == ["MOON", "MARS", "EARTH"])
+	_check("two tabs MOON / EARTH", tabs.map(func(t: Button) -> String: return t.text) == ["MOON", "EARTH"])
 	_check("the MOON tab is active and focused", tabs[0].active and tabs[0].has_focus())
-	_check("Mars and Earth are locked, the Moon isn't", not tabs[0].locked and tabs[1].locked and tabs[2].locked)
+	_check("Earth is locked, the Moon isn't", not tabs[0].locked and tabs[1].locked)
 	_check("the globe renders", globe.is_active())
 	_check("PLAY takes no focus behind it", play.focus_behavior_recursive == Control.FOCUS_BEHAVIOR_DISABLED
 		or sub.focus_behavior_recursive == Control.FOCUS_BEHAVIOR_DISABLED)
@@ -214,39 +214,29 @@ func _run() -> void:
 	await process_frame
 	_check("dragging turns the globe", globe.lon < lon_before - 0.3, "%.2f -> %.2f" % [lon_before, globe.lon])
 
-	# Next: Mars, locked
-	explorer.find_child("Next", true, false).pressed.emit()
-	await _seconds(0.7)
-	_check("next: MARS, its tab active", explorer.current_planet().id == &"mars"
-		and explorer.find_child("Title", true, false).text == "MARS" and tabs[1].active and not tabs[0].active)
-	_check("Mars locked: lock and hint, dark globe, no markers", explorer.find_child("Lock", true, false).visible
-		and explorer.find_child("Hint", true, false).text == "COMPLETE THE MOON MISSIONS" and globe.locked
-		and explorer._markers.is_empty())
-	_check("both prev and next shown", explorer.find_child("Prev", true, false).visible
-		and explorer.find_child("Next", true, false).visible)
-	# Keyboard: Enter on the focused next button, then it hides on Earth and the focus moves to the tab
+	# Keyboard: Enter on the focused next button shows Earth, locked; next hides and the focus moves to the tab
 	var next: Button = explorer.find_child("Next", true, false)
 	next.grab_focus()
 	await _key(KEY_ENTER)
 	await _seconds(0.7)
-	_check("Enter on next: EARTH, locked (FINISH THE GAME)", explorer.current_planet().id == &"earth"
-		and explorer.find_child("Hint", true, false).text == "FINISH THE GAME")
-	_check("no next on Earth, focus moved to the EARTH tab", not next.visible and tabs[2].has_focus())
+	_check("Enter on next: EARTH, its tab active", explorer.current_planet().id == &"earth"
+		and explorer.find_child("Title", true, false).text == "EARTH" and tabs[1].active and not tabs[0].active)
+	_check("Earth locked: lock and hint, dark globe, no markers", explorer.find_child("Lock", true, false).visible
+		and explorer.find_child("Hint", true, false).text == "FINISH THE GAME" and globe.locked
+		and explorer._markers.is_empty())
+	_check("no next on Earth, prev shown, focus moved to the EARTH tab", not next.visible
+		and explorer.find_child("Prev", true, false).visible and tabs[1].has_focus())
 	_check("no team subtitle while Earth is locked", not explorer.find_child("Subtitle", true, false).visible)
 	await _key(KEY_LEFT)
-	_check("left from EARTH focuses MARS", tabs[1].has_focus())
+	_check("left from EARTH focuses MOON", tabs[0].has_focus())
 	await _key(KEY_ENTER)
-	_check("Enter on the MARS tab shows Mars", explorer.current_planet().id == &"mars")
+	_check("Enter on the MOON tab shows the Moon", explorer.current_planet().id == &"moon")
 
-	# unlockall: Mars and Earth open up
+	# unlockall: Earth opens up
 	root.get_node("Debug").parse_command("unlockall")
 	await process_frame
-	_check("unlockall: Mars unlocked, eight markers", not globe.locked and explorer._markers.size() == 8
-		and not tabs[1].locked and not tabs[2].locked)
-	explorer.marker(&"cu").pressed.emit()
-	await process_frame
-	_check("Curiosity's badge", badge.visible and badge.text.ends_with("THE ROVER THAT INSPIRED OURS"))
-	tabs[2].pressed.emit()
+	_check("unlockall: Earth unlocked", not tabs[1].locked)
+	tabs[1].pressed.emit()
 	await _seconds(0.7)
 	_check("Earth: four team markers and the subtitle", explorer._markers.size() == 4
 		and explorer.find_child("Subtitle", true, false).visible and explorer.selected_id == &"")
@@ -272,10 +262,10 @@ func _run() -> void:
 	# The menu globe now shows the planet last viewed (Earth), saved for the next launch
 	_check("the menu globe shows Earth", moon.planet_id == &"earth" and UiSettings.last_planet() == "earth")
 	_check("the menu globe has Earth's blue rim glow, the Moon none", moon._glow.visible
-		and (moon._glow.texture.gradient.colors[2] as Color).is_equal_approx(PlanetData.PLANETS[2].atmosphere)
+		and (moon._glow.texture.gradient.colors[2] as Color).is_equal_approx(PlanetData.PLANETS[1].atmosphere)
 		and (moon._glow.texture.gradient.colors[2] as Color).b > (moon._glow.texture.gradient.colors[2] as Color).r)
 	_check("the menu globe's texture is Earth's", (moon._material.get_shader_parameter(&"albedo_map") as Texture2D).resource_path
-		== PlanetData.PLANETS[2].map)
+		== PlanetData.PLANETS[1].map)
 	# Clicking it opens the explorer on that planet; the back button closes it too
 	moon.moon_clicked.emit()
 	await process_frame
@@ -287,16 +277,16 @@ func _run() -> void:
 	_check("the Moon has no glow", not moon._glow.visible)
 	_check("the back button returns to the menu, showing the Moon again", not explorer.is_open and play.has_focus()
 		and moon.planet_id == &"moon" and UiSettings.last_planet() == "moon")
-	# Mars viewed, then the planets lock again: the menu falls back to the Moon
+	# Earth viewed, then it locks again: the menu falls back to the Moon
 	moon.moon_clicked.emit()
 	await process_frame
 	tabs[1].pressed.emit()
 	await process_frame
 	explorer.find_child("Back", true, false).pressed.emit()
 	await _seconds(0.6)
-	_check("Mars viewed: the menu globe is Mars", moon.planet_id == &"mars" and UiSettings.last_planet() == "mars")
+	_check("Earth viewed: the menu globe is Earth", moon.planet_id == &"earth" and UiSettings.last_planet() == "earth")
 	PlanetData.unlock_all = false
-	_check("Mars locked again: the menu falls back to the Moon", PlanetData.menu_planet() == &"moon")
+	_check("Earth locked again: the menu falls back to the Moon", PlanetData.menu_planet() == &"moon")
 	menu.fade_in()
 	_check("fade_in applies the fallback", moon.planet_id == &"moon")
 

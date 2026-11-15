@@ -208,12 +208,12 @@ func _run() -> void:
 
 	# The globe shows the saved planet; a locked one falls back to the Moon
 	PlanetData.unlock_all = false
-	UiSettings.set_last_planet(&"mars")
+	UiSettings.set_last_planet(&"earth")
 	menu.fade_in()
 	_check("a locked saved planet falls back to the Moon", moon.planet_id == &"moon")
 	PlanetData.unlock_all = true
 	menu.fade_in()
-	_check("an unlocked saved planet is shown", moon.planet_id == &"mars")
+	_check("an unlocked saved planet is shown", moon.planet_id == &"earth")
 	PlanetData.unlock_all = false
 	UiSettings.set_last_planet(&"moon")
 	menu.fade_in()

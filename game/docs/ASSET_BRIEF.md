@@ -56,7 +56,7 @@ IRIS's light and antenna movement are priority feedback. Logger cargo and full s
 - Optional historical/source cards, using genuine images with exact credits.
 - Optional IRIS charging point, only when route/energy design needs it.
 
-Do not spend P0/P1 time on full astronaut bodies, walking NPCs, another rover, Mars assets, large base corridors, weapons, a winch or freeform mining.
+Do not spend P0/P1 time on full astronaut bodies, walking NPCs, another rover, large base corridors, weapons, a winch or freeform mining.
 
 ## Export and collision contract
 

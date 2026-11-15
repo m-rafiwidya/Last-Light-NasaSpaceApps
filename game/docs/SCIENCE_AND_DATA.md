@@ -64,7 +64,7 @@ A short surface scan is not lunar heat flow. Historical heat-flow work used subs
 
 The Moon has an extremely sparse exosphere. Helium, neon and argon are among the studied species; ordinary outdoor air-temperature/oxygen gameplay would be misleading. A future trace-gas mission can use an appropriate detector, blanks/calibration and a measurement site away from lander contamination. NASA notes that lander exhaust can dominate the nearby atmosphere. This is optional, not another mandatory instrument for M1–M3.
 
-Cabin pressure/oxygen are real habitat concerns but add a different survival game. Keep them background context. On a later Mars chapter, its thin mainly carbon-dioxide atmosphere supports a distinct atmospheric-measurement task; see [NASA Mars facts](https://science.nasa.gov/mars/facts/).
+Cabin pressure/oxygen are real habitat concerns but add a different survival game. Keep them background context.
 
 ## Engineering calculations and their boundaries
 
@@ -166,7 +166,7 @@ Cargo landers set down at a landing zone away from the outpost, and Kite fetches
 
 The local human-to-Kite link is distinct from the Earth downlink. Local teleoperation need not impose an Earth round-trip delay. Records move from collected to queued to received; UI/storage and energy follow that state. The IRIS link can transmit its archive when restored; samples/logger use the outpost reader and report pipeline.
 
-Data sizes, link rates and UI time compression are declared parameters. A downlink progress bar is a model, not live NASA telemetry. If a later Mars chapter is built, Earth support is asynchronous: [NASA Mars Relay Network](https://science.nasa.gov/mars/mars-relay-network/) describes one-way delays of roughly 3–22.4 minutes. Direct rover control at the local base can remain responsive.
+Data sizes, link rates and UI time compression are declared parameters. A downlink progress bar is a model, not live NASA telemetry.
 
 ## Source registry and judge-facing disclosure
 

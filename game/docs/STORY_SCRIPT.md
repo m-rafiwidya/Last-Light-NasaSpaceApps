@@ -132,8 +132,6 @@ Do not repeatedly award restoration or sample items on interaction. Preserve cor
 
 Return control to the human at the console. Kite remains physically in its service bay. The map shows IRIS active. Display: station restored, archive complete, comparison records received, rover recovered, energy used and any assistance. Optional screenshots appear in the report with their simulated-scene label.
 
-A later-assignment card can read: **“Mars field rotation — briefing pending.”** It promises a future campaign direction, not an implemented second planet. On Mars the same engineer travels with another supported expedition; Earth messages become asynchronous and the rover is fitted for that destination.
-
 ## Script editing rules
 
 - Keep canon names, equipment origins and mission gates aligned with [gameplay](../README_GAMEPLAY.md) and [mission data](examples/MISSIONS.json).

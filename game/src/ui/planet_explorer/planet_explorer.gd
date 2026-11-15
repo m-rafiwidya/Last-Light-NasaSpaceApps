@@ -4,7 +4,7 @@ extends Control
 
 ## Planet explorer (docs/ui/UI_SPEC.md "Planet explorer", board Main.dc.html, design x 1.2), opened
 ## by clicking the main menu's Moon: back button top-left, the planet's name, its globe in the
-## middle (PlanetGlobe: drag to turn), prev / next buttons either side and the MOON / MARS / EARTH
+## middle (PlanetGlobe: drag to turn), prev / next buttons either side and the MOON / EARTH
 ## tabs at the bottom with the planet's colour under the active one. Sites (PlanetData) are
 ## SiteMarkers over the globe; pressing one swings the globe to it and opens its tooltip card
 ## (badge, name, rows, note). A locked planet (PlanetData.is_unlocked) is drawn dark with a lock and

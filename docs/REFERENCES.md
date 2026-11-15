@@ -74,7 +74,6 @@ endorsement. LROC, PDS and USGS products are public data. *(general knowledge)* 
 | **Deep Star Maps 2020**, `starmap_2020_4k.exr` (NASA/GSFC SVS; star data ESA/Gaia/DPAC, Hipparcos-2, Tycho-2) | https://svs.gsfc.nasa.gov/4851/ (file fetched from the Internet Archive capture of `svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/starmap_2020_4k.exr`; SHA-1 in `CREDITS.md`) | NASA SVS media terms; ESA star data: see **F9** | `game/res/textures/sky/starmap_2020_4k.exr`, unmodified: the Moon's sky (`lunar_sky.gdshader`) |
 | **CGI Moon Kit** colour map `lroc_color_16bit_srgb_4k.tif` (NASA SVS; LROC WAC, NASA/GSFC/ASU) | https://svs.gsfc.nasa.gov/4720 | Public domain NASA (*repo*: `CREDITS.md`) | `game/res/textures/moon/lroc_color_4k.jpg`, converted to 8-bit JPEG: the main menu Moon (`menu_moon.gdshader`) and the planet explorer |
 | **Blue Marble: Next Generation**, Dec 2004 (NASA Earth Observatory, Reto Stöckli) | https://visibleearth.nasa.gov/images/73909 | Public domain NASA (*repo*) | `game/res/textures/sky/earth_blue_marble_1024.jpg` (Earth in the Moon's sky), `game/res/textures/planets/earth_blue_marble_4k.jpg` (planet explorer). Resampled. |
-| **Mars Viking Global Color Mosaic 925 m** (USGS Astrogeology, from NASA Viking Orbiter images) | https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m (file: https://planetarymaps.usgs.gov/mosaic/Mars_Viking_ClrMosaic_global_925m.tif) | Public domain (*repo*) | `game/res/textures/planets/mars_viking_color_4k.jpg`: Mars in the planet explorer. Box-filtered down. |
 | **Apollo 12 photograph AS12-49-7278** (NASA; Charles Conrad Jr.) | https://images.nasa.gov/details/as12-49-7278 (also https://www.nasa.gov/image-detail/amf-as12-49-7278/) | Public domain NASA (*repo*); see **F8** | `game/res/textures/decor/as12-49-7278.jpg`, cropped/resized: history card in the workshop (`dc_history_card`) |
 | **Apollo 12 photograph AS12-48-7136** (NASA; Alan L. Bean) | https://images.nasa.gov/details/as12-48-7136 | Public domain NASA (*repo*); see **F8** | `game/res/textures/decor/as12-48-7136.jpg`, cropped/resized: second history card |
 | **Photograph of Bruce McCandless II, STS-41-B (February 1984)** (NASA) | NASA image library, https://images.nasa.gov (image **S84-27017**; see **F4**) | Public domain NASA, per the team; see **F8** | **Not in the repo.** Only the basis of the title logo `game/res/ui/astronaut_logo.svg`, drawn as SVG by Claude (credits roll, main menu, loading) |
@@ -160,7 +159,6 @@ plan documents. Add them to the Space Apps field only if you want the full readi
 | https://science.nasa.gov/moon/weather-on-the-moon/ | `SCIENCE_AND_DATA.md`, the story plan |
 | https://astrobiology.nasa.gov/news/restoring-data-from-the-apollo-missions/ | `SCIENCE_AND_DATA.md` |
 | https://data.nasa.gov/dataset/lunar-prospector-grs-elemental-abundance-v1-0 and the PDS `lp_grs_derived` collection | `SCIENCE_AND_DATA.md` |
-| https://science.nasa.gov/mars/facts/ and /mars/mars-relay-network/ | `SCIENCE_AND_DATA.md` |
 | https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/ | `SCIENCE_AND_DATA.md`, `README_GAMEPLAY.md` |
 | https://docs.godotengine.org/en/stable/ (VehicleBody3D, signals, resources) | `game/README_GAMEPLAY.md` |
 | https://www.spaceappschallenge.org/2026/find-a-team/missionforge/ | the story plan (our team page) |
@@ -173,7 +171,7 @@ after the credits update of 2026-11-14 and this one:
 | Resource | `CREDITS.md` | `credits.md` (in game) | `data_sources.json` |
 |---|---|---|---|
 | LROC NAC DTM, orthophoto, SLDEM2015, human-features PDF, Horizons | yes | yes (grouped) | yes (the DTM's confidence map is only in `CREDITS.md`) |
-| Star map, CGI Moon Kit, Blue Marble, Mars Viking | yes | yes (Moon Kit not named separately) | yes |
+| Star map, CGI Moon Kit, Blue Marble | yes | yes (Moon Kit not named separately) | yes |
 | Apollo photographs | yes | no (the cards print their own credit) | yes (links one of the two) |
 | USGS Gazetteer (Head crater) | yes | yes | yes |
 | Moon by the Numbers, lunar atmosphere, LRO/Diviner | no | no | yes |
