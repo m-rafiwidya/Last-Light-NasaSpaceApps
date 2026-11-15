@@ -98,6 +98,7 @@ func _ready() -> void:
 	subtitles.slot = subtitle_slot
 	subtitles.one_at_a_time = true
 	subtitles.backing = false
+	subtitles.skip_hint = false
 	root.add_child(subtitles)
 
 	skip_box = VBoxContainer.new()

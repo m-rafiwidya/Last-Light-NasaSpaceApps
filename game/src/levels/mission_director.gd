@@ -49,6 +49,7 @@ var _energy: float = 0.0
 var cold_time: float = 0.0
 var still_time: float = 0.0
 var _level_sun := Vector2.ZERO
+var _low_warned: bool = false
 
 
 func _ready() -> void:
@@ -211,8 +212,9 @@ func _on_docked(docked_rover: Robot) -> void:
 	if docked_rover != rover or _returned_by_recovery:
 		return
 	var objective: String = DOCK_OBJECTIVES.get(CampaignState.current_mission(), "")
-	if objective:
-		try_complete(objective)
+	var charge: float = rover.battery.get_charge_fraction() if rover.battery else 0.0
+	if objective and try_complete(objective):
+		CampaignState.mission_stats(CampaignState.current_mission())["dock_battery"] = charge
 
 
 func _physics_process(delta: float) -> void:
@@ -230,7 +232,12 @@ func _physics_process(delta: float) -> void:
 	_update_cold(delta)
 	_update_still(delta)
 	if recovering or CampaignState.current_mission().is_empty() or rover.battery == null:
+		_low_warned = false
 		return
+	var warn: bool = return_warning()
+	if warn and not _low_warned:
+		DialogueTriggers.alert("low_battery")
+	_low_warned = warn
 	if rover.battery.is_empty() and not pad.is_in_zone(rover):
 		_start_recovery()
 
@@ -317,6 +324,8 @@ func _update_cold(delta: float) -> void:
 			cold_time = 0.0
 			alert = ""
 		return
+	if cold_time == 0.0:
+		DialogueTriggers.alert("cold")
 	cold_time += delta
 	alert = COLD_WARNING % ceili(maxf(COLD_LIMIT - cold_time, 0.0))
 	if cold_time >= COLD_LIMIT:
@@ -349,6 +358,7 @@ func _start_recovery(message: String = RECOVERY_MESSAGE, cause: String = "batter
 	alert = message
 	Debug.add_log(message)
 	CampaignState.record_recovery(cause, distance_to_pad())
+	DialogueTriggers.alert("recovery")
 	recovery_started.emit(rover)
 
 

@@ -151,6 +151,15 @@ text = "CONTINUE"
 [node name="ButtonSoundComponent" type="Node" parent="Window/Column/Buttons/Continue"]
 script = ExtResource("5_sound")
 
+[node name="DataSources" parent="Window/Column/Buttons" instance=ExtResource("4_button")]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"UnderlineButtonPause"
+text = "DATA SOURCES"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/Column/Buttons/DataSources"]
+script = ExtResource("5_sound")
+
 [node name="MainMenu" parent="Window/Column/Buttons" instance=ExtResource("4_button")]
 unique_name_in_owner = true
 layout_mode = 2

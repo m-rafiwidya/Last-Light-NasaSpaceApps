@@ -14,6 +14,7 @@ func _ready() -> void:
 	%Rule.color = %Window.get_theme_color(&"text", &"UIColor")
 	%Continue.pressed.connect(_on_continue_pressed)
 	%MainMenu.pressed.connect(_on_main_menu_pressed)
+	%DataSources.pressed.connect(open_data_sources)
 	GameState.state_changed.connect(_on_state_changed)
 	hide_caption()
 	hide()
@@ -143,6 +144,12 @@ func _on_state_changed(_old_state, new_state) -> void:
 func _on_continue_pressed() -> void:
 	if GameState.state == GameState.State.IN_GAME_MENU:
 		GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
+
+
+func open_data_sources() -> void:
+	var screen := get_tree().get_first_node_in_group(&"data_sources") as DataSourcesScreen
+	if screen:
+		screen.open()
 
 
 func _on_main_menu_pressed() -> void:

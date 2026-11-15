@@ -172,7 +172,8 @@ func _run() -> void:
 		"One emergency recovery: battery ran flat %d m from the pad" % roundi(float(recoveries[0]["distance_m"])),
 		"Stuck hints shown: %d" % int(stats.get("stuck_hints", 0)),
 		CS.mission_report("m3"),
-		MR.CREW_REQUEST_PLACEHOLDER,
+		"Hana: Take both ground temperatures, sun and shade. Missed: Not measured: sun and shade.",
+		"Mira: Dock Kite with at least 25% battery. Missed: Kite came home on an emergency recovery.",
 	]
 	var absent: Array = numbers.filter(func(line: String) -> bool: return not text.contains(line))
 	_check("[report] the numbers match the stats", absent.is_empty(), str(absent))

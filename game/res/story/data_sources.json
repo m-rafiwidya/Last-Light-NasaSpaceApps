@@ -1,0 +1,170 @@
+{
+	"_readme": [
+		"The Data Sources screen (DataSourcesScreen, src/ui/data_sources/). Edit this file to change it; no code change needed.",
+		"groups: shown in order. title, optional note, entries. An entry: name, use (what the game uses it for), link (optional, opens in the browser).",
+		"placeholder: true marks a group still to be filled (the challenge resources, added during the hackathon). Its note is shown while it has no entries.",
+		"Facts come from game/docs/SCIENCE_AND_DATA.md and CREDITS.md; keep them in step."
+	],
+	"content_version": "2026-11-13",
+	"title": "DATA SOURCES",
+	"intro": "What in Last Light comes from real data, what comes from published science, and what we made up.",
+	"groups": [
+		{
+			"id": "nasa",
+			"title": "NASA and space agency data",
+			"entries": [
+				{
+					"name": "LROC NAC DTM of the Apollo 12 landing site (2 m)",
+					"use": "The ground you drive on: the play area is the measured 2 m elevation posts, unchanged except for the graded base. Slopes, both M3 routes, Head crater and its shade all come from it.",
+					"link": "https://data.lroc.im-ldi.com/lroc/view_rdr/NAC_DTM_APOLLO12"
+				},
+				{
+					"name": "LROC Apollo 12 orthophoto",
+					"use": "An approximate brightness pattern for the ground near the site (not used as albedo).",
+					"link": "https://data.lroc.im-ldi.com/lroc/view_rdr_product/NAC_DTM_APOLLO12_M120005333_2M"
+				},
+				{
+					"name": "SLDEM2015 (LOLA and SELENE Terrain Camera)",
+					"use": "The terrain beyond the DTM, out to 33 km from the site, with the Moon’s curvature.",
+					"link": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/sldem2015/"
+				},
+				{
+					"name": "Gazetteer of Planetary Nomenclature: Head crater",
+					"use": "The name, position (3.01° S, 23.43° W) and size (120 m) of Head crater, which the short M3 route crosses.",
+					"link": "https://planetarynames.wr.usgs.gov/Feature/2396"
+				},
+				{
+					"name": "LROC coordinates of lunar human features (2016)",
+					"use": "Where the Apollo 12 lander, the ALSEP and Surveyor 3 stand, so the base and routes keep well clear of them.",
+					"link": "https://www.lroc.asu.edu/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf"
+				},
+				{
+					"name": "JPL Horizons",
+					"use": "The sun, Earth and stars as seen from the site on 20 November 1969, during Apollo 12's second moonwalk.",
+					"link": "https://ssd.jpl.nasa.gov/horizons/"
+				},
+				{
+					"name": "NASA: Moon by the Numbers",
+					"use": "Lunar gravity (1.62 m/s²) for Kite's weight, wheel loads and rolling resistance, and the length of the lunar day.",
+					"link": "https://science.nasa.gov/moon/by-the-numbers/"
+				},
+				{
+					"name": "LRO Diviner instrument",
+					"use": "Why sun and shade ground temperatures matter. The radiometer readings in the game are simulated, not Diviner data.",
+					"link": "https://science.nasa.gov/mission/lro/spacecraft-and-instruments/"
+				},
+				{
+					"name": "NASA SVS Deep Star Maps 2020 (ESA/Gaia/DPAC)",
+					"use": "The star field in the Moon's sky.",
+					"link": "https://svs.gsfc.nasa.gov/4851/"
+				},
+				{
+					"name": "NASA SVS CGI Moon Kit (LROC WAC colour)",
+					"use": "The colour map of the main menu's Moon.",
+					"link": "https://svs.gsfc.nasa.gov/4720"
+				},
+				{
+					"name": "Blue Marble: Next Generation (NASA Earth Observatory)",
+					"use": "Earth in the Moon's sky and in the planet explorer.",
+					"link": "https://visibleearth.nasa.gov/images/73909"
+				},
+				{
+					"name": "Mars Viking Global Color Mosaic (USGS Astrogeology)",
+					"use": "Mars in the planet explorer.",
+					"link": "https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m"
+				},
+				{
+					"name": "Apollo 12 photographs AS12-49-7278 and AS12-48-7136",
+					"use": "The two history cards on the workshop wall.",
+					"link": "https://images.nasa.gov/details/as12-48-7136"
+				}
+			]
+		},
+		{
+			"id": "science",
+			"title": "Science references",
+			"entries": [
+				{
+					"name": "Wheel sinkage and rolling resistance on the TRI-1 lunar soil simulant",
+					"use": "Rolling resistance of 0.12 times the weight on loose regolith (measured 0.118 to 0.130 for plain wheels); grip wheels cost more energy, as lugged wheels did in the study.",
+					"link": "https://www.researchgate.net/publication/345142748_A_Study_on_Wheel_Sinkage_and_Rolling_Resistance_with_variations_in_wheel_geometry_for_Plain_and_Lugged_wheels_on_TRI_-1_Soil_Simulant"
+				},
+				{
+					"name": "The lunar day",
+					"use": "About 29.5 Earth days, with about 14.75 days of daylight. It sets how high the sun is in M3 for each lander, and so where Head crater is in shade.",
+					"link": "https://science.nasa.gov/moon/by-the-numbers/"
+				},
+				{
+					"name": "Earth-Moon light time",
+					"use": "Radio takes about 1.3 s each way at the Moon's mean distance of 384,400 km. In the opening dialogue Mira, on Earth, says she and Hana are \"about a second behind\". Kite is driven from the base next to it, so the game adds no delay to the controls.",
+					"link": "https://science.nasa.gov/moon/by-the-numbers/"
+				},
+				{
+					"name": "The lunar atmosphere and weather",
+					"use": "No air and no wind: dust from wheels and the lander flies in clean arcs and lands within seconds.",
+					"link": "https://science.nasa.gov/moon/lunar-atmosphere/"
+				},
+				{
+					"name": "Henriksen et al. (2017), LROC NAC stereo topography",
+					"use": "How the Apollo 12 DTM was made, and its accuracy.",
+					"link": "https://doi.org/10.1016/j.icarus.2016.05.012"
+				},
+				{
+					"name": "Barker et al. (2016), SLDEM2015",
+					"use": "How the LOLA and SELENE elevation model was made.",
+					"link": "https://doi.org/10.1016/j.icarus.2015.07.039"
+				}
+			]
+		},
+		{
+			"id": "assumptions",
+			"title": "Game assumptions",
+			"note": "Chosen for play, not measured. Time is compressed: a mission takes minutes, not hours.",
+			"entries": [
+				{
+					"name": "Always-on electronics: 240 W",
+					"use": "Kite's computers, radio, cameras and thermal control draw power whenever it is off the pad, moving or not. Real rovers carry a standing load like this; the value is set for balance."
+				},
+				{
+					"name": "Electronics-bay heater: 500 W",
+					"use": "Runs while Kite is in cold shade with the heater fitted; crossing Head's shade costs about 4 % of the battery."
+				},
+				{
+					"name": "Cold shutdown after 20 s",
+					"use": "In shade without the thermal cover and heater, Kite's electronics shut down and the emergency recovery brings it home. A rule, not a thermal model."
+				},
+				{
+					"name": "Kite's masses and drive motor",
+					"use": "A 37 kg chassis plus every fitted part (80 kg as standard), and an ideal DC motor with no regeneration."
+				},
+				{
+					"name": "Cargo landers",
+					"use": "Courier: 30 kg, arrives on story day 4. Freighter: 40 kg, arrives on day 11. 2 kg of packaging per order; a descent delta-v of 1,900 m/s is shown but not computed."
+				},
+				{
+					"name": "The sun in M3",
+					"use": "A uniform arc over the daylight half of the lunar day; it ignores the site's latitude and libration."
+				},
+				{
+					"name": "Ground temperatures",
+					"use": "Simulated: sunlit ground from radiative balance for the sun's height, shaded ground -150 °C."
+				},
+				{
+					"name": "Route flags and the boulder field",
+					"use": "Added objects. The 2 m DTM can't show boulders, so their positions and sizes are invented."
+				},
+				{
+					"name": "Fictional equipment and organisation",
+					"use": "Kite, IRIS, the field logger, the outpost, the cargo service and the crew (Hana, Mira, Rafi, Evan) are invented for a 2058 story. No endorsement by NASA or ESA is implied."
+				}
+			]
+		},
+		{
+			"id": "challenge",
+			"title": "NASA Space Apps Challenge resources",
+			"placeholder": true,
+			"note": "To be added during the hackathon (14 November 2026).",
+			"entries": []
+		}
+	]
+}

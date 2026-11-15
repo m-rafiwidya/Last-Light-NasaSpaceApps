@@ -196,8 +196,9 @@ func _apply(t: float) -> void:
 	_set_blur(TITLE_BLUR_LOD * (1.0 - w))
 
 	# Menu items slide in one by one
+	var stagger: float = minf(0.25, (LENGTH - 8.8 - 0.9) / maxf(_buttons.size() - 1, 1))
 	for i in _buttons.size():
-		var b: float = _progress(t, 8.8 + 0.25 * i, 0.9, WORD_CURVE)
+		var b: float = _progress(t, 8.8 + stagger * i, 0.9, WORD_CURVE)
 		_buttons[i].modulate.a = b
 		_buttons[i].position = _button_homes[i] + Vector2(-24.0 * S * (1.0 - b), 0.0)
 

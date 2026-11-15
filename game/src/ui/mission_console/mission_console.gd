@@ -188,6 +188,7 @@ func _show_mission() -> void:
 		if objective not in required:
 			title += "  (optional)"
 		lines.append(_step(i + 1, title, CampaignState.is_objective_done(objective), objective == current))
+	lines.append_array(crew_request_lines(mission))
 	if CampaignState.is_mission_completed(mission):
 		lines.append("\n[b]Mission complete.[/b]")
 	else:
@@ -200,6 +201,19 @@ func _show_mission() -> void:
 			lines.append("")
 			lines.append_array(route_forecast())
 	_set_text("%s  ·  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
+
+
+## "REQUEST  Hana: Collect the near-site sample" under the objectives, with met / missed once the downlink is sent
+func crew_request_lines(mission: String) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	var stats := CampaignState.mission_stats(mission)
+	var sent: bool = stats.get("crew_requests") is Array
+	for result in CrewRequests.results(mission, stats):
+		var outcome: String = ("  (%s)" % ("met" if result["met"] else "missed")) if sent else ""
+		lines.append("[color=%s]REQUEST  %s: %s%s[/color]" % [_hex(&"text_2"), result["speaker"], result["summary"], outcome])
+	if not lines.is_empty():
+		lines.insert(0, "")
+	return lines
 
 
 func _show_kite() -> void:
@@ -386,6 +400,9 @@ func _build_planning() -> void:
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.focus_mode = Control.FOCUS_NONE
 		box.text = "%s  %.1f kg%s" % [entry["name"], CargoPlan.item_mass(entry["id"]), "  (required)" if entry.get("required", false) else ""]
+		var note := CrewRequests.planning_note(str(entry["id"]))
+		if note:
+			box.text += "  ·  " + note
 		box.button_pressed = _manifest[entry["id"]]
 		box.toggled.connect(func(on: bool) -> void: set_item(str(entry["id"]), on))
 		grid.add_child(box)

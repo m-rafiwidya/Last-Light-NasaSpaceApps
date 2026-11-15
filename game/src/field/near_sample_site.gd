@@ -107,6 +107,7 @@ func _cue(rover: Robot) -> void:
 	line.subtitle = "Near sample site. Stop by the patch and press %s to take a sample." % InputBindings.action_text(&"interact_use", "E") \
 		if key == "ready" else "Near sample site (optional). The cargo mount carries one part: bring sample container S-1 to take a sample here."
 	line.min_duration = 5.0
+	line.repeat_id = "kite_near_sample_" + key
 	DialogServer.play_dialog(line)
 
 

@@ -71,5 +71,17 @@
   "mira_m3_end": {
     "speaker": "Mira",
     "text": "Kite recovered, IRIS online, archive received. I'm closing the field report. Good work out there."
+  },
+  "mira_alert_low_battery": {
+    "speaker": "Mira",
+    "text": "Kite's charge is close to what it needs to get home. Turn back soon."
+  },
+  "mira_alert_cold": {
+    "speaker": "Mira",
+    "text": "Kite's in shade without its thermal kit. Get it back into sunlight before the electronics shut down."
+  },
+  "mira_alert_recovery": {
+    "speaker": "Mira",
+    "text": "Emergency recovery under way. Kite will be back on the pad shortly."
   }
 }

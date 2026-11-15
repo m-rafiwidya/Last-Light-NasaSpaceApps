@@ -199,6 +199,8 @@ func _run() -> void:
 	rover.linear_velocity = Vector3.ZERO
 	await _ticks(2.0)
 	_check("[dock] back on the pad: m2.kite_docked", CS.is_objective_done("m2.kite_docked"), CS.current_objective())
+	var docked_at: float = float(CS.mission_stats("m2").get("dock_battery", -1.0))
+	_check("[dock] the charge on docking is recorded for Mira's request", docked_at > 0.0 and docked_at <= 1.0, str(docked_at))
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.3)
 	console.select_section(console.Section.DOWNLINK)
