@@ -34,7 +34,7 @@ Every key can be rebound in Settings > Controls.
 - **Forecast, then consequence:** the console forecasts each route's energy against Kite's range before
   you drive. In Mission 3 the default build fails both routes, and different builds succeed for
   different reasons.
-- **Verified:** 12 automated drive tests run every loadout down both routes with both cargo options
+- **Verified:** 16 automated drive tests run every loadout down both routes with both cargo options
   (`game/tests/test_m3_routes.gd`).
 
 ## Built on NASA data
