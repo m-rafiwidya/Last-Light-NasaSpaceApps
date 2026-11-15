@@ -77,8 +77,8 @@ func _run() -> void:
 		var bad: Array = requests.filter(_invalid)
 		_check("[data] %s: one request each from Hana and Mira, all valid" % mission, speakers == ["Hana", "Mira"] and bad.is_empty(),
 			"%s, bad %s" % [speakers, bad])
-	_check("[data] the turret's planning note names M3", CR.planning_note("thermal_turret").contains("M3")
-		and not CP.item("thermal_turret").is_empty())
+	_check("[data] the thermal turret isn't ordered (one is on the rack) and has no planning note",
+		CR.planning_note("thermal_turret") == "" and CP.item("thermal_turret").is_empty())
 
 	# 2. Conditions
 	CS.reset()

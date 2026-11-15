@@ -88,11 +88,12 @@ func _run() -> void:
 	# 1. Plan
 	_check("[plan] masses come from the part scenes", is_equal_approx(CargoPlan.item_mass("radio_module"), 12.0)
 		and is_equal_approx(CargoPlan.item_mass("grip_wheels"), 20.0) and is_equal_approx(CargoPlan.item_mass("thermal_kit"), 1.5)
-		and is_equal_approx(CargoPlan.item_mass("sampling_kit"), 1.4) and is_equal_approx(CargoPlan.item_mass("thermal_turret"), 5.3))
+		and is_equal_approx(CargoPlan.item_mass("sampling_kit"), 1.4)
+		and CargoPlan.item("thermal_turret").is_empty())
 	_check("[plan] the Courier can't fit the grip wheels", CargoPlan.validate("courier", ["radio_module", "grip_wheels"]).begins_with("Over"),
 		CargoPlan.validate("courier", ["radio_module", "grip_wheels"]))
 	_check("[plan] the Courier fits all the light kit", CargoPlan.validate("courier",
-		["radio_module", "thermal_kit", "sampling_kit", "thermal_turret"]) == "")
+		["radio_module", "thermal_kit", "sampling_kit"]) == "")
 	_check("[plan] the module is required", CargoPlan.validate("courier", ["thermal_kit"]) != "")
 	_check("[plan] Courier: M3 in daylight; Freighter: near nightfall", not CargoPlan.is_late("courier") and CargoPlan.is_late("freighter"))
 	_check("[plan] a late Freighter needs the thermal kit", CargoPlan.validate("freighter", ["radio_module", "grip_wheels"]) != ""
@@ -116,7 +117,7 @@ func _run() -> void:
 
 	# 2. Console
 	var stock: Dictionary = _stock(workshop)
-	_check("[stock] before the order: no grip wheels, module, turret or kits", not stock.has("wheel_high_grip")
+	_check("[stock] before the order: no grip wheels, module or kits", not stock.has("wheel_high_grip")
 		and not stock.has("radio_module") and not stock.has("thermal_cover") and not stock.has("sample_scoop"), str(stock))
 	console.select_section(console.Section.PLANNING)
 	_check("[console] Planning is closed before m1 is complete", not console.planning_open()
@@ -144,8 +145,8 @@ func _run() -> void:
 	_check("[flight] Confirm starts the flight", console.flying() and _action().disabled
 		and not CS.is_objective_done("m2.cargo_ordered"))
 	_check("[flight] no skip button in the flight sequence", console._planning.find_children("*", "Button", true, false).all(func(b: Button) -> bool: return b.text != "SKIP FLIGHT"))
-	console.set_item("thermal_turret", true)
-	_check("[flight] the manifest is locked in flight", not console.manifest_ids().has("thermal_turret"))
+	console.set_item("grip_wheels", true)
+	_check("[flight] the manifest is locked in flight", not console.manifest_ids().has("grip_wheels"))
 	await _ticks(0.5)
 	console.skip_flight()
 	await physics_frame
@@ -159,9 +160,9 @@ func _run() -> void:
 	_check("[delivery] a second delivery is refused", not CargoPlan.deliver("courier", ["radio_module"]))
 	await physics_frame
 	stock = _stock(workshop)
-	_check("[stock] the order fills the bench; the module goes to the crate, not the rack", stock.get("thermal_cover") == 1
+	_check("[stock] the order fills the bench; the module goes to the crate; the thermal turret is always on the rack", stock.get("thermal_cover") == 1
 		and stock.get("thermal_heater") == 1 and stock.get("sample_scoop") == 1 and not stock.has("radio_module")
-		and not stock.has("wheel_high_grip") and not stock.has("arm_tool_thermal"), str(stock))
+		and not stock.has("wheel_high_grip") and stock.get("arm_tool_thermal") == 1, str(stock))
 	_check("[crate] crate_parts lists the module", CargoPlan.crate_parts() == PackedStringArray(["res://src/robot/socket/radio_module_part.tscn"]))
 	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(SI.slot_path("slot_1")))
 	_check("[save] the delivery autosaved", saved is Dictionary and saved["campaign"]["items"].has("cargo.thermal_kit")
@@ -195,7 +196,8 @@ func _run() -> void:
 	console.select_section(console.Section.MISSION)
 	var forecast: String = console.get_node("%Description").text
 	_check("[forecast] the m3 Mission tab shows the route forecast", forecast.contains("ROUTE FORECAST")
-		and not forecast.contains("near nightfall") and forecast.contains("no thermal kit needed"))
+		and not forecast.contains("near nightfall") and not forecast.contains("thermal cover and heater")
+		and forecast.contains("high-grip wheels"), forecast)
 	_check("[forecast] it names both routes", forecast.contains("Short route (through Head crater)") and forecast.contains("Long route (north loop round Head)"))
 	CS.remove_item("cargo.service.courier")
 	CS.add_item("cargo.service.freighter")
@@ -230,8 +232,8 @@ func _run() -> void:
 		"missions_done": ["m1"], "flags": [], "items": {}})
 	workshop.account_rack()
 	console.select_section(console.Section.PLANNING)
-	_order("freighter", ["radio_module", "grip_wheels", "thermal_kit", "sampling_kit", "thermal_turret"])
-	_check("[freighter] everything is over its limit", _action().disabled and console.confirm_blocked().begins_with("Over"))
+	_order("freighter", ["radio_module", "grip_wheels", "thermal_kit", "sampling_kit"])
+	_check("[freighter] everything fits", not _action().disabled, console.confirm_blocked())
 	_order("freighter", ["radio_module", "grip_wheels", "sampling_kit"])
 	_check("[freighter] without the thermal kit: Confirm disabled", _action().disabled
 		and console.confirm_blocked().contains("nightfall"), console.confirm_blocked())

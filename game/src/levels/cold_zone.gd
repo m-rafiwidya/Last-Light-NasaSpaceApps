@@ -14,6 +14,12 @@ extends Marker3D
 @export var day_only: bool = false
 @export var route_name: String = ""
 @export var dtm_shade: bool = false
+## Routes it lies on ("short", "long"), for the forecast
+@export var routes: PackedStringArray = []
+## Seconds in it without the thermal kit before the cold shutdown
+@export var shutdown_s: float = 20.0
+## Not from the DTM shade (SCIENCE_AND_DATA.md says why)
+@export var simulated: bool = false
 @export var terrain_path: NodePath = ^"../../Terrain"
 @export var sky_path: NodePath = ^"../../WorldEnvironment"
 
@@ -23,6 +29,7 @@ const MARCH_STEP: float = 1.0
 var _mask := PackedByteArray()
 var _mask_sun := Vector3.ZERO
 var _cells: int = 0
+var _shade_for: Dictionary = {}
 
 
 func _ready() -> void:
@@ -30,8 +37,23 @@ func _ready() -> void:
 
 
 func is_active() -> bool:
-	var late: bool = CargoPlan.m3_near_nightfall()
+	return is_active_for(CargoPlan.m3_near_nightfall())
+
+
+func is_active_for(late: bool) -> bool:
 	return not (night_only and not late) and not (day_only and late)
+
+
+## Cold on the M3 an order by `service_id` brings: active then and, from the DTM, shaded under its sun
+func is_cold_for(service_id: String) -> bool:
+	if not is_active_for(CargoPlan.is_late(service_id)):
+		return false
+	if not dtm_shade:
+		return true
+	if not _shade_for.has(service_id):
+		var sun: Vector2 = CargoPlan.sun_on_day(CargoPlan.m3_day(service_id))
+		_shade_for[service_id] = _build_mask(LunarSky.sky_direction(sun.x, sun.y)).count(1) > 0
+	return _shade_for[service_id]
 
 
 func contains(point: Vector3) -> bool:
@@ -62,18 +84,24 @@ func _refresh_mask() -> void:
 	if not _mask.is_empty() and sun.is_equal_approx(_mask_sun):
 		return
 	_mask_sun = sun
-	var terrain: MoonTerrain = get_node(terrain_path)
 	_cells = int(2.0 * radius / POST) + 1
-	_mask.resize(_cells * _cells)
-	_mask.fill(0)
+	_mask = _build_mask(sun)
+
+
+func _build_mask(sun: Vector3) -> PackedByteArray:
+	var terrain: MoonTerrain = get_node(terrain_path)
+	var cells: int = int(2.0 * radius / POST) + 1
+	var mask := PackedByteArray()
+	mask.resize(cells * cells)
+	mask.fill(0)
 	var flat := Vector2(sun.x, sun.z)
 	if flat.length() < 0.001:
-		return
+		return mask
 	var rise: float = sun.y / flat.length()
 	flat = flat.normalized()
 	var top: float = _highest(terrain)
-	for i in _cells:
-		for j in _cells:
+	for i in cells:
+		for j in cells:
 			var x: float = global_position.x - radius + j * POST
 			var z: float = global_position.z - radius + i * POST
 			if Vector2(x - global_position.x, z - global_position.z).length() > radius:
@@ -82,9 +110,10 @@ func _refresh_mask() -> void:
 			var s: float = MARCH_STEP
 			while ground + s * rise < top:
 				if terrain.height_at(x + flat.x * s, z + flat.y * s) > ground + s * rise:
-					_mask[i * _cells + j] = 1
+					mask[i * cells + j] = 1
 					break
 				s += MARCH_STEP
+	return mask
 
 
 static var _top: float = NAN

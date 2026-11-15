@@ -5,7 +5,8 @@ class_name MissionReport
 ## Sections are {"title", "why", "body"} for MissionConsole.report_text.
 
 const ROUTES: Dictionary = {"short": "Short route through Head crater", "long": "Long route round Head"}
-const CAUSES: Dictionary = {"battery": "battery ran flat", "cold": "electronics got too cold", "stuck": "Kite was stuck"}
+const CAUSES: Dictionary = {"battery": "battery ran flat", "cold": "electronics got too cold", "stuck": "Kite was stuck",
+	"slip": "Kite slipped on loose ground"}
 const COUNTS: Array[String] = ["No", "One", "Two", "Three", "Four", "Five"]
 
 
@@ -130,7 +131,36 @@ static func _assistance_why(stats: Dictionary) -> String:
 	var recoveries: Array = stats.get("recoveries", [])
 	if recoveries.is_empty():
 		return "No emergency recoveries: Kite came home on its own."
-	var first: Dictionary = recoveries[0]
 	var count: String = COUNTS[recoveries.size()] if recoveries.size() < COUNTS.size() else str(recoveries.size())
-	return "%s emergency recover%s: %s %d m from the pad." % [count, "y" if recoveries.size() == 1 else "ies",
-		CAUSES.get(first.get("cause", ""), "recovered"), roundi(float(first.get("distance_m", 0.0)))]
+	var lines: PackedStringArray = ["ASSISTANCE USED: %s emergency recover%s, +%d min mission time." % [count.to_lower(),
+		"y" if recoveries.size() == 1 else "ies", roundi(float(stats.get("assistance_min", 0.0)))]]
+	for entry in recoveries:
+		lines.append(why_line(entry))
+	return "\n".join(lines)
+
+
+## What went wrong and what to change, for one recovery record (MissionDirector._start_recovery)
+static func why_line(entry: Dictionary) -> String:
+	var metres: int = roundi(float(entry.get("distance_m", 0.0)))
+	var leg: String = "on the way back" if entry.get("leg", "") == "back" else "on the way out"
+	match entry.get("cause", ""):
+		"slip":
+			return "Slipped on the %s %s with standard wheels: fit the high-grip wheels or take the long route." % [
+				entry.get("zone", "loose ground"), leg]
+		"cold":
+			return "Cold shutdown in %s's shade %s, %d m from the pad, without the thermal cover and heater: fit both, or take a sunlit route." % [
+				entry.get("zone", "the crater"), leg, metres]
+		"battery":
+			var wh: float = float(entry.get("battery_wh", 0.0))
+			var used: float = float(entry.get("used_wh", 0.0))
+			var route: String = str(entry.get("route", ""))
+			var line := "Battery flat %d m from the pad %s" % [metres, leg]
+			if used > 0.0:
+				line += ", after %.1f Wh used this run" % used
+			if wh > 0.0 and route in ROUTES:
+				return "%s: the %d Wh battery can't cover the %s route. Fit the standard battery or carry less." % [
+					line, roundi(wh), route]
+			return "%s: fit a bigger battery or turn back sooner (watch the return estimate)." % line
+		"stuck":
+			return "Kite was stuck %d m from the pad %s: F rights it; back out of rocks before calling a recovery." % [metres, leg]
+	return "%s %d m from the pad." % [CAUSES.get(entry.get("cause", ""), "Recovered").capitalize(), metres]

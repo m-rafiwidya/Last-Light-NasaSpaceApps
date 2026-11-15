@@ -84,7 +84,5 @@
 			]
 		}
 	},
-	"planning_notes": {
-		"thermal_turret": "Hana: needed for M3 ground temperatures"
-	}
+	"planning_notes": {}
 }

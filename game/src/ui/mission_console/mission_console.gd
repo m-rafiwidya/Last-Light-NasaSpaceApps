@@ -243,6 +243,11 @@ func _show_kite() -> void:
 		if socket.part:
 			parts.append(socket.part.get_display_name())
 	rows.append(["Fitted", ", ".join(parts) if parts else "Nothing"])
+	var range_line := range_text(rover)
+	if range_line:
+		rows.append(["Range", range_line])
+	if director and director.left_parts and director.left_parts.has_parts():
+		rows.append(["Left out", "[color=%s]Cargo was left where Kite was recovered: drive there and fetch it[/color]" % _hex(&"warn")])
 	_set_text("Kite", _table(rows))
 
 
@@ -496,11 +501,16 @@ func _card_lines() -> PackedStringArray:
 			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
 		if CargoPlan.is_late(id):
-			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall is in shade on the short route, so the thermal kit is needed."
+			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall and the north loop are in shade, so the thermal kit is needed on either route."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
 		else:
 			lines.append("    Day %d: M3 in high sun (~%d° up): no shade on either route, no thermal kit needed."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day))])
+	lines.append("    The short route's rim climb is loose ground: only high-grip wheels make it. Either route needs about %d Wh of battery there and back."
+		% roundi(minf(RouteMarkers.energy_wh("short"), RouteMarkers.energy_wh("long"))))
+	var range_line := range_text(_director().rover if _director() else null)
+	if range_line:
+		lines.append("    " + range_line)
 	var problem := confirm_blocked()
 	lines.append("")
 	lines.append("[color=%s]%s[/color]" % [_hex(&"warn"), problem] if problem else "[color=%s][b]Manifest valid.[/b][/color]" % _hex(&"text"))
@@ -543,23 +553,94 @@ func route_forecast() -> PackedStringArray:
 	var day: float = CargoPlan.m3_day(id)
 	var late: bool = CargoPlan.is_late(id)
 	var director := _director()
-	var kit: String = "not delivered"
-	if CargoPlan.is_ordered("thermal_kit"):
-		kit = "fitted" if director and director.rover and director.thermal_kit_fitted() else "delivered, not fitted"
-	var grip: String = "delivered" if CargoPlan.is_ordered("grip_wheels") else "not delivered"
-	var lines: PackedStringArray = ["[b]ROUTE FORECAST[/b]  M3 on lunar day %.1f, sun ~%d° up%s" % [day,
+	var rover: Robot = director.rover if director else null
+	var lines: PackedStringArray = ["[b]ROUTE FORECAST[/b]  M3 on lunar day %.1f, sun ~%d° up%s. Kite as fitted now:" % [day,
 		roundi(CargoPlan.sun_elevation(day)), ", near nightfall" if late else ""]]
-	lines.append("%s (orange flags, about %d m there and back): a boulder field, then down Head's west wall and round its north side, up to the far rim. High-grip wheels help in the boulders (%s)."
-		% [RouteMarkers.TITLES["short"], _route_metres("short"), grip])
-	if late:
-		lines.append("    Near nightfall Head's west wall is in shade on the way down: thermal kit needed (%s)." % kit)
-	else:
-		lines.append("    High sun: no shade in the crater, no thermal kit needed.")
-	lines.append("%s (blue flags, about %d m there and back): gentler and longer, sunlit all the way. No thermal kit needed."
-		% [RouteMarkers.TITLES["long"], _route_metres("long")])
-	lines.append("Without cover and heater fitted, Kite shuts down after %d s in cold shade and is recovered."
-		% roundi(MissionDirector.COLD_LIMIT))
+	for route in RouteMarkers.TITLES:
+		var needs: Array = route_needs(route, id)
+		var missing: PackedStringArray = []
+		lines.append("[b]%s[/b] (about %d m there and back)" % [RouteMarkers.TITLES[route], _route_metres(route)])
+		for need in needs:
+			var have: bool = _has_need(need, rover)
+			if not have:
+				missing.append(need["part"])
+			lines.append("    %s: needs %s  [color=%s]%s[/color]" % [need["hazard"], need["part"],
+				_hex(&"text" if have else &"warn"), "OK" if have else _need_status(need)])
+		if missing.is_empty():
+			lines.append("    [b]Ready[/b] for this route.")
+		else:
+			lines.append("    [color=%s]Not ready: %s.[/color]" % [_hex(&"warn"), ", ".join(missing)])
+	var range_line := range_text(rover)
+	if range_line:
+		lines.append(range_line)
+	lines.append("[color=%s]Loose ground and the north-loop nightfall band are simulated; Head crater's shade is from the DTM.[/color]" % _hex(&"dim"))
 	return lines
+
+
+## What a route asks of Kite on the M3 an order by `service_id` brings: [{hazard, part, kind, ...}]
+func route_needs(route: String, service_id: String) -> Array:
+	var needs: Array = []
+	var grip_needed: bool = false
+	for zone in get_tree().get_nodes_in_group(&"loose_ground_zone"):
+		if zone is LooseGroundZone and route in zone.routes:
+			grip_needed = true
+			needs.append({"hazard": zone.label.capitalize(), "part": "high-grip wheels", "kind": "grip"})
+	var cold: PackedStringArray = []
+	for zone in get_tree().get_nodes_in_group(&"cold_zone"):
+		if zone is ColdZone and route in zone.routes and zone.is_cold_for(service_id):
+			cold.append(zone.route_name)
+	if cold:
+		needs.append({"hazard": "Cold shade (%s)" % ", ".join(cold), "part": "thermal cover and heater", "kind": "thermal"})
+	var wh: float = RouteMarkers.energy_wh(route, grip_needed)
+	var metres: float = _route_metres(route) * RouteMarkers.SAFETY_MARGIN
+	var rover: Robot = _director().rover if _director() else null
+	var part: String = "a range of %d m" % roundi(metres) if _has_range(rover) else "about %d Wh" % roundi(wh)
+	needs.append({"hazard": "Distance", "part": part, "kind": "energy", "wh": wh, "metres": metres})
+	return needs
+
+
+func _has_range(rover: Robot) -> bool:
+	return rover != null and rover.has_method("range_estimate")
+
+
+func _has_need(need: Dictionary, rover: Robot) -> bool:
+	var director := _director()
+	if rover == null or director == null:
+		return false
+	match need["kind"]:
+		"grip":
+			return director.has_part("wheel_high_grip")
+		"thermal":
+			return director.thermal_kit_fitted()
+		"energy":
+			if _has_range(rover):
+				return float(rover.call("range_estimate")) >= float(need["metres"])
+			return rover.battery != null and rover.battery.capacity >= float(need["wh"])
+	return true
+
+
+func _need_status(need: Dictionary) -> String:
+	match need["kind"]:
+		"grip":
+			return "standard wheels fitted" if CargoPlan.is_ordered("grip_wheels") else "standard wheels fitted, grip wheels not delivered"
+		"thermal":
+			return "not fitted" if CargoPlan.is_ordered("thermal_kit") else "not delivered"
+		"energy":
+			var rover: Robot = _director().rover if _director() else null
+			if _has_range(rover):
+				return "range ~%d m" % roundi(float(rover.call("range_estimate")))
+			return "battery %d Wh" % roundi(rover.battery.capacity) if rover and rover.battery else "no battery"
+	return "missing"
+
+
+## "Round trip ~978 m (short), ~1160 m (long); range ~610 m", or "" until the rover offers range_estimate() (G1)
+func range_text(rover: Robot) -> String:
+	if rover == null or not rover.has_method("range_estimate"):
+		return ""
+	var trips: PackedStringArray = []
+	for route in RouteMarkers.TITLES:
+		trips.append("~%d m %s" % [_route_metres(route), route])
+	return "Round trip %s; range ~%d m." % [", ".join(trips), roundi(float(rover.call("range_estimate")) / 10.0) * 10]
 
 
 func _route_metres(id: String) -> int:
