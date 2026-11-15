@@ -3,6 +3,8 @@
 A mission design game on real lunar terrain, made for the NASA Space Apps Challenge 2026, challenge
 **Space Mission Design Game**.
 
+![The outpost at the Apollo 12 site](tools/previews/workshop/outside.jpg)
+
 You are an engineer at a small outpost at the Apollo 12 landing site in 2058, with one modular rover,
 Kite. In three missions you plan, configure Kite's parts, check the console's forecast, drive on
 terrain built from NASA elevation data, and read a report on why the run worked or failed. A bad plan
@@ -10,7 +12,9 @@ strands the rover; failure is information, not a restart.
 
 ## Play it
 
-- **Build:** download the Windows or macOS build from the project's Space Apps page.
+- **Download:** grab the [latest release](https://github.com/m-rafiwidya/Last-Light-NasaSpaceApps/releases/latest)
+  for Windows, macOS or Linux.
+- **Trailer:** [watch on YouTube](https://www.youtube.com/watch?v=0AvxgYLeQLk)
 - **From source:** open `game/project.godot` in Godot 4.7 and press Play.
   Architecture and details: [game/README.md](game/README.md).
 
@@ -20,6 +24,14 @@ strands the rover; failure is information, not a restart.
 | | Arm: R, then click to grab and release |
 
 Every key can be rebound in Settings > Controls.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Workshop bay](tools/previews/workshop/bay_from_door.jpg) | ![Parts rack](tools/previews/workshop/rack_from_walkway.jpg) |
+| ![Operator console](tools/previews/workshop/console_from_operator.jpg) | ![Rover driving on the Moon](tools/previews/dust/moon_chase.jpg) |
+| ![Rover heading home](tools/previews/workshop/chase_coming_home.jpg) | ![The IRIS research station](tools/previews/iris/iris_from_gate.jpg) |
 
 ## What makes it mission design
 
