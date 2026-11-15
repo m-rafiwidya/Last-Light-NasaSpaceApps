@@ -136,6 +136,9 @@ func _switch(new_view: View) -> void:
 
 
 func _on_zoom(steps: float) -> void:
+	var claw := robot.get_node_or_null("ManualClaw") as ManualClaw
+	if claw and claw.active:
+		return                                   # the wheel sets the claw's height
 	if view == View.MAST:
 		mast_fov_target = clampf(mast_fov_target * pow(MAST_ZOOM_STEP, steps), MAST_FOV_MIN, mast_fov_widest)
 	else:

@@ -63,6 +63,11 @@ const ANTENNA_TILT_SPEED: float = deg_to_rad(90.0)
 # Stowed lifts the turret 57 mm over a loaded cargo mount (ROVER_KIT.md 9); the latch pose puts the
 # turret hub's end (pivot_latch) on a cargo part's top face on the mount
 const ARM_STOWED: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 80.0, "J4": 100.0, "J5": 0.0}
+# Stowed over tall cargo (the delivery crate): the elbow folds less, the turret tilts 20 degrees, so
+# the hub end sits about 0.80 m up, clear of a 0.24 m crate on the cargo mount (the normal stow
+# clears only the cartridge). Used while the cargo mount holds something taller than TALL_CARGO.
+const ARM_STOWED_HIGH: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 50.0, "J4": 110.0, "J5": 0.0}
+const TALL_CARGO: float = 0.15
 const ARM_LATCH: Dictionary = {"J1": 0.0, "J2": 90.0, "J3": 90.0, "J4": 90.0, "J5": 0.0}
 # Deployed: upper arm forward, forearm angled down, turret level with the drill down
 const ARM_DEPLOYED: Dictionary = {"J1": 0.0, "J2": 0.0, "J3": -45.0, "J4": 45.0, "J5": 0.0}
@@ -200,6 +205,14 @@ func cargo_loaded() -> bool:
 
 
 ## The manual controls (R, 1-5, Z / X) are off while cargo is loaded or a script poses the arm
+## The stowed pose for what the cargo mount holds: ARM_STOWED_HIGH over tall cargo, else ARM_STOWED
+func stow_pose() -> Dictionary:
+	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
+	if socket and socket.part and ClawPick.top_of(socket.part).y - socket.global_position.y > TALL_CARGO:
+		return ARM_STOWED_HIGH
+	return ARM_STOWED
+
+
 func arm_manual_locked() -> bool:
 	return arm_scripted or cargo_loaded()
 
@@ -263,10 +276,11 @@ func _update_arm(delta: float) -> void:
 
 	if arm_scripted:
 		return
-	# Cargo loaded: the arm goes (or stays) stowed, out of the cartridge's way
-	if cargo_loaded() and (arm_deployed or (arm_joints != ARM_STOWED and arm_target.is_empty())):
+	# Cargo loaded: the arm goes (or stays) stowed, out of the cargo's way
+	var stow: Dictionary = stow_pose()
+	if cargo_loaded() and (arm_deployed or (arm_joints != stow and arm_target.is_empty())):
 		arm_deployed = false
-		arm_target = ARM_STOWED.duplicate()
+		arm_target = stow.duplicate()
 	var next: Dictionary = arm_joints.duplicate()
 	var active: bool = arm_deployed or not arm_target.is_empty()
 	var clearance_now: float = arm_ground_clearance() if active else INF
@@ -314,6 +328,16 @@ func _arm_tool() -> HotswapPart:
 ## them: rays down from each mesh's ARM_GROUND_SAMPLES lowest vertices. Negative = inside the
 ## terrain; INF with no terrain within 2 m below. With `lookahead` (s) each point is also
 ## checked where the rover's motion will carry it by then.
+# True for a mesh of a part the arm carries on its latch (not the tool's own): it may sit on the ground
+func _carried(mesh: Node, tool: Node) -> bool:
+	var node: Node = mesh.get_parent()
+	while node and node != tool and node != robot:
+		if node is HotswapPart:
+			return true
+		node = node.get_parent()
+	return false
+
+
 func arm_ground_clearance(lookahead: float = 0.0) -> float:
 	var meshes: Array = []
 	for joint in ["J3", "J4"]:
@@ -327,6 +351,9 @@ func arm_ground_clearance(lookahead: float = 0.0) -> float:
 	var lowest: float = INF
 	var centre: Vector3 = robot.global_transform * robot.center_of_mass
 	for mesh in meshes:
+		# Hidden meshes don't count: the tool socket's hidden Base marker sat 0.2 m below the grip
+		if not (mesh as MeshInstance3D).is_visible_in_tree() or _carried(mesh, tool):
+			continue
 		var to_world: Transform3D = (mesh as MeshInstance3D).global_transform
 		var points: Array = _vertices(mesh).map(func(v: Vector3) -> Vector3: return to_world * v)
 		points.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.y < b.y)
@@ -358,7 +385,9 @@ func _vertices(mesh: MeshInstance3D) -> Array:
 ## X, the yaw (Blender Z) to Godot Y. J5 turns the tool turret, mounted in the arm tool socket.
 func apply_arm_pose() -> void:
 	for joint in _arm_nodes:
-		var angle: float = clampf(arm_joints[joint], ARM_RANGES[joint].x, ARM_RANGES[joint].y)
+		# A script (the manual claw) may lean the shoulder back past vertical to reach the tray
+		var high: float = ManualClaw.J2_MAX if joint == "J2" and arm_scripted else ARM_RANGES[joint].y
+		var angle: float = clampf(arm_joints[joint], ARM_RANGES[joint].x, high)
 		var node: Node3D = _arm_nodes[joint]
 		if joint == "J1":
 			node.rotation = Vector3(0.0, deg_to_rad(angle), 0.0)
