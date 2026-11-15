@@ -1,6 +1,60 @@
 # LAST LIGHT (Tandborste)
 
-The game is in `game/` (Godot 4.7). How it works and how to run it: [game/README.md](game/README.md).
+A mission design game on real lunar terrain, made for the NASA Space Apps Challenge 2026, challenge
+**Space Mission Design Game**.
+
+You are an engineer at a small outpost at the Apollo 12 landing site in 2058, with one modular rover,
+Kite. In three missions you plan, configure Kite's parts, check the console's forecast, drive on
+terrain built from NASA elevation data, and read a report on why the run worked or failed. A bad plan
+strands the rover; failure is information, not a restart.
+
+## Play it
+
+- **Build:** download the Windows or macOS build from the project's Space Apps page.
+- **From source:** open `game/project.godot` in Godot 4.7 and press Play.
+  Architecture and details: [game/README.md](game/README.md).
+
+| On foot | Kite (the rover) |
+|---|---|
+| Move: WASD · Look: mouse · Interact: E | Drive: WASD · Camera: C · Reset upright: F · Lights: L |
+| | Arm: R, then click to grab and release |
+
+Every key can be rebound in Settings > Controls.
+
+## What makes it mission design
+
+- **Trade-offs:** every part changes mass, energy, grip or heat. Two batteries (40 or 100 Wh), standard or
+  grip wheels, a thermal kit, a sampler; two cargo landers (Courier: 30 kg in daylight, Freighter: 40 kg
+  near dusk).
+- **Forecast, then consequence:** the console forecasts each route's energy against Kite's range before
+  you drive. In Mission 3 the default build fails both routes, and different builds succeed for
+  different reasons.
+- **Verified:** 12 automated drive tests run every loadout down both routes with both cargo options
+  (`game/tests/test_m3_routes.gd`).
+
+## Built on NASA data
+
+Terrain from the LROC NAC elevation model of the Apollo 12 site (2 m sampling), lunar gravity
+1.624 m/s² from NASA's Moon by the Numbers, and the challenge's resources (the Design and Develop Science
+Missions webinar, the Mission Design Lab, JPL's Concept Maturity Levels). Anything simulated is labelled
+in the game. Sources and limits: [game/docs/SCIENCE_AND_DATA.md](game/docs/SCIENCE_AND_DATA.md) and the
+in-game Data Sources screen.
+
+## Team
+
+Fahd Muhammad Zahid (Institut Teknologi Bandung), Muhammad Rafi Widyatama (Universiti Malaya) and
+Faiq Haidar Dzikrullah Satriawan (Monash University). The early base code was written by a former
+teammate who withdrew before judging; it is used with his permission ([CREDITS.md](CREDITS.md)).
+
+## How it was made
+
+- **Timeline:** development began on 28 September 2026 and continued through the event weekend
+  (14 to 15 November), when we added the hand-controlled claw and storage tray, the astronaut rescue
+  with suit oxygen, saving, the voiced dialogue, the required sample, playtest fixes and the trailer.
+  The full history is in this repository.
+- **AI tools:** Claude (Anthropic), through Claude Code, for code, the Blender scripts that build the
+  models, and music and sound scripts; ElevenLabs for the voices. The mission design, balance, story
+  and data research are the team's. Details: [CREDITS.md](CREDITS.md).
 
 ## Docs
 
