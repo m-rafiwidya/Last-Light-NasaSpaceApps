@@ -8,7 +8,7 @@
 mass = 3.0
 script = ExtResource("2_script")
 catalog_id = "battery_light"
-capacity = 60.0
+capacity = 40.0
 part_type = 2
 tint_material = &"rover_dark"
 tint = Color(0.18, 0.42, 0.62, 1)

@@ -30,7 +30,7 @@ const ENTRIES: Dictionary = {
 	},
 	"battery_light": {
 		"name": "Light battery",
-		"description": "Smaller, lighter pack: 60 Wh at 3 kg, so less range but less to haul.",
+		"description": "Smaller, lighter pack: 40 Wh at 3 kg, so less range but less to haul.",
 		"mounts": "Mounts on the rear of the rover",
 	},
 	"mast_head": {
