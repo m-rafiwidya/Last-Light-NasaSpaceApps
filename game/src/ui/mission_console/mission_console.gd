@@ -190,9 +190,15 @@ func _show_mission() -> void:
 		lines.append(_step(i + 1, title, CampaignState.is_objective_done(objective), objective == current))
 	if CampaignState.is_mission_completed(mission):
 		lines.append("\n[b]Mission complete.[/b]")
-	elif mission == MissionDirector.COLD_MISSION:
-		lines.append("")
-		lines.append_array(route_forecast())
+	else:
+		var checklist := CampaignState.mission_checklist(mission)
+		if not checklist.is_empty():
+			lines.append("")
+			for note in checklist:
+				lines.append("[color=%s]NOTE    %s[/color]" % [_hex(&"muted"), note])
+		if mission == MissionDirector.COLD_MISSION:
+			lines.append("")
+			lines.append_array(route_forecast())
 	_set_text("%s  ·  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
 
 
@@ -247,10 +253,18 @@ func _show_downlink() -> void:
 			rect.custom_minimum_size = Vector2(480.0, 480.0 * rect.texture.get_height() / maxf(rect.texture.get_width(), 1.0))
 			%Attachments.add_child(rect)
 	elif _downlink_ready(mission):
-		_set_text("Downlink", downlink.get("ready", "Ready to send."))
+		_set_text("Downlink", _skip_note(downlink) + downlink.get("ready", "Ready to send."))
 	else:
 		var waiting := CampaignState.current_objective()
-		_set_text("Downlink", "Nothing to send yet. First: %s." % CampaignState.objective_title(waiting))
+		_set_text("Downlink", _skip_note(downlink) + "Nothing to send yet. First: %s." % CampaignState.objective_title(waiting))
+
+
+## The downlink's warning about an optional objective still open, with its blank line ("" for none)
+func _skip_note(downlink: Dictionary) -> String:
+	var note: Variant = downlink.get("skip_note")
+	if not (note is Dictionary) or CampaignState.is_objective_done(str(note.get("objective", ""))):
+		return ""
+	return "[color=%s][b]%s[/b][/color]\n\n" % [_hex(&"warn"), note.get("text", "")]
 
 
 func _update_action() -> void:
