@@ -231,7 +231,7 @@ func _physics_process(delta: float) -> void:
 	if phase == Phase.IDLE:
 		return
 	if not is_instance_valid(part):
-		_set_phase(Phase.STOW, [RoverVisuals.ARM_STOWED])
+		_set_phase(Phase.STOW, [visuals.stow_pose()])
 	elif phase in [Phase.REACH, Phase.DOWN, Phase.UP, Phase.CARRY]:
 		var reason: String = _moved(phase != Phase.UP)
 		if not reason.is_empty():
@@ -257,7 +257,7 @@ func _physics_process(delta: float) -> void:
 			if _move(delta):
 				var socket := _destination
 				_release()
-				_set_phase(Phase.STOW, [RoverVisuals.ARM_STOWED])
+				_set_phase(Phase.STOW, [visuals.stow_pose()])
 				pick_finished.emit(part, socket)
 		Phase.STOW:
 			if _move(delta):
@@ -299,7 +299,7 @@ func _abort(reason: String) -> void:
 	pick_aborted.emit(part, reason)
 	if dropped:
 		_release(false)
-	_set_phase(Phase.STOW, [CargoDelivery.LIFT_POSE, RoverVisuals.ARM_STOWED])
+	_set_phase(Phase.STOW, [CargoDelivery.LIFT_POSE, visuals.stow_pose()])
 
 
 func _finish() -> void:

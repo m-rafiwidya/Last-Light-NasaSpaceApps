@@ -3,7 +3,7 @@ extends SceneTree
 ##   1. Hints: a delivery crate 2 m ahead says to come closer; one in the arm's reach says "In
 ##      position".
 ##   2. Pick: E has the arm pick the crate up; it ends on the cargo mount (the box refuses it), the
-##      arm stowed and free again.
+##      arm stowed high over it (turret clear of the crate) and free again.
 ##   3. Short parts: a sample container on the ground is too low for the turret (hint says so);
 ##      the storage box would be its destination.
 ##   4. Interrupted before the latch: the rover moving stops the pick; nothing is taken.
@@ -65,10 +65,23 @@ func _wait_idle(seconds: float) -> bool:
 
 func _stowed() -> bool:
 	var visuals: Node = rover.get_node("Visuals")
+	var stow: Dictionary = visuals.stow_pose()
 	for j in ["J1", "J2", "J3", "J4"]:
-		if absf(visuals.arm_joints[j] - visuals.ARM_STOWED[j]) > 0.5:
+		if absf(visuals.arm_joints[j] - stow[j]) > 0.5:
 			return false
 	return not visuals.arm_scripted
+
+
+## The world box around a node's visible meshes
+func _aabb(node: Node) -> AABB:
+	var box := AABB()
+	var first := true
+	for mesh: MeshInstance3D in node.find_children("*", "MeshInstance3D", true, false):
+		if mesh.mesh and mesh.is_visible_in_tree():
+			var b: AABB = mesh.global_transform * mesh.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+	return box
 
 
 func _run() -> void:
@@ -120,6 +133,10 @@ func _run() -> void:
 	_check("pick: the crate is on the cargo mount (the box refuses it)", cargo.part == crate and crate.is_mounted()
 		and finished.size() == 1 and finished[0][1] == cargo, str(cargo.part))
 	_check("pick: the arm is stowed and free again", _stowed())
+	var turret: Node = rover.find_child("ArmToolSocket", true, false).part.get_node("Model")
+	_check("pick: over the tall crate the arm stows high, its turret clear of the crate",
+		rover.get_node("Visuals").stow_pose() == rover.get_node("Visuals").ARM_STOWED_HIGH
+		and not _aabb(turret).intersects(_aabb(crate)), "turret %s, crate %s" % [_aabb(turret), _aabb(crate)])
 
 	# 3. Short parts: too low for the turret, but the box would take them
 	var jar: RigidBody3D = (load("res://src/robot/socket/sample_container_part.tscn") as PackedScene).instantiate()
