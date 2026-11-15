@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/robot/socket/hotswap_part.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/field/cargo_crate_part.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://res/models/decor_kit/dc_crate.glb" id="3_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_crate"]
+size = Vector3(0.36, 0.24, 0.24)
+
+[node name="CargoCratePart" instance=ExtResource("1_base")]
+mass = 2.0
+script = ExtResource("2_script")
+part_type = 6
+catalog_id = "cargo_crate"
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+shape = SubResource("BoxShape3D_crate")
+
+[node name="Model" parent="." index="1"]
+mesh = null
+
+[node name="Kit" parent="Model" instance=ExtResource("3_model")]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)

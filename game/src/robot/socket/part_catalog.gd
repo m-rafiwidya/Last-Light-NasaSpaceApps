@@ -83,6 +83,11 @@ const ENTRIES: Dictionary = {
 		"description": "Evan's comparison logger from the far rim, with its stored measurement series. 1.6 kg. Labelled twice.",
 		"mounts": "Rides on the rover's cargo mount, in its cradle",
 	},
+	"cargo_crate": {
+		"name": "Delivery crate",
+		"description": "The resupply flight's crate with your order packed inside. Bring it home and unpack it in the workshop.",
+		"mounts": "Rides on the rover's cargo mount, in its cradle",
+	},
 	"thermal_cover": {
 		"name": "Thermal cover",
 		"description": "Insulating blanket for the electronics bay: slows heat loss in shade. 0.9 kg, no power.",
