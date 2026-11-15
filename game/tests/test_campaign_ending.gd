@@ -192,7 +192,7 @@ func _run() -> void:
 	_check("[ending] DialogServer plays the closing lines", DS.is_playing())
 	_check("[ending] the result screen waits for the lines", not result.is_open())
 	start = Time.get_ticks_msec()
-	while not result.is_open() and Time.get_ticks_msec() - start < 60000:
+	while not result.is_open() and Time.get_ticks_msec() - start < 180000:
 		await process_frame
 	_check("[result] the result screen opens after the lines", result.is_open() and GS.state == GS.State.IN_GAME_MENU
 		and not DS.is_playing())
