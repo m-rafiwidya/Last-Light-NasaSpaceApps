@@ -111,6 +111,23 @@ func _draw_brackets() -> void:
 		marks.draw_polyline(points, INK, BRACKET_WIDTH)
 
 
+## Screen rects the mast view's marks take (the four brackets, REC / MASTCAM, the zoom bar), for
+## the HUD layout test; empty in the other views
+func mark_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if _view != RoverCamera.View.MAST:
+		return rects
+	var pad: float = BRACKET_WIDTH
+	var area := Rect2(Vector2.ONE * BRACKET_INSET, size - Vector2.ONE * 2.0 * BRACKET_INSET)
+	for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		var point: Vector2 = area.position + area.size * corner
+		var inward: Vector2 = Vector2.ONE - 2.0 * corner
+		rects.append(Rect2(point, inward * BRACKET_ARM).abs().grow(pad))
+	rects.append(Rect2(LABEL_POSITION + Vector2(0.0, -FONT_SIZE), Vector2(260.0, FONT_SIZE + 8.0)))
+	rects.append(Rect2((size.x - ZOOM_BAR_WIDTH) / 2.0 - 48.0, ZOOM_BAR_Y - 18.0, ZOOM_BAR_WIDTH + 150.0, 36.0))
+	return rects
+
+
 # W ---|----- T  2.3x: the mast zoom on a log scale from none to the narrowest field of view
 func _draw_zoom_bar(font: Font) -> void:
 	var max_zoom: float = (tan(deg_to_rad(VideoSettings.fov()) / 2.0)

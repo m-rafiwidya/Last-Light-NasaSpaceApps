@@ -32,12 +32,19 @@ const SMOOTHING: float = 28.0
 const VELOCITY_SCALE: float = 8.0
 const VELOCITY_MAX_LENGTH: float = 34.0
 
-const COLOR_GRIP_OK := Color(0.35, 0.92, 0.78)
-const COLOR_GRIP_EDGE := Color(1.0, 0.82, 0.28)
-const COLOR_GRIP_LOST := Color(1.0, 0.3, 0.26)
-const COLOR_GUIDE := Color(1.0, 1.0, 1.0, 0.10)
-const COLOR_TEXT := Color(0.82, 0.88, 0.95, 0.9)
-const COLOR_TEXT_DIM := Color(0.82, 0.88, 0.95, 0.5)
+# Grip used: light greys up to GRIP_EDGE, then towards `warn` as the wheel loses grip
+const GRIP_EDGE: float = 0.8
+const GRIP_LOST: float = 1.1
+
+# v2 tokens, read from the theme in _ready
+var COLOR_GRIP_OK := Color.WHITE
+var COLOR_GRIP_EDGE := Color.WHITE
+var COLOR_GRIP_LOST := Color.WHITE
+var COLOR_GUIDE := Color.WHITE
+var COLOR_TEXT := Color.WHITE
+var COLOR_TEXT_DIM := Color.WHITE
+var COLOR_IDLE := Color.WHITE
+var _font: Font
 
 var _normalized_force: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
 var _trails: Array = [[], [], [], [], [], []]
@@ -67,12 +74,15 @@ func _ready() -> void:
 	GeneralSettings.section.changed.connect(func(_key: String) -> void: visible = GeneralSettings.show_traction())
 	visible = GeneralSettings.show_traction()
 
-	_panel_style = StyleBoxFlat.new()
-	_panel_style.bg_color = Color(0.03, 0.05, 0.08, 0.55)
-	_panel_style.border_color = Color(0.55, 0.8, 1.0, 0.35)
-	_panel_style.set_border_width_all(1)
-	_panel_style.set_corner_radius_all(10)
-	_panel_style.anti_aliasing = true
+	_panel_style = get_theme_stylebox(&"panel", &"HudPanel") as StyleBoxFlat
+	_font = get_theme_font(&"font", &"LabelMono")
+	COLOR_GRIP_OK = get_theme_color(&"text_3", &"UIColor")
+	COLOR_GRIP_EDGE = get_theme_color(&"text", &"UIColor")
+	COLOR_GRIP_LOST = get_theme_color(&"warn", &"UIColor")
+	COLOR_GUIDE = get_theme_color(&"rule_3", &"UIColor")
+	COLOR_TEXT = get_theme_color(&"text_2", &"UIColor")
+	COLOR_TEXT_DIM = get_theme_color(&"muted", &"UIColor")
+	COLOR_IDLE = get_theme_color(&"dim", &"UIColor")
 
 	_chassis_style = StyleBoxFlat.new()
 	_chassis_style.bg_color = Color(1.0, 1.0, 1.0, 0.04)
@@ -140,7 +150,7 @@ func _update_data(delta: float) -> void:
 func _draw() -> void:
 	draw_style_box(_panel_style, Rect2(Vector2.ZERO, size))
 
-	var font: Font = get_theme_default_font()
+	var font: Font = _font
 	draw_string(font, Vector2(14.0, 18.0), "TRACTION", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, COLOR_TEXT)
 	draw_string(font, Vector2(size.x - 14.0 - 120.0, 18.0), "GRIP USED", HORIZONTAL_ALIGNMENT_RIGHT, 120.0, 11, COLOR_TEXT_DIM)
 
@@ -182,7 +192,7 @@ func _draw_chassis(center_x: float) -> void:
 		var center := Vector2(center_x, (top + bottom) / 2.0 + 6.0)
 		var velocity := Vector2(_local_velocity.x, _local_velocity.z) * VELOCITY_SCALE
 		velocity = velocity.limit_length(VELOCITY_MAX_LENGTH)
-		var velocity_color := Color(0.45, 0.75, 1.0)
+		var velocity_color := COLOR_GRIP_EDGE
 		draw_line(center, center + velocity, Color(velocity_color, 0.9), 3.0, true)
 		draw_circle(center + velocity, 3.5, velocity_color)
 		draw_circle(center, 2.0, Color(1.0, 1.0, 1.0, 0.5))
@@ -193,7 +203,7 @@ func _draw_wheel_circle(wheel: int, font: Font) -> void:
 	var contact: bool = _in_contact[wheel]
 	var displayed: Vector2 = _normalized_force[wheel]
 	var utilisation: float = displayed.length()
-	var color: Color = _grip_color(utilisation) if contact else Color(0.6, 0.65, 0.7)
+	var color: Color = _grip_color(utilisation) if contact else COLOR_IDLE
 	var alpha: float = 1.0 if contact else 0.45
 
 	# Backdrop and guides
@@ -252,7 +262,7 @@ func _draw_load_bar(wheel: int, center: Vector2) -> void:
 
 	draw_rect(Rect2(bar_x, top, 4.0, bar_height), Color(1.0, 1.0, 1.0, 0.08))
 	var fill: float = bar_height * ratio
-	draw_rect(Rect2(bar_x, top + bar_height - fill, 4.0, fill), Color(0.45, 0.75, 1.0, 0.85))
+	draw_rect(Rect2(bar_x, top + bar_height - fill, 4.0, fill), Color(COLOR_GRIP_OK, 0.85))
 	var tick_y: float = top + bar_height * 0.5
 	draw_line(Vector2(bar_x - 3.0, tick_y), Vector2(bar_x + 7.0, tick_y), Color(1.0, 1.0, 1.0, 0.5), 1.0)
 
@@ -262,6 +272,6 @@ func _clamp_display(value: Vector2) -> Vector2:
 
 
 func _grip_color(utilisation: float) -> Color:
-	if utilisation < 0.6:
-		return COLOR_GRIP_OK.lerp(COLOR_GRIP_EDGE, utilisation / 0.6)
-	return COLOR_GRIP_EDGE.lerp(COLOR_GRIP_LOST, clampf((utilisation - 0.6) / 0.5, 0.0, 1.0))
+	if utilisation < GRIP_EDGE:
+		return COLOR_GRIP_OK.lerp(COLOR_GRIP_EDGE, utilisation / GRIP_EDGE)
+	return COLOR_GRIP_EDGE.lerp(COLOR_GRIP_LOST, clampf((utilisation - GRIP_EDGE) / (GRIP_LOST - GRIP_EDGE), 0.0, 1.0))

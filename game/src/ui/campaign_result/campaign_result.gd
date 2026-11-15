@@ -2,8 +2,8 @@ class_name CampaignResult
 
 extends UIScreen
 
-const DONE_COLOR: String = "#3d8f4f"
-const SKIPPED_COLOR: String = "#7a7a7a"
+## The campaign's end (Complete.dc.html, centred like Pause): label, title, rule, one-line result,
+## four stats, the missions and optional tasks, the closing radio line, CONTINUE / MAIN MENU.
 
 var fade_tween: Tween = null
 
@@ -11,6 +11,7 @@ var fade_tween: Tween = null
 func _ready() -> void:
 	add_to_group(&"campaign_result")
 	%Window.modulate.a = 0.0
+	%Rule.color = %Window.get_theme_color(&"text", &"UIColor")
 	%Continue.pressed.connect(_on_continue_pressed)
 	%MainMenu.pressed.connect(_on_main_menu_pressed)
 	GameState.state_changed.connect(_on_state_changed)
@@ -45,26 +46,68 @@ func summary() -> Dictionary:
 
 func open() -> void:
 	var data := summary()
-	var lines: PackedStringArray = ["[b]Missions completed  %d / %d[/b]" % [data["missions"].size(), CampaignState.mission_order().size()]]
+	var optional_total: int = data["optional_done"].size() + data["optional_skipped"].size()
+	_set_stats([["%d / %d" % [data["missions"].size(), CampaignState.mission_order().size()], "Missions completed"],
+		["%d / %d" % [data["optional_done"].size(), optional_total], "Optional tasks"],
+		[SaveIndex.format_play_time(data["play_time_sec"]), "Play time"],
+		[str(data["recoveries"]), "Emergency recoveries"]])
+	var lines: PackedStringArray = []
 	for mission in data["missions"]:
-		lines.append("[color=%s]✓  %s  %s[/color]" % [DONE_COLOR, mission.to_upper(), CampaignState.mission_title(mission)])
-	lines.append("\n[b]Optional tasks[/b]")
+		lines.append("[color=%s]%s  ·  %s[/color]" % [_hex(&"text"), mission.to_upper(), CampaignState.mission_title(mission)])
 	for objective in data["optional_done"]:
-		lines.append("[color=%s]✓  %s[/color]" % [DONE_COLOR, _optional_title(objective)])
+		lines.append(_optional_title(objective))
 	for objective in data["optional_skipped"]:
-		lines.append("[color=%s]○  %s  (skipped)[/color]" % [SKIPPED_COLOR, _optional_title(objective)])
-	if data["optional_done"].is_empty() and data["optional_skipped"].is_empty():
-		lines.append("None")
-	lines.append("\n[b]Play time[/b]  %s" % SaveIndex.format_play_time(data["play_time_sec"]))
-	lines.append("[b]Emergency recoveries[/b]  %d" % data["recoveries"])
+		lines.append("[color=%s][s]%s[/s]  (skipped)[/color]" % [_hex(&"dim"), _optional_title(objective)])
 	var ending := CampaignState.mission_ending(CampaignState.last_mission())
-	lines.append("\n[i]%s[/i]" % ending.get("next_assignment", ""))
-	%Title.text = "[b][i]Field assignment complete[/i][/b]"
+	lines.append("\n[color=%s]%s[/color]" % [_hex(&"muted"), ending.get("next_assignment", "")])
 	%Summary.text = "\n".join(lines)
+	var closing: Array = ending.get("lines", [])
+	var last: Dictionary = closing[-1] if not closing.is_empty() else {}
+	%Speaker.text = str(last.get("speaker", "Control")).to_upper()
+	%RadioLine.text = last.get("text", "")
+	%Speaker.get_parent().visible = %RadioLine.text != ""
+	%Result.text = "Every mission is complete." if CampaignState.is_campaign_complete() else "The field assignment is over."
 	hide_caption()
 	show()
 	_fade_to(1.0)
 	%Continue.grab_focus()
+
+
+func _hex(token: StringName) -> String:
+	return "#" + %Window.get_theme_color(token, &"UIColor").to_html(false)
+
+
+## Value over caption, split by thin dividers
+func _set_stats(stats: Array) -> void:
+	for child in %Stats.get_children():
+		child.queue_free()
+	for i in stats.size():
+		var cell := VBoxContainer.new()
+		cell.custom_minimum_size.x = 228.0
+		cell.add_theme_constant_override(&"separation", 10)
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for item in [[stats[i][0], &"LabelStatValue"], [stats[i][1], &"LabelStatCaption"]]:
+			var label := Label.new()
+			label.text = item[0]
+			label.theme_type_variation = item[1]
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			cell.add_child(label)
+		if i > 0:
+			var divider := ColorRect.new()
+			divider.custom_minimum_size.x = 1.0
+			divider.color = %Window.get_theme_color(&"rule_2", &"UIColor")
+			divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			%Stats.add_child(divider)
+		%Stats.add_child(cell)
+
+
+## The stat cells' texts, value then caption, for the tests
+func stat_texts() -> Array:
+	var texts: Array = []
+	for cell in %Stats.get_children():
+		if cell is VBoxContainer:
+			texts.append([cell.get_child(0).text, cell.get_child(1).text])
+	return texts
 
 
 func is_open() -> bool:
@@ -72,7 +115,7 @@ func is_open() -> bool:
 
 
 func show_caption(text: String) -> void:
-	%Caption.text = text
+	%CaptionText.text = text
 	%Caption.visible = true
 	show()
 

@@ -12,6 +12,10 @@ extends Button
 		_apply_size()
 
 
+## Michroma buttons read in capitals (UI_SPEC "Type"): show_text() applies it
+@export var uppercase: bool = true
+
+
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
 	_apply_size()
@@ -21,3 +25,8 @@ func _apply_size() -> void:
 	theme_type_variation = &"SolidButtonSmall" if compact else &"SolidButton"
 	# 48 / 36 px design height x 1.2. The theme's skew assumes this height.
 	custom_minimum_size.y = 43.2 if compact else 57.6
+
+
+## Shows `value` as the label, in capitals when `uppercase`
+func show_text(value: String) -> void:
+	text = value.to_upper() if uppercase else value

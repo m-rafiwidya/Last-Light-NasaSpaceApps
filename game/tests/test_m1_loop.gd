@@ -209,11 +209,11 @@ func _run() -> void:
 	console.select_section(console.Section.MISSION)
 	var mission_text: String = console.get_node("%Description").text
 	_check("console: the Mission section lists the objectives with their state",
-		mission_text.count("✓") == 3 and mission_text.contains("Downlink the inspection"), mission_text)
+		mission_text.count("[s]") == 3 and mission_text.contains("Downlink the inspection"), mission_text)
 	console.select_section(console.Section.DOWNLINK)
 	var action: Button = console.get_node("%Action")
 	_check("console: Send inspection is enabled after the dock", action.visible and not action.disabled
-		and action.text == "Send inspection", action.text)
+		and action.text.nocasecmp_to("Send inspection") == 0, action.text)
 	var completed: Array = []
 	CS.mission_completed.connect(func(id: String) -> void: completed.append(id))
 	console._on_action_pressed()
@@ -222,7 +222,7 @@ func _run() -> void:
 		str(completed))
 	_check("downlink: the report names the failed radio-power module",
 		console.get_node("%Description").text.contains("radio-power module has failed"))
-	_check("console: offers the next mission", action.visible and action.text == "Start next mission: First Signal", action.text)
+	_check("console: offers the next mission", action.visible and action.text.nocasecmp_to("Start next mission: First Signal") == 0, action.text)
 	console._on_action_pressed()
 	await _ticks(0.3)
 	_check("console: the next mission button starts m2", CS.current_mission() == "m2", CS.current_mission())

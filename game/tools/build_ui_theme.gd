@@ -38,6 +38,10 @@ const COLORS: Dictionary = {
 	"moon": Color("C9C4BB"),
 	"mars": Color("C8643A"),
 	"earth": Color("4C8FD6"),
+	# Thin rules on the boards: rgba(236,233,227,.14) header, .12 stat dividers, .10 rows
+	"rule": Color("ECE9E3", 0.14),
+	"rule_2": Color("ECE9E3", 0.12),
+	"rule_3": Color("ECE9E3", 0.10),
 }
 
 var _fonts: Dictionary = {}
@@ -56,6 +60,9 @@ func _init() -> void:
 	_buttons(c)
 	_panels(c)
 	_planet_explorer(c)
+	_console(c)
+	_result(c)
+	_hud(c)
 
 	var err: int = ResourceSaver.save(theme, OUT_PATH)
 	print("saved ", OUT_PATH, " err=", err)
@@ -475,3 +482,163 @@ func _planet_explorer(c: Dictionary) -> void:
 	_margins(tab, 4, 10)
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		theme.set_stylebox(state, "PlanetTab", tab)
+
+
+func _rich(variation: String, size: float, color: Color, line_spacing: float = 0.0) -> void:
+	theme.set_type_variation(variation, "RichTextLabel")
+	theme.set_font("normal_font", variation, _font(EXO_500, 0))
+	theme.set_font("bold_font", variation, _font(EXO_600, 0))
+	theme.set_font("italics_font", variation, _font(EXO_500, 0))
+	theme.set_font("bold_italics_font", variation, _font(EXO_600, 0))
+	theme.set_font("mono_font", variation, _font(PLEX_MONO, 1))
+	for key in ["normal_font_size", "bold_font_size", "italics_font_size", "bold_italics_font_size", "mono_font_size"]:
+		theme.set_font_size(key, variation, _px(size))
+	theme.set_color("default_color", variation, color)
+	theme.set_constant("line_separation", variation, _px(line_spacing))
+	theme.set_stylebox("normal", variation, StyleBoxEmpty.new())
+	theme.set_stylebox("focus", variation, StyleBoxEmpty.new())
+
+
+## A square check icon: filled, or a 1 px outline
+func _check_icon(fill: Color, border: Color) -> ImageTexture:
+	var side: int = _px(16)
+	var image := Image.create(side, side, false, Image.FORMAT_RGBA8)
+	image.fill(fill)
+	if border.a > 0.0:
+		for i in side:
+			for p in [Vector2i(i, 0), Vector2i(i, side - 1), Vector2i(0, i), Vector2i(side - 1, i)]:
+				image.set_pixelv(p, border)
+	return ImageTexture.create_from_image(image)
+
+
+## Mission console (Console.dc.html): tabs, title, body, the big CONTROL KITE button, the Planning
+## toggles and checkboxes, the downlink / flight bar
+func _console(c: Dictionary) -> void:
+	_label("LabelConsoleTitle", EXO_600, 34, 0, c.text)
+	_rich("RichConsoleBody", 17, c.text_3, 17 * 0.65 - 6)
+
+	_button_base("UnderlineButtonTab", MICHROMA, 14, 6)
+	_button_colors("UnderlineButtonTab", c.muted, c.text, c.disabled)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		theme.set_stylebox(state, "UnderlineButtonTab", StyleBoxEmpty.new())
+
+	var v := "SolidButtonLarge"
+	_button_base(v, MICHROMA, 15, 6)
+	_button_colors(v, c.ink, c.ink, c.dim)
+	var normal := _flat(c.text, 14.0, 60.0)
+	var hover := _flat(c.white, 14.0, 60.0)
+	hover.expand_margin_top = 1.0 * SCALE
+	var disabled := _flat(c.panel, 14.0, 60.0)
+	for sb in [normal, hover, disabled]:
+		_margins(sb, 44)
+	hover.content_margin_bottom = 2.0 * SCALE
+	theme.set_stylebox("normal", v, normal)
+	theme.set_stylebox("hover", v, hover)
+	theme.set_stylebox("pressed", v, hover)
+	theme.set_stylebox("focus", v, hover)
+	theme.set_stylebox("disabled", v, disabled)
+
+	# A slanted tab that is a toggle (Planning's service choice): pressed = the active tab look
+	var t := "SlantedToggleTab"
+	theme.set_type_variation(t, "SlantedTab")
+	var on := _flat(c.text, 10.0, 36.0)
+	_margins(on, 22)
+	theme.set_stylebox("pressed", t, on)
+	theme.set_color("font_pressed_color", t, c.ink)
+	theme.set_color("font_hover_pressed_color", t, c.ink)
+	var off_disabled := _flat(c.line_2, 10.0, 36.0)
+	_margins(off_disabled, 22)
+	theme.set_stylebox("disabled", t, off_disabled)
+
+	var k := "ConsoleCheck"
+	theme.set_type_variation(k, "CheckBox")
+	theme.set_font("font", k, _font(EXO_500, 0))
+	theme.set_font_size("font_size", k, _px(15))
+	_button_colors(k, c.text_2, c.text, c.dim)
+	theme.set_constant("h_separation", k, _px(12))
+	theme.set_icon("checked", k, _check_icon(c.text, Color(0, 0, 0, 0)))
+	theme.set_icon("unchecked", k, _check_icon(Color(0, 0, 0, 0), c.muted))
+	theme.set_icon("checked_disabled", k, _check_icon(c.dim, Color(0, 0, 0, 0)))
+	theme.set_icon("unchecked_disabled", k, _check_icon(Color(0, 0, 0, 0), c.disabled))
+	var check_box := StyleBoxEmpty.new()
+	_margins(check_box, 0, 4)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		theme.set_stylebox(state, k, check_box)
+
+	# Scroll bars (the console's content): a 2 px track, a slim grabber that lights on hover
+	for bar in ["VScrollBar", "HScrollBar"]:
+		var track_sb := StyleBoxFlat.new()
+		track_sb.bg_color = c.line_2
+		track_sb.content_margin_left = 2.0
+		track_sb.content_margin_right = 2.0
+		track_sb.content_margin_top = 2.0
+		track_sb.content_margin_bottom = 2.0
+		theme.set_stylebox("scroll", bar, track_sb)
+		theme.set_stylebox("scroll_focus", bar, track_sb)
+		for item in [["grabber", c.dim], ["grabber_highlight", c.text_3], ["grabber_pressed", c.text]]:
+			var grab := StyleBoxFlat.new()
+			grab.bg_color = item[1]
+			theme.set_stylebox(item[0], bar, grab)
+
+	# 2 px bar (the loading screen's): track line_3, fill text
+	var p := "ThinProgress"
+	theme.set_type_variation(p, "ProgressBar")
+	var track := StyleBoxFlat.new()
+	track.bg_color = c.line_3
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = c.text
+	theme.set_stylebox("background", p, track)
+	theme.set_stylebox("fill", p, fill)
+
+
+## Mission complete (Complete.dc.html)
+func _result(c: Dictionary) -> void:
+	_label("LabelResultEyebrow", EXO_500, 15, 0, c.muted)
+	_label("LabelResultLine", EXO_500, 20, 0, c.text_2)
+	_label("LabelStatValue", EXO_600, 30, 0, c.text)
+	_label("LabelStatCaption", EXO_500, 13, 0, c.muted)
+	_label("LabelRadioLine", EXO_500, 17, 0, c.text)
+	_rich("RichResultList", 15, c.text_2, 4)
+
+
+## In-game HUD (HUD.dc.html): the rover stats, subtitles, prompts, the part tooltip, the
+## workshop's in-world console screen
+func _hud(c: Dictionary) -> void:
+	var shadow := Color(0, 0, 0, 0.7)
+	for item in [["LabelHudName", MICHROMA, 13, 6, c.text], ["LabelHudCaption", EXO_500, 13, 0, c.muted],
+			["LabelHudValue", EXO_500, 14, 0, c.text], ["LabelHudValueStrong", EXO_600, 14, 0, c.text],
+			["LabelHudValueWarn", EXO_600, 14, 0, c.warn], ["LabelHudPrompt", EXO_600, 17, 0, c.text],
+			["LabelHudWarning", EXO_600, 17, 0, c.warn]]:
+		_label(item[0], item[1], item[2], item[3], item[4])
+		theme.set_color("font_shadow_color", item[0], shadow)
+		theme.set_constant("shadow_offset_y", item[0], _px(1))
+		theme.set_constant("shadow_offset_x", item[0], 0)
+
+	# Radio subtitles: speaker clearly readable, body on a near-opaque backing (flush: the boxes
+	# bring their own padding, so an empty stack draws nothing)
+	_label("LabelSpeaker", MICHROMA, 12, 4, c.text_2)
+	theme.set_type_variation("SubtitleBacking", "PanelContainer")
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0, 0, 0, 0.8)
+	theme.set_stylebox("panel", "SubtitleBacking", backing)
+
+	# Part tooltip lines (in a TipPanel)
+	_label("LabelTooltipBody", EXO_500, 14, 0, c.text_2)
+	_label("LabelTooltipPrompt", EXO_600, 14, 0, c.text)
+	_label("LabelTooltipStats", PLEX_MONO, 12, 1, c.text_3)
+
+	# Traction panel frame
+	theme.set_type_variation("HudPanel", "PanelContainer")
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color(c.ink.r, c.ink.g, c.ink.b, 0.7)
+	panel.border_color = c.line_3
+	panel.set_border_width_all(1)
+	theme.set_stylebox("panel", "HudPanel", panel)
+
+	# The workshop's 3D console screen (a 640 x 360 SubViewport, so sizes are in its pixels)
+	for item in [["LabelWorldScreenHeading", MICHROMA, 22, 6, c.text_2], ["LabelWorldScreenRow", EXO_600, 24, 0, c.text],
+			["LabelWorldScreenAction", EXO_600, 20, 0, c.muted]]:
+		theme.set_type_variation(item[0], "Label")
+		theme.set_font("font", item[0], _font(item[1], item[3] / SCALE))
+		theme.set_font_size("font_size", item[0], item[2])
+		theme.set_color("font_color", item[0], item[4])

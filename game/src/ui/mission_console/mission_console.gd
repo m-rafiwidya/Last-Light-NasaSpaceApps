@@ -1,8 +1,7 @@
 extends UIScreen
 
-const ICONS: Array[Texture2D] = [preload("res://res/textures/dev/orange.png"),
-	preload("res://res/textures/dev/grey.png"), preload("res://res/textures/dev/orange.png"),
-	preload("res://res/textures/dev/grey.png")]
+## Full-screen console (Console.dc.html): header, underline tabs on the left with CONTROL KITE
+## under them, the section on the right (scrolls), the subtitle slot and the key hints at the foot.
 
 enum Section {MISSION, KITE, DOWNLINK, PLANNING}
 const SECTIONS: Array[String] = ["Mission", "Kite", "Downlink", "Planning"]
@@ -10,7 +9,6 @@ const DOWNLINK_TIME: float = 2.5
 const FLIGHT_TIME: float = 18.0
 const PLANNING_MISSION: String = "m1"
 const REFRESH_TIME: float = 0.25
-const DONE_COLOR: String = "#3d8f4f"
 
 var fade_tween: Tween = null
 var section: Section = Section.MISSION
@@ -25,23 +23,31 @@ var _service_buttons: Dictionary = {}
 var _item_boxes: Dictionary = {}
 var _mass_label: Label = null
 var _skip: Button = null
+var _tabs: Array[Button] = []
 
 
 func _ready() -> void:
 	add_to_group(&"mission_console")
 	%Window.modulate.a = 0.0
+	%Rule.color = _color(&"rule")
 	%Close.pressed.connect(_on_close_pressed)
-	%ItemList.item_selected.connect(_show_section)
-	%ItemList.item_selected.connect(func(_index: int) -> void: AudioManager.play_ui(&"click"))
 	%Action.pressed.connect(_on_action_pressed)
 	%ControlKite.pressed.connect(_on_control_kite_pressed)
 	var close_sound := ButtonSoundComponent.new()
 	close_sound.press_sound = &""
 	%Close.add_child(close_sound)
-	%ItemList.clear()
 	for i in SECTIONS.size():
-		%ItemList.add_item(SECTIONS[i], ICONS[i])
-	%ItemList.select(0)
+		var tab := UnderlineButton.new()
+		tab.theme_type_variation = &"UnderlineButtonTab"
+		tab.text = SECTIONS[i].to_upper()
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tab.pressed.connect(_on_tab_pressed.bind(i))
+		%Tabs.add_child(tab)
+		_tabs.append(tab)
+	$SubtitleStack.slot = %SubtitleSlot
+	%Window.resized.connect(_layout)
+	_layout()
 	_build_planning()
 	CampaignState.objective_completed.connect(func(_id: String) -> void: refresh())
 	CampaignState.mission_started.connect(func(_id: String) -> void: refresh())
@@ -49,6 +55,55 @@ func _ready() -> void:
 	CampaignState.campaign_reset.connect(reset)
 	refresh()
 	hide()
+
+
+## The board's margins (120 / 64 / 56 of 1600 x 900) and nav width, narrowed on small screens
+func _layout() -> void:
+	var width: float = %Window.size.x
+	var side: float = clampf(width * 0.075, 32.0, 144.0)
+	%Frame.add_theme_constant_override(&"margin_left", maxi(roundi(side), roundi(BackButton.DESIGN_POSITION.x + BackButton.SIZE + 24.0)))
+	%Frame.add_theme_constant_override(&"margin_right", roundi(side))
+	%Nav.custom_minimum_size.x = clampf(width * 0.25, 260.0, 480.0)
+	var height: float = %Window.size.y
+	%Frame.add_theme_constant_override(&"margin_top", roundi(clampf(height * 0.071, 32.0, 77.0)))
+	%Frame.add_theme_constant_override(&"margin_bottom", roundi(clampf(height * 0.062, 28.0, 67.0)))
+	$Window/Frame/Column/BodyGap.custom_minimum_size.y = clampf(height * 0.067, 16.0, 72.0)
+	_fit_action()
+
+
+func _input(event: InputEvent) -> void:
+	if not visible or GameState.state != GameState.State.MISSION_CONSOLE:
+		return
+	var step: int = 1 if event.is_action_pressed(&"ui_focus_next") else -1 if event.is_action_pressed(&"ui_focus_prev") else 0
+	if step == 0:
+		return
+	get_viewport().set_input_as_handled()
+	var next: int = section
+	for i in SECTIONS.size():
+		next = posmod(next + step, SECTIONS.size())
+		if not _tabs[next].disabled:
+			break
+	if next != section:
+		AudioManager.play_ui(&"click")
+		select_section(next as Section)
+
+
+func _on_tab_pressed(index: int) -> void:
+	AudioManager.play_ui(&"click")
+	_show_section(index)
+
+
+## The tab button of a section
+func tab_button(value: Section) -> Button:
+	return _tabs[value]
+
+
+func _color(token: StringName) -> Color:
+	return %Window.get_theme_color(token, &"UIColor")
+
+
+func _hex(token: StringName) -> String:
+	return "#" + _color(token).to_html(false)
 
 
 func _process(delta: float) -> void:
@@ -84,7 +139,6 @@ func _show_section(index: int) -> void:
 
 
 func select_section(value: Section) -> void:
-	%ItemList.select(value)
 	_show_section(value)
 
 
@@ -103,10 +157,15 @@ func refresh() -> void:
 		Section.PLANNING:
 			_show_planning()
 	_update_action()
+	_fit_action()
 	%DownlinkProgress.visible = _sending >= 0.0 or _flight >= 0.0
 	%DownlinkProgress.value = clampf(_sending / DOWNLINK_TIME if _sending >= 0.0 else _flight / FLIGHT_TIME, 0.0, 1.0)
 	%ControlKite.disabled = _workshop() == null
-	%ItemList.set_item_disabled(Section.PLANNING, not planning_open())
+	_tabs[Section.PLANNING].disabled = not planning_open()
+	for i in _tabs.size():
+		if _tabs[i].active != (i == section):
+			_tabs[i].active = i == section
+	%HeaderInfo.text = "Workshop  ·  %s" % SaveIndex.format_play_time(int(CampaignState.play_time_sec))
 
 
 func _show_mission() -> void:
@@ -122,20 +181,19 @@ func _show_mission() -> void:
 	var lines: PackedStringArray = []
 	var current := CampaignState.current_objective()
 	var required := CampaignState.mission_objectives(mission)
-	for objective in CampaignState.mission_objectives(mission, true):
+	var objectives := CampaignState.mission_objectives(mission, true)
+	for i in objectives.size():
+		var objective: String = objectives[i]
 		var title := CampaignState.objective_title(objective)
-		if CampaignState.is_objective_done(objective):
-			lines.append("[color=%s]✓  %s[/color]" % [DONE_COLOR, title])
-		elif objective == current:
-			lines.append("[b]›  %s[/b]" % title)
-		else:
-			lines.append("○  %s%s" % [title, "" if objective in required else "  (optional)"])
+		if objective not in required:
+			title += "  (optional)"
+		lines.append(_step(i + 1, title, CampaignState.is_objective_done(objective), objective == current))
 	if CampaignState.is_mission_completed(mission):
 		lines.append("\n[b]Mission complete.[/b]")
 	elif mission == MissionDirector.COLD_MISSION:
 		lines.append("")
 		lines.append_array(route_forecast())
-	_set_text("%s  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
+	_set_text("%s  ·  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
 
 
 func _show_kite() -> void:
@@ -144,27 +202,27 @@ func _show_kite() -> void:
 		_set_text("Kite", "No link to Kite.")
 		return
 	var rover: Robot = workshop.rover
-	var lines: PackedStringArray = []
+	var rows: Array = []
 	if rover.battery:
-		lines.append("Battery  %d%%" % floori(rover.battery.get_charge_fraction() * 100.0))
+		rows.append(["Battery", "%d%%" % floori(rover.battery.get_charge_fraction() * 100.0)])
 	else:
-		lines.append("Battery  [color=red]none fitted[/color]: take the battery from the rack and drop it into the socket at Kite's rear")
+		rows.append(["Battery", "[color=%s]None fitted[/color]: take the battery from the rack and drop it into the socket at Kite's rear" % _hex(&"warn")])
 	if workshop.pad and workshop.pad.rover == rover:
-		lines.append("Dock  " + workshop.pad.get_status_text())
+		rows.append(["Dock", workshop.pad.get_status_text()])
 	else:
-		lines.append("Dock  out, %d m from the pad" % roundi(workshop.pad.offset_of(rover).length() if workshop.pad else 0.0))
+		rows.append(["Dock", "Out, %d m from the pad" % roundi(workshop.pad.offset_of(rover).length() if workshop.pad else 0.0)])
 	var director := _director()
 	if director:
 		if director.recovering:
-			lines.append("[color=red]%s[/color]" % director.alert)
+			rows.append(["Alert", "[color=%s]%s[/color]" % [_hex(&"warn"), director.alert]])
 		elif rover.battery and not workshop.pad.is_in_zone(rover):
-			lines.append("Return needs about %d%%" % ceili(director.return_fraction_needed() * 100.0))
+			rows.append(["Return", "Needs about %d%%" % ceili(director.return_fraction_needed() * 100.0)])
 	var parts: PackedStringArray = []
 	for socket in rover.find_children("*", "HotswapSocket", true, false):
 		if socket.part:
 			parts.append(socket.part.get_display_name())
-	lines.append("\nFitted  " + (", ".join(parts) if parts else "nothing"))
-	_set_text("Kite", "\n".join(lines))
+	rows.append(["Fitted", ", ".join(parts) if parts else "Nothing"])
+	_set_text("Kite", _table(rows))
 
 
 func _show_downlink() -> void:
@@ -177,12 +235,14 @@ func _show_downlink() -> void:
 	if _sending >= 0.0:
 		_set_text("Downlink", "%s  %d%%" % [downlink.get("progress", "Sending..."), floori(_sending / DOWNLINK_TIME * 100.0)])
 	elif CampaignState.is_objective_done(objective):
-		_set_text("Downlink: report received", CampaignState.mission_report(mission))
+		_set_text("Downlink: report received", report_text(CampaignState.mission_report(mission)))
 		var attachment: String = downlink.get("attachment", "")
 		if attachment and ResourceLoader.exists(attachment):
 			var rect := TextureRect.new()
 			rect.texture = load(attachment)
-			rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT_PROPORTIONAL
+			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+			rect.custom_minimum_size = Vector2(480.0, 480.0 * rect.texture.get_height() / maxf(rect.texture.get_width(), 1.0))
 			%Attachments.add_child(rect)
 	elif _downlink_ready(mission):
 		_set_text("Downlink", downlink.get("ready", "Ready to send."))
@@ -197,21 +257,33 @@ func _update_action() -> void:
 	%Action.visible = true
 	%Action.disabled = false
 	if _sending >= 0.0:
-		%Action.text = "Sending..."
+		%Action.show_text("Sending...")
 		%Action.disabled = true
 	elif _flight >= 0.0:
-		%Action.text = "Cargo in flight..."
+		%Action.show_text("Cargo in flight...")
 		%Action.disabled = true
 	elif not mission.is_empty() and CampaignState.is_mission_completed(mission) and next:
-		%Action.text = "Start next mission: %s" % CampaignState.mission_title(next)
+		%Action.show_text("Start next mission: %s" % CampaignState.mission_title(next))
 	elif section == Section.DOWNLINK and _downlink_objective(mission) and not CampaignState.is_objective_done(_downlink_objective(mission)):
-		%Action.text = CampaignState.mission_downlink(mission).get("action", "Send")
+		%Action.show_text(CampaignState.mission_downlink(mission).get("action", "Send"))
 		%Action.disabled = not _downlink_ready(mission)
 	elif section == Section.PLANNING and _can_order():
-		%Action.text = "Confirm order"
+		%Action.show_text("Confirm order")
 		%Action.disabled = not confirm_blocked().is_empty()
 	else:
 		%Action.visible = false
+
+
+## The action button at its text's width, wrapping only when the content column is narrower
+func _fit_action() -> void:
+	var action: Button = %Action
+	var font: Font = action.get_theme_font(&"font")
+	var normal: StyleBox = action.get_theme_stylebox(&"normal")
+	var natural: float = font.get_string_size(action.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		action.get_theme_font_size(&"font_size")).x + normal.get_margin(SIDE_LEFT) + normal.get_margin(SIDE_RIGHT) + 2.0
+	var room: float = %Window.size.x - %Frame.get_theme_constant(&"margin_left") - %Frame.get_theme_constant(&"margin_right") \
+		- %Nav.custom_minimum_size.x
+	action.custom_minimum_size.x = minf(natural, maxf(room, 160.0))
 
 
 func _downlink_objective(mission: String) -> String:
@@ -265,24 +337,33 @@ func _build_planning() -> void:
 	var description: Control = %Description
 	description.get_parent().add_child(_planning)
 	description.get_parent().move_child(_planning, description.get_index() + 1)
-	var row := HBoxContainer.new()
+	_planning.add_theme_constant_override(&"separation", 22)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override(&"h_separation", 10)
+	row.add_theme_constant_override(&"v_separation", 10)
 	_planning.add_child(row)
 	var group := ButtonGroup.new()
 	for entry in CargoPlan.services():
 		var button := Button.new()
+		button.theme_type_variation = &"SlantedToggleTab"
+		button.custom_minimum_size.y = 43.2
 		button.toggle_mode = true
 		button.button_group = group
 		button.focus_mode = Control.FOCUS_NONE
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.text = "%s  (%.0f kg, day %d)" % [entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])]
+		button.text = ("%s  %.0f kg  day %d" % [entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])]).to_upper()
 		button.pressed.connect(select_service.bind(str(entry["id"])))
 		row.add_child(button)
 		_service_buttons[entry["id"]] = button
 	var grid := GridContainer.new()
 	grid.columns = 2
+	grid.add_theme_constant_override(&"h_separation", 40)
+	grid.add_theme_constant_override(&"v_separation", 6)
 	_planning.add_child(grid)
 	for entry in CargoPlan.items():
 		var box := CheckBox.new()
+		box.theme_type_variation = &"ConsoleCheck"
+		box.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.focus_mode = Control.FOCUS_NONE
 		box.text = "%s  %.1f kg%s" % [entry["name"], CargoPlan.item_mass(entry["id"]), "  (required)" if entry.get("required", false) else ""]
 		box.button_pressed = _manifest[entry["id"]]
@@ -290,9 +371,12 @@ func _build_planning() -> void:
 		grid.add_child(box)
 		_item_boxes[entry["id"]] = box
 	_mass_label = Label.new()
+	_mass_label.theme_type_variation = &"LabelMonoValue"
 	_planning.add_child(_mass_label)
 	_skip = Button.new()
-	_skip.text = "Skip flight"
+	_skip.theme_type_variation = &"SkipButton"
+	_skip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_skip.text = "SKIP FLIGHT"
 	_skip.focus_mode = Control.FOCUS_NONE
 	_skip.pressed.connect(skip_flight)
 	_planning.add_child(_skip)
@@ -378,20 +462,20 @@ func _card_lines() -> PackedStringArray:
 	for entry in CargoPlan.services():
 		var id: String = entry["id"]
 		var day: float = CargoPlan.m3_day(id)
-		var mark: String = "›" if id == _service_id else "○"
-		lines.append("%s [b]%s[/b]  limit %.1f kg, arrives day %d" % [mark, entry["name"], float(entry["limit_kg"]),
-			int(entry["arrival_day"])])
+		var picked: bool = id == _service_id
+		lines.append("[color=%s][b]%s[/b]  limit %.1f kg, arrives day %d[/color]" % [_hex(&"text" if picked else &"text_2"),
+			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
 		if CargoPlan.is_late(id):
-			lines.append("    [color=#b5651d]Day %d: M3 near nightfall (sun ~%d° up, %.1f days to sunset), colder routes.[/color]"
+			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up, %.1f days to sunset), colder routes."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
 		else:
 			lines.append("    Day %d: M3 in daylight (sun ~%d° up). Only the short route's shade is cold."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day))])
 	var problem := confirm_blocked()
 	lines.append("")
-	lines.append("[color=red]%s[/color]" % problem if problem else "[color=%s]Manifest valid.[/color]" % DONE_COLOR)
-	lines.append("Story days are compressed. Mass limits, arrival days and sun angles are game assumptions.")
+	lines.append("[color=%s]%s[/color]" % [_hex(&"warn"), problem] if problem else "[color=%s][b]Manifest valid.[/b][/color]" % _hex(&"text"))
+	lines.append("[color=%s]Story days are compressed. Mass limits, arrival days and sun angles are game assumptions.[/color]" % _hex(&"dim"))
 	return lines
 
 
@@ -402,13 +486,7 @@ func _flight_lines() -> PackedStringArray:
 	var current: int = mini(floori(fraction * phases.size()), phases.size() - 1)
 	var lines: PackedStringArray = ["%s, %.1f kg delivered payload" % [entry["name"], CargoPlan.order_mass(_order["items"])], ""]
 	for i in phases.size():
-		var label := "Day %2d  %s" % [int(phases[i][1]), phases[i][0]]
-		if i < current:
-			lines.append("[color=%s]✓  %s[/color]" % [DONE_COLOR, label])
-		elif i == current:
-			lines.append("[b]›  %s[/b]" % label)
-		else:
-			lines.append("○  %s" % label)
+		lines.append(_step(i + 1, "Day %d  %s" % [int(phases[i][1]), phases[i][0]], i < current, i == current))
 	lines.append("")
 	lines.append("Story day %d of %d (compressed)" % [floori(fraction * float(entry["arrival_day"])), int(entry["arrival_day"])])
 	lines.append("Descent from lunar orbit: delta-v %d m/s (declared game assumption)" % roundi(CargoPlan.descent_delta_v()))
@@ -472,8 +550,44 @@ func _director() -> MissionDirector:
 
 
 func _set_text(title: String, body: String) -> void:
-	%Title.text = "[b][i]%s[/i][/b]" % title
+	%Title.text = title
 	%Description.text = body
+
+
+## A numbered step (Console.dc.html Briefing list): done struck through and dim, the current one
+## bright, pending muted
+func _step(number: int, text: String, done: bool, current: bool) -> String:
+	var line := "[color=%s]%02d[/color]    %s" % [_hex(&"dim"), number, text]
+	if done:
+		return "[color=%s][s]%s[/s][/color]" % [_hex(&"dim"), line]
+	if current:
+		return "[color=%s][b]%s[/b][/color]" % [_hex(&"text"), line]
+	return "[color=%s]%s[/color]" % [_hex(&"muted"), line]
+
+
+## Caption / value rows (the board's telemetry rows)
+func _table(rows: Array) -> String:
+	var cells: PackedStringArray = []
+	for row in rows:
+		cells.append("[cell expand=1 padding=0,8,24,8][color=%s]%s[/color][/cell][cell expand=4 padding=0,8,0,8][color=%s]%s[/color][/cell]"
+			% [_hex(&"muted"), row[0], _hex(&"text"), row[1]])
+	return "[table=2]%s[/table]" % "".join(cells)
+
+
+## A downlink report: plain text, or headed sections ([{"title", "why", "body"}]), each heading
+## followed by its short "why" line. The report area scrolls, so a long one needs no layout change.
+func report_text(report: Variant) -> String:
+	if report is String:
+		return report
+	var parts: PackedStringArray = []
+	for entry in report:
+		var section_text := "[color=%s][b]%s[/b][/color]" % [_hex(&"text"), str(entry.get("title", "")).to_upper()]
+		if entry.get("why", "") != "":
+			section_text += "\n[color=%s]%s[/color]" % [_hex(&"muted"), entry["why"]]
+		if entry.get("body", "") != "":
+			section_text += "\n" + str(entry["body"])
+		parts.append(section_text)
+	return "\n\n".join(parts)
 
 
 func _on_close_pressed():

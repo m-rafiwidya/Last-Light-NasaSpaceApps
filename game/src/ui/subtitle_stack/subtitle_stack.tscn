@@ -16,7 +16,7 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 theme = ExtResource("2_theme")
-theme_type_variation = &"HudBackingFlush"
+theme_type_variation = &"SubtitleBacking"
 script = ExtResource("1_stack")
 
 [node name="Boxes" type="VBoxContainer" parent="."]

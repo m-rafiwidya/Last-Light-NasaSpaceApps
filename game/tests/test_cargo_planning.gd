@@ -119,14 +119,14 @@ func _run() -> void:
 		and not stock.has("radio_module") and not stock.has("thermal_cover") and not stock.has("sample_scoop"), str(stock))
 	console.select_section(console.Section.PLANNING)
 	_check("[console] Planning is closed before m1 is complete", not console.planning_open()
-		and console.get_node("%ItemList").is_item_disabled(console.Section.PLANNING) and not _action().visible)
+		and console.tab_button(console.Section.PLANNING).disabled and not _action().visible)
 	for id in ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
 		CS.complete_objective(id)
 	debug.parse_command("startmission m2")
 	console.refresh()
 	_check("[console] m2 starts with m2.cargo_ordered", CS.current_objective() == "m2.cargo_ordered")
 	_check("[console] Planning is open and offers Confirm order", console.planning_open() and _action().visible
-		and _action().text == "Confirm order")
+		and _action().text.nocasecmp_to("Confirm order") == 0)
 	_check("[console] no service chosen: Confirm disabled", _action().disabled)
 	_order("courier", ["radio_module", "grip_wheels"])
 	_check("[console] Courier with grip wheels: over the limit, Confirm disabled", _action().disabled

@@ -13,6 +13,10 @@ const FONT_SIZE_NAMES: Array[StringName] = [&"normal_font_size", &"bold_font_siz
 
 @onready var _content: Control = $Content
 
+## True once the line is on its way out (no hold left)
+var leaving: bool = false
+var _tween: Tween = null
+
 ## 0 = collapsed, 1 = fully shown.
 var reveal: float = 1.0:
 	set(value):
@@ -60,16 +64,24 @@ func fade_in():
 	tween.parallel().tween_property(self, "modulate", Color.WHITE, 0.5)
 
 
-func fade_out():
+## Fades the line out after `hold` seconds on screen
+func fade_out(hold: float = 3.0):
+	if leaving:
+		return
+	leaving = hold <= 0.0
 	var tween := _create_tween(Tween.EASE_IN)
-	tween.tween_interval(3.0)
+	if hold > 0.0:
+		tween.tween_interval(hold)
 	tween.tween_property(self, "reveal", 0.0, 0.5)
 	tween.parallel().tween_property(self, "modulate", Color.TRANSPARENT, 0.5)
 	tween.tween_callback(queue_free)
 
 
 func _create_tween(ease_type: Tween.EaseType) -> Tween:
+	if _tween:
+		_tween.kill()
 	var tween := create_tween()
+	_tween = tween
 	tween.set_ignore_time_scale(true)
 	tween.set_ease(ease_type)
 	tween.set_trans(Tween.TRANS_CUBIC)

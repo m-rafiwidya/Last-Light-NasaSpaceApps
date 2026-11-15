@@ -1,96 +1,162 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/campaign_result/campaign_result.gd" id="1_cres"]
-[ext_resource type="Theme" uid="uid://be3ngjxfbjuew" path="res://res/computer_theme/computer_theme.tres" id="2_cthm"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_cthm"]
+[ext_resource type="Shader" path="res://src/ui/components/backdrop_blur.gdshader" id="3_blur"]
+[ext_resource type="PackedScene" path="res://src/ui/components/underline_button_centre.tscn" id="4_button"]
+[ext_resource type="Script" path="res://src/ui/button_style_components/button_sound_component.gd" id="5_sound"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
-content_margin_left = 24.0
-content_margin_top = 20.0
-content_margin_right = 24.0
-content_margin_bottom = 20.0
-bg_color = Color(0.674814, 0.674815, 0.674814, 1)
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.278431, 0.278431, 0.278431, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
+shader = ExtResource("3_blur")
+shader_parameter/radius_px = 7.2
+shader_parameter/amount = 1.0
+shader_parameter/brightness = 0.35
+shader_parameter/bg_color = Color(0.019607844, 0.019607844, 0.02745098, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_caption"]
-content_margin_left = 20.0
-content_margin_top = 10.0
-content_margin_right = 20.0
-content_margin_bottom = 10.0
-bg_color = Color(0, 0, 0, 0.6)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_title"]
+content_margin_left = 19.0
 
 [node name="CampaignResult" type="CanvasLayer"]
 script = ExtResource("1_cres")
 
-[node name="Caption" type="Label" parent="."]
+[node name="Caption" type="PanelContainer" parent="."]
 unique_name_in_owner = true
-anchors_preset = 7
+anchors_preset = 5
 anchor_left = 0.5
-anchor_top = 1.0
 anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -500.0
-offset_top = -160.0
-offset_right = 500.0
-offset_bottom = -100.0
+offset_top = 140.0
 grow_horizontal = 2
-grow_vertical = 0
-theme_override_font_sizes/font_size = 28
-theme_override_styles/normal = SubResource("StyleBoxFlat_caption")
-horizontal_alignment = 1
-vertical_alignment = 1
+mouse_filter = 2
+theme = ExtResource("2_cthm")
+theme_type_variation = &"HudBacking"
 
-[node name="Window" type="PanelContainer" parent="."]
+[node name="CaptionText" type="Label" parent="Caption"]
 unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LabelHudPrompt"
+horizontal_alignment = 1
+
+[node name="Window" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_cthm")
+
+[node name="Blur" type="ColorRect" parent="Window"]
+material = SubResource("ShaderMaterial_blur")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Window"]
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -520.0
-offset_top = -380.0
-offset_right = 520.0
-offset_bottom = 380.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = ExtResource("2_cthm")
-theme_override_styles/panel = SubResource("StyleBoxFlat_window")
+mouse_filter = 2
+theme_override_constants/separation = 26
+alignment = 1
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Window"]
+[node name="Eyebrow" type="Label" parent="Window/Column"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_type_variation = &"LabelResultEyebrow"
+text = "Campaign  ·  Apollo 12 site"
+horizontal_alignment = 1
 
-[node name="Title" type="RichTextLabel" parent="Window/VBoxContainer"]
+[node name="Title" type="Label" parent="Window/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 36
-theme_override_font_sizes/bold_italics_font_size = 36
+size_flags_horizontal = 4
+theme_type_variation = &"LabelScreenTitle"
+theme_override_styles/normal = SubResource("StyleBoxEmpty_title")
+text = "FIELD ASSIGNMENT COMPLETE"
+horizontal_alignment = 1
+
+[node name="Rule" type="ColorRect" parent="Window/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 1)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+
+[node name="Result" type="Label" parent="Window/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LabelResultLine"
+text = "IRIS is back online."
+horizontal_alignment = 1
+
+[node name="Stats" type="HBoxContainer" parent="Window/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="Summary" type="RichTextLabel" parent="Window/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"RichResultList"
 bbcode_enabled = true
 fit_content = true
+scroll_active = false
+horizontal_alignment = 1
 
-[node name="Summary" type="RichTextLabel" parent="Window/VBoxContainer"]
+[node name="Radio" type="VBoxContainer" parent="Window/Column"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Speaker" type="Label" parent="Window/Column/Radio"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_font_sizes/normal_font_size = 24
-theme_override_font_sizes/bold_font_size = 24
-theme_override_font_sizes/italics_font_size = 24
-bbcode_enabled = true
+theme_type_variation = &"LabelSpeaker"
+text = "CONTROL"
+horizontal_alignment = 1
 
-[node name="Buttons" type="HBoxContainer" parent="Window/VBoxContainer"]
-layout_mode = 2
-alignment = 1
-theme_override_constants/separation = 24
-
-[node name="Continue" type="Button" parent="Window/VBoxContainer/Buttons"]
+[node name="RadioLine" type="Label" parent="Window/Column/Radio"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 56)
+custom_minimum_size = Vector2(760, 0)
 layout_mode = 2
-text = "Continue in the workshop"
+size_flags_horizontal = 4
+theme_type_variation = &"LabelRadioLine"
+horizontal_alignment = 1
+autowrap_mode = 3
 
-[node name="MainMenu" type="Button" parent="Window/VBoxContainer/Buttons"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 56)
+[node name="Buttons" type="HBoxContainer" parent="Window/Column"]
 layout_mode = 2
-text = "Return to main menu"
+size_flags_horizontal = 4
+mouse_filter = 2
+theme_override_constants/separation = 67
+
+[node name="Continue" parent="Window/Column/Buttons" instance=ExtResource("4_button")]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"UnderlineButtonPause"
+text = "CONTINUE"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/Column/Buttons/Continue"]
+script = ExtResource("5_sound")
+
+[node name="MainMenu" parent="Window/Column/Buttons" instance=ExtResource("4_button")]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"UnderlineButtonPause"
+text = "MAIN MENU"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/Column/Buttons/MainMenu"]
+script = ExtResource("5_sound")
+press_sound = &"back"

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bohewxpq1lt12" path="res://src/ui/hud/hud.gd" id="1_ny4e7"]
 [ext_resource type="Texture2D" uid="uid://d25rgmp1s1quy" path="res://res/textures/ui/crosshair.svg" id="2_cvkdw"]
-[ext_resource type="Theme" uid="uid://ct7oxof1hdkeo" path="res://res/theme.tres" id="2_udh2q"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_udh2q"]
 [ext_resource type="Texture2D" uid="uid://bm7tx5r1xr823" path="res://res/textures/ui/interaction.svg" id="4_076te"]
 [ext_resource type="Script" path="res://src/ui/part_tooltip/part_tooltip.gd" id="90_tooltip"]
 [ext_resource type="PackedScene" path="res://src/ui/subtitle_stack/subtitle_stack.tscn" id="5_subs"]
@@ -36,15 +36,6 @@ texture = ExtResource("4_076te")
 expand_mode = 1
 stretch_mode = 5
 custom_minimum_size = Vector2(16, 16)
-
-[node name="Tooltip" type="Label" parent="MarginContainer" unique_id=820965034]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 24
-text = "TESTTEST"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="SubtitleStack" parent="." instance=ExtResource("5_subs")]
 

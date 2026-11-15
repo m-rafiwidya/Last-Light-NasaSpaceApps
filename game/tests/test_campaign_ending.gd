@@ -106,7 +106,7 @@ func _run() -> void:
 	_cmd("startmission m2")
 	await _open_console()
 	_check("[m2] Receive telemetry is shown but disabled at the start", _action().visible and _action().disabled
-		and _action().text == "Receive telemetry", _action().text)
+		and _action().text.nocasecmp_to("Receive telemetry") == 0, _action().text)
 	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
 		_cmd("objective " + id)
 	var iris: Node = level.get_node("Iris")
@@ -145,7 +145,7 @@ func _run() -> void:
 	_cmd("startmission m3")
 	await _open_console()
 	_check("[m3] Send archive is disabled at the start", _action().visible and _action().disabled
-		and _action().text == "Send archive", _action().text)
+		and _action().text.nocasecmp_to("Send archive") == 0, _action().text)
 	_cmd("objective m3.logger_recovered")
 	console.refresh()
 	_check("[m3] still disabled before the dock", _action().disabled)
@@ -201,7 +201,7 @@ func _run() -> void:
 		and summary["play_time_sec"] >= int(play_time_before), str(summary))
 	var text: String = result.get_node("%Summary").text
 	_check("[result] the text lists skipped tasks, recoveries and Mars", text.contains("skipped")
-		and text.contains("Emergency recoveries[/b]  1") and text.contains("Mars"), text)
+		and result.stat_texts().has(["1", "Emergency recoveries"]) and text.contains("Mars"), text)
 	_check("[ending] ran once", ending_runs == 1, str(ending_runs))
 	_check("[ending] IRIS's online_changed never fired", online_changes == 0 and iris.is_online, str(online_changes))
 	CS.mission_completed.emit("m3")

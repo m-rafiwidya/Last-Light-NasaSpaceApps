@@ -14,10 +14,8 @@ func _init() -> void:
 	offset_right = 400.0
 	offset_top = 44.0
 	offset_bottom = 84.0
-	add_theme_font_size_override("font_size", 24)
-	add_theme_color_override("font_color", Color(0.6, 0.95, 1.0))
-	add_theme_color_override("font_outline_color", Color.BLACK)
-	add_theme_constant_override("outline_size", 6)
+	theme = preload("res://res/ui_theme_v2.tres")
+	theme_type_variation = &"LabelHudPrompt"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hide()
 
