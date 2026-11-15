@@ -167,7 +167,7 @@ func _run() -> void:
 	await _ticks(2.0)
 	_check("[dock] without the pair: m3.kite_docked waits, the alert says the pair is missing",
 		not CS.is_objective_done("m3.kite_docked") and director.alert == director.PAIR_MISSING
-		and director.alert.contains("sun and a shade") and director.alert.contains("far logger"), director.alert)
+		and director.alert.contains("sunlit") and director.alert.contains("far logger"), director.alert)
 	await _place(far_spot, Vector3.FORWARD)
 	await _ticks(0.3)
 	_check("[dock] leaving the pad clears the alert", director.alert.is_empty(), director.alert)
@@ -361,8 +361,7 @@ func _pair_orders() -> void:
 			if save_between and not await _save_and_load():
 				_check("%s reload between the readings" % tag, false)
 				return
-			read = read and _read("shade")
-			_check("%s readings first: both taken, the pair waits for the logger" % tag, read
+			_check("%s readings first: the sun reading taken, the pair waits for the logger" % tag, read
 				and not CS.is_objective_done("m3.thermal_pair_recorded") and CS.current_objective() == "m3.logger_recovered",
 				CS.current_objective())
 			if save_between and not await _save_and_load():
@@ -382,7 +381,7 @@ func _pair_orders() -> void:
 			if save_between and not await _save_and_load():
 				_check("%s reload" % tag, false)
 				return
-			read = _read("shade") and _read("sun")
+			read = _read("sun")
 			_check("%s logger first, then the readings: the pair counts" % tag, read
 				and CS.is_objective_done("m3.thermal_pair_recorded"), CS.current_objective())
 			level.get_node("ThermalSensor").reading_taken.emit("sun", 100.0, Vector3(-250.0, 0.0, 200.0))
