@@ -6,7 +6,7 @@ extends SceneTree
 ##   2. Silent until missions.json has m3.far_sample_collected (Fahd's F3), even in M3.
 ##   3. Mission: with the objective, in M2 nothing happens.
 ##   4. Container: in M3, S-1 isn't the far site's container; the hint asks for S-2.
-##   5. Collect: S-2 in the storage box, parked and stopped: try_collect fills it (full model) and
+##   5. Collect: S-2 loose in the storage tray, parked and stopped: try_collect fills it (full model) and
 ##      completes m3.far_sample_collected without completing M3. A second try does nothing.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_far_sample.gd
@@ -57,6 +57,14 @@ func _part(scene: String) -> RigidBody3D:
 	return part
 
 
+## Drops `part` into Kite's storage tray and lets it settle
+func _into_tray(part: RigidBody3D, tray: Node) -> void:
+	part.global_transform = Transform3D(rover.global_basis, tray.drop_point())
+	part.linear_velocity = Vector3.ZERO
+	part.angular_velocity = Vector3.ZERO
+	await _ticks(1.0)
+
+
 func _run() -> void:
 	await process_frame
 	GS = root.get_node("GameState")
@@ -71,7 +79,7 @@ func _run() -> void:
 	level = SL.current_scene
 	rover = level.get_node("ReadyRover")
 	var cargo: Node = rover.get_node("CargoSocket")
-	var slot: Node = rover.get_node("StorageBox/StorageSlot1")
+	var tray: Node = rover.get_node("StorageBox")
 	site = (load("res://src/field/far_sample_site.tscn") as PackedScene).instantiate()
 	level.add_child(site)
 	site.global_transform = level.get_node("SampleSiteFar").global_transform
@@ -88,9 +96,8 @@ func _run() -> void:
 
 	# 2. Silent until missions.json has the objective
 	var s2: RigidBody3D = _part("sample_container_far_part")
-	s2.global_position = slot.global_position
-	slot.mount(s2)
 	await _park(park)
+	await _into_tray(s2, tray)
 	if not CS.has_objective(OBJECTIVE):
 		CS.start_mission("m3")
 		_check("silent: without %s in missions.json nothing happens, even in M3" % OBJECTIVE,
@@ -103,22 +110,18 @@ func _run() -> void:
 
 	# 4. Container
 	CS.start_mission("m3")
-	slot.unmount().global_position = rover.global_position + Vector3(3.0, 1.0, 0.0)
+	s2.global_position = rover.global_position + Vector3(3.0, 1.0, 0.0)
 	var s1: RigidBody3D = _part("sample_container_part")
-	s1.global_position = slot.global_position
-	slot.mount(s1)
-	await _ticks(0.2)
+	await _into_tray(s1, tray)
 	_check("container: S-1 isn't the far site's container; the hint asks for S-2",
 		not site.try_collect(rover) and site.get_hint(rover).contains("S-2"), site.get_hint(rover))
-	slot.unmount().global_position = rover.global_position + Vector3(-3.0, 1.0, 0.0)
-	s2.global_position = slot.global_position
-	slot.mount(s2)
-	await _ticks(0.2)
+	s1.global_position = rover.global_position + Vector3(-3.0, 1.0, 0.0)
+	await _into_tray(s2, tray)
 
 	# 5. Collect
 	_check("collect: the hint says In position for the far sample", site.get_hint(rover) .begins_with("In position")
 		and site.get_hint(rover).contains("far sample"), site.get_hint(rover))
-	_check("collect: try_collect fills S-2 from the storage box", site.try_collect(rover) and CS.is_objective_done(OBJECTIVE))
+	_check("collect: try_collect fills S-2 from the storage tray", site.try_collect(rover) and CS.is_objective_done(OBJECTIVE))
 	_check("collect: M3 itself isn't completed", CS.current_mission() == "m3" and not CS.is_mission_completed("m3"))
 	var kit: Node = s2.get_node_or_null("Model/Kit")
 	_check("collect: S-2 shows the full model", kit != null

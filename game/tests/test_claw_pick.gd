@@ -5,7 +5,7 @@ extends SceneTree
 ##   2. Pick: E has the arm pick the crate up; it ends on the cargo mount (the box refuses it), the
 ##      arm stowed high over it (turret clear of the crate) and free again.
 ##   3. Short parts: a sample container on the ground is too low for the turret (hint says so);
-##      the storage box would be its destination.
+##      the storage tray would be its destination.
 ##   4. Interrupted before the latch: the rover moving stops the pick; nothing is taken.
 ##   5. Interrupted while carrying: the part drops where it is.
 ##
@@ -99,7 +99,7 @@ func _run() -> void:
 	rover = level.get_node("ReadyRover")
 	claw = rover.get_node("ClawPick")
 	var cargo: Node = rover.get_node("CargoSocket")
-	var slot1: Node = rover.get_node("StorageBox/StorageSlot1")
+	var tray: Node = rover.get_node("StorageBox")
 	# Kite out on the apron, on open ground
 	var start: Vector2 = level.get_node("RouteMarkers").start()
 	rover.global_transform = Transform3D(rover.global_basis, _ground(Vector3(start.x, 0.0, start.y)) + Vector3.UP * 0.4)
@@ -145,7 +145,7 @@ func _run() -> void:
 	await _place(jar, reach)
 	_check("short: a sample container on the ground is too low to grab", not claw.ready_for(jar)
 		and claw.get_hint().contains("too low"), claw.get_hint())
-	_check("short: the storage box would take it first", claw.destination_for(jar) == slot1)
+	_check("short: the storage tray would take it first", claw.destination_for(jar) == tray)
 	jar.queue_free()
 
 	# 4. Interrupted before the latch (a second crate; the first leaves the cargo mount)

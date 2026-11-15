@@ -11,9 +11,11 @@
 [ext_resource type="Script" path="res://src/robot/kit/cargo_delivery.gd" id="24_cargo_delivery"]
 [ext_resource type="Script" path="res://src/robot/kit/rover_scanner.gd" id="25_scanner"]
 [ext_resource type="Script" path="res://src/robot/kit/claw_pick.gd" id="26_claw_pick"]
+[ext_resource type="Script" path="res://src/robot/kit/storage_tray.gd" id="27_tray"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
-bounce = 0.5
+friction = 0.6
+bounce = 0.0
 
 [sub_resource type="AudioStreamGenerator" id="AudioStreamGenerator_2vce4"]
 mix_rate = 22050.0
@@ -34,6 +36,18 @@ size = Vector3(0.22, 0.01, 0.22)
 [sub_resource type="BoxMesh" id="BoxMesh_box_side"]
 material = SubResource("StandardMaterial3D_box")
 size = Vector3(0.008, 0.07, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tray_floor"]
+size = Vector3(0.22, 0.02, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tray_side"]
+size = Vector3(0.02, 0.07, 0.24)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tray_end"]
+size = Vector3(0.204, 0.07, 0.02)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tray_inside"]
+size = Vector3(0.2, 0.12, 0.2)
 
 [sub_resource type="BoxMesh" id="BoxMesh_box_end"]
 material = SubResource("StandardMaterial3D_box")
@@ -236,8 +250,29 @@ capture_offset = Vector3(0, 0.04, 0)
 trigger_size = Vector3(0.13, 0.05, 0.06)
 trigger_offset = Vector3(0, 0.02, 0)
 
+[node name="TrayFloor" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.44, 0.015)
+shape = SubResource("BoxShape3D_tray_floor")
+
+[node name="TrayWallL" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.242, 0.475, 0.015)
+shape = SubResource("BoxShape3D_tray_side")
+
+[node name="TrayWallR" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.018, 0.475, 0.015)
+shape = SubResource("BoxShape3D_tray_side")
+
+[node name="TrayWallF" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.475, -0.097)
+shape = SubResource("BoxShape3D_tray_end")
+
+[node name="TrayWallB" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.475, 0.127)
+shape = SubResource("BoxShape3D_tray_end")
+
 [node name="StorageBox" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.44, 0.015)
+script = ExtResource("27_tray")
 
 [node name="Floor" type="MeshInstance3D" parent="StorageBox"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 0)
@@ -259,29 +294,13 @@ mesh = SubResource("BoxMesh_box_end")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, 0.106)
 mesh = SubResource("BoxMesh_box_end")
 
-[node name="StorageSlot1" parent="StorageBox" instance=ExtResource("20_socket")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.052, 0.01, 0)
-socket_name = "Storage box"
-accepts_any_type = false
-accepted_type = 6
-accepted_catalog_ids = PackedStringArray("sample_container", "sample_container_far", "sample_scoop")
-mount_offset = Vector3(0, 0, 0)
-capture_size = Vector3(0.1, 0.14, 0.2)
-capture_offset = Vector3(0, 0.07, 0)
-trigger_size = Vector3(0.1, 0.1, 0.18)
-trigger_offset = Vector3(0, 0.05, 0)
+[node name="TrayArea" type="Area3D" parent="StorageBox"]
+collision_layer = 0
+collision_mask = 4
 
-[node name="StorageSlot2" parent="StorageBox" instance=ExtResource("20_socket")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.052, 0.01, 0)
-socket_name = "Storage box"
-accepts_any_type = false
-accepted_type = 6
-accepted_catalog_ids = PackedStringArray("sample_container", "sample_container_far", "sample_scoop")
-mount_offset = Vector3(0, 0, 0)
-capture_size = Vector3(0.1, 0.14, 0.2)
-capture_offset = Vector3(0, 0.07, 0)
-trigger_size = Vector3(0.1, 0.1, 0.18)
-trigger_offset = Vector3(0, 0.05, 0)
+[node name="Inside" type="CollisionShape3D" parent="StorageBox/TrayArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.07, 0)
+shape = SubResource("BoxShape3D_tray_inside")
 
 [node name="CargoDelivery" type="Node" parent="."]
 script = ExtResource("24_cargo_delivery")

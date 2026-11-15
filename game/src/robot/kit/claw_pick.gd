@@ -4,13 +4,13 @@ extends Node
 
 ## The arm's assisted pick (plan v2 G3): with Kite stopped next to a loose part in group
 ## `claw_target` (the delivery crate, ...), E has the arm reach over it, come down, latch it, lift
-## it and stow it on Kite: in the first free storage box slot that takes it, else on the cargo
-## mount. Reuses CargoDelivery's arm geometry (ik_down, poses). Visual only like the delivery: the
-## arm has no collision, the part rides the latch frozen and its socket takes it by script.
+## it and stow it on Kite: loose in the storage tray when it fits, else on the cargo mount. Reuses
+## CargoDelivery's arm geometry (ik_down, poses). Visual only like the delivery: the arm has no
+## collision and the part rides the latch frozen.
 ##
-## shortcut: the box is behind the arm's yaw range, so the arm always carries the part to the latch
-## pose over the cargo mount and the part then snaps into its slot; animate a box drop when the
-## manual claw lands.
+## shortcut: the tray is behind the arm's yaw range, so the arm carries the part to the latch pose
+## over the cargo mount and the part is then let go just above the tray, where it drops in; the
+## manual claw will place it there itself.
 ##
 ## Only parts at least MIN_GRAB_HEIGHT tall can be grabbed (the delivery crate): the turret hangs
 ## below the latch. Short parts (sample containers, the logger) say so in the hint.
@@ -20,7 +20,8 @@ extends Node
 
 signal pick_started(part: HotswapPart)
 signal pick_aborted(part: HotswapPart, reason: String)
-signal pick_finished(part: HotswapPart, socket: HotswapSocket)
+## `into` is the cargo mount (HotswapSocket) or the storage tray (StorageTray)
+signal pick_finished(part: HotswapPart, into: Node)
 
 enum Phase { IDLE, REACH, DOWN, UP, CARRY, STOW }
 
@@ -34,8 +35,6 @@ const HINT_RANGE: float = 3.0
 ## below the latch, so anything shorter would put it in the ground (measured: a 0.24 m crate
 ## leaves the arm 47 mm clear). Smaller parts need a gripper tool.
 const MIN_GRAB_HEIGHT: float = 0.22
-## Where a stowed part may go, in order: the storage box first, then the cargo mount
-const DESTINATIONS: Array[String] = ["StorageBox/StorageSlot1", "StorageBox/StorageSlot2", "CargoSocket"]
 
 @onready var robot: Robot = get_parent() as Robot
 @onready var visuals: RoverVisuals = robot.get_node("Visuals")
@@ -44,7 +43,7 @@ const DESTINATIONS: Array[String] = ["StorageBox/StorageSlot1", "StorageBox/Stor
 var phase: Phase = Phase.IDLE
 ## The part being picked
 var part: HotswapPart = null
-var _destination: HotswapSocket = null
+var _destination: Node = null                # the cargo mount or the storage tray
 var _top: Vector3 = Vector3.ZERO               # the part's top centre, kit frame, at the start
 var _approach: Dictionary = {}
 var _stroke_s: float = 0.0
@@ -74,12 +73,15 @@ static func top_of(target: HotswapPart) -> Vector3:
 	return Vector3(box.get_center().x, box.end.y, box.get_center().z)
 
 
-## The free socket on Kite that would take `target`, or null
-func destination_for(target: HotswapPart) -> HotswapSocket:
-	for path in DESTINATIONS:
-		var socket := robot.get_node_or_null(path) as HotswapSocket
-		if socket and socket.part == null and socket.can_accept(target):
-			return socket
+## Where on Kite `target` would go: the storage tray when it fits, else the free cargo mount; null
+## when neither takes it
+func destination_for(target: HotswapPart) -> Node:
+	var tray := robot.get_node_or_null("StorageBox") as StorageTray
+	if tray and tray.fits(target):
+		return tray
+	var cargo := robot.get_node_or_null("CargoSocket") as HotswapSocket
+	if cargo and cargo.part == null and cargo.can_accept(target):
+		return cargo
 	return null
 
 
@@ -285,8 +287,12 @@ func _release(into: bool = true) -> void:
 	part.reparent(robot.get_parent(), true)
 	part.collision_layer = _layers.x
 	part.collision_mask = _layers.y
-	if into and _destination and _destination.part == null:
-		_destination.mount(part)
+	if into and _destination is StorageTray:
+		part.global_position = (_destination as StorageTray).drop_point()
+		part.freeze = false
+		part.sleeping = false
+	elif into and _destination is HotswapSocket and (_destination as HotswapSocket).part == null:
+		(_destination as HotswapSocket).mount(part)
 	else:
 		part.freeze = false
 		part.sleeping = false
