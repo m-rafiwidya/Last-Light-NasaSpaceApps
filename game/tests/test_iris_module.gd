@@ -124,6 +124,12 @@ func _run() -> void:
 	_check("install: iris_online is set", CS.has_flag("iris_online"))
 	await _ticks(0.5)
 	_check("install: IRIS comes online from the flag", iris.is_online)
+	_check("install: IRIS's highlight_node is its online indicator",
+		iris.highlight_node != null and iris.highlight_node.name == "iris_indicator", str(iris.highlight_node))
+	_check("install: the indicator is lit", iris.highlight_node.material_override.emission_energy_multiplier > 0.0)
+	await _ticks(iris.ANTENNA_TIME)
+	_check("install: the antenna turned to its tracking pose",
+		iris.antenna_pose().distance_to(iris.ANTENNA_TRACKED) < 0.5, str(iris.antenna_pose()))
 	_check("install: a second try does nothing", not cradle.try_install(rover) and cradle.occupant == module)
 
 	# 5. Load

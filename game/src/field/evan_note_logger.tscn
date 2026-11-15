@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/field/readable_note.tscn" id="1_note"]
+
+[node name="EvanNoteLogger" instance=ExtResource("1_note")]
+note_id = "evan_note_logger"
+text = "If you're collecting this, check the shade marker before the return climb. I put a second label underneath. The first one always gets dusty."
+kite_range = 6.0
+auto_play = true
