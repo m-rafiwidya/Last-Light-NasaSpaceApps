@@ -31,7 +31,7 @@
 		{
 			"id": "freighter",
 			"name": "Freighter lander",
-			"limit_kg": 40.0,
+			"limit_kg": 45.0,
 			"arrival_day": 11,
 			"description": "Larger, slower lander on a low-energy transfer. Room for heavy parts.",
 			"order_note": "Lands near nightfall, needs the thermal kit.",
@@ -46,6 +46,13 @@
 			"description": "IRIS's replacement radio-power unit. Required.",
 			"parts": [{"scene": "res://src/robot/socket/radio_module_part.tscn", "count": 1}],
 			"crate": true
+		},
+		{
+			"id": "standard_battery",
+			"name": "Standard battery, 100 Wh",
+			"description": "2.5 times the energy for 2 kg more. Kite's 40 Wh pack can't reach the far rim and back.",
+			"parts": [{"scene": "res://src/robot/socket/battery_part.tscn", "count": 1}],
+			"stock": {"rack": ["Slot12"]}
 		},
 		{
 			"id": "grip_wheels",
