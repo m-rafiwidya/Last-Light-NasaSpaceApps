@@ -55,7 +55,7 @@ Three Indonesian students in three countries:
 - **Muhammad Rafi Widyatama** (Universiti Malaya, mechanical engineering): Kite's engineering and the
   Mission 3 balance (part masses, energy and grip trade-offs, the route tests), the hand-controlled
   claw and storage tray, story and voice lines, and the playtest-driven fixes.
-- **Faiq Haidar Dzikrullah Satriawan** (Monash University): the story, the characters' dialogue and
+- **Faiq Haydar Dzikrullah Satriawan** (Monash University): the story, the characters' dialogue and
   the voice lines, and the cutscene and dialogue triggers.
 
 All three of us brainstormed the game and the missions, researched the NASA sources, playtested,
