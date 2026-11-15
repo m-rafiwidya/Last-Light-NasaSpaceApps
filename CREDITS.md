@@ -34,7 +34,7 @@ holders and licence of every third-party component in the engine).
 
 ## Original prototype
 
-ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base, October 2026). His early commits
+ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base). His early commits
 in this repository are the original first-person prototype the game was built on; he left the team
 before judging.
 
@@ -125,7 +125,7 @@ unchanged. Each card prints its credit and NASA ID under the photo.
   (NASA/GSFC SVS), <https://svs.gsfc.nasa.gov/4851/>
 - Gaia DR2: **ESA/Gaia/DPAC**. The map also plots the Hipparcos-2 and Tycho-2 catalogues.
 
-The 4096 x 2048 EXR is unmodified. It was downloaded on 2026-10-08 from the Internet Archive's
+The 4096 x 2048 EXR is unmodified. It was downloaded from the Internet Archive's
 capture of the SVS file URL
 (`https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/starmap_2020_4k.exr`), because SVS
 itself was unreachable that day. Its SHA-1, `fe4831347451db67adac635f7df8263468a15a1d`

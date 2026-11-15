@@ -1,6 +1,6 @@
 # Last Light: team workflow
 
-This is how the four of us build the rest of Last Light in parallel before NASA Space Apps (14 to 15 November). The engine, assets and menus are mostly done. What's missing is the mission loop: nothing yet turns M1 to M3 into something you can play and finish. Each of us gets one area, works on our own branch, and merges into `main` every day.
+This is how the four of us build the rest of Last Light in parallel before NASA Space Apps. The engine, assets and menus are mostly done. What's missing is the mission loop: nothing yet turns M1 to M3 into something you can play and finish. Each of us gets one area, works on our own branch, and merges into `main` every day.
 
 ## Who owns what
 

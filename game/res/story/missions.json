@@ -11,7 +11,7 @@
 		"ending (last mission): event (the dialogue_triggers.json event whose lines play in the closing sequence), lines (fallback id/speaker/text used while dialogue_triggers.json has no line for that event) and next_assignment (shown on the result screen).",
 		"checklist: extra lines the console's Mission tab shows under the objectives while the mission is open. They are reminders, not objectives."
 	],
-	"content_version": "2026-11-10",
+	"content_version": "1",
 	"mission_order": [
 		"m1",
 		"m2",

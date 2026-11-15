@@ -5,7 +5,7 @@ extends SceneTree
 ## ended (home, battery flat, cold shutdown, stuck).
 ##
 ## The plan's target is that the loadout you plan decides whether Kite comes home (EXPECTED below).
-## ENFORCE is on since F1 + G1 (13 Nov: all 12 cases matched): each case fails if it ends
+## ENFORCE is on since F1 + G1 (all 12 cases matched): each case fails if it ends
 ## differently, so M3 can't quietly get easy (or impossible) again. Needs G1 (40 Wh light battery,
 ## ground traction) on main.
 ##

@@ -1,10 +1,10 @@
 # References: Last Light (Tandborste, NASA Space Apps Challenge 2026)
 
 Every external resource in the repository, for the Space Apps **References** field. Compiled
-2026-11-14 from the repo only: `CREDITS.md`, `game/res/credits.md`, `game/res/story/data_sources.json`,
+Compiled from the repo only: `CREDITS.md`, `game/res/credits.md`, `game/res/story/data_sources.json`,
 every `PROVENANCE.md` / `SOURCES.md`, the font and sample licence files, `terrain.json`'s source list,
 the git history, and a search of all tracked text for URLs, AI tools and copied code. Updated later on
-2026-11-14 with the team's answers on the logo, the rover reference image and the AI tools.
+Updated with the team's answers on the logo, the rover reference image and the AI tools.
 
 **What was and was not checked.** Licences marked *(repo)* are quoted from a licence file or provenance
 note committed here. Licences marked *(general knowledge)* are from the publisher's well-known terms and
@@ -15,18 +15,18 @@ submission. Nothing in the repo was changed to produce this file.
 
 | # | Item | Why it is flagged | Suggested action |
 |---|---|---|---|
-| F1 | **Godot Engine licence notice** | **Resolved 2026-11-14.** The credits roll now ends with a GODOT ENGINE LICENCE section built from `Engine.get_license_text()` and `Engine.get_copyright_info()` (`CreditsData.engine_section()`). What is still not shown: the full texts of the third-party licences (`Engine.get_license_info()`). | Decide whether to add those texts. |
+| F1 | **Godot Engine licence notice** | **Resolved.** The credits roll now ends with a GODOT ENGINE LICENCE section built from `Engine.get_license_text()` and `Engine.get_copyright_info()` (`CreditsData.engine_section()`). What is still not shown: the full texts of the third-party licences (`Engine.get_license_info()`). | Decide whether to add those texts. |
 | F2 | **GeneralUser GS soundfont (piano in the shipped music)** | Its own licence says it cannot be 100% sure where every sample came from, and that this uncertainty may concern anyone using it in a commercial product (*repo*: `game/music/soundfonts/LICENSE.txt`). The `.sf2` is git-ignored, but the felt piano in `deep_space_memory.ogg` is rendered from it. | Decide whether to accept the author's stated risk, or re-render the piano with the synth engine. Credit S. Christian Collins in the credits (not there today). |
-| F3 | **Rover reference image** `tools/blender/reference/curiosity.jpg` | **Resolved 2026-11-14.** NASA/JPL-Caltech artist's concept of Curiosity (public domain), modelling reference only, not shipped. Source: https://science.nasa.gov/mission/msl-curiosity/. (Checked by viewing the file: an artist's concept render of Curiosity, not Perseverance.) | None. |
+| F3 | **Rover reference image** `tools/blender/reference/curiosity.jpg` | **Resolved.** NASA/JPL-Caltech artist's concept of Curiosity (public domain), modelling reference only, not shipped. Source: https://science.nasa.gov/mission/msl-curiosity/. (Checked by viewing the file: an artist's concept render of Curiosity, not Perseverance.) | None. |
 | F4 | **Title logo** `docs/ui/assets/astronaut-logo.svg` = `game/res/ui/astronaut_logo.svg` | **Answered by the team.** An AI-generated silhouette **drawn as SVG by Claude**, based on NASA's photograph of Bruce McCandless II, STS-41-B, 1984 (NASA image **S84-27017**, public domain). No third-party generator or artist is involved. The source photo is not in the repo. McCandless is an identifiable person (his likeness, as in F8). | Keep the "no endorsement" wording. |
-| F5 | **Game icon `game/icon.svg`** | **Resolved 2026-11-14.** Was Godot's stock icon (CC BY 4.0). Now our own: the title logo `game/res/ui/astronaut_logo.svg` (F4) on a dark rounded square, composed as SVG. It is `config/icon` in `project.godot`. | None. |
+| F5 | **Game icon `game/icon.svg`** | **Resolved.** Was Godot's stock icon (CC BY 4.0). Now our own: the title logo `game/res/ui/astronaut_logo.svg` (F4) on a dark rounded square, composed as SVG. It is `config/icon` in `project.godot`. | None. |
 | F6 | **Voice lines: no voice audio ships** | `cutscenes.json` and `lines.json` point at `res://res/audio/voice/*.ogg`, but **no voice files exist or are tracked, so no voice audio ships**: the game falls back to subtitles. The paths stay as they are. | If voice files are added later, record who voices each line and add any AI voice tool to the credits. |
 | F7 | **Private suit concept image** | `astronaut_kit/PROVENANCE.md` says the astronaut's style was checked against "a private concept image by another artist". It is git-ignored (`tools/blender/reference/private/`) and is **not** in the repo or the game; no shapes, text or logos were taken. | Keep it out of the repo. If the artist's permission is unknown, do not name or show the image. |
 | F8 | **Apollo photographs of identifiable astronauts** | Public-domain NASA images (*repo*), but NASA's media guidelines bar use that implies endorsement, and identifiable people carry personality rights. Used as historical record on two workshop cards. | Keep the credit line and the "no endorsement" wording already in `CREDITS.md`. |
 | F9 | **Gaia / Hipparcos / Tycho-2 content in the star map** | The star map is NASA SVS (NASA media terms), but the star data inside is ESA's. ESA asks for the Gaia/DPAC acknowledgement, and ESA's Gaia images are CC BY-SA 3.0 IGO *(general knowledge)*. Whether that share-alike reaches the SVS rendering is unclear. | Keep the "ESA/Gaia/DPAC" credit (already in the credits). Check the SVS page's own usage line. |
 | F10 | **No licence for our own code and assets** | There is no `LICENSE` file at the root. | Add one (or state "all rights reserved") before the submission. |
-| F11 | **Credits files out of step** | **Resolved 2026-11-14** for what this list found (Kenney, GeneralUser GS, Gazetteer, fonts, Space Apps resources, AI tools, Godot, Blender). `data_sources.json` still has the extra NASA pages the credits do not (see section 11). | None for the credits. |
-| F12 | **AI images and AI sound effects** | **Resolved 2026-11-14.** The team's answer: images came from Claude Code (the Blender and render scripts) and sound effects from Claude Code's synthesis scripts, the Kenney CC0 samples and the GeneralUser GS soundfont. That matches `game/music/samples/SOURCES.md` and the `PROVENANCE.md` files (no separate image or sound generator). | None. |
+| F11 | **Credits files out of step** | **Resolved** for what this list found (Kenney, GeneralUser GS, Gazetteer, fonts, Space Apps resources, AI tools, Godot, Blender). `data_sources.json` still has the extra NASA pages the credits do not (see section 11). | None for the credits. |
+| F12 | **AI images and AI sound effects** | **Resolved.** The team's answer: images came from Claude Code (the Blender and render scripts) and sound effects from Claude Code's synthesis scripts, the Kenney CC0 samples and the GeneralUser GS soundfont. That matches `game/music/samples/SOURCES.md` and the `PROVENANCE.md` files (no separate image or sound generator). | None. |
 
 **Nothing found with a non-commercial licence.** Every third-party item below is public domain, CC0, OFL,
 MIT or similar. **Nothing found marked no-redistribution.** Still needing a record: F6 (no voice audio ships) and F7. No NASA, ESA or USGS logo file is tracked.
@@ -115,7 +115,7 @@ The in-game credits say "MUSIC AND SOUND: Tandborste", which leaves out the two 
 
 ## 8. AI tools
 
-As answered by the team on 2026-11-14.
+As answered by the team.
 
 | Tool | What for | Evidence | Notes |
 |---|---|---|---|
@@ -166,7 +166,7 @@ plan documents. Add them to the Space Apps field only if you want the full readi
 ## 11. Check against the credits files
 
 Compared `CREDITS.md`, `game/res/credits.md` (the in-game roll) and `game/res/story/data_sources.json`,
-after the credits update of 2026-11-14 and this one:
+after the credits update and this one:
 
 | Resource | `CREDITS.md` | `credits.md` (in game) | `data_sources.json` |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 # LAST LIGHT — complete playtest handoff for Rafi and Fahd
 
-**Tandborste · 14 November 2026 · revised to preserve Rafi's intent and light player guidance**
+**Tandborste · revised to preserve Rafi's intent and light player guidance**
 
 This document keeps Rafi's original notes verbatim, translates them into clear implementation requests, retains useful research/suggestions, and assigns the work to **two people: Rafi and Fahd**. It is a developer handoff, not a list of instructions to show players.
 

@@ -6,7 +6,7 @@ console, **A04** the parts rack and its labels, **A07** the navigation and dock 
 conventions as `ROVER_KIT.md` unless this file says otherwise. **Every workshop part follows
 this spec.**
 
-Status: **approved 2026-10-09**, with these answers and changes:
+Status: **approved**, with these answers and changes:
 - door facing azimuth 30;
 - 3.0 m ceiling;
 - the player stays inside on the Moon;
@@ -16,7 +16,7 @@ Status: **approved 2026-10-09**, with these answers and changes:
 - the dock zone is 0.4 m, with guide lines, an on-screen hint and a probe that finds the rover;
 - bigger rack labels.
 
-**Built 2026-10-09.** Models: `tools/blender/scripts/workshop/` (every generator's checks pass);
+**Built.** Models: `tools/blender/scripts/workshop/` (every generator's checks pass);
 game: `game/src/workshop/` (game README, "The workshop"); test: `game/tests/test_workshop.gd`
 (Moon level and test level, all pass). Where the build differs from the text below, this list
 wins:
@@ -64,7 +64,7 @@ wins:
 - **Frame rate** (MacBook Pro M4, 1920 x 1080, vsync off, `measure_moon_fps.gd`): standing in the
   bay facing the docked rover 148.6 fps (6.73 ms), against 164.6 fps (6.08 ms) facing the rover
   outside in the same run: +0.65 ms. p99 14.5 ms (14.6-18.1 ms in the other phases of that run).
-- **Astronaut** (`ASTRONAUT_KIT.md`, 2026-10-10):
+- **Astronaut** (`ASTRONAUT_KIT.md`):
   - `ws_suit_stand` (122 triangles), with the empty suit, in the operator area's south-east
     corner: origin (4.0, -3.8), collision x 3.55 to 4.45, y -3.80 to -3.00.
   - `anchor_seat` (3.22, -0.30) in `ws_layout`, for `ws_stool` (172) and the seated operator,
@@ -108,7 +108,7 @@ script, with no borrowed meshes or textures.
 
 ---
 
-## 2. What the layout is sized against (measured 2026-10-09)
+## 2. What the layout is sized against (measured)
 
 ### 2.1 Rover (assembled kit, `game/res/models/rover_kit/*.glb` at their sockets)
 

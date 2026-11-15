@@ -1,6 +1,6 @@
 # Tandborste — start here
 
-**LAST LIGHT · final Moon chapter handoff · 11 October 2026**
+**LAST LIGHT · final Moon chapter handoff**
 
 The target is one complete playable chapter: prepare Kite at a lunar workshop, inspect and restore IRIS, recover a field logger, collect useful comparison records, return and transmit. Three outings reuse one NASA-derived terrain patch. The story ends at home; Mars is a future assignment.
 

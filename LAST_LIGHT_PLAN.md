@@ -1,4 +1,4 @@
-# Last Light: plan to the build (Wed 11 Nov to Fri 13 Nov 2026)
+# Last Light: plan to the build
 
 Read this first, then `CLAUDE.md`, `workflow.md`, `planning_handoff.md` and `game/README.md`. This file is the team's agreed plan after the playtest. If it conflicts with older planning docs, this file wins until the build is exported.
 
@@ -6,7 +6,7 @@ Read this first, then `CLAUDE.md`, `workflow.md`, `planning_handoff.md` and `gam
 
 Make the existing game feel like a real mission: choices have physical consequences, the route is visibly risky, repairs pay off, and the report explains why a run went the way it did. **We add tension and replay reasons, not new content.**
 
-Hard dates: exported build due **Fri 13 Nov**. Hackathon 14 to 15 Nov. Judging starts 16 Nov. The 2026 Project Submission Guide and Judging and Awards Guide are reported to be released on 13 Nov: read both Friday morning. Criteria from 2025 (2026 unconfirmed): Impact, Creativity, Validity, Relevance, Presentation.
+Criteria: Impact, Creativity, Validity, Relevance, Presentation.
 
 ## 2. Scope freeze (do not build these)
 
@@ -40,7 +40,7 @@ Owners edit only their own files (see `workflow.md`). If you need a change in so
 | I | **Dialogue queue** (minimal): plays line by ID from `lines.json` and `dialogue_triggers.json`, shows the subtitle, plays an optional audio file, one voice at a time, with a skip key and a repeat cooldown. | Former teammate (fallback Fahd) | A trigger plays a subtitle, and audio when `res/audio/voice/<id>.ogg` exists |
 | J | **Voice lines**: 12 to 15 key lines only (opening, IRIS restore, logger find, ending, Evan's notes). Radio filter on all. Subtitles always on. | Faiq with the team | Files named by line ID are dropped in and play with no code change |
 | K | **Evan's notes** as props: workshop note, IRIS final field check (after M2), logger audio with the "second label underneath" hint. | Faiq text, Rafi props | Each is readable or audible and skippable |
-| L | **Data sources screen** at the end of the game, reading a JSON file so it can be filled in on 14 Nov without code changes. | Fahd | Shows LROC Apollo 12 DTM (2 m), SLDEM and a placeholder list |
+| L | **Data sources screen** at the end of the game, reading a JSON file so it can be filled in without code changes. | Fahd | Shows LROC Apollo 12 DTM (2 m), SLDEM and a placeholder list |
 | M | **Audio pass**: engine, regolith crunch, radio static, ambient hum. | Anyone free | Each plays in the level |
 | N | **Export and presenter.** | Fahd exports; the group names the presenter | The build runs from a clean export |
 
@@ -48,10 +48,10 @@ Owners edit only their own files (see `workflow.md`). If you need a change in so
 
 ## 5. Schedule
 
-- **Wed 11:** item A. The former teammate confirms today whether they can do B and I (nothing pushed since 9 Oct). If not, Fahd takes them and C moves to Thursday.
-- **Thu 12:** B, C, D, E, F, G, H, I in that rough order. **Thu night: one timed full playthrough, then feature freeze.** Note the real playthrough length.
-- **Fri 13:** export, bug fixes only, read the two new guides, name the presenter. Voice and audio files may still be dropped in because they need no code.
-- **14 to 15 Nov:** check the challenge Resources tab for data, fill the data-sources file, record the demo video, submit.
+- **Day 1:** item A. The former teammate confirms today whether they can do B and I. If not, Fahd takes them and C moves to the next day.
+- **Day 2:** B, C, D, E, F, G, H, I in that rough order. **That night: one timed full playthrough, then feature freeze.** Note the real playthrough length.
+- **Day 3:** export, bug fixes only, read the two new guides, name the presenter. Voice and audio files may still be dropped in because they need no code.
+- **Hackathon:** check the challenge Resources tab for data, fill the data-sources file, record the demo video, submit.
 
 **Cut order if late:** cargo flight sequence, far sample, ridge, polish, voice, optional challenge. **Never cut:** M2 and M3 playable with no debug commands.
 
@@ -77,7 +77,7 @@ Owners edit only their own files (see `workflow.md`). If you need a change in so
 Start each in **plan mode** for items B and I (new systems), then switch to normal editing once the plan is agreed. Items that only place scenes or edit text can skip plan mode.
 
 **Common opening line for every prompt:**
-> Read `LAST_LIGHT_PLAN_TO_NOV14.md`, `CLAUDE.md`, `workflow.md` and `game/README.md`. You are working on item <X> only. Follow section 7.
+> Read `LAST_LIGHT_PLAN.md`, `CLAUDE.md`, `workflow.md` and `game/README.md`. You are working on item <X> only. Follow section 7.
 
 **Former teammate, item B (mass):**
 > Item B. Find where Kite's drive force and energy use are computed (`src/robot/robot.gd`, part scripts). Propose, then implement, a small change so the total mounted-part mass changes acceleration, top speed and Wh use. Keep the formula simple and put the constants in one place. Add one headless test showing a loaded Kite is slower and uses more energy than an empty one.
@@ -107,8 +107,8 @@ Start each in **plan mode** for items B and I (new systems), then switch to norm
 1. Former teammate: can you do B and I? If not, Fahd takes them.
 2. Who presents the demo?
 3. Which two team members record Mira and Hana, and who does Evan?
-4. Do we meet the 2026 submission requirements? Read the Submission Guide on 13 Nov.
+4. Do we meet the submission requirements? Read the Submission Guide.
 
 ## 11. Not verified
 
-Rover top speed, dialogue durations, whether the sample sites and the cargo flight are wired in the running scene, the 2026 judging criteria, the 2026 submission cutoff, and what data the Mission Design Game challenge will provide.
+Rover top speed, dialogue durations, whether the sample sites and the cargo flight are wired in the running scene, the judging criteria, the submission cutoff, and what data the Mission Design Game challenge will provide.

@@ -5,7 +5,7 @@
 Both are Apollo 12 Hasselblad frames from the NASA Image and Video Library, used under NASA's
 media usage guidelines (NASA material is not protected by copyright unless noted; no
 endorsement by NASA is implied, and the astronauts' images are used only as historical record).
-Downloaded 2026-10-10 (2026-10-09 UTC) from `images-assets.nasa.gov`.
+Downloaded from `images-assets.nasa.gov`.
 
 | File | NASA ID | Title (NASA) | Date | Photographer | Original | SHA-256 of the original | Processing |
 |---|---|---|---|---|---|---|---|

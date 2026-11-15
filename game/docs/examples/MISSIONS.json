@@ -1,6 +1,6 @@
 {
   "schema_note": "Example authored content. Adapt to the repository's verified mission/resource APIs; not executable game code.",
-  "content_version": "2026-10-11-final-moon",
+  "content_version": "final-moon",
   "data_origin": "authored_game_definition",
   "setting": {
     "year": 2058,

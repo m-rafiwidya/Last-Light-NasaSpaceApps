@@ -1,6 +1,6 @@
 # LAST LIGHT — final asset brief
 
-**11 October 2026 · one workshop, Kite, IRIS, and one far reference site.**
+**One workshop, Kite, IRIS, and one far reference site.**
 
 Reuse the current rover, part models, arm, cameras, UI and terrain before generating replacements. This is a production specification, not a claim that the imports already meet it. Keep asset work tied to a mission interaction.
 

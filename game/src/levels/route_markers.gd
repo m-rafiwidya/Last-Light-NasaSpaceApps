@@ -9,13 +9,13 @@ extends Node3D
 const TITLES: Dictionary = {"short": "Short route (through Head crater)", "long": "Long route (north loop round Head)"}
 const COLORS: Dictionary = {"short": Color(1.0, 0.62, 0.12), "long": Color(0.25, 0.75, 1.0)}
 ## Worse of the round trip at the 3.6 m/s cap and at 1.8 m/s (the pace range_estimate() assumes;
-## tests/test_m3_routes.gd's driver, 14 Nov 2026), standard wheels, the logger back, plus the heater in
+## tests/test_m3_routes.gd's driver), standard wheels, the logger back, plus the heater in
 ## the dusk shade (4.3 Wh short, 3 Wh long). Grip wheels with the thermal kit add up to GRIP_EXTRA_WH.
 ## energy_wh() adds SAFETY_MARGIN (+10%), so the forecast never says "enough" when it isn't.
 const ENERGY_WH: Dictionary = {"short": 58.7, "long": 66.2}
 const GRIP_EXTRA_WH: float = 12.0
 ## The heater in the nightfall shade (Wh per round trip), measured with tests/test_m3_routes.gd on the
-## 70 Wh battery (15 Nov 2026): the forecast adds it to the distance when a late order puts the route in shade
+## 70 Wh battery: the forecast adds it to the distance when a late order puts the route in shade
 const HEATER_WH: Dictionary = {"short": 7.0, "long": 11.0}
 const SAFETY_MARGIN: float = 1.1
 const POLE_HEIGHT: float = 2.4

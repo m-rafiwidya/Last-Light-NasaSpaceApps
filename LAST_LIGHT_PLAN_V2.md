@@ -1,7 +1,7 @@
 # Last Light: Plan v2 (make the build matter)
 
-13 Nov 2026 · from Rafi's full playthrough · for the whole team and each person's AI
-Updated 13 Nov evening with the team's decisions (section 9). Where this file and older messages disagree, this file wins.
+From Rafi's full playthrough · for the whole team and each person's AI
+Updated with the team's decisions (section 9). Where this file and older messages disagree, this file wins.
 
 **Goal in one line:** the loadout you plan decides whether Kite comes home.
 
@@ -214,7 +214,7 @@ Start every AI session with: *"Read `LAST_LIGHT_PLAN_V2.md` (sections 1, 3 and 4
 
 ---
 
-## 9. Decisions (13 Nov)
+## 9. Decisions
 
 1. **Phase 1 first.** Equipment choices must really affect traction, battery life, mass and thermal survival. The default loadout fails both M3 routes; at least two different builds succeed. Players see range, route risks and required equipment before leaving.
 2. **Keep the Courier/Freighter trade.** The Freighter carries more but arrives near nightfall, so M2's planning carries into M3. The landing zone stays in Phase 2, after the balancing.
@@ -222,4 +222,4 @@ Start every AI session with: *"Read `LAST_LIGHT_PLAN_V2.md` (sections 1, 3 and 4
 4. **M3 science:** the thermal pair at the far rim is required (one thermal turret is on the rack from the start, so a player who skipped it in the order can still finish). The far sample and Evan's cache are optional; the far sample gives a fuller report.
 5. **Claw:** the assisted pick first, the manual claw on top.
 
-Still open: is today's export the final submission, or do we keep building through 14–15 Nov? And do we keep the no-sound-in-vacuum rule in the opening, with music added on top?
+Still open: is today's export the final submission, or do we keep building? And do we keep the no-sound-in-vacuum rule in the opening, with music added on top?

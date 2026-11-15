@@ -5,7 +5,7 @@
 		"placeholder: true marks a group still to be filled. Its note is shown only while it has no entries; otherwise a note is always shown.",
 		"Facts come from game/docs/SCIENCE_AND_DATA.md and CREDITS.md; keep them in step."
 	],
-	"content_version": "2026-11-13",
+	"content_version": "1",
 	"title": "DATA SOURCES",
 	"intro": "What in Last Light comes from real data, what comes from published science, and what we made up.",
 	"groups": [

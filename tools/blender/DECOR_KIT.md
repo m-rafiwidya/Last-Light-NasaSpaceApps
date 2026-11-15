@@ -6,14 +6,14 @@ fasteners, a few amber work lights and clearly labelled equipment. It also cover
 **A12** (paper and service-note props near their equipment) and its optional **historical image
 cards**. The conventions are `WORKSHOP_KIT.md`'s unless this file says otherwise.
 
-Status: **approved 2026-10-10**, with these answers:
+Status: **approved**, with these answers:
 - the budget is fine;
 - the technical service notes stay as placeholders, with every word in one file
   (`game/res/decor/decor_texts.json`), drawn as text in Godot, never baked into an image;
 - two history cards; a third only with a confirmed NASA source and ID;
 - tracks only on the Moon.
 
-**Built 2026-10-10.** Models: `tools/blender/scripts/decor/` (every generator's checks pass);
+**Built.** Models: `tools/blender/scripts/decor/` (every generator's checks pass);
 game: `game/src/workshop/workshop_decor.gd` (game README, "The workshop"); test:
 `game/tests/test_workshop.gd` section 7 (Moon level and test level, all pass). Where the build
 differs from the text below, this list wins:
@@ -64,7 +64,7 @@ differs from the text below, this list wins:
   amber lamp on the west wall would lift them, if wanted.
 - **Frame rate** (`game/tools/measure_moon_fps.gd -- unthrottled decor_ab`: decor off / on pairs
   in the same run, the decor hidden, not freed; MacBook Pro M4, 1920 x 1080, vsync off; four
-  runs, 2026-10-10):
+  runs):
   - The render's CPU time: bay 0.54 ms off, 0.59 ms on (**+0.05 ms**); apron 0.49 ms off,
     0.57 ms on (**+0.08 ms**).
   - Draw calls (all passes: depth, main, the sun's four cascades, the bay light's shadow): about

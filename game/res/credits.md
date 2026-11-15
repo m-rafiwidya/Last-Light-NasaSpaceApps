@@ -23,7 +23,7 @@ FAIQ HAIDAR DZIKRULLAH SATRIAWAN | Monash University · Australia
 
 ### ORIGINAL PROTOTYPE
 
-RAYHAN SATRIO ADI NURDJAMAN | Former team member (first-person base, October 2026)
+RAYHAN SATRIO ADI NURDJAMAN | Former team member (first-person base)
 
 ### REAL DATA
 

@@ -64,7 +64,7 @@ func _run() -> void:
 		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[2]["name"] == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN")
 	var prototype: Array = by_title.get("ORIGINAL PROTOTYPE", [])
 	_check("ORIGINAL PROTOTYPE: one name row, not in TEAM", prototype.size() == 1
-		and prototype[0].get("name", "") == "RAYHAN SATRIO ADI NURDJAMAN" and prototype[0].get("sub", "") == "Former team member (first-person base, October 2026)"
+		and prototype[0].get("name", "") == "RAYHAN SATRIO ADI NURDJAMAN" and prototype[0].get("sub", "") == "Former team member (first-person base)"
 		and not team.any(func(e: Dictionary) -> bool: return e.get("name", "") == "RAYHAN SATRIO ADI NURDJAMAN"))
 	var data: Array = by_title.get("REAL DATA", [])
 	_check("REAL DATA: six sources, lines kept", data.size() == 6 and "\n" in data[2]["text"]

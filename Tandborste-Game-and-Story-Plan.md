@@ -1,6 +1,6 @@
 # Tandborste — final game and story plan
 
-**LAST LIGHT · Moon chapter · 11 October 2026**
+**LAST LIGHT · Moon chapter**
 
 This is the team's final production direction for this chapter. It replaces the earlier two-rover opening. The player uses **Kite**, already stored at the lunar outpost. The home base and the research station **IRIS** are separate places. This handoff describes intended behaviour; the Godot repository was not supplied for code review or runtime verification.
 

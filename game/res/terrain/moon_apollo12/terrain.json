@@ -1,7 +1,7 @@
 {
 	"name": "moon_apollo12",
 	"description": "Apollo 12 landing site (Oceanus Procellarum): LROC NAC DTM NAC_DTM_APOLLO12_E030S3365, 2 m posts verbatim in a 1 km play area holding the LM, Surveyor 3 and the whole EVA 2 route. See tools/terrain/MOON_TERRAIN.md.",
-	"generated": "2026-10-09 07:49",
+	"generated": "undated",
 	"generator": "tools/terrain/build_moon_terrain.py moon_apollo12.json",
 	"seed": 20261009,
 	"site_type": "equirectangular",

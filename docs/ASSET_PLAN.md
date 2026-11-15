@@ -1,6 +1,6 @@
 # Asset plan — LAST LIGHT
 
-Audit of `game/docs/ASSET_BRIEF.md` (11 Oct 2026) against the repo, 14 Oct 2026. Nothing was generated or changed.
+Audit of `game/docs/ASSET_BRIEF.md` against the repo. Nothing was generated or changed.
 Missions: M1 Wake Kite, M2 First Signal, M3 Beyond the Rim (`Tandborste-Game-and-Story-Plan.md`, `game/docs/STORY_SCRIPT.md`).
 All pipeline work uses Blender scripts in `tools/blender/scripts/` (headless, in metres, `.blend` + `.glb`, PROVENANCE.md per kit).
 
@@ -62,13 +62,13 @@ Default method for everything: our Blender script pipeline (flat-shaded, shared 
 5. A18: Kite note and IRIS note text.
 
 **M2 (restore IRIS)**
-1. A10 module + A11 cradle: **done** (2026-10-14, `make_module.py`; no placeholder needed).
+1. A10 module + A11 cradle: **done** (`make_module.py`; no placeholder needed).
 2. IRIS final states: antenna pivot and indicator animations (A07 finish).
-3. A12 container, A13 near ID, A15 near target: **done** (2026-10-14, `make_sample_kit.py`).
+3. A12 container, A13 near ID, A15 near target: **done** (`make_sample_kit.py`).
 
 **M3 (beyond the rim)**
-1. A16 logger, far site and its reference soil patch (A15 far), A13 second container: **done** (2026-10-14, `make_m3_kit.py`; the container is M2's S-2).
-2. A14 sensor and A17 thermal kit: **done** (2026-10-14, same script). Masses and power above are estimates (`SCIENCE_AND_DATA.md` has no part masses); none is wired into the rover's physics.
+1. A16 logger, far site and its reference soil patch (A15 far), A13 second container: **done** (`make_m3_kit.py`; the container is M2's S-2).
+2. A14 sensor and A17 thermal kit: **done** (same script). Masses and power above are estimates (`SCIENCE_AND_DATA.md` has no part masses); none is wired into the rover's physics.
 3. A18 logger note. Then P2: rocks, audio, optional gloves.
 
 Placeholders the former teammate can use now: IRIS (box + mast), module (cartridge), containers (cylinders), logger (cargo box), targets (coloured discs), sensor (none: UI reading only).
@@ -76,12 +76,12 @@ Placeholders the former teammate can use now: IRIS (box + mast), module (cartrid
 ## 4. Conflicts between brief and repo
 
 1. **Kite is two different things.** Brief (A05, plus the plan): Kite is the player's existing rover, "no separate lost-rover prop". Repo: `KITE_KIT.md`, `game/src/kite/`, `kite.glb`, `test_kite.gd`, and the README call "Kite" a disabled static rover at (-204, 136) that the player visits, and the player's rover is "ROOK" (KITE_KIT.md: "ROOK is our rover"). Decision needed: rename the player's rover to Kite and retire or repurpose the wrecked prop.
-   **Resolved 2026-10-14:** the player's rover is Kite (ROOK retired as a name); the wrecked prop is retired and its spot, gate (`IrisGate`) and cartridge delivery are now IRIS's, with a placeholder model (`refactor/story-names`).
+   **Resolved:** the player's rover is Kite (ROOK retired as a name); the wrecked prop is retired and its spot, gate (`IrisGate`) and cartridge delivery are now IRIS's, with a placeholder model (`refactor/story-names`).
 2. **M1 destination.** Brief/plan: M1 destination is IRIS (inspect the service panel, photograph). Repo M1: deliver a diagnostic cartridge to the wrecked Kite (cartridge, cargo delivery, scan, port). No IRIS exists. The cartridge delivery code could become the M2 module delivery (IRIS socket) instead.
 3. **Cartridge (A06 in repo) vs A06 in brief.** Repo calls the diagnostic cartridge "A06"; the brief's A06 is battery/wheel variants. IDs are inconsistent.
 4. **Approach route.** Kite's gate and route are at bearing 40 degrees, 151 m. IRIS needs its own position (100–160 m per README_GAMEPLAY) and gate; the two can share the same lane if Kite's prop is removed.
-   **Resolved 2026-10-14:** IRIS took Kite's spot, gate and route (151 m, bearing 40 degrees).
+   **Resolved:** IRIS took Kite's spot, gate and route (151 m, bearing 40 degrees).
 5. **Astronaut kit.** Built (astronaut, first-person, suit stand, stool) though the brief puts visible astronauts and gloves out of scope (optional P2 gloves only). Not blocking; do not extend.
 6. **Mission names.** Repo docs and `game/res/ui/missions/` use `wake_kite` / `first_signal` / `beyond_the_rim`; M1 art cards exist. Titles are consistent, only the content differs.
 7. **Brief says reuse "arm" and gripper for module and scoop.** The arm is scripted, not physically driven (cargo delivery is animated, no arm collision). The module and scoop must follow that same assisted-animation pattern, not free control.
-8. **Thermal kit socket.** **Resolved 2026-10-14:** new `PartType.THERMAL` and two deck sockets at the parts' origins (rover frame (0.1225, -0.02, 0.44) and (0.12, 0.225, 0.44)); `HotswapSocket.accepted_catalog_id` keeps the cover and heater in their own spots. Sockets only: heater power and thermal behaviour are not wired.
+8. **Thermal kit socket.** **Resolved:** new `PartType.THERMAL` and two deck sockets at the parts' origins (rover frame (0.1225, -0.02, 0.44) and (0.12, 0.225, 0.44)); `HotswapSocket.accepted_catalog_id` keeps the cover and heater in their own spots. Sockets only: heater power and thermal behaviour are not wired.

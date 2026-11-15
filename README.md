@@ -61,18 +61,16 @@ Three Indonesian students in three countries:
 All three of us brainstormed the game and the missions, researched the NASA sources, playtested,
 found bugs and decided what changed after each playtest.
 
-ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base, October 2026), see
+ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base), see
 [CREDITS.md](CREDITS.md).
 
 ## How it was made
 
-- **Timeline:** we formed the team in late September 2026 to prepare for Space Apps and started early.
-  The first week went into a general first-person base (player, dialogue, console, a first rover).
-  From 8 October we built the game itself around NASA's data and the mission design challenge: the
-  Apollo 12 terrain, lunar gravity, Kite's parts and the three missions. On the event weekend
-  (14 to 15 November) we added the hand-controlled claw and storage tray, the astronaut rescue with
-  suit oxygen, saving, the voiced dialogue, the required sample, playtest fixes and the trailer.
-  The full history is in this repository.
+- **Process:** the game was built around a general first-person base (player, dialogue, console, a
+  first rover), then NASA's data and the mission design challenge: the Apollo 12 terrain, lunar
+  gravity, Kite's parts and the three missions, plus the hand-controlled claw and storage tray, the
+  astronaut rescue with suit oxygen, saving, the voiced dialogue, the required sample, playtest
+  fixes and the trailer. The full history is in this repository.
 - **AI tools:** Claude (Anthropic), through Claude Code, for code, the Blender scripts that build the
   models, and music and sound scripts; ElevenLabs for the voices. The mission design, balance, story
   and data research are the team's. Details: [CREDITS.md](CREDITS.md).
@@ -81,7 +79,7 @@ ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-perso
 
 ## Docs
 
-- [START_HERE.md](START_HERE.md): final story and gameplay handoff (11 October 2026), and which file each person needs
+- [START_HERE.md](START_HERE.md): final story and gameplay handoff, and which file each person needs
 - [Game and story plan](Tandborste-Game-and-Story-Plan.md)
 - [Gameplay contract and acceptance checks](game/README_GAMEPLAY.md)
 - [Story script](game/docs/STORY_SCRIPT.md), [asset brief](game/docs/ASSET_BRIEF.md), [science and data](game/docs/SCIENCE_AND_DATA.md), [voice and audio](game/docs/VOICE_AND_AUDIO.md), [example mission definitions](game/docs/examples/MISSIONS.json)

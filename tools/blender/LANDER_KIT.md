@@ -66,7 +66,7 @@ v^2 / R < g cos(slope): R > 2.5 m at 30 degrees; 3.2 m leaves room.
   on 0.45 degree ground (plane fit to 4.3 m), 26.8 m from the nearest of the IRIS lane and the
   M3 routes. The pads' bottoms are within 5 cm of the ground; the ramp's foot 3 cm above it.
 
-## 4. As built (2026-11-12)
+## 4. As built
 
 - 5,336 triangles (budget 6,000).
 - `tests/test_lander.gd`: model, placement, the walk-out (from `Hatch` down the nose and ramp, on

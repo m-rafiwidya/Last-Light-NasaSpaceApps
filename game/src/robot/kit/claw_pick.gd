@@ -119,7 +119,7 @@ func nearest_part() -> HotswapPart:
 
 ## True when E would start picking `target` now
 ## Small parts (they fit the storage tray) are the manual claw's job (R, aim, click), not E's: that
-## hand work into the tray, and driving gently so it stays in, is what the claw is for (Rafi, 14 Nov)
+## hand work into the tray, and driving gently so it stays in, is what the claw is for (Rafi)
 func hand_only(target: HotswapPart) -> bool:
 	var tray := robot.get_node_or_null("StorageBox") as StorageTray
 	return tray != null and tray.fits(target)

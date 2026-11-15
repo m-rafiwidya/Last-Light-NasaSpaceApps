@@ -7,7 +7,7 @@ section 13, is animated.) It is also **ready for Mixamo later**: T-pose, one com
 FBX export. Same conventions as `ROVER_KIT.md` and `WORKSHOP_KIT.md` unless this file says
 otherwise.
 
-Status: **approved 2026-10-10**, with these answers (section 12):
+Status: **approved**, with these answers (section 12):
 - the seated suit shows only while the console drives the rover, as the operator the rover's
   camera sees through the window;
 - the empty suit on its stand stays;
@@ -18,7 +18,7 @@ Status: **approved 2026-10-10**, with these answers (section 12):
 The style was checked against the private reference before modelling (general style only: the
 tall backpack and broad chest box led to the larger backpack in the as-built list).
 
-**Built 2026-10-10.** Models: `tools/blender/scripts/astronaut/make_astronaut.py` and
+**Built.** Models: `tools/blender/scripts/astronaut/make_astronaut.py` and
 `tools/blender/scripts/workshop/make_suit_props.py` (every check passes); game:
 `game/src/workshop/workshop.gd`; test: `game/tests/test_workshop.gd`. Where the build differs
 from the text below, this list wins:
@@ -475,7 +475,7 @@ Honest list, roughest first:
 
 The same suit as the player's own body: looking down, the player sees the suit, legs and boots;
 the helmet is never drawn for the player's camera but still casts its shadow. Approved
-2026-10-10 with: hold parts about 0.6 m out (0.45 m from the eye in the hands), the suit scaled to
+with: hold parts about 0.6 m out (0.45 m from the eye in the hands), the suit scaled to
 1.71 m rather than moving the camera, and the glove pass below.
 
 - **Gloves (as built).** Armoured gauntlets: rounded octagonal finger and thumb segments with

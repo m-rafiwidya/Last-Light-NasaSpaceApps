@@ -1,6 +1,6 @@
 # LAST LIGHT — complete Moon chapter script
 
-**Original fiction · 11 October 2026 · canonical player rover: Kite.**
+**Original fiction · canonical player rover: Kite.**
 
 English is the proposed in-game language. These lines are editable performances, not NASA transcripts. Story equipment, telemetry and characters are fictional. NASA history/source cards remain separate. This script replaces the older lost-Kite/two-rover opening.
 

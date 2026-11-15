@@ -5,7 +5,7 @@ Modular low-poly kit for the drivable rover in `game/src/robot/`, inspired by NA
 replacing the placeholder box. Swappable parts use the existing `HotswapSocket` / `HotswapPart`
 system. **Every part follows this spec.**
 
-Status: approved 2026-10-07. Revised 2026-10-07 while building the steer bracket: renamed the
+Status: approved. Revised while building the steer bracket: renamed the
 bracket's `socket_wheel` to `socket_wheel_hub` and added the Godot name rules (2.2); fixed the
 connector recess position (2.5). Revised again while building the rocker and bogie: their
 budgets are 230 each (were 250 / 200), since round pivot housings and every keyed recess need
@@ -430,7 +430,7 @@ Swappable variants keep to their slot's budget.
 
 ---
 
-## 9. Cargo mount (IRIS_KIT.md, approved 2026-10-09)
+## 9. Cargo mount (IRIS_KIT.md, approved)
 
 - **Chassis:** a new empty **`socket_cargo` (-0.125, 0.20, 0.44)** on the deck, under the stowed
   arm's turret.
@@ -455,7 +455,7 @@ Swappable variants keep to their slot's budget.
 
 ---
 
-## 10. M3 parts (IRIS_KIT.md 4.2, 2026-10-14)
+## 10. M3 parts (IRIS_KIT.md 4.2)
 
 - **`arm_tool_thermal`**: a variant of `arm_tool` (2.2 naming) for the same socket: the plain sensor
   becomes an IR radiometer with `pivot_reading` / `pivot_reading_aim`, inside the standard turret's

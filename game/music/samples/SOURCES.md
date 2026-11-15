@@ -5,7 +5,7 @@ Every recorded sample the game's sounds are built from. Only CC0 (public domain)
 
 | Folder | Source | License | Downloaded | Used for |
 |---|---|---|---|---|
-| `kenney_impact/` | Kenney, *Impact Sounds* 1.0 (2019-12-19): https://kenney.nl/assets/impact-sounds (zip `kenney_impact-sounds.zip`, sha256 `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`) | CC0 1.0 (`kenney_impact/License.txt`) | 2026-10-09 | see below |
+| `kenney_impact/` | Kenney, *Impact Sounds* 1.0 (2019-12-19): https://kenney.nl/assets/impact-sounds (zip `kenney_impact-sounds.zip`, sha256 `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`) | CC0 1.0 (`kenney_impact/License.txt`) | — | see below |
 
 Files kept from the Kenney pack (the rest of the pack is not used):
 

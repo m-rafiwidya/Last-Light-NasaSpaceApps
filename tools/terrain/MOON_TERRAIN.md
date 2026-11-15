@@ -25,7 +25,7 @@ brief's principles are kept:
 
 (The 36.322 m figure matched no 512 m window containing the LM: see section 0 of the plan.)
 
-## Decisions (approved 2026-10-09)
+## Decisions (approved)
 
 1. **Play area 1 km**, placed to hold the landing site, Surveyor 3 and the whole EVA 2 route.
 2. **Sun at the EVA 2 midpoint** (1969-11-20 05:49 UTC, 16.7 degrees), and **the star map aligned
@@ -117,7 +117,7 @@ not just the terrain.
 
 # Apollo 12 switch: the plan as approved
 
-Research done on 2026-10-09, before the build. The decisions above override this plan where they
+Research done before the build. The decisions above override this plan where they
 differ: a 1 km area, positioned as described, and no starter pack.
 
 ## 0. The starter pack (it turned out not to exist)

@@ -1,6 +1,6 @@
 # LAST LIGHT — instructions for AI coding assistants
 
-**Tandborste · final Moon chapter direction · 11 October 2026**
+**Tandborste · final Moon chapter direction**
 
 This file is a production brief, not evidence that the features below are implemented. The actual repository was not supplied when this handoff was written. Read its `AGENTS.md`, run instructions, Godot version, scene structure and existing APIs before editing. Preserve the repository's architecture README; put the gameplay contract in `game/README_GAMEPLAY.md`.
 

@@ -1,6 +1,6 @@
 # LAST LIGHT — gameplay implementation brief
 
-**Final direction: 11 October 2026.** Desired behaviour, not a claim of implemented or tested code. Preserve the repository's actual run/architecture README and read its instructions before changing scenes.
+**Final direction.** Desired behaviour, not a claim of implemented or tested code. Preserve the repository's actual run/architecture README and read its instructions before changing scenes.
 
 Companions: [story](docs/STORY_SCRIPT.md), [assets](docs/ASSET_BRIEF.md), [science/data](docs/SCIENCE_AND_DATA.md), [example mission definitions](docs/examples/MISSIONS.json), [AI guide](../README_AI.md).
 
