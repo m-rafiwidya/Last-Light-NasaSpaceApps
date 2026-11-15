@@ -26,7 +26,11 @@
   },
   "mira_m2_02": {
     "speaker": "Mira",
-    "text": "Manifest approved. The cargo is on its way. Check the delivery crate before loading Kite."
+    "text": "The crate is at the landing zone, three hundred metres out. Take control of Kite, load it onto the cargo mount, and bring it back to the workshop"
+  },
+  "mira_m2_cargo_retrieved": {
+    "speaker": "Mira",
+    "text": "Good, the crate is back in the workshop. The replacement module is beside the charging pad. Mount it on Kite before heading to IRIS."
   },
   "mira_m2_03": {
     "speaker": "Mira",
