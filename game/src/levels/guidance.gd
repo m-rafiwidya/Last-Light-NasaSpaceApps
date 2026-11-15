@@ -203,6 +203,11 @@ func is_met(condition: Dictionary) -> bool:
 				var socket := resolve(condition["unmounted"]) as HotswapSocket
 				if socket == null or socket.part != null:
 					return false
+			"fitted":
+				var rover := _rover()
+				if rover == null or not rover.find_children("*", "HotswapSocket", true, false).any(func(s: HotswapSocket) -> bool:
+						return s.part != null and s.part.get_catalog_id() == condition["fitted"]):
+					return false
 			"player_near":
 				var player: Node3D = GameState.player
 				var node := resolve(condition["player_near"])

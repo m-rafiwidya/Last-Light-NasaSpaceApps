@@ -113,11 +113,16 @@ func is_campaign_complete() -> bool:
 	return has_flag(COMPLETE_FLAG)
 
 
-func record_recovery(cause: String = "battery", distance_m: float = 0.0) -> void:
+## `detail` adds to the record (zone, leg, battery...: MissionReport's why line reads it);
+## `minutes` is mission time the recovery costs
+func record_recovery(cause: String = "battery", distance_m: float = 0.0, detail: Dictionary = {}, minutes: float = 0.0) -> void:
 	recoveries += 1
 	var stats := mission_stats(_current)
 	if not _current.is_empty() and not stats.get("sent", false):
-		stats["recoveries"] = stats.get("recoveries", []) + [{"cause": cause, "distance_m": distance_m}]
+		var entry: Dictionary = {"cause": cause, "distance_m": distance_m}
+		entry.merge(detail)
+		stats["recoveries"] = stats.get("recoveries", []) + [entry]
+		stats["assistance_min"] = float(stats.get("assistance_min", 0.0)) + minutes
 
 
 ## The stats of a mission (empty when it never started this campaign); MissionStats writes into it
@@ -334,7 +339,8 @@ func _close_stats(mission: String) -> void:
 	if stats.get("sent", false):
 		return
 	stats["sent"] = true
-	stats["minutes"] = (play_time_sec - float(stats.get("started_at", play_time_sec))) / 60.0
+	stats["minutes"] = (play_time_sec - float(stats.get("started_at", play_time_sec))) / 60.0 \
+		+ float(stats.get("assistance_min", 0.0))
 	var optional: Array = _missions[mission]["optional_objectives"]
 	stats["optional_done"] = optional.filter(func(o: String) -> bool: return _done_objectives.has(o))
 	stats["optional_skipped"] = optional.filter(func(o: String) -> bool: return not _done_objectives.has(o))

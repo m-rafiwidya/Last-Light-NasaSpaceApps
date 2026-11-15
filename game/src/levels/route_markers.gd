@@ -8,6 +8,13 @@ extends Node3D
 
 const TITLES: Dictionary = {"short": "Short route (through Head crater)", "long": "Long route (north loop round Head)"}
 const COLORS: Dictionary = {"short": Color(1.0, 0.62, 0.12), "long": Color(0.25, 0.75, 1.0)}
+## Round trip at the slower realistic pace (2.4 m/s, tests/test_m3_routes.gd, 13 Nov 2026), standard
+## wheels, the logger back, plus the heater in the dusk shade (about 4.3 Wh short, 3 Wh long); grip
+## wheels with the thermal kit add up to GRIP_EXTRA_WH. energy_wh() adds SAFETY_MARGIN, so the
+## forecast never says "enough" when it isn't.
+const ENERGY_WH: Dictionary = {"short": 48.5, "long": 53.3}
+const GRIP_EXTRA_WH: float = 10.0
+const SAFETY_MARGIN: float = 1.1
 const POLE_HEIGHT: float = 2.4
 const SIGN_DISTANCE: float = 18.0
 
@@ -26,6 +33,12 @@ func start() -> Vector2:
 	var workshop: Node3D = get_node_or_null(workshop_path)
 	var apron: Vector3 = workshop.to_global(Vector3(1.5, 0.0, -12.0)) if workshop else Vector3.ZERO
 	return Vector2(apron.x, apron.z)
+
+
+static func energy_wh(id: String, grip: bool = false) -> float:
+	if not ENERGY_WH.has(id):
+		return 0.0
+	return (float(ENERGY_WH[id]) + (GRIP_EXTRA_WH if grip else 0.0)) * SAFETY_MARGIN
 
 
 ## Metres from the apron to the logger and back along the waypoints

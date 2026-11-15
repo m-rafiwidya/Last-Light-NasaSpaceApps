@@ -68,13 +68,6 @@
 				{"scene": "res://src/robot/socket/sample_container_part.tscn", "count": 1},
 				{"scene": "res://src/robot/socket/sample_container_far_part.tscn", "count": 1}],
 			"stock": {"bench": ["sample_scoop", "sample_a", "sample_b"]}
-		},
-		{
-			"id": "thermal_turret",
-			"name": "Thermal sensor turret",
-			"description": "Arm turret with a radiometer for ground temperature readings.",
-			"parts": [{"scene": "res://src/robot/socket/arm_tool_thermal_part.tscn", "count": 1}],
-			"stock": {"rack": ["Slot19"]}
 		}
 	]
 }

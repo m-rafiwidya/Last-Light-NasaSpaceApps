@@ -27,6 +27,7 @@
 [ext_resource type="Script" path="res://src/levels/route_markers.gd" id="45_route_markers"]
 [ext_resource type="Script" path="res://src/levels/terrain/boulder_field.gd" id="46_boulders"]
 [ext_resource type="PackedScene" path="res://src/field/lander.tscn" id="47_lander"]
+[ext_resource type="Script" path="res://src/levels/loose_ground_zone.gd" id="48_loose_ground"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
 shader = ExtResource("9_sky_shader")
@@ -178,6 +179,27 @@ script = ExtResource("43_cold_zone")
 radius = 55.0
 route_name = "Head crater"
 dtm_shade = true
+routes = PackedStringArray("short")
+
+[node name="NorthLoopNightfall" type="Marker3D" parent="ColdZones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -105, 1, -118)
+script = ExtResource("43_cold_zone")
+radius = 25.0
+night_only = true
+route_name = "the north loop"
+routes = PackedStringArray("long")
+shutdown_s = 10.0
+simulated = true
+
+[node name="LooseGround" type="Node3D" parent="."]
+
+[node name="RimClimb" type="Marker3D" parent="LooseGround"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -64, -6.5, -69)
+script = ExtResource("48_loose_ground")
+radius = 16.0
+traction = 0.4
+label = "loose rim climb"
+routes = PackedStringArray("short")
 
 [node name="RouteMarkers" type="Node3D" parent="."]
 script = ExtResource("45_route_markers")

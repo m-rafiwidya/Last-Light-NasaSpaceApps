@@ -152,7 +152,70 @@ func _run() -> void:
 	Input.action_release(&"interact_use")
 	await _ticks(0.5)
 	_check("[load] E beside the logger: on the cargo mount, m3.logger_recovered", cargo.part == far_logger
-		and CS.is_objective_done("m3.logger_recovered") and CS.current_objective() == "m3.kite_docked", CS.current_objective())
+		and CS.is_objective_done("m3.logger_recovered") and CS.current_objective() == "m3.thermal_pair_recorded", CS.current_objective())
+
+	# 3b. The thermal pair: away from the far rim it doesn't count, at the far rim it does
+	director = level.get_tree().get_first_node_in_group("mission_director")
+	var sensor: Node = level.get_node("ThermalSensor")
+	var rim: Vector3 = far_logger.global_position
+	sensor.readings = {"sun": 100.0, "shade": -150.0}
+	sensor.reading_taken.emit("sun", 100.0, Vector3(-250.0, 0.0, 200.0))
+	sensor.reading_taken.emit("shade", -150.0, Vector3(-250.0, 0.0, 201.0))
+	sensor.pair_completed.emit()
+	_check("[pair] a pair near the base doesn't count", not CS.is_objective_done("m3.thermal_pair_recorded"))
+	sensor.reading_taken.emit("sun", 100.0, rim + Vector3(5.0, 0.0, 0.0))
+	sensor.reading_taken.emit("shade", -150.0, rim + Vector3(-3.0, 0.0, 2.0))
+	_check("[pair] sun and shade at the far rim: m3.thermal_pair_recorded", CS.is_objective_done("m3.thermal_pair_recorded")
+		and CS.current_objective() == "m3.kite_docked", CS.current_objective())
+
+	# 3c. Recovery: battery flat on the way back leaves the logger out there; docking needs it back
+	var stop := Vector3(-185.0, 0.0, 40.0)
+	await _place(stop, Vector3.BACK)
+	rover.battery.charge = 0.0
+	await _ticks(director.RECOVERY_DELAY + 1.0)
+	var on_pad: bool = workshop.pad.is_in_zone(rover)
+	_check("[recovery] Kite back on the pad, the logger left where it stopped", on_pad and cargo.part == null
+		and Vector2(far_logger.global_position.x, far_logger.global_position.z).distance_to(Vector2(stop.x, stop.z)) < 2.0,
+		str(far_logger.global_position))
+	var stats: Dictionary = CS.mission_stats("m3")
+	var record: Dictionary = stats.get("recoveries", [{}])[0]
+	_check("[recovery] recorded: battery, on the way back, +45 min", record.get("cause") == "battery" and record.get("leg") == "back"
+		and is_equal_approx(float(stats.get("assistance_min", 0.0)), 45.0), str(record))
+	_check("[recovery] saved as left behind", stats.get("left_behind", []).size() == 1
+		and stats["left_behind"][0].get("catalog") == "field_logger", str(stats.get("left_behind")))
+	var MR: GDScript = load("res://src/ui/mission_console/mission_report.gd")
+	var assistance: String = ""
+	for section in MR.sections("m3"):
+		if section.get("title", "") == "Assistance":
+			assistance = section["why"]
+	_check("[report] ASSISTANCE USED and a why line for the flat battery", assistance.begins_with("ASSISTANCE USED")
+		and assistance.contains("Battery flat") and assistance.contains("on the way back"), assistance)
+	var used: float = float(record.get("used_wh", 0.0))
+	_check("[report] the battery why line quotes the Wh this run used (MissionStats), no estimate",
+		used > 0.0 and used <= MR.battery_wh(stats) and assistance.contains("after %.1f Wh used this run" % used)
+		and not assistance.contains("about"), "%.1f Wh: %s" % [used, assistance])
+	for entry in [{"cause": "slip", "zone": "loose rim climb", "leg": "out"}, {"cause": "cold", "zone": "Head crater", "leg": "out", "distance_m": 300.0},
+			{"cause": "battery", "route": "long", "battery_wh": 40.0, "leg": "back", "distance_m": 140.0}]:
+		var line: String = MR.why_line(entry)
+		_check("[report] why line for %s says what to change" % entry["cause"], line.contains("fit") or line.contains("Fit"), line)
+	_check("[dock] without the logger m3.kite_docked waits", not CS.is_objective_done("m3.kite_docked"))
+	console._on_control_kite_pressed()
+	await _ticks(0.3)
+	GS.drive(rover)
+	await _ticks(0.3)
+	_check("[guidance] the next step fetches the logger", guidance.target == far_logger and guidance.is_waypoint(),
+		"%d %s" % [guidance.index, guidance.target])
+	await _place(far_logger.global_position + Vector3(1.0, 0.0, 0.0), Vector3.FORWARD)
+	rover.linear_velocity = Vector3.ZERO
+	await _ticks(0.3)
+	var left: Node = director.left_parts
+	_check("[fetch] beside it: In position", left.get_hint(rover).begins_with("In position"), left.get_hint(rover))
+	Input.action_press(&"interact_use")
+	await _ticks(0.1)
+	Input.action_release(&"interact_use")
+	await _ticks(0.5)
+	_check("[fetch] E loads it back on the cargo mount", cargo.part == far_logger and not left.has_parts()
+		and CS.mission_stats("m3").get("left_behind", []).is_empty())
 	var dock: Transform3D = workshop.get_dock_transform()
 	dock.origin += Vector3.UP * 0.3
 	rover.global_transform = dock
@@ -176,7 +239,51 @@ func _run() -> void:
 	while result and not result.is_open() and Time.get_ticks_msec() - start < 90000:
 		await process_frame
 	_check("[ending] the result screen opens", result != null and result.is_open())
+
+	# 5. No soft-lock: every valid M2 order leaves an M3 route Kite can be built for, and the thermal turret
+	await _soft_lock()
 	_finish()
+
+
+const ORDERS: Array = [["courier", []], ["courier", ["thermal_kit"]], ["courier", ["sampling_kit"]], ["courier", ["thermal_kit", "sampling_kit"]],
+	["freighter", ["thermal_kit"]], ["freighter", ["thermal_kit", "sampling_kit"]], ["freighter", ["thermal_kit", "grip_wheels"]],
+	["freighter", ["thermal_kit", "grip_wheels", "sampling_kit"]]]
+const STANDARD_WH: float = 100.0
+
+
+func _soft_lock() -> void:
+	var CP: GDScript = load("res://src/levels/cargo_plan.gd")
+	_check("[orders] grip wheels on the Courier and no thermal kit on the Freighter are refused",
+		CP.validate("courier", ["radio_module", "grip_wheels"]) != "" and CP.validate("freighter", ["radio_module"]) != "")
+	for order in ORDERS:
+		var ids: Array = ["radio_module"] + order[1]
+		var name: String = "%s %s" % [order[0], "+".join(order[1]) if order[1] else "module only"]
+		if CP.validate(order[0], ids) != "":
+			_check("[orders] %s is valid" % name, false, CP.validate(order[0], ids))
+			continue
+		var items: Dictionary = {"cargo.service." + order[0]: 1}
+		for id in ids:
+			items["cargo." + id] = 1
+		CS.load_state({"current": "m3", "objectives": M1_DONE + M2_DONE, "missions_done": ["m1", "m2"],
+			"flags": ["iris_online", "cargo_delivered"], "items": items})
+		var plans: PackedStringArray = []
+		for route in ["short", "long"]:
+			var ok: bool = true
+			for need in console.route_needs(route, order[0]):
+				match need["kind"]:
+					"grip": ok = ok and ids.has("grip_wheels")
+					"thermal": ok = ok and ids.has("thermal_kit")
+					"energy": ok = ok and float(need["wh"]) <= STANDARD_WH
+			if ok:
+				plans.append(route)
+		var turret: bool = not CP.hidden_slots("rack").has("Slot19")
+		_check("[soft-lock] %s: a working M3 plan (%s), thermal turret on the rack" % [name, ",".join(plans)],
+			not plans.is_empty() and turret, "plans %s turret %s" % [plans, turret])
+		if order[0] == "courier":
+			_check("[matrix] %s: short route needs grip wheels it can't have" % name, not plans.has("short"))
+		else:
+			_check("[matrix] %s: thermal kit needed on both routes" % name, ["short", "long"].all(func(r: String) -> bool:
+				return console.route_needs(r, order[0]).any(func(n: Dictionary) -> bool: return n["kind"] == "thermal")))
 
 
 func _finish() -> void:

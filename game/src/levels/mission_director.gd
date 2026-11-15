@@ -30,6 +30,14 @@ const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the
 ## Kite away from the pad and still this long (s): the console offers the emergency recovery
 const STILL_FOR: float = 8.0
 const STILL_SPEED: float = 0.2
+## Mission time an emergency recovery costs (simulated, compressed like the rest of the story time)
+const RECOVERY_MINUTES: float = 45.0
+const PAIR_OBJECTIVE: String = "m3.thermal_pair_recorded"
+## Set when both thermal readings were taken at the far rim (the pair may come before the logger)
+const PAIR_FLAG: String = "m3_thermal_pair_far_rim"
+## Both readings within this of the far-rim logger site (m, horizontal)
+const FAR_RIM_RADIUS: float = 40.0
+const LOGGER_ID: String = "field_logger"
 
 @export var workshop: Workshop
 
@@ -50,6 +58,10 @@ var cold_time: float = 0.0
 var still_time: float = 0.0
 var _level_sun := Vector2.ZERO
 var _low_warned: bool = false
+var left_parts: LeftParts = null
+var _traction: float = 1.0
+var _reading_points: Dictionary = {}
+var _far_rim := Vector2.INF
 
 
 func _ready() -> void:
@@ -82,6 +94,16 @@ func _ready() -> void:
 	stats = MissionStats.new()
 	stats.name = "MissionStats"
 	add_child(stats)
+	left_parts = LeftParts.new()
+	left_parts.name = "LeftParts"
+	add_child(left_parts)
+	CampaignState.objective_completed.connect(func(_id: String) -> void: _try_pair())
+	for sensor in get_tree().get_nodes_in_group(ThermalSensor.GROUP):
+		sensor.reading_taken.connect(_on_reading_taken)
+		sensor.pair_completed.connect(_on_pair_completed.bind(sensor))
+	var logger: Node3D = get_parent().get_node_or_null("FarLogger")
+	if logger:
+		_far_rim = Vector2(logger.global_position.x, logger.global_position.z)
 	_start()
 
 
@@ -97,6 +119,7 @@ func _start() -> void:
 		SaveIndex.pending_kite = {}
 		dock_rover()
 		_returned_by_recovery = true
+		left_parts.restore(get_parent())
 	_apply_iris_online(true)
 	_last_position = rover.global_position
 	_prepare_mission()
@@ -211,6 +234,8 @@ func _on_scanned(_by: Robot, target: Node) -> void:
 func _on_docked(docked_rover: Robot) -> void:
 	if docked_rover != rover or _returned_by_recovery:
 		return
+	if CampaignState.current_mission() == COLD_MISSION and not has_part(LOGGER_ID):
+		return
 	var objective: String = DOCK_OBJECTIVES.get(CampaignState.current_mission(), "")
 	var charge: float = rover.battery.get_charge_fraction() if rover.battery else 0.0
 	if objective and try_complete(objective):
@@ -224,6 +249,7 @@ func _physics_process(delta: float) -> void:
 	if _returned_by_recovery and not pad.is_in_zone(rover):
 		_returned_by_recovery = false
 	_learn_consumption()
+	_update_ground()
 	if recovering:
 		_recovery_time -= delta
 		if _recovery_time <= 0.0:
@@ -317,9 +343,9 @@ func cold_zone_at(point: Vector3) -> ColdZone:
 
 
 func _update_cold(delta: float) -> void:
-	var in_cold: bool = cold_zone_at(rover.global_position) != null
-	rover.heater_requested = in_cold and heater_fitted()
-	if not in_cold or thermal_kit_fitted():
+	var zone := cold_zone_at(rover.global_position)
+	rover.heater_requested = zone != null and heater_fitted()
+	if zone == null or thermal_kit_fitted():
 		if cold_time > 0.0:
 			cold_time = 0.0
 			alert = ""
@@ -327,10 +353,71 @@ func _update_cold(delta: float) -> void:
 	if cold_time == 0.0:
 		DialogueTriggers.alert("cold")
 	cold_time += delta
-	alert = COLD_WARNING % ceili(maxf(COLD_LIMIT - cold_time, 0.0))
-	if cold_time >= COLD_LIMIT:
+	alert = COLD_WARNING % ceili(maxf(zone.shutdown_s - cold_time, 0.0))
+	if cold_time >= zone.shutdown_s:
 		cold_time = 0.0
-		_start_recovery(COLD_MESSAGE, "cold")
+		_start_recovery(COLD_MESSAGE, "cold", {"zone": zone.route_name})
+
+
+func loose_zone_at(point: Vector3) -> LooseGroundZone:
+	for zone in get_tree().get_nodes_in_group(&"loose_ground_zone"):
+		if zone is LooseGroundZone and zone.contains(point):
+			return zone
+	return null
+
+
+## Loose ground under Kite: Robot.ground_traction (G1) while inside, 1.0 outside. Does nothing
+## until the rover has that property.
+func _update_ground() -> void:
+	if not "ground_traction" in rover:
+		return
+	var zone := loose_zone_at(rover.global_position)
+	var traction: float = zone.traction if zone and not recovering else 1.0
+	if traction != _traction or float(rover.get("ground_traction")) != traction:
+		_traction = traction
+		rover.set("ground_traction", traction)
+
+
+func has_part(catalog_id: String) -> bool:
+	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+		if socket.part and socket.part.get_catalog_id() == catalog_id:
+			return true
+	return false
+
+
+## Kite on its way back: the mission's work out there is done
+func returning() -> bool:
+	var mission := CampaignState.current_mission()
+	if mission == COLD_MISSION:
+		return CampaignState.is_objective_done("m3.logger_recovered")
+	return CampaignState.current_objective() == DOCK_OBJECTIVES.get(mission, "")
+
+
+# --- Thermal pair at the far rim (m3.thermal_pair_recorded) -------------------------------------
+
+func _on_reading_taken(kind: String, _celsius: float, point: Vector3) -> void:
+	_reading_points[kind] = Vector2(point.x, point.z)
+	if _reading_points.size() == 2 and _pair_at_far_rim() and CampaignState.current_mission() == COLD_MISSION:
+		CampaignState.set_flag(PAIR_FLAG)
+		_try_pair()
+
+
+func _on_pair_completed(sensor: ThermalSensor) -> void:
+	if sensor.has_pair() and _pair_at_far_rim() and CampaignState.current_mission() == COLD_MISSION:
+		CampaignState.set_flag(PAIR_FLAG)
+		_try_pair()
+
+
+func _pair_at_far_rim() -> bool:
+	for kind in ["sun", "shade"]:
+		if not _reading_points.has(kind) or (_reading_points[kind] as Vector2).distance_to(_far_rim) > FAR_RIM_RADIUS:
+			return false
+	return true
+
+
+func _try_pair() -> void:
+	if CampaignState.has_flag(PAIR_FLAG) and not CampaignState.is_objective_done(PAIR_OBJECTIVE):
+		try_complete(PAIR_OBJECTIVE)
 
 
 func _update_still(delta: float) -> void:
@@ -348,24 +435,79 @@ func can_request_recovery() -> bool:
 func request_recovery() -> bool:
 	if not can_request_recovery():
 		return false
-	_start_recovery(STUCK_MESSAGE, "stuck")
+	var loose := loose_zone_at(rover.global_position)
+	if loose:
+		_start_recovery(STUCK_MESSAGE, "slip", {"zone": loose.label})
+	else:
+		_start_recovery(STUCK_MESSAGE, "stuck")
 	return true
 
 
-func _start_recovery(message: String = RECOVERY_MESSAGE, cause: String = "battery") -> void:
+func _start_recovery(message: String = RECOVERY_MESSAGE, cause: String = "battery", detail: Dictionary = {}) -> void:
 	recovering = true
 	_recovery_time = RECOVERY_DELAY
 	alert = message
 	Debug.add_log(message)
-	CampaignState.record_recovery(cause, distance_to_pad())
+	detail = detail.duplicate()
+	detail["leg"] = "back" if returning() else "out"
+	var mission_stats := CampaignState.mission_stats(CampaignState.current_mission())
+	detail["route"] = mission_stats.get("route", "")
+	detail["used_wh"] = MissionReport.battery_wh(mission_stats)
+	if rover.battery:
+		detail["battery"] = rover.battery.get_catalog_id()
+		detail["battery_wh"] = rover.battery.capacity
+	detail["grip_wheels"] = has_part("wheel_high_grip")
+	detail["thermal_kit"] = thermal_kit_fitted()
+	CampaignState.record_recovery(cause, distance_to_pad(), detail, RECOVERY_MINUTES)
 	DialogueTriggers.alert("recovery")
 	recovery_started.emit(rover)
+
+
+## Where a recovery leaves Kite's cargo: where it stopped, or, inside a cold or loose-ground zone,
+## at the nearest route flag outside every zone, so standard wheels without the thermal kit reach it
+func drop_point(at: Vector3) -> Vector3:
+	if not _in_hazard(at):
+		return at
+	var markers := get_tree().get_first_node_in_group(&"route_markers") as RouteMarkers
+	if markers == null:
+		return at
+	var best := at
+	var best_d: float = INF
+	for id in RouteMarkers.TITLES:
+		for p: Vector2 in markers.route(id):
+			var point := Vector3(p.x, at.y, p.y)
+			var d: float = Vector2(at.x, at.z).distance_to(p)
+			if d < best_d and not _in_hazard(point):
+				best = point
+				best_d = d
+	return best
+
+
+func _in_hazard(point: Vector3) -> bool:
+	if loose_zone_at(point):
+		return true
+	for zone in get_tree().get_nodes_in_group(&"cold_zone"):
+		if zone is ColdZone and zone.is_active() and zone.contains(point):
+			return true
+	return false
+
+
+## The cargo stays out there: every CARGO part on Kite is left at the drop point
+func leave_cargo() -> void:
+	var at: Vector3 = drop_point(rover.global_position)
+	var i: int = 0
+	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
+		if socket.part and socket.part.part_type == HotswapPart.PartType.CARGO:
+			var part: HotswapPart = socket.unmount()
+			left_parts.leave(part, socket.name, at + Vector3(0.8 * i, 0.0, 0.0))
+			i += 1
 
 
 func _finish_recovery() -> void:
 	recovering = false
 	alert = ""
 	_returned_by_recovery = true
+	leave_cargo()
 	dock_rover()
 	if rover.battery:
 		rover.battery.add_charge(rover.battery.capacity)

@@ -129,7 +129,7 @@ static func validate(service_id: String, ids: Array) -> String:
 	if is_late(service_id):
 		for id in data()["lunar_day"].get("night_required", []):
 			if not ids.has(id):
-				return "Arrives near nightfall: Head crater's shade lies on the short route, so the %s is required." % item(id)["name"]
+				return "Arrives near nightfall: shade lies on both routes to the far rim, so the %s is required." % item(id)["name"]
 	return ""
 
 

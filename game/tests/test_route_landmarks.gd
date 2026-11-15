@@ -3,7 +3,8 @@ extends SceneTree
 ##   1. Routes: both end at the far-rim logger, the long one clearly longer, flags staked.
 ##   2. Boulders: up to 3 m, with collision, none big in the short route's lane.
 ##   3. Shade (ColdZone dtm_shade): M3 shows the timeline's sun. Courier (high sun): nothing cold.
-##      Freighter (dusk, west): Head's west wall is cold on the short route, the long route and the
+##      Freighter (dusk, west): Head's west wall is cold on the short route, the long route crosses the
+##      simulated north-loop nightfall band, and the
 ##      logger aren't. Before M3 the level keeps its own sun.
 ##   4. Climbing: Kite's limit (ramps of regolith, from rest, thermal kit + logger) is well above
 ##      the short route's steepest slope, with standard and grip wheels.
@@ -193,6 +194,14 @@ func _cold_metres(id: String) -> float:
 	return metres
 
 
+func _zone_metres(id: String, zone: Node) -> float:
+	var metres := 0.0
+	for p in _samples(id):
+		if zone.contains(Vector3(p.x, 0.0, p.y)):
+			metres += 1.0
+	return metres
+
+
 func _set_m3(service: String) -> void:
 	CS.load_state({"current": "m3", "objectives": M1_DONE + M2_DONE, "missions_done": ["m1", "m2"],
 		"flags": ["iris_online", "cargo_delivered"], "items": {"cargo.service." + service: 1, "cargo.thermal_kit": 1}})
@@ -332,10 +341,30 @@ func _run() -> void:
 	var short_cold: float = _cold_metres("short")
 	_check("[cold] Freighter M3: Head's west wall is in shade", zone.shaded_area() > 300.0, "%.0f m2" % zone.shaded_area())
 	_check("[cold] Freighter M3: the short route crosses it", short_cold >= 20.0, "%.0f m" % short_cold)
-	_check("[cold] Freighter M3: the long route stays sunlit", _cold_metres("long") == 0.0)
+	var night: Node = level.get_node("ColdZones/NorthLoopNightfall")
+	var long_cold: float = _cold_metres("long")
+	_check("[cold] Freighter M3: the long route crosses the simulated nightfall band, long enough for a shutdown",
+		night.simulated and night.night_only and long_cold >= night.shutdown_s * ROUTE_SPEED, "%.0f m" % long_cold)
 	_check("[cold] Freighter M3: the logger stop is sunlit", director.cold_zone_at(logger) == null)
 	var west_wall := Vector3(-76.0, terrain.height_at(-76.0, -50.0), -50.0)
 	_check("[cold] the cold is on the west wall", director.cold_zone_at(west_wall) != null)
+
+	# 3b. Loose ground and where a recovery leaves cargo
+	var loose: Node = level.get_node("LooseGround/RimClimb")
+	_check("[loose] the rim climb is on the short route only", _zone_metres("short", loose) > 15.0 and _zone_metres("long", loose) == 0.0,
+		"%.0f m / %.0f m" % [_zone_metres("short", loose), _zone_metres("long", loose)])
+	_check("[loose] the logger stop is firm ground", not loose.contains(logger))
+	var trapped: Array = []
+	for service in ["courier", "freighter"]:
+		_set_m3(service)
+		for id in ["short", "long"]:
+			for p in _samples(id):
+				var at := Vector3(p.x, terrain.height_at(p.x, p.y), p.y)
+				var drop: Vector3 = director.drop_point(at)
+				if director._in_hazard(drop):
+					trapped.append("%s %s %s" % [service, id, p])
+	_check("[recovery] cargo left anywhere on either route lands outside every zone", trapped.is_empty(), str(trapped.slice(0, 3)))
+	_set_m3("freighter")
 
 	# 4. Climbing
 	var limits: Vector2 = await _climb_report()
@@ -346,7 +375,11 @@ func _run() -> void:
 
 	# 5. Drivable, thermal kit fitted (Freighter M3)
 	var trip: Dictionary = await _round_trip("short")
-	_check("[drive] short route out and back, standard wheels", trip["there"] and trip["home"], "steepest tilt %.0f deg" % trip["pitch"])
+	if "ground_traction" in rover:
+		_check("[drive] short route, standard wheels: stopped by the loose rim climb", not trip["there"])
+	else:
+		print("INFO short route with standard wheels: no Robot.ground_traction yet (G1), loose ground has no effect")
+		_check("[drive] short route out and back, standard wheels (before G1)", trip["there"] and trip["home"], "steepest tilt %.0f deg" % trip["pitch"])
 	trip = await _round_trip("long")
 	_check("[drive] long route out and back, standard wheels", trip["there"] and trip["home"], "steepest tilt %.0f deg" % trip["pitch"])
 	await _set_grip_wheels()
