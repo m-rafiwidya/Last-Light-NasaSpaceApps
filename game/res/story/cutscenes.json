@@ -17,8 +17,8 @@
 		"cs_open_07": { "speaker": "Mira", "text": "Touchdown. Engine safe.", "audio": "res://res/audio/voice/cs_open_07.ogg" },
 		"cs_open_08": { "speaker": "Hana", "text": "No air to hold the dust up. It's already coming down.", "audio": "res://res/audio/voice/cs_open_08.ogg" },
 		"cs_open_09": { "speaker": "Mira", "text": "The workshop is a short walk ahead. Kite's in the bay. It's waited four years; it can manage another minute.", "audio": "res://res/audio/voice/cs_open_09.ogg" },
-		"cs_open_n1": { "speaker": "Narrator", "text": "Rotation day one. The Apollo 12 site.", "audio": "res://res/audio/voice/cs_open_n1.ogg", "placeholder": true },
-		"cs_open_n2": { "speaker": "Narrator", "text": "Four years of silence. Someone is coming back.", "audio": "res://res/audio/voice/cs_open_n2.ogg", "placeholder": true },
+		"cs_open_n1": { "speaker": "Narrator", "text": "Rotation day one. Apollo twelve landing site.", "audio": "res://res/audio/voice/cs_open_n1.ogg", "placeholder": true },
+		"cs_open_n2": { "speaker": "Narrator", "text": "Four years without a signal. Today, the work resumes.", "audio": "res://res/audio/voice/cs_open_n2.ogg", "placeholder": true },
 		"cs_cargo_01": { "speaker": "Mira", "text": "Cargo lander on final approach, three hundred metres from the workshop. Stand by for touchdown.", "audio": "res://res/audio/voice/cs_cargo_01.ogg", "placeholder": true },
 		"cs_cargo_02": { "speaker": "Hana", "text": "Touchdown confirmed. IRIS's replacement is here. Kite can bring it home.", "audio": "res://res/audio/voice/cs_cargo_02.ogg", "placeholder": true }
 	},
