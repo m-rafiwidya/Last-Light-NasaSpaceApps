@@ -25,7 +25,7 @@ const ENTRIES: Dictionary = {
 	},
 	"battery": {
 		"name": "Battery",
-		"description": "Powers the rover. Required to drive. 100 Wh at 5 kg.",
+		"description": "Powers the rover. Required to drive. 70 Wh at 5 kg.",
 		"mounts": "Mounts on the rear of the rover",
 	},
 	"battery_light": {

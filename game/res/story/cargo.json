@@ -49,8 +49,8 @@
 		},
 		{
 			"id": "standard_battery",
-			"name": "Standard battery, 100 Wh",
-			"description": "2.5 times the energy for 2 kg more. Kite's 40 Wh pack can't reach the far rim and back.",
+			"name": "Standard battery, 70 Wh",
+			"description": "1.75 times the energy for 2 kg more. Kite's 40 Wh pack can't reach the far rim and back.",
 			"parts": [{"scene": "res://src/robot/socket/battery_part.tscn", "count": 1}],
 			"stock": {"rack": ["Slot12"]}
 		},

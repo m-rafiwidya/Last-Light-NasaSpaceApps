@@ -23,10 +23,10 @@ Every key can be rebound in Settings > Controls.
 
 ## What makes it mission design
 
-- **Trade-offs:** every part changes mass, energy, grip or heat. Two batteries (40 or 100 Wh), standard or
+- **Trade-offs:** every part changes mass, energy, grip or heat. Two batteries (40 or 70 Wh), standard or
   grip wheels, a thermal kit, a sampler; two cargo landers (Courier: 30 kg in daylight, Freighter: 45 kg
   near dusk).
-- **The cargo order decides the next mission:** the 100 Wh battery only arrives if you pack it in
+- **The cargo order decides the next mission:** the 70 Wh battery only arrives if you pack it in
   Mission 2's order. The Courier has no room for the grip wheels, so it means the long route; the
   Freighter carries everything but lands near nightfall, so Kite needs the thermal kit. Forget the
   battery and the far-rim run fails; the recovery costs mission time and brings it. Loose samples ride
@@ -34,7 +34,7 @@ Every key can be rebound in Settings > Controls.
 - **Forecast, then consequence:** the console forecasts each route's energy against Kite's range before
   you drive. In Mission 3 the default build fails both routes, and different builds succeed for
   different reasons.
-- **Verified:** 12 automated drive tests run every loadout down both routes with both cargo options
+- **Verified:** 16 automated drive tests run every loadout down both routes with both cargo options
   (`game/tests/test_m3_routes.gd`).
 
 ## Built on NASA data
