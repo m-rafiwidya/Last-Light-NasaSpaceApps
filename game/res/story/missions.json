@@ -548,13 +548,13 @@
 						}
 					},
 					{
-						"text": "Within 40 m of Evan's logger, switch to the mast view, aim at sunlit ground and press E; then a shade reading near the logger: try the marker post's shadow or Kite's own",
+						"text": "Within 40 m of Evan's logger, switch to the mast view, aim at sunlit ground and press E. Evan's logger holds his night reading for the shade half",
 						"label": "Far rim",
 						"target": "path:FarLogger",
 						"hint_from": "group:thermal_sensor",
 						"waypoint": true,
 						"key": "interact_use",
-						"stuck": "Both readings count within 40 m of the logger. Under a high sun the only shade is beside Kite or the marker post: aim the mast camera at it, within 8 m."
+						"stuck": "The sun reading counts within 40 m of the logger: aim the mast camera at sunlit ground within 8 m. Loading Evan's logger supplies the shade half."
 					}
 				],
 				"m3.kite_docked": [

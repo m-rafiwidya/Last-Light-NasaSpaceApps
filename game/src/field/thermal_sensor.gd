@@ -4,16 +4,14 @@ extends Node3D
 
 ## The temperature pair (plan item D): Kite's thermal turret (catalog `arm_tool_thermal` on its
 ## ArmToolSocket) is a radiometer, so it reads the ground where the mast camera aims, up to RANGE m
-## away. E (interact_use) in the mast view takes a reading: SHADE when a ray from that spot toward
-## the sun (LunarSky.sun_direction()) is blocked by anything (terrain, IRIS, a boulder, Kite itself),
-## otherwise SUN. Works with any sun: the Courier's high sun leaves only short shadows (Kite's own,
-## IRIS's), the Freighter's low sun long terrain ones.
+## away. E (interact_use) in the mast view takes a reading: SHADE when the surface faces away from the
+## sun (LunarSky.sun_direction()) or a ray from that spot toward it is blocked by natural ground
+## (terrain, rocks; man-made objects never count), otherwise SUN.
 ##
 ## It completes no objective: MissionDirector listens to `reading_taken` and, through `message_source`,
 ## writes what the subtitle says after the temperature. Readings live on this node only (not saved)
 ## and are cleared when a mission starts.
-## Place one anywhere in the Moon level; it finds the sky itself. `highlight_node` is for Guidance
-## (unset: Fahd points it at something that casts a usable shadow, e.g. IRIS).
+## Place one anywhere in the Moon level; it finds the sky itself. `highlight_node` is for Guidance.
 
 signal reading_taken(kind: String, celsius: float, point: Vector3)
 signal pair_completed
@@ -22,7 +20,7 @@ const GROUP: StringName = &"thermal_sensor"
 const TURRET: String = "arm_tool_thermal"
 const RANGE: float = 8.0
 const AIM_MASK: int = 1 | 2           # ground and IRIS (Kite itself is excluded from the aim)
-const SHADOW_MASK: int = 1 | 2 | 4    # world, vehicles (IRIS, Kite) and props cast shadows
+const SHADOW_MASK: int = 1            # world; only its natural colliders cast shade (is_natural)
 # Simulated values, swap for real data here. Sunlit ground: radiative equilibrium,
 # T = (S (1 - A) sin(elevation) / (emissivity sigma))^(1/4)
 const SOLAR_CONSTANT: float = 1361.0  # W/m2
@@ -83,16 +81,35 @@ func aim_point(rover: Robot) -> Dictionary:
 	return rover.get_world_3d().direct_space_state.intersect_ray(query)
 
 
-## "shade" or "sun" at a world point on a surface (with its normal)
-func kind_at(point: Vector3, normal: Vector3 = Vector3.UP) -> String:
-	var from: Vector3 = point + normal * 0.02
-	var query := PhysicsRayQueryParameters3D.create(from, from + _sun_direction() * 200.0, SHADOW_MASK)
-	return "shade" if get_world_3d().direct_space_state.intersect_ray(query) else "sun"
+## Terrain or a natural rock (MoonTerrain's ground, RockField rocks), not a man-made object
+static func is_natural(collider: Object) -> bool:
+	var parent: Node = (collider as Node).get_parent() if collider is Node else null
+	return parent is MoonTerrain or parent is RockField
+
+
+## "shade" or "sun" at a world point on a surface (with its normal): shade when the surface faces
+## away from the sun (attached shadow) or natural ground blocks the ray to the sun (cast shadow)
+func kind_at(point: Vector3, normal: Vector3 = Vector3.UP, natural_surface: bool = true) -> String:
+	var sun: Vector3 = _sun_direction()
+	if natural_surface and normal.dot(sun) <= 0.0:
+		return "shade"
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(point + normal * 0.02, point + sun * 200.0, SHADOW_MASK)
+	var excluded: Array[RID] = []
+	for i in 16:
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty():
+			return "sun"
+		if is_natural(hit["collider"]):
+			return "shade"
+		excluded.append(hit["rid"])
+		query.exclude = excluded
+	return "sun"
 
 
 ## Takes a reading at `point`; returns the kind
-func record(point: Vector3, normal: Vector3 = Vector3.UP) -> String:
-	var kind: String = kind_at(point, normal)
+func record(point: Vector3, normal: Vector3 = Vector3.UP, natural_surface: bool = true) -> String:
+	var kind: String = kind_at(point, normal, natural_surface)
 	var had_pair: bool = has_pair()
 	var elevation: float = rad_to_deg(asin(clampf(_sun_direction().y, -1.0, 1.0)))
 	var celsius: float = SHADE_CELSIUS if kind == "shade" else sun_celsius(elevation)
@@ -118,7 +135,7 @@ func try_read(rover: Robot) -> bool:
 	var hit: Dictionary = aim_point(rover)
 	if hit.is_empty():
 		return false
-	record(hit["position"], hit["normal"])
+	record(hit["position"], hit["normal"], is_natural(hit["collider"]))
 	return true
 
 
@@ -131,7 +148,7 @@ func get_hint(rover: Robot) -> String:
 	var hit: Dictionary = aim_point(rover)
 	if hit.is_empty():
 		return "Thermal turret: aim at the ground within %d m" % RANGE
-	return "Thermal turret: %s here. Press %s to read" % [kind_at(hit["position"], hit["normal"]).to_upper(),
+	return "Thermal turret: %s here. Press %s to read" % [kind_at(hit["position"], hit["normal"], is_natural(hit["collider"])).to_upper(),
 		InputBindings.action_text(&"interact_use", "E")]
 
 

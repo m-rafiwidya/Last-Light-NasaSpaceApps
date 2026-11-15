@@ -31,9 +31,11 @@ const COLD_MISSION: String = "m3"
 const COLD_LIMIT: float = 20.0
 const COLD_WARNING: String = "COLD: Kite is in shade without its thermal cover and heater. Cold shutdown in %d s: get back to sunlight."
 const COLD_MESSAGE: String = "Kite's electronics got too cold. Emergency recovery: Kite is being returned to the pad."
-const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
+const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sunlit ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
 const PAIR_TOO_FAR: String = "Reading taken, but too far from Evan's logger. Take the pair within 40 m of it."
-const PAIR_SUN_FIRST: String = "Sun reading saved. Now a shade reading near the logger: try the marker post's shadow or Kite's own."
+const PAIR_SUN_FIRST: String = "Sun reading saved. Load Evan's logger: it holds his night reading for the shade half."
+const PAIR_NIGHT_READING: String = "Evan's logger holds his night reading. Your sun reading completes the pair."
+const PAIR_NIGHT_DONE: String = "Evan's logger holds his night reading. Sun and shade pair recorded."
 const PAIR_SHADE_FIRST: String = "Shade reading saved. Now a sunlit one near the logger."
 const PAIR_DONE: String = "Sun and shade pair recorded."
 const PAIR_ALREADY: String = "Thermal pair already recorded."
@@ -502,10 +504,26 @@ func _pair_done() -> bool:
 
 
 func _try_pair() -> void:
+	_supply_night_reading()
 	if CampaignState.has_flag(RIM_READING_FLAG % "sun") and CampaignState.has_flag(RIM_READING_FLAG % "shade"):
 		CampaignState.set_flag(PAIR_FLAG)
 	if CampaignState.has_flag(PAIR_FLAG) and not CampaignState.is_objective_done(PAIR_OBJECTIVE):
 		try_complete(PAIR_OBJECTIVE)
+
+
+## No natural shade near the logger at the Courier's sun (SCIENCE_AND_DATA.md): loading Evan's logger
+## supplies his recorded night-time ground reading as the pair's shade half
+func _supply_night_reading() -> void:
+	var shade_flag: String = RIM_READING_FLAG % "shade"
+	if CampaignState.current_mission() != COLD_MISSION or CampaignState.has_flag(shade_flag) \
+			or not CampaignState.is_objective_done(MOUNT_OBJECTIVES[LOGGER_ID]):
+		return
+	CampaignState.set_flag(shade_flag)
+	var line := Dialog.new()
+	line.speaker = "Kite"
+	line.subtitle = PAIR_NIGHT_DONE if CampaignState.has_flag(RIM_READING_FLAG % "sun") else PAIR_NIGHT_READING
+	line.min_duration = 5.0
+	DialogServer.play_dialog(line)
 
 
 func _update_pair_alert() -> void:
