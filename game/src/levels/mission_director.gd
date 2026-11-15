@@ -36,7 +36,7 @@ const SAMPLE_OBJECTIVE: String = "m2.near_sample_collected"
 const SAMPLE_ID: String = "sample_container"
 const SAMPLE_MISSING: String = "SAMPLE NOT ABOARD: sample container S-1 fell out of the tray on the way, %d m from here. Drive back to it, pick it up with the claw (R, then click) into the tray, then dock again."
 const BATTERY_ITEM: String = "standard_battery"
-const BATTERY_RESUPPLY: String = "Mission control sent the 100 Wh battery with the recovery. It is on the rack: fit it before you try the far rim again."
+const BATTERY_RESUPPLY: String = "Mission control sent the 70 Wh battery with the recovery. It is on the rack: fit it before you try the far rim again."
 const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
 const PAIR_TOO_FAR: String = "Reading taken, but too far from Evan's logger. Take the pair within 40 m of it."
 const PAIR_SUN_FIRST: String = "Sun reading saved. Now a shade reading near the logger: try the marker post's shadow or Kite's own."
@@ -496,7 +496,7 @@ func sample_distance() -> float:
 	return 0.0
 
 
-## The cargo order is the only way to get the 100 Wh battery, and M3 can't be done without it: a
+## The cargo order is the only way to get the 70 Wh battery, and M3 can't be done without it: a
 ## player who skipped it gets it after a failed far-rim run (the failure and the recovery are the cost)
 func _resupply_battery() -> void:
 	if CampaignState.current_mission() != COLD_MISSION or CargoPlan.is_ordered(BATTERY_ITEM):

@@ -107,7 +107,7 @@ func _run() -> void:
 		CargoPlan.validate("courier", ["radio_module", "grip_wheels", "sampling_kit"]))
 	_check("[plan] the Courier fits all the light kit", CargoPlan.validate("courier",
 		["radio_module", "thermal_kit", "sampling_kit"]) == "")
-	_check("[plan] the 100 Wh battery is an order (5 kg), not on the rack from the start",
+	_check("[plan] the 70 Wh battery is an order (5 kg), not on the rack from the start",
 		is_equal_approx(CargoPlan.item_mass("standard_battery"), 5.0) and CargoPlan.item("standard_battery")["stock"]["rack"] == ["Slot12"]
 		and not CargoPlan.required_items().has("standard_battery"))
 	_check("[plan] the Courier fits the battery and the light kit; the Freighter fits the full build",
@@ -282,7 +282,7 @@ func _run() -> void:
 	_check("[freighter] unpacked in the bay", await _retrieve(director))
 	stock = _stock(workshop)
 	_check("[freighter] the grip wheels are on the rack", stock.get("wheel_high_grip") == 4, str(stock))
-	_check("[battery] not ordered: no 100 Wh battery on the rack", not stock.has("battery"), str(stock))
+	_check("[battery] not ordered: no 70 Wh battery on the rack", not stock.has("battery"), str(stock))
 	CS.start_mission("m3")
 	director._resupply_battery()
 	await _ticks(0.3)

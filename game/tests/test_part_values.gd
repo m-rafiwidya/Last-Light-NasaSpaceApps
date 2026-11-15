@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless test (plan v2 G1): part values that make the loadout matter.
-##   1. Batteries: the light pack is 40 Wh (its catalog text says so), the standard 100 Wh.
+##   1. Batteries: the light pack is 40 Wh (its catalog text says so), the standard 70 Wh.
 ##   2. Range: with the standard battery Kite's range covers both M3 round trips with margin; with
 ##      the light one it covers neither (the plan's "default fails both routes").
 ##   3. Tread: high-grip (lugged) wheels cost more energy per metre, so less range.
@@ -107,7 +107,7 @@ func _run() -> void:
 	# 1. Batteries
 	var light: Node = (load(PARTS % "battery_light_part") as PackedScene).instantiate()
 	var standard: Node = (load(PARTS % "battery_part") as PackedScene).instantiate()
-	_check("batteries: light 40 Wh, standard 100 Wh", is_equal_approx(light.capacity, 40.0) and is_equal_approx(standard.capacity, 100.0),
+	_check("batteries: light 40 Wh, standard 70 Wh", is_equal_approx(light.capacity, 40.0) and is_equal_approx(standard.capacity, 70.0),
 		"%.0f / %.0f" % [light.capacity, standard.capacity])
 	_check("batteries: the light pack's description says 40 Wh", light.get_description().contains("40 Wh"), light.get_description())
 	light.free()
@@ -117,8 +117,9 @@ func _run() -> void:
 	_battery("battery_part")
 	await _ticks(0.1)
 	var standard_range: float = rover.range_estimate()
-	_check("range: the standard battery covers both M3 round trips with 50% to spare",
-		standard_range > 1.5 * maxf(short_trip, long_trip),
+	# Tight on purpose: enough for either round trip, not enough to waste on detours
+	_check("range: the standard battery covers both M3 round trips, with 15 to 50% to spare",
+		standard_range > 1.15 * maxf(short_trip, long_trip) and standard_range < 1.5 * maxf(short_trip, long_trip),
 		"range %.0f m, short %.0f m, long %.0f m" % [standard_range, short_trip, long_trip])
 	_battery("battery_light_part")
 	await _ticks(0.1)
