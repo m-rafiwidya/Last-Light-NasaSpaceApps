@@ -8,15 +8,14 @@ extends Node3D
 ## the container fills (its model swaps to the full one) and m2.near_sample_collected completes.
 ## Optional: nothing here blocks M2. In a campaign only during m2; outside a campaign any time.
 ##
-## Simple version, no scoop animation: the container on the cargo mount is the whole requirement
-## (the scoop is a cargo part too, so Kite can't carry both).
+## Simple version, no scoop animation: the container on Kite is the whole requirement.
+##
+## The same script makes M3's optional far sample (plan v2 R3, far_sample_site.tscn): the settings
+## below pick the container (S-2), the mission and objective (m3.far_sample_collected) and the group.
+## In a campaign the site stays silent until missions.json has its objective.
 
 signal sample_collected(container: HotswapPart, rover: Robot)
 
-const GROUP: StringName = &"near_sample_site"
-const CONTAINER_ID: String = "sample_container"
-const MISSION: String = "m2"
-const OBJECTIVE: String = "m2.near_sample_collected"
 const FULL_MODEL: String = "res://res/models/rover_kit/sample_container_full.glb"
 ## How far Kite's origin may be from the patch's centre (horizontal, m): park_sample is about 1.3 m
 ## from it, so stopping anywhere around the patch counts
@@ -25,30 +24,43 @@ const SAMPLE_RANGE: float = 2.5
 const HINT_RANGE: float = 8.0
 const STOPPED_SPEED: float = 0.1
 
-## What Guidance lights up (`group:near_sample_site`): the patch with its corner marks
+## What Guidance lights up (`group:<group>`): the patch with its corner marks
 @export var highlight_node: Node3D
+## Which site this is: its name in hints, the container it fills, when it counts and its group
+@export var site_name: String = "Near sample site"
+@export var container_id: String = "sample_container"
+@export var mission: String = "m2"
+@export var objective: String = "m2.near_sample_collected"
+@export var group: StringName = &"near_sample_site"
 @onready var anchor: Node3D = find_child("anchor_sample", true, false)
 var _cued: Dictionary = {}
 
 
 func _ready() -> void:
-	add_to_group(GROUP)
+	add_to_group(group)
 	highlight_node = $Site
 
 
 func campaign_allows() -> bool:
-	var mission: String = CampaignState.current_mission()
-	return mission.is_empty() or (mission == MISSION and not CampaignState.is_objective_done(OBJECTIVE))
+	var current: String = CampaignState.current_mission()
+	return current.is_empty() or (current == mission and CampaignState.has_objective(objective)
+		and not CampaignState.is_objective_done(objective))
 
 
-## The empty S-1 container on `rover`'s cargo mount or in its storage box, or null
+## The container's name in hints ("sample container S-1")
+func container_name() -> String:
+	var name: String = PartCatalog.entry(container_id)["name"]
+	return name.substr(0, 1).to_lower() + name.substr(1)
+
+
+## The empty container on `rover`'s cargo mount or in its storage box, or null
 func _container(rover: Robot) -> HotswapPart:
 	if rover == null:
 		return null
 	for path in ["CargoSocket", "StorageBox/StorageSlot1", "StorageBox/StorageSlot2"]:
 		var socket := rover.get_node_or_null(path) as HotswapSocket
 		var part: HotswapPart = socket.part if socket else null
-		if part and part.get_catalog_id() == CONTAINER_ID and not part.has_meta(&"sample"):
+		if part and part.get_catalog_id() == container_id and not part.has_meta(&"sample"):
 			return part
 	return null
 
@@ -70,12 +82,12 @@ func get_hint(rover: Robot) -> String:
 	if rover == null or not campaign_allows() or site_distance(rover) > HINT_RANGE:
 		return ""
 	if _container(rover) == null:
-		return "Near sample site: bring the empty sample container S-1 (cargo mount or storage box)"
+		return "%s: bring the empty %s (cargo mount or storage box)" % [site_name, container_name()]
 	if site_distance(rover) > SAMPLE_RANGE:
-		return "Near sample site: drive %.1f m closer" % (site_distance(rover) - SAMPLE_RANGE)
+		return "%s: drive %.1f m closer" % [site_name, site_distance(rover) - SAMPLE_RANGE]
 	if rover.linear_velocity.length() > STOPPED_SPEED:
 		return "Stop here"
-	return "In position: press %s to take the near sample" % InputBindings.action_text(&"interact_use", "E")
+	return "In position: press %s to take the %s" % [InputBindings.action_text(&"interact_use", "E"), site_name.to_lower().replace(" site", "")]
 
 
 ## Fills the container on `rover`'s cargo mount and completes the objective; true when it did
@@ -83,7 +95,7 @@ func try_collect(rover: Robot) -> bool:
 	if not can_collect(rover):
 		return false
 	var container := _container(rover)
-	container.set_meta(&"sample", "near")
+	container.set_meta(&"sample", String(group))
 	# shortcut: only the model shows it's full; a loaded save gets an empty-looking S-1 back (the objective stays done)
 	var kit := container.get_node_or_null("Model/Kit") as Node3D
 	if kit:
@@ -94,12 +106,12 @@ func try_collect(rover: Robot) -> bool:
 		container.get_node("Model").add_child(full)
 		full.name = "Kit"
 	sample_collected.emit(container, rover)
-	CampaignState.complete_objective(OBJECTIVE)
+	CampaignState.complete_objective(objective)
 	return true
 
 
 ## Guidance never shows an optional step, so the site says once (per case) what to do when Kite
-## arrives: "need" without S-1, "ready" with it
+## arrives: "need" without the container, "ready" with it
 func _cue(rover: Robot) -> void:
 	if not campaign_allows() or site_distance(rover) > SAMPLE_RANGE + 2.0:
 		return
@@ -109,10 +121,12 @@ func _cue(rover: Robot) -> void:
 	_cued[key] = true
 	var line := Dialog.new()
 	line.speaker = "Kite"
-	line.subtitle = "Near sample site. Stop by the patch and press %s to take a sample." % InputBindings.action_text(&"interact_use", "E") \
-		if key == "ready" else "Near sample site (optional). Bring sample container S-1, on the cargo mount or in the storage box, to take a sample here."
+	if key == "ready":
+		line.subtitle = "%s. Stop by the patch and press %s to take a sample." % [site_name, InputBindings.action_text(&"interact_use", "E")]
+	else:
+		line.subtitle = "%s (optional). Bring %s, on the cargo mount or in the storage box, to take a sample here." % [site_name, container_name()]
 	line.min_duration = 5.0
-	line.repeat_id = "kite_near_sample_" + key
+	line.repeat_id = "kite_%s_%s" % [group, key]
 	DialogServer.play_dialog(line)
 
 
