@@ -16,8 +16,8 @@ const CRATE_GROUP: StringName = &"cargo_crate"
 const AT_ZONE_FLAG: String = "cargo_at_landing_zone"
 const RETRIEVED_OBJECTIVE: String = "m2.cargo_retrieved"
 const CRATE_ID: String = "cargo_crate"
-## The carryable crate. Stand-in until R2's crate part lands: swap this path for it.
-const CRATE_PART_SCENE: String = "res://src/levels/cargo_parcel.tscn"
+## The carryable crate (2 kg empty; MissionDirector sets its mass from the order)
+const CRATE_PART_SCENE: String = "res://src/field/cargo_crate_part.tscn"
 
 static var _data: Dictionary = {}
 static var _masses: Dictionary = {}
