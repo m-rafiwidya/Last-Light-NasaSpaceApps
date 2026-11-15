@@ -140,6 +140,16 @@ The console's Planning tab offers two fictional services. Every value below is a
 
 The Courier arrives early, so M3 falls on local day 6.4 with the Sun about 78 degrees up. Near the equator a Sun that high casts almost no shade: a slope shadows itself only where it faces away from the Sun more steeply than 90 − 78 = 12 degrees, and a crater rim shadows the ground behind it only over about 0.2 times its height. Head's walls are mostly gentler, so at 78 degrees the DTM casts no shade on the play area (0.00 % of its posts), and nothing is cold. The Freighter arrives late, so M3 falls on local day 13.4, about 1.4 days before sunset with the Sun about 17 degrees up in the west. Head's west inner wall is then in shade on the short route, and the simulated north-loop nightfall band lies on the long route, so the thermal kit is a nightfall item: it is required to confirm a Freighter order, and no manifest leads to a dead end. The Courier's high sun leaves both routes warm, but its order can't carry the grip wheels the short route's loose rim climb needs, so a Courier M3 takes the long route. The Courier can't carry the 20 kg of high-grip wheels. The Freighter can carry them, but not together with every other item.
 
+#### The landing zone as built (`LandingZone`, M2)
+
+Cargo landers set down at a landing zone away from the outpost, and Kite fetches the crate (`m2.cargo_retrieved`). The reason is real: a lander's descent engine blasts dust and small rocks outward at high speed, and on the airless Moon nothing slows them down. Apollo 12 is the example the game sits on. Its lunar module landed about 157 m from Surveyor 3 (the two positions in `terrain.json` `artifacts`, from LROC), and the Surveyor parts the crew brought home were pitted and sandblasted by the descent blast (Immer, Lane, Metzger and Clements, "Apollo 12 Lunar Module exhaust plume impingement on Lunar Surveyor III", *Icarus* 211, 2011; [NASA Surveyor 3](https://science.nasa.gov/mission/surveyor-3/)).
+
+| Value | Used | Status |
+|---|---|---|
+| Landing zone at (0, 360), 319 m from the charging pad (the crate 310 m), east-south-east of the base | Where every cargo order lands; the M2 fetch | Placed on the **measured DTM**, unmodified: under 0.6 degrees over a 12 m disc, no rocks, the straight drive from the apron under 5.2 degrees; 299 m or more from the IRIS lane, both M3 routes, the crew lander and the historic hardware. The distance itself is a game choice ("a few hundred metres"), not a NASA rule |
+| The crate's mass: the order's payload with packaging (heaviest valid order 36.9 kg, a Freighter) | Kite's mass on the way home | Game data (see the cargo order above) |
+| Fetch energy with the heaviest crate: 10.6 Wh out, 12.4 Wh back, 1.0 Wh for the apron to pad legs, 24.0 Wh in all; with a 30% margin 31.2 Wh | Must fit G1's 40 Wh light battery, so no order can soft-lock M2 | Measured in the game's rover physics at 3 m/s (`tests/test_m2_loop.gd`, 13 Nov 2026); not a real rover's figure |
+
 #### The M3 routes and landmarks as built (`RouteMarkers`, `BoulderField`, `ColdZones/HeadShade`)
 
 | Landmark | Where | Source |

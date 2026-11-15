@@ -220,6 +220,7 @@
 			"title": "First Signal",
 			"objectives": [
 				"m2.cargo_ordered",
+				"m2.cargo_retrieved",
 				"m2.module_loaded",
 				"m2.module_installed",
 				"m2.iris_activated",
@@ -231,6 +232,7 @@
 			],
 			"objective_titles": {
 				"m2.cargo_ordered": "Order the cargo delivery from the console's Planning tab",
+				"m2.cargo_retrieved": "Fetch the cargo crate from the landing zone",
 				"m2.module_loaded": "Load the radio-power module onto Kite",
 				"m2.module_installed": "Install the module in IRIS",
 				"m2.iris_activated": "Bring IRIS online",
@@ -282,6 +284,59 @@
 						"label": "",
 						"target": "",
 						"stuck": "The radio-power module must go. Keep the total under the lander's limit; a late arrival puts M3 near nightfall."
+					}
+				],
+				"m2.cargo_retrieved": [
+					{
+						"text": "Open the mission console",
+						"label": "Mission console",
+						"target": "path:Workshop/Parts/ws_console_01",
+						"key": "interact_use",
+						"stuck": "The crate landed out at the landing zone. Open the console and press CONTROL KITE to fetch it.",
+						"done_when": {
+							"state": [
+								"MISSION_CONSOLE"
+							]
+						}
+					},
+					{
+						"text": "Press CONTROL KITE on the console",
+						"label": "",
+						"target": "",
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							]
+						}
+					},
+					{
+						"text": "Drive to the landing zone",
+						"label": "Landing zone",
+						"target": "path:LandingZone/CargoLander",
+						"waypoint": true,
+						"stuck": "Follow the marker east-south-east, away from IRIS. Landers set down a few hundred metres out so their exhaust doesn't blast the outpost.",
+						"done_when": {
+							"near": "path:LandingZone/CargoLander",
+							"distance": 25.0
+						}
+					},
+					{
+						"text": "Load the crate onto Kite's cargo mount",
+						"label": "Cargo crate",
+						"target": "part:cargo_crate",
+						"hint_from": "group:left_parts",
+						"key": "interact_use",
+						"stuck": "Pull up alongside the crate so Kite's deck is beside it, stop, then press E.",
+						"done_when": {
+							"fitted": "cargo_crate"
+						}
+					},
+					{
+						"text": "Bring the crate home into the bay",
+						"label": "Bay",
+						"target": "path:Workshop/Parts/ws_pad_01",
+						"waypoint": true,
+						"stuck": "Follow the marker back to the workshop and drive in through the bay door. The crate is unpacked as soon as Kite is inside."
 					}
 				],
 				"m2.module_loaded": [

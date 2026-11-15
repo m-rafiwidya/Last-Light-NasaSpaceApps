@@ -6,6 +6,8 @@ extends SceneTree
 ##   4. On the Moon: completing an objective autosaves, quitting to the menu saves; loading the
 ##      slot gives the same campaign and Kite parts and charge, Kite docked, IRIS scanned, and no
 ##      objective or mission signal.
+##   5. The M2 crate at the landing zone keeps its spot and mass through a load; saved aboard Kite out
+##      in the field, a load leaves it where Kite was (Kite back on the pad), still to fetch.
 ## Saves go to user://saves_test (SaveIndex under a script run), cleared before and after.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_saves.gd
@@ -96,6 +98,7 @@ func _run() -> void:
 		CS.complete_objective(objective)
 	CS.start_mission("m2")
 	CS.complete_objective("m2.cargo_ordered")
+	CS.complete_objective("m2.cargo_retrieved")
 	CS.complete_objective("m2.module_loaded")
 	CS.set_flag("iris_online")
 	CS.add_item("sample", 2)
@@ -167,15 +170,21 @@ func _run() -> void:
 	var workshop: Node = level.get_node("Workshop")
 	await _ticks(1.0)
 	var gated: Dictionary = _rack(workshop)
-	_check("[rack] a new campaign leaves the cargo slots empty", gated["total"] == 13 and gated["wheel"] == 6
-		and not gated.has("wheel_high_grip") and not gated.has("radio_module") and not gated.has("arm_tool_thermal")
+	# The thermal turret is always on the rack (not a cargo item); only ordered items are gated
+	_check("[rack] a new campaign leaves the cargo slots empty", gated["total"] == 14 and gated["wheel"] == 6
+		and not gated.has("wheel_high_grip") and not gated.has("radio_module") and gated.get("arm_tool_thermal", 0) == 1
 		and gated["battery"] == 1 and gated["battery_light"] == 1 and workshop.rack_stock.has_node("Slot12"), str(gated))
 	CS.add_item("cargo.grip_wheels")
-	workshop.account_rack()
+	CS.set_flag("cargo_at_landing_zone")
+	await physics_frame
+	var waiting: Dictionary = _rack(workshop)
+	_check("[rack] ordered grip wheels stay off the rack while the crate is out", not waiting.has("wheel_high_grip")
+		and waiting.get("arm_tool_thermal", 0) == 1 and waiting["total"] == 14, str(waiting))
+	CS.set_flag("cargo_at_landing_zone", false)
 	await physics_frame
 	var full_rack: Dictionary = _rack(workshop)
-	_check("[rack] delivered grip wheels fill their slots", full_rack["total"] == 17 and full_rack["wheel_high_grip"] == 4,
-		str(full_rack))
+	_check("[rack] delivered grip wheels fill their slots", full_rack["total"] == 18 and full_rack["wheel_high_grip"] == 4
+		and full_rack.get("arm_tool_thermal", 0) == 1, str(full_rack))
 	workshop._on_restock_interacted(null)
 	await physics_frame
 	_check("[rack] Restock keeps it the same", _rack(workshop) == full_rack, str(_rack(workshop)))
@@ -256,7 +265,64 @@ func _run() -> void:
 	workshop._on_restock_interacted(null)
 	await physics_frame
 	_check("[rack] Restock follows the same rule", _rack(workshop) == rack, str(_rack(workshop)))
+
+	# 5. The cargo crate out at the landing zone: where it lies and whether it is aboard survive a load
+	CS.load_state({"current": "m2", "objectives": ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned",
+		"m1.kite_docked", "m1.inspection_sent"], "missions_done": ["m1"], "flags": [], "items": {}})
+	var plan: GDScript = load("res://src/levels/cargo_plan.gd")
+	plan.deliver("courier", ["radio_module", "thermal_kit"])
+	await _ticks(1.0)
+	var crate_at: Vector3 = _crate(level).global_position
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+	CS.reset()
+	SI.load_slot("slot_1")
+	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
+	level = SL.current_scene
+	rover = level.get_node("ReadyRover")
+	await _ticks(2.0)
+	var crate: Node3D = _crate(level)
+	_check("[cargo] at the landing zone after a load: same spot, same mass, flag set, lander there", crate != null
+		and crate.global_position.distance_to(crate_at) < 0.2 and is_equal_approx(crate.mass, plan.crate_mass())
+		and CS.has_flag("cargo_at_landing_zone") and level.has_node("LandingZone/CargoLander")
+		and CS.current_objective() == "m2.cargo_retrieved", str(crate.global_position if crate else null))
+	var out_there: Vector3 = crate_at + Vector3(-60.0, 0.0, -20.0)
+	rover.freeze = true
+	rover.global_position = out_there + Vector3.UP * 1.0
+	crate.freeze = false
+	rover.get_node("CargoSocket").mount(crate)
+	await _ticks(0.3)
+	out_there = rover.global_position
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+	_check("[cargo] saved aboard Kite with where Kite was", _read("slot_1")["kite"]["sockets"]["CargoSocket"] is Dictionary)
+	CS.reset()
+	SI.load_slot("slot_1")
+	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
+	level = SL.current_scene
+	rover = level.get_node("ReadyRover")
+	await _ticks(2.0)
+	crate = _crate(level)
+	var off: Vector3 = (crate.global_position - out_there) if crate else Vector3.INF
+	off.y = 0.0
+	_check("[cargo] loaded: Kite on the pad without it, the crate left where Kite was, fetchable", crate != null
+		and _crate_count(level) == 1
+		and rover.get_node("CargoSocket").part == null and level.get_node("Workshop").pad.is_in_zone(rover)
+		and off.length() < 1.5 and level.get_node("MissionDirector").left_parts.has_parts()
+		and not CS.is_objective_done("m2.cargo_retrieved"), "%.2f m" % off.length())
 	_finish()
+
+
+func _crate_count(level: Node) -> int:
+	return level.find_children("*", "RigidBody3D", true, false).filter(func(p: Node) -> bool:
+		return p.has_method("get_catalog_id") and p.get_catalog_id() == "cargo_crate" and not p.is_queued_for_deletion()).size()
+
+
+func _crate(level: Node) -> RigidBody3D:
+	for part in level.find_children("*", "RigidBody3D", true, false):
+		if part.has_method("get_catalog_id") and part.get_catalog_id() == "cargo_crate" and not part.is_queued_for_deletion():
+			return part
+	return null
 
 
 const SlotInfoState = preload("res://src/save/save_slot_info.gd").State
