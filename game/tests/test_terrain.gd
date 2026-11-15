@@ -93,6 +93,9 @@ func _ticks(seconds: float) -> void:
 func _ray_down(x: float, z: float, mask: int = GROUND_MASK) -> Dictionary:
 	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 2000.0, z), Vector3(x, -2000.0, z), mask)
 	q.exclude = [rover.get_rid(), terrain.get_node("Rocks/RockCollision").get_rid()] + _workshop_rids()
+	var boulders: Node = terrain.get_parent().get_node_or_null("BoulderField/Rocks/RockCollision")
+	if boulders:
+		q.exclude += [boulders.get_rid()]
 	return root.world_3d.direct_space_state.intersect_ray(q)
 
 

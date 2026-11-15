@@ -217,6 +217,8 @@ func _show_kite() -> void:
 			rows.append(["Alert", "[color=%s]%s[/color]" % [_hex(&"warn"), director.alert]])
 		elif rover.battery and not workshop.pad.is_in_zone(rover):
 			rows.append(["Return", "Needs about %d%%" % ceili(director.return_fraction_needed() * 100.0)])
+		if director.can_request_recovery():
+			rows.append(["Stuck?", "Kite hasn't moved for %d s. Emergency recovery returns it to the pad (logged in the report)." % floori(director.still_time)])
 	var parts: PackedStringArray = []
 	for socket in rover.find_children("*", "HotswapSocket", true, false):
 		if socket.part:
@@ -270,6 +272,8 @@ func _update_action() -> void:
 	elif section == Section.PLANNING and _can_order():
 		%Action.show_text("Confirm order")
 		%Action.disabled = not confirm_blocked().is_empty()
+	elif section == Section.KITE and _director() and _director().can_request_recovery():
+		%Action.show_text("Request emergency recovery")
 	else:
 		%Action.visible = false
 
@@ -305,6 +309,8 @@ func _on_action_pressed() -> void:
 		select_section(Section.MISSION)
 	elif section == Section.PLANNING and _can_order():
 		confirm_order()
+	elif section == Section.KITE and _director() and _director().request_recovery():
+		refresh()
 	elif _downlink_ready(mission):
 		_sending = 0.0
 		refresh()
@@ -467,10 +473,10 @@ func _card_lines() -> PackedStringArray:
 			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
 		if CargoPlan.is_late(id):
-			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up, %.1f days to sunset), colder routes."
+			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall is in shade on the short route, so the thermal kit is needed."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
 		else:
-			lines.append("    Day %d: M3 in daylight (sun ~%d° up). Only the short route's shade is cold."
+			lines.append("    Day %d: M3 in high sun (~%d° up): no shade on either route, no thermal kit needed."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day))])
 	var problem := confirm_blocked()
 	lines.append("")
@@ -510,7 +516,7 @@ func _ledger_lines() -> PackedStringArray:
 func route_forecast() -> PackedStringArray:
 	var id := CargoPlan.delivered_service()
 	if id.is_empty():
-		return PackedStringArray(["ROUTE FORECAST  no cargo delivered: the shaded short route needs the thermal kit."])
+		return PackedStringArray(["ROUTE FORECAST  no cargo delivered yet: M3's sun, and so its shade, depends on when the cargo lands."])
 	var day: float = CargoPlan.m3_day(id)
 	var late: bool = CargoPlan.is_late(id)
 	var director := _director()
@@ -520,14 +526,22 @@ func route_forecast() -> PackedStringArray:
 	var grip: String = "delivered" if CargoPlan.is_ordered("grip_wheels") else "not delivered"
 	var lines: PackedStringArray = ["[b]ROUTE FORECAST[/b]  M3 on lunar day %.1f, sun ~%d° up%s" % [day,
 		roundi(CargoPlan.sun_elevation(day)), ", near nightfall" if late else ""]]
-	lines.append("Short route: rough ground through shade. Thermal kit needed (%s); high-grip wheels help (%s)." % [kit, grip])
+	lines.append("%s (orange flags, about %d m there and back): a boulder field, then down Head's west wall and round its north side, up to the far rim. High-grip wheels help in the boulders (%s)."
+		% [RouteMarkers.TITLES["short"], _route_metres("short"), grip])
 	if late:
-		lines.append("Long route: the far rim is in shade near nightfall. Thermal kit needed here too (%s)." % kit)
+		lines.append("    Near nightfall Head's west wall is in shade on the way down: thermal kit needed (%s)." % kit)
 	else:
-		lines.append("Long route: sunlit, gentler and longer. No thermal kit needed.")
+		lines.append("    High sun: no shade in the crater, no thermal kit needed.")
+	lines.append("%s (blue flags, about %d m there and back): gentler and longer, sunlit all the way. No thermal kit needed."
+		% [RouteMarkers.TITLES["long"], _route_metres("long")])
 	lines.append("Without cover and heater fitted, Kite shuts down after %d s in cold shade and is recovered."
 		% roundi(MissionDirector.COLD_LIMIT))
 	return lines
+
+
+func _route_metres(id: String) -> int:
+	var markers := get_tree().get_first_node_in_group(&"route_markers") as RouteMarkers
+	return roundi(markers.round_trip(id) / 10.0) * 10 if markers else 0
 
 
 func _on_control_kite_pressed() -> void:

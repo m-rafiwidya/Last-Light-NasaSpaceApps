@@ -5,8 +5,9 @@ extends SceneTree
 ##   2. Console: Planning closed before m1 is complete; Confirm disabled over the limit and without
 ##      the module; the flight can be skipped; delivery records the items once, completes
 ##      m2.cargo_ordered and fills the rack and bench.
-##   3. Save/load keeps the order. 4. Cold zones: the short route's shade is cold in daylight, the
-##      night zone only after a late arrival, the thermal kit protects, the timer ends in recovery.
+##   3. Save/load keeps the order. 4. Cold zones: Head crater has no shade under a Courier M3's
+##      high sun; after a late arrival its west wall is cold, the thermal kit protects, the timer
+##      ends in recovery; the forecast names both routes.
 ##   5. The Freighter completes an order too.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_cargo_planning.gd
@@ -184,16 +185,25 @@ func _run() -> void:
 	stock = _stock(workshop)
 	_check("[load] the rack and bench follow the order", stock.get("thermal_cover") == 1 and not stock.has("wheel_high_grip"), str(stock))
 
-	# 4. Cold zones
+	# 4. Cold zones: real shade for M3's sun (Head crater's west wall at dusk)
 	var rover: RigidBody3D = director.rover
-	var short_zone: Vector3 = level.get_node("ColdZones/ShortRouteShade").global_position
-	var night_zone: Vector3 = level.get_node("ColdZones/FarRimDusk").global_position
-	_check("[cold] no cold zone outside M3", director.cold_zone_at(short_zone) == null)
+	var west_wall := Vector3(-76.0, 0.0, -50.0)
+	_check("[cold] no cold zone outside M3", director.cold_zone_at(west_wall) == null)
 	debug.parse_command("startmission m3")
-	_check("[cold] daylight M3: the short route's shade is cold", director.cold_zone_at(short_zone) != null)
-	_check("[cold] daylight M3: the night zone is inactive", director.cold_zone_at(night_zone) == null)
+	_check("[cold] Courier M3 (high sun): no shade in Head", director.cold_zone_at(west_wall) == null)
+	console.select_section(console.Section.MISSION)
+	var forecast: String = console.get_node("%Description").text
+	_check("[forecast] the m3 Mission tab shows the route forecast", forecast.contains("ROUTE FORECAST")
+		and not forecast.contains("near nightfall") and forecast.contains("no thermal kit needed"))
+	_check("[forecast] it names both routes", forecast.contains("Short route (through Head crater)") and forecast.contains("Long route (north loop round Head)"))
+	CS.remove_item("cargo.service.courier")
+	CS.add_item("cargo.service.freighter")
+	director.apply_mission_sun()
+	_check("[cold] Freighter M3 (dusk): Head's west wall is cold", CargoPlan.m3_near_nightfall() and director.cold_zone_at(west_wall) != null)
+	console.refresh()
+	_check("[forecast] late arrival: the forecast says near nightfall", console.get_node("%Description").text.contains("near nightfall"))
 	rover.freeze = true
-	rover.global_position = short_zone + Vector3.UP * 20.0
+	rover.global_position = west_wall + Vector3.UP * 20.0
 	director._update_cold(1.0)
 	_check("[cold] without the kit: a warning", director.cold_time > 0.0 and director.alert.begins_with("COLD"), director.alert)
 	director._update_cold(MD.COLD_LIMIT)
@@ -206,18 +216,10 @@ func _run() -> void:
 				if part.has_method("get_catalog_id") and part.get_catalog_id() == socket.accepted_catalog_id:
 					socket.mount(part)
 					break
-	rover.global_position = short_zone + Vector3.UP * 20.0
+	rover.global_position = west_wall + Vector3.UP * 20.0
 	director._update_cold(5.0)
 	_check("[cold] with cover and heater fitted: no cold", director.thermal_kit_fitted() and director.cold_time == 0.0
 		and not director.recovering)
-	console.select_section(console.Section.MISSION)
-	_check("[forecast] the m3 Mission tab shows the route forecast", console.get_node("%Description").text.contains("ROUTE FORECAST")
-		and not console.get_node("%Description").text.contains("near nightfall"))
-	CS.remove_item("cargo.service.courier")
-	CS.add_item("cargo.service.freighter")
-	_check("[cold] late arrival: the night zone is active", CargoPlan.m3_near_nightfall() and director.cold_zone_at(night_zone) != null)
-	console.refresh()
-	_check("[forecast] late arrival: the forecast says near nightfall", console.get_node("%Description").text.contains("near nightfall"))
 	rover.freeze = false
 	director.dock_rover()
 

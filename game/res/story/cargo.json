@@ -4,7 +4,7 @@
 		"Every number here is a game assumption unless game/docs/SCIENCE_AND_DATA.md gives a source for it. Item masses are not listed: CargoPlan reads them from the part scenes.",
 		"services: limit_kg is the delivered payload limit (items plus packaging_kg); arrival_day is story days after the order; phases are [label, story day] for the flight panel.",
 		"items: parts are the part scenes it delivers. stock names the workshop slots (rack: RackStock child names, bench: BenchStock child names) that stay empty until it is delivered. crate: its parts go to Rafi's cargo crate (CargoPlan.crate_parts()), not to the rack.",
-		"lunar_day: local days since sunrise. order_day matches the Moon level's sun (16.7 degrees up in the east); M3 happens m3_after_delivery_days after arrival and is near nightfall when it falls within nightfall_margin_days of sunset; then night_required items must be ordered."
+		"lunar_day: local days since sunrise. order_day matches the Moon level's sun (16.7 degrees up in the east); M3 happens m3_after_delivery_days after arrival and is near nightfall when it falls within nightfall_margin_days of sunset; then night_required items must be ordered. M3 shows its own sun: morning_azimuth (the level sun's) before local noon, mirrored about the meridian after it."
 	],
 	"objective": "m2.cargo_ordered",
 	"packaging_kg": 2.0,
@@ -13,6 +13,7 @@
 		"synodic_days": 29.53,
 		"daylight_days": 14.77,
 		"order_day": 1.4,
+		"morning_azimuth": 90.6247,
 		"m3_after_delivery_days": 1.0,
 		"nightfall_margin_days": 3.0,
 		"night_required": ["thermal_kit"]

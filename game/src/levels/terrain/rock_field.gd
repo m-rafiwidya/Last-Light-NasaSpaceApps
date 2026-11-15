@@ -18,7 +18,11 @@ var _instances: Array[MultiMeshInstance3D] = []
 
 ## `data`: path of rocks.f32. `collision_only`: no visuals (headless)
 func build(terrain: Node3D, data: String, collision_min_size: float, collision_only: bool) -> void:
-	var values: PackedFloat32Array = FileAccess.get_file_as_bytes(data).to_float32_array()
+	build_values(FileAccess.get_file_as_bytes(data).to_float32_array(), collision_min_size, collision_only)
+
+
+## `values`: six floats per rock, as in rocks.f32
+func build_values(values: PackedFloat32Array, collision_min_size: float, collision_only: bool) -> void:
 	count = values.size() / 6
 	for s in SHAPES:
 		meshes.append(_rock_mesh(s))

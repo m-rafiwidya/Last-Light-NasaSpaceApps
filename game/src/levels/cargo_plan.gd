@@ -103,6 +103,14 @@ static func sun_elevation(day: float) -> float:
 	return minf(arc, 180.0 - arc)
 
 
+## The sun on a local day as (azimuth, elevation) in degrees: the uniform arc, rising at the level
+## sun's azimuth and setting at its mirror about the meridian (game assumption)
+static func sun_on_day(day: float) -> Vector2:
+	var morning: float = float(data()["lunar_day"].get("morning_azimuth", 90.0))
+	var daylight: float = float(data()["lunar_day"].get("daylight_days", 14.77))
+	return Vector2(morning if day <= daylight * 0.5 else 360.0 - morning, sun_elevation(day))
+
+
 static func days_to_sunset(day: float) -> float:
 	return float(data()["lunar_day"].get("daylight_days", 14.77)) - day
 
@@ -121,7 +129,7 @@ static func validate(service_id: String, ids: Array) -> String:
 	if is_late(service_id):
 		for id in data()["lunar_day"].get("night_required", []):
 			if not ids.has(id):
-				return "Arrives near nightfall: M3's routes are cold, so the %s is required." % item(id)["name"]
+				return "Arrives near nightfall: Head crater's shade lies on the short route, so the %s is required." % item(id)["name"]
 	return ""
 
 
