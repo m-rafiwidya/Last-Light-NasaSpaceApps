@@ -70,6 +70,9 @@ const HEATER_POWER: float = 500.0
 # standard tread, scaling with mass and the tread factor. The electronics draw per second, so
 # their share per metre follows the speed.
 const RANGE_SPEED: float = 1.8
+# Top speed (m/s): the Apollo LRV's 3.6 m/s. A governor in _step_drivetrain stops adding drive
+# torque past it; the motor keeps its full power below it (launches and climbs unchanged)
+const MAX_SPEED: float = 3.6
 const DRIVE_WH_PER_M: float = 0.0081
 # Rolling resistance, applied through the driven wheels as a Coulomb friction torque (each
 # wheel: coefficient * its tread factor * a sixth of the weight): it opposes the wheels' turning
@@ -488,6 +491,7 @@ func _update_wheel_parts() -> void:
 		var radius: float = wheel_part.radius if wheel_part else running_gear.wheel_radius
 		properties[RunningGear.WheelProperty.EFFECTIVE_RADIUS] = radius
 		properties[RunningGear.WheelProperty.GRIP] = wheel_part.grip if wheel_part else 1.0
+		properties[RunningGear.WheelProperty.LUGGED] = wheel_part != null and wheel_part.lugged
 
 		# Physics wheel centre: where the step's ground check stopped, or fully extended
 		var wheel_position: Vector3 = properties[RunningGear.WheelProperty.POSITION]
@@ -567,7 +571,13 @@ func _step_drivetrain(step: float) -> void:
 	var torques: Dictionary = {}
 	for wheel in DRIVEN_WHEELS:
 		var wheel_motor_speed: float = running_gear.wheel_states[wheel][RunningGear.WheelState.ANGULAR_VELOCITY] * combined_gear_ratio
-		torques[wheel] = engine.get_motor_torque(wheel_motor_speed, voltage) * share
+		var wheel_voltage: float = voltage
+		# Speed governor: past MAX_SPEED (ground speed at this wheel) the drive gives no more torque
+		# that way, so Kite coasts at the cap; below it the motor keeps its full power
+		var cap: float = MAX_SPEED / running_gear.wheel_properties[wheel][RunningGear.WheelProperty.EFFECTIVE_RADIUS] * combined_gear_ratio
+		if absf(wheel_motor_speed) > cap and signf(wheel_motor_speed) == signf(voltage):
+			wheel_voltage = signf(voltage) * minf(absf(voltage), absf(wheel_motor_speed) / engine.no_load_speed)
+		torques[wheel] = engine.get_motor_torque(wheel_motor_speed, wheel_voltage) * share
 	_update_traction_factors(torques, step)
 	for wheel in DRIVEN_WHEELS:
 		var wheel_state: Dictionary = running_gear.wheel_states[wheel]

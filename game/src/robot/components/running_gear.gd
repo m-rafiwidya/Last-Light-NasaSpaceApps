@@ -160,7 +160,13 @@ enum WheelProperty{
 	INERTIA,
 	# Multiplier on both friction coefficients (from the mounted WheelPart's grip)
 	GRIP,
+	# The mounted WheelPart's tread is lugged (grousers): loose ground costs it less traction
+	LUGGED,
 }
+
+## Share of loose ground's traction loss a lugged tread still suffers: its grousers dig into soft
+## regolith instead of sliding on it (plan v2 G1, so grip wheels clearly beat standard ones there)
+const LUGGED_LOOSE_LOSS: float = 0.4
 
 var wheel_properties: Dictionary
 ## Traction of the ground under the rover (1.0 normal, lower on loose ground): multiplies every
@@ -195,6 +201,7 @@ func apply_suspension(overrides: Dictionary) -> void:
 	for wheel in kept:
 		wheel_properties[wheel][WheelProperty.EFFECTIVE_RADIUS] = kept[wheel][WheelProperty.EFFECTIVE_RADIUS]
 		wheel_properties[wheel][WheelProperty.GRIP] = kept[wheel][WheelProperty.GRIP]
+		wheel_properties[wheel][WheelProperty.LUGGED] = kept[wheel].get(WheelProperty.LUGGED, false)
 
 
 func update_wheel_properties() -> void:
@@ -222,6 +229,7 @@ func update_wheel_properties() -> void:
 			WheelProperty.STEER_BIAS: entry[5],
 			WheelProperty.INERTIA: wheel_inertia,
 			WheelProperty.GRIP: 1.0,
+			WheelProperty.LUGGED: false,
 		}
 
 # A wheel with no ground contact produces no load, force or ground torque.
@@ -274,10 +282,17 @@ func get_steer_angle(wheel: Wheel, steer: float) -> float:
 
 ## Friction coefficients of a wheel, including its grip multiplier and the ground's traction
 func get_longitudinal_friction(wheel: Wheel) -> float:
-	return longitudinal_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * ground_traction
+	return longitudinal_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * get_ground_traction(wheel)
 
 func get_lateral_friction(wheel: Wheel) -> float:
-	return lateral_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * ground_traction
+	return lateral_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * get_ground_traction(wheel)
+
+## The ground's traction for a wheel: lugged treads lose only LUGGED_LOOSE_LOSS of what loose
+## ground takes from a standard tread
+func get_ground_traction(wheel: Wheel) -> float:
+	if wheel_properties[wheel].get(WheelProperty.LUGGED, false):
+		return 1.0 - (1.0 - ground_traction) * LUGGED_LOOSE_LOSS
+	return ground_traction
 
 ## `steer` is -1 (full left) .. 1 (full right).
 ## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque

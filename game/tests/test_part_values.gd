@@ -6,6 +6,9 @@ extends SceneTree
 ##   3. Tread: high-grip (lugged) wheels cost more energy per metre, so less range.
 ##   4. Ground traction: Robot.ground_traction scales every wheel's friction, and on loose ground
 ##      (0.25) the same full throttle gets Kite less far in a second than on normal ground.
+##   5. Lugged wheels: loose ground costs them far less traction, so on loose ground grip wheels
+##      get Kite clearly further than standard ones.
+##   6. Top speed: about 3.6 m/s on open ground (the Apollo LRV's top speed).
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_part_values.gd
 
@@ -18,6 +21,7 @@ var CS: Node
 var failures: int = 0
 var level: Node3D
 var rover: RigidBody3D
+var launch_from := Transform3D()
 
 
 func _initialize() -> void:
@@ -63,12 +67,13 @@ func _wheels(scene: String) -> void:
 		_swap(socket, scene)
 
 
-## Metres Kite covers from a standstill in `seconds` of full throttle, straight ahead
+## Metres Kite covers from a standstill in `seconds` of full throttle, always from `launch_from`
+## (the apron, facing along the slope's contour), so runs compare fairly
 func _launch(seconds: float) -> float:
-	var at := Vector3(rover.global_position.x, 0.0, rover.global_position.z)
+	var at := Vector3(launch_from.origin.x, 0.0, launch_from.origin.z)
 	var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 50.0, at + Vector3.DOWN * 50.0, 1)
 	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
-	rover.global_transform = Transform3D(rover.global_basis, (hit["position"] if hit else at) + Vector3.UP * 0.4)
+	rover.global_transform = Transform3D(launch_from.basis, (hit["position"] if hit else at) + Vector3.UP * 0.4)
 	rover.linear_velocity = Vector3.ZERO
 	rover.angular_velocity = Vector3.ZERO
 	await _ticks(1.5)
@@ -136,7 +141,10 @@ func _run() -> void:
 	_wheels("wheel_part")
 	await _ticks(0.2)
 
-	# 4. Ground traction
+	# 4. Ground traction (MissionDirector resets it to 1.0 outside loose-ground zones every tick,
+	# so it is paused while the test sets it by hand)
+	var director: Node = level.get_node("MissionDirector")
+	director.set_physics_process(false)
 	var gear: Object = rover.running_gear
 	var wheel: Variant = gear.wheel_properties.keys()[0]
 	var normal_friction: float = gear.get_longitudinal_friction(wheel)
@@ -146,6 +154,13 @@ func _run() -> void:
 		and is_equal_approx(gear.get_lateral_friction(wheel), normal_lateral * 0.5))
 	rover.ground_traction = 1.0
 	_check("traction: back to 1.0 restores it", is_equal_approx(gear.get_longitudinal_friction(wheel), normal_friction))
+	var start: Vector2 = routes.start()
+	var at := Vector3(start.x, 0.0, start.y)
+	var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 50.0, at + Vector3.DOWN * 50.0, 1)
+	var hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(query)
+	var normal: Vector3 = hit["normal"] if hit else Vector3.UP
+	var contour := Vector3(normal.z, 0.0, -normal.x).normalized() if Vector2(normal.x, normal.z).length() > 0.01 else Vector3.FORWARD
+	launch_from = Transform3D(Basis.looking_at(contour), at)
 	GS.drive(rover)
 	await _ticks(0.3)
 	var firm: float = await _launch(1.5)
@@ -154,6 +169,38 @@ func _run() -> void:
 	rover.ground_traction = 1.0
 	_check("traction: on loose ground the same throttle gets Kite less far", loose < firm * 0.9,
 		"%.2f m firm, %.2f m loose" % [firm, loose])
+
+	# 5. Lugged (high-grip) wheels on loose ground
+	_wheels("wheel_high_grip_part")
+	await _ticks(0.3)
+	rover.ground_traction = 0.25
+	var lugged_friction: float = gear.get_longitudinal_friction(wheel)
+	_check("lugged: at 0.25 traction a grip wheel keeps over 3x a standard wheel's friction",
+		lugged_friction > 3.0 * normal_friction * 0.25, "%.2f vs %.2f" % [lugged_friction, normal_friction * 0.25])
+	var lugged_loose: float = await _launch(1.5)
+	rover.ground_traction = 1.0
+	_check("lugged: on loose ground grip wheels get Kite clearly further than standard ones", lugged_loose > 1.8 * loose,
+		"%.2f m grip, %.2f m standard" % [lugged_loose, loose])
+	_wheels("wheel_part")
+	await _ticks(0.3)
+	director.set_physics_process(true)
+
+	# 6. Top speed: about the Apollo LRV's 3.6 m/s on open ground. Cruise speed = distance over the
+	# last 4 s of 8 s at full throttle, averaged over both directions along the slope's contour so
+	# the terrain's tilt cancels out.
+	var cruise: Array = []
+	for flip in [1.0, -1.0]:
+		launch_from.basis = Basis.looking_at(contour * flip)
+		await _launch(0.0)
+		Input.action_press("move_forward", 1.0)
+		await _ticks(4.0)
+		var from: Vector3 = rover.global_position
+		await _ticks(4.0)
+		Input.action_release("move_forward")
+		cruise.append(Vector2(rover.global_position.x - from.x, rover.global_position.z - from.z).length() / 4.0)
+	var top: float = (cruise[0] + cruise[1]) / 2.0
+	_check("speed: top speed on open ground is about 3.6 m/s", top > 3.3 and top < 3.9,
+		"%.2f m/s (%.2f and %.2f)" % [top, cruise[0], cruise[1]])
 
 	print("RESULT test_part_values %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)
