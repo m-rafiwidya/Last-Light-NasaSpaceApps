@@ -117,9 +117,30 @@ func _run() -> void:
 	var site: Node3D = level.get_node("NearSampleSite")
 
 	# 1. Placement
-	_check("placement: the near sample site is at IRIS's transform and SampleSiteNear is gone",
-		site.global_transform == iris.global_transform and level.get_node_or_null("SampleSiteNear") == null
+	_check("placement: the near sample site faces as IRIS does, SampleSiteNear is gone",
+		site.global_basis == iris.global_basis and level.get_node_or_null("SampleSiteNear") == null
 		and site.is_in_group(&"near_sample_site"))
+	# Lit ground: IRIS's body shadows the ground west of it for ~6 m under the level sun (16.7 degrees
+	# up in the east), which covered the old patch. The patch's centre and corners now see the sun, the
+	# post marks it (within 5 m) and the patch lies on the pad-to-IRIS approach (within 3 m of the line)
+	var sun_dir: Vector3 = (level.get_node("WorldEnvironment") as LunarSky).sun_direction()
+	var patch: Node3D = site.find_child("anchor_sample", true, false)
+	var lit_points := 0
+	for corner in [Vector3.ZERO, Vector3(0.9, 0, 0.9), Vector3(-0.9, 0, 0.9), Vector3(0.9, 0, -0.9), Vector3(-0.9, 0, -0.9)]:
+		var from: Vector3 = patch.global_position + corner + Vector3.UP * 0.4
+		var sun_query := PhysicsRayQueryParameters3D.create(from, from + sun_dir * 150.0, 1 | 2 | 4)
+		lit_points += 1 if level.get_world_3d().direct_space_state.intersect_ray(sun_query).is_empty() else 0
+	var pad: Vector2 = Vector2(level.get_node("ReadyRover").global_position.x, level.get_node("ReadyRover").global_position.z)
+	var iris_xz := Vector2(iris.global_position.x, iris.global_position.z)
+	var patch_xz := Vector2(patch.global_position.x, patch.global_position.z)
+	var line_off: float = absf((patch_xz - pad).cross((iris_xz - pad).normalized()))
+	var post_dist: float = level.get_node("SampleSitePost").global_position.distance_to(patch.global_position)
+	# The post is solid: it stands beside the approach, not on it
+	var post_xz := Vector2(level.get_node("SampleSitePost").global_position.x, level.get_node("SampleSitePost").global_position.z)
+	var post_off: float = absf((post_xz - pad).cross((iris_xz - pad).normalized()))
+	_check("placement: the near sample patch is in sunlight, on the pad-to-IRIS approach, its post beside it",
+		lit_points == 5 and line_off < 3.0 and post_dist < 5.0 and post_off > 1.5 and patch.global_position.distance_to(iris.global_position) > 5.0,
+		"lit %d/5, %.1f m off the approach, post %.1f m away and %.1f m off the approach" % [lit_points, line_off, post_dist, post_off])
 	_check("placement: the thermal sensor is at the level root and in its group",
 		sensor.get_parent() == level and sensor.is_in_group(&"thermal_sensor"))
 	_check("placement: the three notes are clear of every collider",

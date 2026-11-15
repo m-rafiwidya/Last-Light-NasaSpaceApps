@@ -132,13 +132,13 @@ text = "BASE"
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
 
 [node name="NearSampleSite" parent="." instance=ExtResource("35_sample_site")]
-transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -209.194, -2.925, 146.527)
 
 [node name="EvanNoteIris" parent="." instance=ExtResource("62_note_iris")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -201.734, -3.282, 134.928)
 
 [node name="SampleSitePost" parent="." instance=ExtResource("31_post")]
-transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -207.89, -3.256, 135.76)
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -214.4, -2.933, 145.64)
 
 [node name="SampleSiteFar" parent="." instance=ExtResource("36_far_site")]
 transform = Transform3D(-0.139173, 0, 0.990268, 0, 1, 0, -0.990268, 0, -0.139173, 2, -0.693115, -58)

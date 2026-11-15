@@ -439,6 +439,22 @@ func _capsule_free(player, at: Vector3, crouched: bool, exclude: Array) -> bool:
 	return player.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
 
 
+## The static floor under (x, z): the pad or the ground, never a loose part or the rover, so the
+## search doesn't depend on what the player happened to stand on after the last socket
+func _floor_at(player, x: float, z: float, near_y: float) -> float:
+	var query := PhysicsRayQueryParameters3D.create(Vector3(x, near_y + 1.0, z), Vector3(x, near_y - 2.0, z), player.collision_mask)
+	var skip: Array = [player.get_rid()]
+	for i in 8:
+		query.exclude = skip
+		var hit: Dictionary = player.get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			return near_y
+		if hit["collider"] is StaticBody3D:
+			return (hit["position"] as Vector3).y
+		skip.append(hit["rid"])
+	return near_y
+
+
 ## Where ObjectHolder's old hold (2 m out along the view, pitch clamped to 30 degrees from
 ## straight down) would pull a part, for the same player placement
 func _old_hold(player) -> Vector3:
@@ -465,7 +481,9 @@ func _drop_into(player, socket, part, crouched: bool) -> Array:
 	for radius in [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 0.8, 0.9, 1.1, 1.4, 1.8, 2.2]:
 		for k in 36:
 			var a: float = TAU * k / 36.0
-			var at := Vector3(centre.x + radius * cos(a), ground, centre.z + radius * sin(a))
+			var x: float = centre.x + radius * cos(a)
+			var z: float = centre.z + radius * sin(a)
+			var at := Vector3(x, _floor_at(player, x, z, ground), z)
 			if not _capsule_free(player, at, crouched, exclude):
 				continue
 			var to: Vector3 = centre - at
@@ -500,6 +518,28 @@ func _drop_into(player, socket, part, crouched: bool) -> Array:
 	return ["; ".join(tried), old_reach]
 
 
+## Every socket starts from Kite's own loadout and the spares on their shelves, so parts an
+## earlier socket left lying round Kite don't block this one
+func _restore_kite(player, loadout: Dictionary, homes: Dictionary) -> void:
+	if player.holder.held_object:
+		player.holder.release()
+	for socket in loadout:
+		if socket.part != null and socket.part != loadout[socket]:
+			socket.unmount()
+	for socket in loadout:
+		var own = loadout[socket]
+		if own != null and socket.part != own:
+			if own.is_mounted():
+				own.socket.unmount()
+			socket.mount(own)
+	for spare in homes:
+		if not spare.is_mounted():
+			spare.global_transform = homes[spare]
+			spare.linear_velocity = Vector3.ZERO
+			spare.angular_velocity = Vector3.ZERO
+	await _ticks(0.3)
+
+
 func _socket_checks() -> void:
 	var player = GS.player
 	var rover = SL.current_scene.get_node("ReadyRover")
@@ -507,11 +547,19 @@ func _socket_checks() -> void:
 	var sockets: Array = rover.find_children("*", "HotswapSocket", true, false)
 	var docked: Transform3D = rover.global_transform
 	var spares: Array = workshop.rack_stock.get_children() + (workshop.bench_stock.get_children() if workshop.bench_stock else [])
+	var loadout: Dictionary = {}
+	for socket in sockets:
+		loadout[socket] = socket.part
+	var homes: Dictionary = {}
+	for spare in spares:
+		if spare.has_method("is_mounted") and not spare.is_mounted():
+			homes[spare] = spare.global_transform
 	for socket in sockets:
 		var reached: Array = []
 		var lost: Array = []
 		for crouched in [false, true]:
 			var stance: String = "crouched" if crouched else "standing"
+			await _restore_kite(player, loadout, homes)
 			rover.global_transform = docked
 			rover.linear_velocity = Vector3.ZERO
 			rover.angular_velocity = Vector3.ZERO

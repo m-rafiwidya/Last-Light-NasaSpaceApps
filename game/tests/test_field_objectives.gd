@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless test: MissionDirector completes m2.module_loaded and m3.logger_recovered when the part is mounted.
-##   1. The radio module in the cargo socket completes m2.module_loaded, but not before m2.cargo_ordered.
+##   1. The radio module in the cargo socket completes m2.module_loaded, but not before m2.cargo_ordered and m2.cargo_retrieved.
 ##   2. The far logger completes m3.logger_recovered in m3 only; other parts complete nothing.
 ##   3. A save restored with the part already mounted completes nothing; a new mount afterwards still does.
 ##   4. The guidance steps resolve their targets (the crate, the module, the IRIS cradle, the logger).
@@ -10,7 +10,7 @@ extends SceneTree
 const MODULE: String = "res://src/robot/socket/radio_module_part.tscn"
 const LOGGER: String = "res://src/robot/socket/field_logger_part.tscn"
 const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
-const M2_DONE: Array = ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
+const M2_DONE: Array = ["m2.cargo_ordered", "m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
 	"m2.kite_docked", "m2.telemetry_received"]
 
 var GS: Node
@@ -131,6 +131,7 @@ func _run() -> void:
 		and completed.is_empty(), str(completed))
 	_empty_socket()
 	CS.complete_objective("m2.cargo_ordered")
+	CS.complete_objective("m2.cargo_retrieved")
 	completed.clear()
 	await _mount(far_logger)
 	_check("[module] another cargo part completes nothing in m2", completed.is_empty(), str(completed))
@@ -182,7 +183,7 @@ func _run() -> void:
 		guidance.is_met(logger_steps[0]["done_when"]) and not (await _mount_then_check(guidance, logger_steps[0]["done_when"])))
 
 	# 3. Restoring a save
-	if not await _load_level("m2", M1_DONE + ["m2.cargo_ordered"], ["m1"], MODULE):
+	if not await _load_level("m2", M1_DONE + ["m2.cargo_ordered", "m2.cargo_retrieved"], ["m1"], MODULE):
 		_check("[restore] the Moon level comes up (m2)", false)
 		_finish()
 		return
