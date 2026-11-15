@@ -115,6 +115,12 @@ func _run() -> void:
 	root.get_node("DialogServer").dialog_played.connect(func(dialog: Resource) -> void: shown.append(dialog.subtitle))
 	GS.drive(rover)
 	await _ticks(0.1)
+	# Subtitles play one at a time (#71), so the cue may wait behind a line already showing
+	var is_cue := func(s: String) -> bool: return s.begins_with("Near sample site. Stop")
+	for i in 30 * TICKS:
+		if shown.any(is_cue):
+			break
+		await physics_frame
 	await _ticks(0.5)
 	_check("collect: arriving with S-1 cues the E press once",
 		shown.filter(func(s: String) -> bool: return s.begins_with("Near sample site. Stop")).size() == 1, str(shown))

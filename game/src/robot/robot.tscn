@@ -21,6 +21,23 @@ buffer_length = 0.1
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(0.5, 0.24, 0.9)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_box"]
+albedo_color = Color(0.3, 0.31, 0.33, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_box_floor"]
+material = SubResource("StandardMaterial3D_box")
+size = Vector3(0.22, 0.01, 0.22)
+
+[sub_resource type="BoxMesh" id="BoxMesh_box_side"]
+material = SubResource("StandardMaterial3D_box")
+size = Vector3(0.008, 0.07, 0.22)
+
+[sub_resource type="BoxMesh" id="BoxMesh_box_end"]
+material = SubResource("StandardMaterial3D_box")
+size = Vector3(0.204, 0.07, 0.008)
+
 [node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket", "headlights")]
 collision_layer = 6
 collision_mask = 71
@@ -217,6 +234,53 @@ capture_size = Vector3(0.14, 0.1, 0.06)
 capture_offset = Vector3(0, 0.04, 0)
 trigger_size = Vector3(0.13, 0.05, 0.06)
 trigger_offset = Vector3(0, 0.02, 0)
+
+[node name="StorageBox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.44, 0.015)
+
+[node name="Floor" type="MeshInstance3D" parent="StorageBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 0)
+mesh = SubResource("BoxMesh_box_floor")
+
+[node name="SideL" type="MeshInstance3D" parent="StorageBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.106, 0.035, 0)
+mesh = SubResource("BoxMesh_box_side")
+
+[node name="SideR" type="MeshInstance3D" parent="StorageBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.106, 0.035, 0)
+mesh = SubResource("BoxMesh_box_side")
+
+[node name="EndF" type="MeshInstance3D" parent="StorageBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.106)
+mesh = SubResource("BoxMesh_box_end")
+
+[node name="EndB" type="MeshInstance3D" parent="StorageBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, 0.106)
+mesh = SubResource("BoxMesh_box_end")
+
+[node name="StorageSlot1" parent="StorageBox" instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.052, 0.01, 0)
+socket_name = "Storage box"
+accepts_any_type = false
+accepted_type = 6
+accepted_catalog_ids = PackedStringArray("sample_container", "sample_container_far", "sample_scoop")
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.1, 0.14, 0.2)
+capture_offset = Vector3(0, 0.07, 0)
+trigger_size = Vector3(0.1, 0.1, 0.18)
+trigger_offset = Vector3(0, 0.05, 0)
+
+[node name="StorageSlot2" parent="StorageBox" instance=ExtResource("20_socket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.052, 0.01, 0)
+socket_name = "Storage box"
+accepts_any_type = false
+accepted_type = 6
+accepted_catalog_ids = PackedStringArray("sample_container", "sample_container_far", "sample_scoop")
+mount_offset = Vector3(0, 0, 0)
+capture_size = Vector3(0.1, 0.14, 0.2)
+capture_offset = Vector3(0, 0.07, 0)
+trigger_size = Vector3(0.1, 0.1, 0.18)
+trigger_offset = Vector3(0, 0.05, 0)
 
 [node name="CargoDelivery" type="Node" parent="."]
 script = ExtResource("24_cargo_delivery")

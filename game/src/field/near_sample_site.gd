@@ -4,7 +4,7 @@ extends Node3D
 
 ## M2's optional near sample (plan item S): the reference patch by IRIS (its own sample_site_near.glb,
 ## in IRIS's frame, so this scene goes where IRIS is, replacing the level's SampleSiteNear). Kite brings
-## the empty sample container S-1 on its cargo mount, stops at the patch and presses E (interact_use):
+## the empty sample container S-1 on its cargo mount (or in its storage box), stops at the patch and presses E (interact_use):
 ## the container fills (its model swaps to the full one) and m2.near_sample_collected completes.
 ## Optional: nothing here blocks M2. In a campaign only during m2; outside a campaign any time.
 ##
@@ -41,11 +41,16 @@ func campaign_allows() -> bool:
 	return mission.is_empty() or (mission == MISSION and not CampaignState.is_objective_done(OBJECTIVE))
 
 
-## The empty S-1 container on `rover`'s cargo mount, or null
+## The empty S-1 container on `rover`'s cargo mount or in its storage box, or null
 func _container(rover: Robot) -> HotswapPart:
-	var socket := rover.get_node_or_null("CargoSocket") as HotswapSocket if rover else null
-	var part: HotswapPart = socket.part if socket else null
-	return part if part and part.get_catalog_id() == CONTAINER_ID and not part.has_meta(&"sample") else null
+	if rover == null:
+		return null
+	for path in ["CargoSocket", "StorageBox/StorageSlot1", "StorageBox/StorageSlot2"]:
+		var socket := rover.get_node_or_null(path) as HotswapSocket
+		var part: HotswapPart = socket.part if socket else null
+		if part and part.get_catalog_id() == CONTAINER_ID and not part.has_meta(&"sample"):
+			return part
+	return null
 
 
 ## Horizontal distance from `rover` to the patch's centre
@@ -65,7 +70,7 @@ func get_hint(rover: Robot) -> String:
 	if rover == null or not campaign_allows() or site_distance(rover) > HINT_RANGE:
 		return ""
 	if _container(rover) == null:
-		return "Near sample site: bring the empty sample container S-1 on the cargo mount"
+		return "Near sample site: bring the empty sample container S-1 (cargo mount or storage box)"
 	if site_distance(rover) > SAMPLE_RANGE:
 		return "Near sample site: drive %.1f m closer" % (site_distance(rover) - SAMPLE_RANGE)
 	if rover.linear_velocity.length() > STOPPED_SPEED:
@@ -105,7 +110,7 @@ func _cue(rover: Robot) -> void:
 	var line := Dialog.new()
 	line.speaker = "Kite"
 	line.subtitle = "Near sample site. Stop by the patch and press %s to take a sample." % InputBindings.action_text(&"interact_use", "E") \
-		if key == "ready" else "Near sample site (optional). The cargo mount carries one part: bring sample container S-1 to take a sample here."
+		if key == "ready" else "Near sample site (optional). Bring sample container S-1, on the cargo mount or in the storage box, to take a sample here."
 	line.min_duration = 5.0
 	line.repeat_id = "kite_near_sample_" + key
 	DialogServer.play_dialog(line)
