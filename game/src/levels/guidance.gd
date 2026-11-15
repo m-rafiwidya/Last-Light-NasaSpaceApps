@@ -5,6 +5,9 @@ extends Node
 signal step_changed(objective: String, index: int)
 
 const MISSIONS_PATH: String = "res://res/story/missions.json"
+## Timed "stuck" hints are off everywhere (the player works it out; the step text stays readable on
+## request in the console's Mission tab). STUCK_TIME still counts how long the step has been current.
+const STUCK_HINTS: bool = false
 const STUCK_TIME: float = 45.0
 ## Only this mission shows each step's text; the others show the objective and the waypoint
 const TUTORIAL_MISSION: String = "m1"
@@ -133,7 +136,7 @@ func hint_source() -> Node3D:
 
 
 func stuck_text() -> String:
-	return current_step().get("stuck", "") if stuck_time >= STUCK_TIME else ""
+	return current_step().get("stuck", "") if STUCK_HINTS and stuck_time >= STUCK_TIME else ""
 
 
 func is_waypoint() -> bool:

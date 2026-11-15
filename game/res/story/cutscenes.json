@@ -38,7 +38,7 @@
 						{ "at": 0.0, "do": "path", "node": "Lander", "keys": [[9, 1112, 1756, -362], [27, 440, 526, -240], [37, 262, 200, -260], [47, 78, 60, -77], [55, 7, 15, -7], [58, 1.5, 5, -1.5], [61, 0, 0, 0]] }
 					],
 					"music": { "db": 0, "time": 1 },
-					"lines": [ { "id": "cs_open_n1", "at": 1.5 }, { "id": "cs_open_n2", "at": 5.0 } ]
+					"lines": [ { "id": "cs_open_n1", "at": 1.5 }, { "id": "cs_open_n2", "at": 5.2 } ]
 				},
 				{
 					"name": "space",
@@ -49,14 +49,14 @@
 						{ "at": 16.0, "do": "call", "node": "Lander", "method": "set_engine", "args": [true] },
 						{ "at": 16.0, "do": "call", "node": "Lander", "method": "set_plume", "args": [true] }
 					],
-					"lines": [ { "id": "cs_open_01", "at": 0.5 }, { "id": "cs_open_02", "at": 7.0 }, { "id": "cs_open_03", "at": 13.0 } ],
+					"lines": [ { "id": "cs_open_01", "at": 0.5 }, { "id": "cs_open_02", "at": 7.0 }, { "id": "cs_open_03", "at": 14.0 } ],
 					"music": { "db": -2, "time": 4 }
 				},
 				{
 					"name": "head_crater",
 					"duration": 10.0,
 					"camera": { "anchor": "Lander", "from": { "pos": [262, 420, 60], "fov": 50 }, "to": { "pos": [258, 380, 30], "fov": 46 }, "look_node": "Lander", "look_offset": [0, -100, 0] },
-					"lines": [ { "id": "cs_open_04", "at": 1.0 } ],
+					"lines": [ { "id": "cs_open_04", "at": 1.7 } ],
 					"music": { "db": -8, "time": 8 }
 				},
 				{
@@ -70,7 +70,7 @@
 					"name": "approach",
 					"duration": 8.0,
 					"camera": { "anchor": "Lander", "from": { "pos": [12, 2, 46], "fov": 40 }, "to": { "pos": [12, 2, 46], "fov": 35 }, "look_node": "Lander", "look_offset": [0, -6, 0], "handheld": 0.05 },
-					"lines": [ { "id": "cs_open_06", "at": 2.5 } ],
+					"lines": [ { "id": "cs_open_06", "at": 3.5 } ],
 					"music": { "db": -26, "time": 7 }
 				},
 				{
@@ -82,7 +82,7 @@
 						{ "at": 6.0, "do": "call", "node": "Lander", "method": "touchdown" },
 						{ "at": 6.6, "do": "call", "node": "Lander", "method": "set_plume", "args": [false] }
 					],
-					"lines": [ { "id": "cs_open_07", "at": 7.0 }, { "id": "cs_open_08", "at": 9.0 } ],
+					"lines": [ { "id": "cs_open_07", "at": 6.3 }, { "id": "cs_open_08", "at": 9.8 } ],
 					"music": { "db": -12, "time": 5 }
 				},
 				{

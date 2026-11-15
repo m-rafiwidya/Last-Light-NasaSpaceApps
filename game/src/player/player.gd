@@ -11,6 +11,8 @@ const ACCEL_AIR: float = 3.0
 const SPEED_WALK: float = 2.0
 const SPEED_SPRINT: float = 3.0
 const SPEED_CROUCH: float = 1.0
+## Carrying a rover (the EVA rescue): the crouch pace, no sprint, no jump
+const SPEED_CARRY: float = SPEED_CROUCH
 const SPEED_AIR: float = 1.0
 
 const FRICTION: float = 0.5
@@ -83,6 +85,16 @@ var player_lifts_rovers: bool = true
 
 
 var want_to_crouch: bool = false
+
+
+## True when this player may pick `robot` up: anywhere the level allows it (the test level), else only
+## where the Moon's EvaRescue says Kite is stranded or stopped out in the field
+func can_lift_rover(robot: Robot) -> bool:
+	if player_lifts_rovers:
+		return true
+	# Duck typed: the Player is compiled with the autoloads, EvaRescue (a level script) must not be
+	var eva: Node = get_tree().get_first_node_in_group(&"eva_rescue")
+	return eva != null and eva.call(&"allows_lift", robot)
 
 
 # TODO: Abstract this away from player
@@ -196,8 +208,14 @@ func _on_controller_interact(value: bool) -> void:
 	elif raycast.is_colliding():
 		var collider = raycast.get_collider()
 		if collider is RigidBody3D:
-			if collider is Robot and not player_lifts_rovers:
+			if collider is Robot and not can_lift_rover(collider):
 				return
+			var eva: Node = get_tree().get_first_node_in_group(&"eva_rescue")
+			if eva:
+				var refusal: String = eva.call(&"hand_pickup_refused", collider)
+				if not refusal.is_empty():
+					eva.call(&"say", refusal)
+					return
 			holder.pickup(collider as RigidBody3D)
 		elif collider is InteractTrigger:
 			collider.interact(self)
@@ -206,7 +224,9 @@ func _on_controller_interact(value: bool) -> void:
 func _on_controller_primary(value: bool) -> void:
 	if not value:
 		return
-	
+	# A rover is carried, not thrown
+	if held_object is Robot:
+		return
 	holder.throw()
 
 
@@ -244,7 +264,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var speed: float
 	var accel: float
 	if is_on_floor:
-		if is_crouching:
+		if held_object is Robot:
+			speed = SPEED_CARRY
+		elif is_crouching:
 			speed = SPEED_CROUCH
 			#viewmodel_controller.step_size = 1.0
 		else:
@@ -306,6 +328,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		state.apply_central_force(mass * accel_move)
 
 	# Jumping
+	if held_object is Robot:
+		controller.request_jump = false
 	if is_on_floor and controller.request_jump:
 		var epsilon: float = 0.05
 		var jump_vector: Vector3 = -gravity_vector

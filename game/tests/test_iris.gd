@@ -456,9 +456,12 @@ func _run() -> void:
 	var m2_query := PhysicsRayQueryParameters3D.create(m2_centre.global_position + Vector3.UP * 3.0, m2_centre.global_position + Vector3.DOWN * 3.0, 1)
 	var m2_hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(m2_query)
 	var m2_lift: float = m2_centre.global_position.y - m2_hit["position"].y if m2_hit else INF
+	var m2_park_query := PhysicsRayQueryParameters3D.create(m2_park.global_position + Vector3.UP * 3.0, m2_park.global_position + Vector3.DOWN * 3.0, 1)
+	var m2_park_hit: Dictionary = level.get_world_3d().direct_space_state.intersect_ray(m2_park_query)
+	var m2_park_gap: float = absf(m2_park.global_position.y - m2_park_hit["position"].y) if m2_park_hit else INF
 	var m2_to_iris: float = (m2_park.global_position - iris.global_position).length()
-	_check("sample site: its centre 5-40 mm over the terrain, 2-4 m from IRIS, Kite's stop mark on the ground",
-		m2_lift > 0.005 and m2_lift < 0.04 and m2_to_iris > 2.0 and m2_to_iris < 4.0 and absf(m2_park.global_position.y - iris.global_position.y) < 0.2,
+	_check("sample site: its centre 5-40 mm over the terrain, 5-15 m from IRIS (clear of its shadow), Kite's stop mark on the ground",
+		m2_lift > 0.005 and m2_lift < 0.04 and m2_to_iris > 5.0 and m2_to_iris < 15.0 and m2_park_gap < 0.2,
 		"lift %.3f m, %.2f m from IRIS" % [m2_lift, m2_to_iris])
 
 	# 7d. M3 far site

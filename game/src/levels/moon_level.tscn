@@ -22,6 +22,7 @@
 [ext_resource type="Texture2D" path="res://res/textures/sky/earth_blue_marble_1024.jpg" id="11_earth"]
 [ext_resource type="Script" path="res://src/levels/mission_director.gd" id="40_director"]
 [ext_resource type="Script" path="res://src/levels/guidance.gd" id="42_guidance"]
+[ext_resource type="Script" path="res://src/levels/eva_rescue.gd" id="90_eva"]
 [ext_resource type="Script" path="res://src/levels/cold_zone.gd" id="43_cold_zone"]
 [ext_resource type="PackedScene" path="res://src/field/field_logger_pickup.tscn" id="44_logger_pickup"]
 [ext_resource type="Script" path="res://src/levels/route_markers.gd" id="45_route_markers"]
@@ -132,13 +133,13 @@ text = "BASE"
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
 
 [node name="NearSampleSite" parent="." instance=ExtResource("35_sample_site")]
-transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -209.194, -2.925, 146.527)
 
 [node name="EvanNoteIris" parent="." instance=ExtResource("62_note_iris")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -201.734, -3.282, 134.928)
 
 [node name="SampleSitePost" parent="." instance=ExtResource("31_post")]
-transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -207.89, -3.256, 135.76)
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -214.4, -2.933, 145.64)
 
 [node name="SampleSiteFar" parent="." instance=ExtResource("36_far_site")]
 transform = Transform3D(-0.139173, 0, 0.990268, 0, 1, 0, -0.990268, 0, -0.139173, 2, -0.693115, -58)
@@ -222,6 +223,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -10)
 [node name="MissionDirector" type="Node" parent="." node_paths=PackedStringArray("workshop")]
 script = ExtResource("40_director")
 workshop = NodePath("../Workshop")
+
+[node name="EvaRescue" type="Node" parent="." node_paths=PackedStringArray("workshop", "director", "home_point")]
+script = ExtResource("90_eva")
+workshop = NodePath("../Workshop")
+director = NodePath("../MissionDirector")
+home_point = NodePath("../SpawnPoint")
 
 [node name="Guidance" type="Node" parent="."]
 script = ExtResource("42_guidance")

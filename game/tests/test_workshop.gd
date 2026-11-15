@@ -23,8 +23,9 @@ extends SceneTree
 ##      by steering for waypoints, stopped by braking like a driver; it must end in the dock zone,
 ##      charging, upright, never touching the workshop.
 ##   6. Doors on foot: the personnel door lets the player through (and is locked while the bay
-##      door is open on the Moon); the pressure curtain keeps the player in on the Moon, not in the
-##      test level.
+##      door is open on the Moon); the pressure curtain keeps the player in on the Moon while
+##      `eva_exit` is off (the Moon level's EvaRescue turns it on: the player may walk out), and
+##      isn't there in the test level.
 ##   7. Decor (tools/blender/DECOR_KIT.md), checked before the drive and the doors so those run
 ##      with it in place (the reach checks above already cast through its colliders): built; every
 ##      text from decor_texts.json drawn and fitting its paper or plate; the history cards' NASA
@@ -619,9 +620,18 @@ func _door_checks() -> void:
 	if workshop.airlock_barrier:
 		p = await _walk(Vector3(3.0, -2.0, 0.0), Vector2(-1.0, 0.0), 2.5)
 		_check("personnel door locked while the bay door is open", p.x > 2.1, "player at kit x %.2f" % p.x)
-	p = await _walk(Vector3(-1.0, 1.0, 0.0), Vector2(0.0, 1.0), 4.0)
+	var exit_was: bool = workshop.eva_exit
 	if workshop.airlock_barrier:
+		# The Moon's EvaRescue lets the player out on a spacewalk; with the exit off the curtain holds
+		workshop.set_eva_exit(false)
+		p = await _walk(Vector3(-1.0, 1.0, 0.0), Vector2(0.0, 1.0), 4.0)
+		_check("pressure curtain: with the exit off the player can't walk out of the open bay door", p.y < 3.85, "player at kit y %.2f" % p.y)
+		workshop.set_eva_exit(exit_was)
+	p = await _walk(Vector3(-1.0, 1.0, 0.0), Vector2(0.0, 1.0), 4.0)
+	if workshop.airlock_barrier and not workshop.eva_exit:
 		_check("pressure curtain: the player can't walk out of the open bay door", p.y < 3.85, "player at kit y %.2f" % p.y)
+	elif workshop.airlock_barrier:
+		_check("EVA exit: the curtain lets the player walk out of the open bay door", p.y > 4.5, "player at kit y %.2f" % p.y)
 	else:
 		_check("no curtain here: the player walks out of the bay door", p.y > 4.5, "player at kit y %.2f" % p.y)
 	_check("the rover isn't stopped by the curtain's layer", rover.collision_mask & (1 << 7) == 0)

@@ -164,8 +164,8 @@ func _run() -> void:
 	if cards.size() == 3:
 		var expected: Array = [
 			["12/10/2026 22:41", "First Signal", "16 min played", "50%", false],
-			["12/10/2026 22:27", "Wake Kite", "7 min played", "29%", false],
-			["11/10/2026 21:05", "Wake Kite", "3 min played", "14%", false],
+			["12/10/2026 22:27", "Wake Kite", "7 min played", "25%", false],
+			["11/10/2026 21:05", "Wake Kite", "3 min played", "13%", false],
 		]
 		for i in 3:
 			var c: Control = cards[i]

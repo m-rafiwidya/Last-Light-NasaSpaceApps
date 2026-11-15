@@ -6,6 +6,7 @@ var tips := TipCard.new()
 
 func _ready() -> void:
 	add_child(BoundaryHint.new(false))
+	add_child(EvaHud.new())
 	tips.avoid = $SubtitleStack
 	add_child(tips)
 	%PartTooltip.avoid = $SubtitleStack
@@ -39,7 +40,7 @@ func _update_tips() -> void:
 static func is_interactive(target: Object) -> bool:
 	if target is RigidBody3D:
 		# A rover only where the level lets the player lift one (RoverLevel.player_lifts_rovers)
-		return not (target is Robot and is_instance_valid(GameState.player) and not GameState.player.player_lifts_rovers)
+		return not (target is Robot and is_instance_valid(GameState.player) and not GameState.player.can_lift_rover(target))
 	if target is InteractTrigger:
 		var socket := (target as Node).get_parent() as HotswapSocket
 		return socket == null or socket.part != null

@@ -57,6 +57,9 @@ const ARRIVAL_DEPTH: float = 1.0
 @export var airlock_barrier: bool = true
 
 var arrival: bool = false
+## The player may leave through the bay door on a spacewalk (EvaRescue sets it): the curtain lets them
+## out and the door opens for them. The personnel door still locks while the bay is open.
+var eva_exit: bool = false
 ## Put the rover parts on the rack
 @export var stock_rack: bool = true
 ## Dress the workshop (DECOR_KIT.md): clutter, safety gear, crew things, history cards, exterior
@@ -624,8 +627,20 @@ func set_arrival(on: bool) -> void:
 	if on == arrival:
 		return
 	arrival = on
+	_apply_curtain()
+
+
+## Lets the player out through the bay door (on) or keeps the curtain across it (off)
+func set_eva_exit(on: bool) -> void:
+	if on == eva_exit:
+		return
+	eva_exit = on
+	_apply_curtain()
+
+
+func _apply_curtain() -> void:
 	if curtain:
-		curtain.collision_layer = 0 if on else 1 << (PLAYER_BARRIER_LAYER - 1)
+		curtain.collision_layer = 0 if (arrival or eva_exit) else 1 << (PLAYER_BARRIER_LAYER - 1)
 
 
 ## Well inside the bay, past where the curtain stands
@@ -781,7 +796,7 @@ func _update_bay_door(delta: float) -> void:
 	for body in _door_area.get_overlapping_bodies():
 		if body is Robot and driving:
 			wanted = true
-		elif body is Player and (not airlock_barrier or arrival):
+		elif body is Player and (not airlock_barrier or arrival or eva_exit):
 			wanted = true                           # on foot in the test level: walk in and out
 	if driving and is_instance_valid(GameState.robot) and _is_inside(GameState.robot.global_position):
 		wanted = true

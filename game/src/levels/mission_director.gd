@@ -4,6 +4,9 @@ extends Node
 
 signal recovery_started(rover: Robot)
 signal recovery_finished(rover: Robot)
+## Kite stopped for good out in the field (flat battery or cold shutdown): it stays where it is until
+## someone carries it home (EvaRescue) or the emergency recovery runs
+signal stranded_changed(stranded: bool)
 
 const SCAN_OBJECTIVES: Dictionary = {"iris_panel": "m1.iris_scanned"}
 const ARRIVAL_OBJECTIVE: String = "m1.workshop_entered"
@@ -12,6 +15,9 @@ const CARGO_SOCKET: String = "CargoSocket"
 const IRIS_ONLINE_FLAG: String = "iris_online"
 const DOCK_OBJECTIVES: Dictionary = {"m1": "m1.kite_docked", "m2": "m2.kite_docked", "m3": "m3.kite_docked"}
 const RECOVERY_DELAY: float = 3.0
+const STRANDED_MESSAGE: String = "Kite is out of power. Return to the workshop console, then go outside to recover it."
+const STRANDED_COLD_MESSAGE: String = "Kite shut down in the cold. Return to the workshop console, then go outside to recover it."
+const OXYGEN_MESSAGE: String = "Suit oxygen ran out. Emergency recovery: you and Kite are being returned to the habitat."
 const RECOVERY_MESSAGE: String = "Kite's battery is flat. Emergency recovery: Kite is being returned to the pad."
 # Before 20 m are learned: Kite on flat regolith at 3 m/s with its electronics on (test_rover_mass)
 const DEFAULT_WH_PER_M: float = 0.035
@@ -52,6 +58,10 @@ var ending: CampaignEnding = null
 var cutscenes: CutsceneDirector = null
 var stats: MissionStats = null
 var recovering: bool = false
+## Set while Kite is stranded in the field (see stranded_changed); `stranded_cause` is "battery" or "cold"
+var stranded: bool = false
+var stranded_cause: String = ""
+var _stranded_detail: Dictionary = {}
 var alert: String = ""
 var _recovery_time: float = 0.0
 var _returned_by_recovery: bool = false
@@ -265,6 +275,11 @@ func _physics_process(delta: float) -> void:
 		return
 	if _returned_by_recovery and not pad.is_in_zone(rover):
 		_returned_by_recovery = false
+	if stranded:
+		if pad.is_in_zone(rover):
+			_end_stranding(true)
+		elif rover.battery != null and not rover.battery.is_empty():
+			_end_stranding(false)               # the pack has power again (recharged, swapped): not stranded
 	_learn_consumption()
 	_update_ground()
 	_update_crate()
@@ -283,8 +298,8 @@ func _physics_process(delta: float) -> void:
 	if warn and not _low_warned:
 		DialogueTriggers.alert("low_battery")
 	_low_warned = warn
-	if rover.battery.is_empty() and not pad.is_in_zone(rover):
-		_start_recovery()
+	if rover.battery.is_empty() and not pad.is_in_zone(rover) and not stranded:
+		_strand("battery")
 
 
 ## m1 starts at the lander: the workshop lets the player in until they are inside
@@ -362,6 +377,8 @@ func cold_zone_at(point: Vector3) -> ColdZone:
 
 
 func _update_cold(delta: float) -> void:
+	if stranded:
+		return
 	var zone := cold_zone_at(rover.global_position)
 	rover.heater_requested = zone != null and heater_fitted()
 	if zone == null or thermal_kit_fitted():
@@ -375,7 +392,7 @@ func _update_cold(delta: float) -> void:
 	alert = COLD_WARNING % ceili(maxf(zone.shutdown_s - cold_time, 0.0))
 	if cold_time >= zone.shutdown_s:
 		cold_time = 0.0
-		_start_recovery(COLD_MESSAGE, "cold", {"zone": zone.route_name})
+		_strand("cold", {"zone": zone.route_name})
 
 
 func loose_zone_at(point: Vector3) -> LooseGroundZone:
@@ -449,16 +466,26 @@ func _update_still(delta: float) -> void:
 	still_time = still_time + delta if away and rover.linear_velocity.length() < STILL_SPEED else 0.0
 
 
-## Kite is out on a mission, away from the pad and hasn't moved for STILL_FOR s (stuck in the
-## crater, wedged in boulders): the console may call the emergency recovery
+## Kite is out on a mission and stranded, or away from the pad and hasn't moved for STILL_FOR s (stuck
+## in the crater, wedged in boulders): the console may call the emergency recovery
+## A stranded Kite (flat battery, cold shutdown) can be recovered at once, in every mission, whether or
+## not anyone tries a rescue on foot: it is out of action, standing still or not (a flat Kite may still be
+## coasting for a few seconds, and it used to be recovered without being asked at all).
 func can_request_recovery() -> bool:
-	return not recovering and not CampaignState.current_mission().is_empty() and rover.battery != null \
-		and still_time >= STILL_FOR
+	if recovering or CampaignState.current_mission().is_empty() or rover == null:
+		return false
+	return stranded or (rover.battery != null and still_time >= STILL_FOR)
 
 
 func request_recovery() -> bool:
 	if not can_request_recovery():
 		return false
+	if stranded:
+		# The recovery keeps what stranded Kite: the battery's or the cold's own record and words
+		var cause := stranded_cause
+		var detail := _stranded_detail.duplicate()
+		_start_recovery(COLD_MESSAGE if cause == "cold" else RECOVERY_MESSAGE, cause, detail)
+		return true
 	var loose := loose_zone_at(rover.global_position)
 	if loose:
 		_start_recovery(STUCK_MESSAGE, "slip", {"zone": loose.label})
@@ -467,7 +494,59 @@ func request_recovery() -> bool:
 	return true
 
 
+## Kite stops where it is: its battery is flat (or the cold killed it: the pack is drained) and the
+## alert says to go and get it. Nothing moves it; the emergency recovery stays available from the
+## console once it has been still for STILL_FOR s, and suit oxygen running out runs it too.
+func _strand(cause: String, detail: Dictionary = {}) -> void:
+	if stranded:
+		return
+	stranded = true
+	stranded_cause = cause
+	_stranded_detail = detail.duplicate()
+	if cause == "cold" and rover.battery:
+		rover.battery.drain(rover.battery.capacity)
+	alert = STRANDED_COLD_MESSAGE if cause == "cold" else STRANDED_MESSAGE
+	Debug.add_log(alert)
+	stranded_changed.emit(true)
+
+
+## Kite is no longer stranded: carried onto the pad (`rescued`, noted in the report as a
+## no-cost recovery on foot), or the emergency recovery took over
+func _end_stranding(rescued: bool) -> void:
+	if not stranded:
+		return
+	if rescued:
+		var detail := _stranded_detail.duplicate()
+		detail["rescued_on_foot"] = true
+		detail["leg"] = "back" if returning() else "out"
+		CampaignState.record_recovery(stranded_cause, distance_to_pad(), detail, 0.0)
+	if alert == STRANDED_MESSAGE or alert == STRANDED_COLD_MESSAGE:
+		alert = ""
+	stranded = false
+	stranded_cause = ""
+	_stranded_detail = {}
+	stranded_changed.emit(false)
+
+
+## The player may pick Kite up out here: it is a field mission with Kite away from the pad and
+## either stranded or stopped for STILL_FOR s (stuck). Never inside the workshop's pad zone.
+func can_player_lift() -> bool:
+	return rover != null and pad != null and not recovering and not CampaignState.current_mission().is_empty() \
+		and not pad.is_in_zone(rover) and (stranded or still_time >= STILL_FOR)
+
+
+## Suit oxygen ran out. With Kite away from the pad (stranded, stuck or just out in the field) the
+## emergency recovery runs for it; the caller brings the player home.
+func start_oxygen_recovery() -> bool:
+	if recovering or rover == null or pad == null or CampaignState.current_mission().is_empty() or pad.is_in_zone(rover):
+		return false
+	_end_stranding(false)
+	_start_recovery(OXYGEN_MESSAGE, "oxygen")
+	return true
+
+
 func _start_recovery(message: String = RECOVERY_MESSAGE, cause: String = "battery", detail: Dictionary = {}) -> void:
+	_end_stranding(false)
 	recovering = true
 	_recovery_time = RECOVERY_DELAY
 	alert = message
