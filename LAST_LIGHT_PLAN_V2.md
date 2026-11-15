@@ -1,6 +1,7 @@
 # Last Light: Plan v2 (make the build matter)
 
 13 Nov 2026 · from Rafi's full playthrough · for the whole team and each person's AI
+Updated 13 Nov evening with the team's decisions (section 9). Where this file and older messages disagree, this file wins.
 
 **Goal in one line:** the loadout you plan decides whether Kite comes home.
 
@@ -22,6 +23,8 @@ Paste this section into each AI session before its task.
 8. Run only the tests related to your change. Each PR description lists them with their result.
 9. Do not invent NASA facts. Simulated values are named constants and labelled "simulated".
 10. Every phase must leave the game completable from the main menu with no console commands.
+11. **A player can predict a failure before leaving.** Range, route risks and required equipment are shown before departure. Players fail from a poor decision, never from a hidden rule.
+12. **Anything a required objective needs is on the rack from the start.** Cargo orders add options, never the only way to finish.
 
 ### Who owns what
 
@@ -30,6 +33,7 @@ Paste this section into each AI session before its task.
 | **Fahd** | `moon_level.tscn`, `missions.json`, `cargo.json`, workshop, console, reports, cutscenes, saves, the lander |
 | **Rafi** | `src/field/`, `src/iris/`, field and IRIS tests |
 | **Goriorio (Rayhan)** | the rover, its parts and sockets (`src/robot/`), `lines.json`, `dialogue_triggers.json` |
+| **Rafi, for G1 only** | battery and wheel values, `Robot.ground_traction` and `range_estimate()` in `src/robot/` (taken over from Goriorio, who is less available) |
 | **Faiq** | story text, voices, narrator, report wording |
 
 ---
@@ -78,7 +82,9 @@ Paste this section into each AI session before its task.
 | Group | `claw_target` | any loose part the claw can grab |
 | Group | `far_sample_site`, `evan_cache` | new field scenes |
 | Flag | `cargo_at_landing_zone` | the crate is waiting out at the landing zone |
-| Signal | `ThermalSensor.pair_completed` | already exists; completes `m3.thermal_pair_recorded` |
+| Signal | `ThermalSensor.pair_completed` | already exists; a pair at the far rim in M3 completes `m3.thermal_pair_recorded` |
+| Property | `Robot.ground_traction` | float, default 1.0; a loose-ground zone sets it while Kite is inside; multiplies each wheel's grip |
+| Method | `Robot.range_estimate()` | metres Kite can still drive on its battery with its current mass |
 
 ---
 
@@ -88,8 +94,10 @@ Paste this section into each AI session before its task.
 
 It isn't impossible. Most of it is already built: the arm moves joint by joint by hand, and `cargo_delivery.gd` already does a full assisted pick and place. What's missing is **grab and release**.
 
-- **Manual claw (the fun one):** deploy the arm (R), move the joints, and when the latch is within ~6 cm of a `claw_target` part, E grabs it (the part rides the latch, frozen). Move over the `StorageBox` or the cargo mount and press E again: it mounts. Release anywhere else and it drops (unfrozen, real physics), so you have to be careful.
-- **Assisted pick (the fallback):** park next to a part and hold E; the arm runs the existing latch, lift, carry sequence in reverse and puts it in the box. This keeps the game accessible, as the docs require.
+**Decided: build the assisted pick first, then the manual claw on top of it if there's time.** The assisted pick reuses existing code and guarantees nobody gets stuck. The manual claw is the immersive version.
+
+- **Assisted pick (build first):** park next to a part and hold E; the arm runs the existing latch, lift, carry sequence in reverse and puts it in the box. This keeps the game accessible, as the docs require.
+- **Manual claw (on top):** deploy the arm (R), move the joints, and when the latch is within ~6 cm of a `claw_target` part, E grabs it (the part rides the latch, frozen). Move over the `StorageBox` or the cargo mount and press E again: it mounts. Release anywhere else and it drops (unfrozen, real physics), so you have to be careful.
 - **Driving carefully:** parts in the `StorageBox` are secured. Something carried on the latch while driving, or a loose part on the deck, drops past a tilt or bump limit after a warning. That's the tension, without risky loose-cargo physics.
 
 ### 5.2 The storage box
@@ -122,10 +130,12 @@ This fits our story and our Apollo 12 opening, and it turns the cargo order into
 | Long, around the crater | distance | standard battery, little extra mass | battery flat before the return |
 | Either, after a late cargo | nightfall shade on both | thermal kit | cold shutdown |
 
-- The default loadout fails both routes. At least two different builds succeed.
+- The default loadout (the light battery) fails both routes. At least two different builds succeed.
 - Make it hard with cold zones and loose-ground zones, not by stretching the measured terrain.
+- **Measured before the retune** (`test_m3_routes`, daytime): all six route and loadout cases get home and none spends any time in cold. The short round trip (978 m) uses about 44 Wh with the standard build and 52 Wh with grip wheels + thermal kit; the long one (1160 m) about 50 Wh and 60 Wh. So the light battery goes to **about 40 Wh** (fails both), and the short route's failure for the standard build comes from F1's loose ground and shade.
+- **The cargo flight carries into M3 (kept):** Courier, 30 kg, arrives on day 4; Freighter, 40 kg, arrives on day 11, near lunar nightfall, so night-only cold zones switch on and the thermal kit matters more.
 - **Range estimate** in Planning and the Kite tab: "round trip ~520 m, range ~610 m".
-- **Recovery costs something:** Kite returns, but cargo and samples stay where it stopped, mission time advances, and the report marks "assistance used".
+- **Recovery (decided):** Kite returns to base by emergency recovery, mission time advances, cargo and samples stay where it stopped (still recoverable), and the report marks "assistance used". Essential equipment always stays recoverable.
 - A **why line** for every failure.
 
 ### Every rack part gets one job
@@ -162,9 +172,9 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 
 | ID | Owner | Task | Done when |
 |---|---|---|---|
-| F1 | Fahd | M3 retune: cold zones and loose-ground zones on the routes, recovery cost, why lines | matches the route matrix |
-| G1 | Goriorio | Part trade values (battery, wheels, motor) + a `range_estimate()` on the rover | each part has a real benefit and cost |
-| R1 | Rafi | `test_m3_routes`: drive each route with each loadout headless and check the matrix | the test fails if M3 gets easy again |
+| F1 | Fahd | M3 retune: cold zones and loose-ground zones on the routes (zones set `Robot.ground_traction` while Kite is inside), recovery cost, why lines, M1 fitting the light battery, one thermal turret on the rack from the start | matches the route matrix |
+| G1 | **Rafi** | Light battery ~40 Wh; `Robot.ground_traction` (float, default 1.0) multiplied into each wheel's grip in `running_gear.gd`; `range_estimate()` on the rover | each part has a real benefit and cost; M1 and M2 still fit the light battery |
+| R1 | Rafi | `test_m3_routes`: drive each route with each loadout headless and check the matrix | **done** (pushed); flip `ENFORCE` after F1 |
 | R1b | Rafi | Show the range estimate in the field pieces' hints (uses G1) | hints mention reserve |
 
 ### Phase 2: claw, box, landing zone, science (parallel after phase 1 starts)
@@ -172,10 +182,10 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 | ID | Owner | Task | Depends on |
 |---|---|---|---|
 | G2 | Goriorio | `StorageBox` socket (2–3 slots) on Kite | none |
-| G3 | Goriorio | Claw: manual grab and release on the arm latch, plus the assisted pick (reuse `cargo_delivery.gd`) | G2 for release into the box |
+| G3 | Goriorio | Claw: the assisted pick first (reuse `cargo_delivery.gd`), then manual grab and release on the arm latch on top | G2 for release into the box |
 | R2 | Rafi | Mark loose parts as `claw_target`; make the cargo crate work at the landing zone | G3 interface |
-| R3 | Rafi | Far sample scene (reuse `near_sample_site.gd` with the objective and container as settings) → `m3.far_sample_collected` | G2 |
-| R4 | Rafi | Thermal pair near the logger → `m3.thermal_pair_recorded` | none |
+| R3 | Rafi | Far sample scene (reuse `near_sample_site.gd` with the objective and container as settings) → `m3.far_sample_collected`, **optional**, a fuller report when done | G2 |
+| R4 | Rafi | Thermal pair near the logger → `m3.thermal_pair_recorded`, **required** | **done** (pushed); Fahd adds the ID to `missions.json` |
 | R5 | Rafi | Evan's cache scene → `m3.cache_found` (optional) | G3 |
 | F2 | Fahd | Landing zone in the level; cargo lands there; flag `cargo_at_landing_zone`; `m2.cargo_retrieved` | R2 |
 | F3 | Fahd | New M2 and M3 objectives in `missions.json`; comparison report in Downlink | R3, R4 |
@@ -198,16 +208,18 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 Start every AI session with: *"Read `LAST_LIGHT_PLAN_V2.md` (sections 1, 3 and 4 are rules), `CLAUDE.md` and `game/README.md`. Do only the tasks below, one at a time, and report each in under 10 lines: what changed, test results, anything another owner must do."*
 
 - **Fahd's AI:** tasks F0a, F0b, F0c, F0d, then F1, then F2 and F3 when their dependencies land.
-- **Rafi's AI:** R1 and R1b, then R4, R3, R2, R5.
-- **Goriorio's AI:** G0, G1, then G2, G3, then G4 and G5.
+- **Rafi's AI:** G1, then R1b, R3, R2, R5 (R1 and R4 are done).
+- **Goriorio's AI:** G0, then G2, G3, then G4 and G5. If Goriorio stays unavailable, Rafi picks up G2 and G3.
 - **Faiq:** Q0 now, Q2 after the objectives are agreed.
 
 ---
 
-## 9. Open questions for the group
+## 9. Decisions (13 Nov)
 
-1. Is today's export the final submission, or can we build through 14–15 Nov? This decides how many phases we do.
-2. Should the far sample be required in M3, or optional with a better ending?
-3. How harsh is a recovery: lose the cargo, or only time and a mark in the report?
-4. Manual claw as the main way, with the assisted pick as the fallback, or the other way round?
-5. Keep the no-sound-in-vacuum rule in the opening, with music added on top?
+1. **Phase 1 first.** Equipment choices must really affect traction, battery life, mass and thermal survival. The default loadout fails both M3 routes; at least two different builds succeed. Players see range, route risks and required equipment before leaving.
+2. **Keep the Courier/Freighter trade.** The Freighter carries more but arrives near nightfall, so M2's planning carries into M3. The landing zone stays in Phase 2, after the balancing.
+3. **Recovery costs time and position, not the campaign.** Time advances, cargo and samples stay where Kite stopped and can be fetched, the report marks assistance. Essential equipment always stays recoverable.
+4. **M3 science:** the thermal pair at the far rim is required (one thermal turret is on the rack from the start, so a player who skipped it in the order can still finish). The far sample and Evan's cache are optional; the far sample gives a fuller report.
+5. **Claw:** the assisted pick first, the manual claw on top.
+
+Still open: is today's export the final submission, or do we keep building through 14–15 Nov? And do we keep the no-sound-in-vacuum rule in the opening, with music added on top?
