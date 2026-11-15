@@ -1,6 +1,7 @@
 [
+  
   {
-    "on": "mission_started:m1",
+    "on": "objective:m1.workshop_entered",
     "line": "mira_m1_01"
   },
   {
