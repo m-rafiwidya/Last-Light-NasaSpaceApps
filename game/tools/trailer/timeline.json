@@ -1,0 +1,40 @@
+{
+	"fps": 30,
+	"xfade": 0.25,
+	"length": 29.5,
+	"clips": [
+		{"id": "1", "start": 0.0, "end": 2.5},
+		{"id": "2", "start": 2.5, "end": 6.0},
+		{"id": "3a", "start": 6.0, "end": 8.0},
+		{"id": "3b", "start": 8.0, "end": 9.5},
+		{"id": "4", "start": 9.5, "end": 12.5},
+		{"id": "5", "start": 12.5, "end": 16.0},
+		{"id": "6", "start": 16.0, "end": 19.0},
+		{"id": "7", "start": 19.0, "end": 23.0},
+		{"id": "8", "start": 23.0, "end": 26.5},
+		{"id": "9", "start": 26.5, "end": 29.5, "dim": 0.45}
+	],
+	"caption_size": 43,
+	"captions": [
+		{"text": "Real lunar terrain. Real NASA data.", "from": 0.5, "to": 2.35},
+		{"text": "Your mission: get Kite home before nightfall.", "from": 4.4, "to": 5.9},
+		{"text": "Design the rover.", "from": 6.3, "to": 9.3},
+		{"text": "Every part costs mass, power and heat.", "from": 9.8, "to": 12.35},
+		{"text": "Choose your route.", "from": 12.7, "to": 15.85},
+		{"text": "The Moon decides if you were right.", "from": 18.0, "to": 19.1},
+		{"text": "Terrain: NASA LRO elevation data of the Apollo 12 site, 2 m sampling.", "from": 19.4, "to": 22.85},
+		{"text": "Bring the data home.", "from": 23.3, "to": 26.2}
+	],
+	"title": {"from": 26.6, "to": 29.5, "lines": ["LAST LIGHT"]},
+	"voice": [],
+	"music": {
+		"file": "res/audio/music/deep_space_memory.ogg",
+		"keys": [[0.0, -30.0], [2.0, -14.0], [12.0, -9.0], [17.9, -5.0]],
+		"dip": {"at": 18.0, "db": -12.0, "down": 0.3, "hold": 1.0, "up": 0.7},
+		"return_db": -10.0,
+		"fade_out": [28.2, 29.5]
+	},
+	"game_audio": {"db": 0.0},
+	"fade_in": 0.8,
+	"fade_out": 0.8
+}
