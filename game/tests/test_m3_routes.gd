@@ -5,8 +5,9 @@ extends SceneTree
 ## ended (home, battery flat, cold shutdown, stuck).
 ##
 ## The plan's target is that the loadout you plan decides whether Kite comes home (EXPECTED below).
-## Until the M3 retune (task F1) lands, ENFORCE is false: runs report "target" next to "now" and
-## only completability is checked (some loadout gets home on some route). Flip ENFORCE after F1.
+## ENFORCE is on since F1 + G1 (13 Nov: all 12 cases matched): each case fails if it ends
+## differently, so M3 can't quietly get easy (or impossible) again. Needs G1 (40 Wh light battery,
+## ground traction) on main.
 ##
 ## Each case also has a cargo service: the Courier's M3 is in daylight; the Freighter arrives late,
 ## so M3 falls near nightfall (low sun, long shade, night-only cold zones on).
@@ -17,7 +18,7 @@ extends SceneTree
 ## A full run drives about 14 km; run single cases in parallel processes to save time.
 
 const TICKS: int = 240
-const ENFORCE: bool = false
+const ENFORCE: bool = true
 const SPEED: float = 2.4
 const STALL_TIME: float = 40.0                 # s without 2 m of progress = stuck
 const PARTS: String = "res://src/robot/socket/%s.tscn"
