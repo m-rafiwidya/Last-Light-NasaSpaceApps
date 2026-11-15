@@ -21,6 +21,10 @@ signal part_refused(part: HotswapPart)
 ## When set, only the part with this catalog entry is mounted (one part type, several spots: the
 ## thermal cover's socket takes the cover, not the heater)
 @export var accepted_catalog_id: String = ""
+## Only take a loose part while the rover carrying this socket is parked (the cargo mount: loose
+## sample containers in the storage tray beside it bounced into its capture box on rough ground)
+@export var latch_only_when_parked: bool = false
+const PARKED_SPEED: float = 0.15
 ## Where a mounted part's origin goes, relative to the socket. Kit parts have their origin
 ## at their connector, so their sockets use zero (ROVER_KIT.md 4).
 @export var mount_offset: Vector3 = Vector3(0.0, 0.1, 0.0)
@@ -139,6 +143,10 @@ func unmount() -> HotswapPart:
 
 func _physics_process(_delta: float) -> void:
 	if part:
+		return
+	# A cradle latches what's set on it while the rover is parked, not a part bouncing past on the move
+	var carrier := get_parent() as RigidBody3D
+	if latch_only_when_parked and carrier and carrier.linear_velocity.length() > PARKED_SPEED:
 		return
 	for body in _capture.get_overlapping_bodies():
 		var candidate := body as HotswapPart

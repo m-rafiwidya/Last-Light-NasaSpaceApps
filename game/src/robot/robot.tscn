@@ -219,6 +219,7 @@ anchor = &"socket_antenna"
 [node name="CargoSocket" parent="." instance=ExtResource("20_socket")]
 socket_name = "Cargo mount"
 accepts_any_type = false
+latch_only_when_parked = true
 accepted_type = 6
 mount_offset = Vector3(0, 0, 0)
 capture_size = Vector3(0.4, 0.3, 0.26)
