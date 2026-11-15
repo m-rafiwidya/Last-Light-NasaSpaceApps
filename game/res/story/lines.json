@@ -46,7 +46,7 @@
   },
   "hana_m2_02": {
     "speaker": "Hana",
-    "text": "Reference sample secured. That gives us a useful comparison point for the far-rim record."
+    "text": "Reference sample secured. That's useful context for IRIS's stored observations."
   },
   "mira_m2_05": {
     "speaker": "Mira",
@@ -58,7 +58,7 @@
   },
   "mira_m3_01": {
     "speaker": "Mira",
-    "text": "The logger is farther out. Compare the routes, protect your return battery reserve, and watch the shaded cold zones."
+    "text": "At the far rim, take two ground-temperature readings near Evan's logger: one in sunlight, one in shade. Fit the thermal turret, watch the cold zones, and save enough power to return."
   },
   "hana_m3_01": {
     "speaker": "Hana",
