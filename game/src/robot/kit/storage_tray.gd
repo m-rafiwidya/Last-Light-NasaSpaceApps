@@ -11,6 +11,12 @@ extends Node3D
 
 @onready var area: Area3D = $TrayArea
 
+## While true the tray's parts ride locked to Kite (frozen, children of the tray), e.g. while a
+## human carries Kite home or a cargo net holds them; see set_secured()
+var secured: bool = false
+var _secured_parts: Array[HotswapPart] = []
+var _parent_of: Dictionary = {}                 # part -> its parent before it was secured
+
 
 ## The loose parts in the tray now
 func items() -> Array[HotswapPart]:
@@ -45,6 +51,33 @@ func fits(part: HotswapPart) -> bool:
 		first = false
 	size = box.size
 	return not first and maxf(size.x, size.z) <= INSIDE.x and minf(size.x, size.z) <= INSIDE.z and size.y <= INSIDE.y
+
+
+## Locks the tray's parts to Kite (on) or lets them ride loose again where they are (off). For
+## carrying Kite (a human rescue: tilted and swung, loose parts would spill) and a cargo net.
+func set_secured(on: bool) -> void:
+	if on == secured:
+		return
+	secured = on
+	if on:
+		_secured_parts = items()
+		for part in _secured_parts:
+			_parent_of[part] = part.get_parent()
+			part.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+			part.freeze = true
+			part.reparent(self, true)
+		return
+	for part in _secured_parts:
+		if not is_instance_valid(part) or part.get_parent() != self:
+			continue                             # taken out meanwhile
+		var back: Node = _parent_of.get(part)
+		part.reparent(back if is_instance_valid(back) else get_parent().get_parent(), true)
+		part.freeze = false
+		part.sleeping = false
+		part.linear_velocity = Vector3.ZERO
+		part.angular_velocity = Vector3.ZERO
+	_secured_parts.clear()
+	_parent_of.clear()
 
 
 ## Where to let go of a part so it lands in the tray (world): above the floor's centre
