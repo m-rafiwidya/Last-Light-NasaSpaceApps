@@ -55,6 +55,7 @@ func _init() -> void:
 	_labels(c)
 	_buttons(c)
 	_panels(c)
+	_planet_explorer(c)
 
 	var err: int = ResourceSaver.save(theme, OUT_PATH)
 	print("saved ", OUT_PATH, " err=", err)
@@ -433,3 +434,44 @@ func _panels(c: Dictionary) -> void:
 	card.border_color = c.line_3
 	card.set_border_width_all(1)
 	theme.set_stylebox("panel", "CardPanel", card)
+
+
+## Planet explorer (menu globe): title, tabs, the locked-planet text and the site tooltip card.
+## planet_explorer.tscn uses these variations; without them the labels fall back to the default
+## font and the card loses its panel.
+func _planet_explorer(c: Dictionary) -> void:
+	_label("LabelPlanetTitle", MICHROMA, 26, 12, c.text)
+	_label("LabelPlanetSubtitle", EXO_500, 12, 4, c.muted)
+	# Shown over a locked planet, and the line under it
+	_label("LabelLocked", MICHROMA, 16, 8, c.text_3)
+	_label("LabelLockHint", EXO_500, 12, 2, c.muted)
+
+	# Tooltip card: the green badge, the site name (wraps), the key / value rows, the note
+	_label("LabelTipBadge", EXO_500, 11, 3, Color("3FB950"))
+	_label("LabelTipName", MICHROMA, 17, 3, c.text)
+	_label("LabelTipKey", EXO_500, 12, 0, c.muted)
+	_label("LabelTipValue", EXO_500, 12, 0, c.text)
+	_label("LabelTipNote", EXO_500, 12, 0, c.text_3)
+	theme.set_constant("line_spacing", "LabelTipNote", _px(7))
+
+	# 1 px frame, near-black at 94 %, 20 x 18 px of padding
+	theme.set_type_variation("TipPanel", "PanelContainer")
+	var tip := StyleBoxFlat.new()
+	tip.bg_color = Color("0A0A0D", 0.94)
+	tip.border_color = Color("34343A")
+	tip.set_border_width_all(1)
+	tip.content_margin_left = 20.0 * SCALE
+	tip.content_margin_right = 20.0 * SCALE
+	tip.content_margin_top = 18.0 * SCALE
+	tip.content_margin_bottom = 18.0 * SCALE
+	theme.set_stylebox("panel", "TipPanel", tip)
+
+	# Planet tabs: text only, the component draws the rest; lit while hovered, focused or active
+	_button_base("PlanetTab", PLEX_MONO, 12, 4)
+	theme.set_color("font_color", "PlanetTab", c.muted)
+	for state in ["focus", "hover", "hover_pressed", "pressed"]:
+		theme.set_color("font_%s_color" % state, "PlanetTab", c.text)
+	var tab := StyleBoxEmpty.new()
+	_margins(tab, 4, 10)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		theme.set_stylebox(state, "PlanetTab", tab)
