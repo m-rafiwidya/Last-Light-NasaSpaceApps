@@ -12,6 +12,7 @@ const ZOOM_HINT_FADE: float = 0.4
 var fade_tween: Tween = null
 var tips := TipCard.new()
 var _cargo_label: Label = null
+var _heater_label: Label = null
 
 
 func _ready() -> void:
@@ -29,6 +30,13 @@ func _ready() -> void:
 	_cargo_label.text = "CARGO  --"
 	%Battery.get_parent().add_child(_cargo_label)
 	%Battery.get_parent().move_child(_cargo_label, %Battery.get_index() + 1)
+	# HEATER under CARGO, only while the heater draws
+	_heater_label = Label.new()
+	_heater_label.name = "Heater"
+	_heater_label.add_theme_font_size_override("font_size", 32)
+	_heater_label.hide()
+	%Battery.get_parent().add_child(_heater_label)
+	%Battery.get_parent().move_child(_heater_label, _cargo_label.get_index() + 1)
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 
@@ -49,6 +57,8 @@ func _process(_delta: float) -> void:
 		%PartTooltip.show_for(looking_at, false, holding)
 		_update_battery_label(Debug.current_robot)
 		_update_cargo_label(Debug.current_robot)
+		_heater_label.visible = Debug.current_robot.heater_power > 0.0
+		_heater_label.text = "HEATER  %4.0f W" % Debug.current_robot.heater_power
 		_update_arm_label(Debug.current_robot)
 		_update_view_label(Debug.current_robot)
 	else:
@@ -57,6 +67,7 @@ func _process(_delta: float) -> void:
 		%Speed.text = "SPEED  --"
 		%Battery.text = "BATTERY  --"
 		_cargo_label.text = "CARGO  --"
+		_heater_label.hide()
 		%Arm.text = "ARM  --"
 		%PartTooltip.hide()
 	var aiming: bool = is_instance_valid(Debug.current_robot) and Debug.current_robot.is_aiming()
@@ -80,14 +91,16 @@ func _update_battery_label(robot: Robot) -> void:
 		%Battery.modulate = Color(1.0, 0.4, 0.3) if robot.require_battery else Color.WHITE
 		return
 	var fraction: float = battery.get_charge_fraction()
-	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power]
+	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power + robot.electronics_power + robot.heater_power]
 	# Turn red when the battery is low enough that the motor starts to sag
 	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
 
 
 func _update_cargo_label(robot: Robot) -> void:
 	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
-	_cargo_label.text = "CARGO  " + (socket.part.get_display_name() if socket and socket.part else "empty")
+	var load_text: String = "%s %.1f kg" % [socket.part.get_display_name(), socket.part.mass] if socket and socket.part else "empty"
+	var extra: float = robot.mass - Robot.REFERENCE_MASS
+	_cargo_label.text = "CARGO  %s   KITE %.0f kg%s" % [load_text, robot.mass, "  (%+.0f kg)" % extra if absf(extra) >= 0.5 else ""]
 
 
 func _update_view_label(robot: Robot) -> void:

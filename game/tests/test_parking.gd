@@ -111,7 +111,7 @@ func _run() -> void:
 	for g in [MOON, EARTH]:
 		_set_gravity(g)
 		rover.apply_suspension(level.rover_suspension if g == MOON else {})
-		var unbraked_limit: float = rad_to_deg(asin(minf(rover.rolling_resistance_force / (rover.mass * g), 1.0)))
+		var unbraked_limit: float = rad_to_deg(asin(minf(rover.rolling_resistance_coefficient, 1.0)))
 		for brake in [true, false]:
 			if has_brake:
 				rover.auto_brake = brake
@@ -166,6 +166,9 @@ func _run() -> void:
 	# 3. The brake lets go
 	var surface: Transform3D = _plane(15.0)
 	_teleport(rover, Transform3D(surface.basis, surface.origin + surface.basis.y * 0.25))
+	# The parked runs above left the electronics drawing for many minutes
+	print("INFO battery before the climb: %.0f%%, recharged" % (rover.battery.get_charge_fraction() * 100.0))
+	rover.battery.charge = rover.battery.capacity
 	await _ticks(2.0)
 	var start: Vector3 = rover.global_position
 	Input.action_press("move_forward")

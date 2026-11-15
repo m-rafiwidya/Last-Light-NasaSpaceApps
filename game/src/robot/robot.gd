@@ -48,12 +48,29 @@ extends RigidBody3D
 # reverse (no clutch).
 @export var gear_ratio: float = 1.0
 @export var final_drive: float = 5.0
-# Rolling resistance at the ground (N), applied through the driven wheels as a Coulomb
-# friction torque: it opposes the wheels' turning and holds them still while the other torques
-# on them are smaller (a parked rover stays put up to asin(force / weight): 5.3 degrees on the
-# Moon, 0.9 on Earth). It is what finally stops the robot once the motor's back-EMF braking has
-# faded out, and it pulls the loaded top speed a little below the motor's no-load speed.
-@export var rolling_resistance_force: float = 12.0
+# Mass and rolling resistance (sources in docs/SCIENCE_AND_DATA.md, "Rover mass and driving").
+# Total mass = CHASSIS_MASS + every mounted part's own mass; the standard kit (six 3 kg wheels,
+# five 5 kg parts) makes REFERENCE_MASS, which the motor, springs and inertia were tuned for.
+const CHASSIS_MASS: float = 37.0
+const REFERENCE_MASS: float = 80.0
+const REFERENCE_INERTIA: Vector3 = Vector3(8.0, 13.0, 8.0)
+# Rolling resistance coefficient (force / weight): loose regolith (RoverLevel.loose_regolith),
+# else a hard floor. A lugged (high-grip) tread multiplies it.
+const ROLLING_RESISTANCE_REGOLITH: float = 0.12
+const ROLLING_RESISTANCE_HARD_FLOOR: float = 0.0153
+const LUGGED_TREAD_ROLLING_FACTOR: float = 1.6
+# Always-on electronics (avionics, radio, cameras, thermal control), W: drawn from the battery
+# whenever one is mounted and charged and Kite isn't on the charging pad, moving or not
+const ELECTRONICS_POWER: float = 240.0
+# Electronics-bay heater, W: drawn on top while heater_requested (MissionDirector: Kite in an
+# active cold zone with the heater fitted) and the battery powers Kite
+const HEATER_POWER: float = 500.0
+# Rolling resistance, applied through the driven wheels as a Coulomb friction torque (each
+# wheel: coefficient * its tread factor * a sixth of the weight): it opposes the wheels' turning
+# and holds them still while the other torques on them are smaller (a parked rover stays put up
+# to about atan(coefficient)). It is what finally stops the robot once back-EMF braking has
+# faded out, and it pulls the top speed below the motor's no-load speed, more so when loaded.
+var rolling_resistance_coefficient: float = ROLLING_RESISTANCE_HARD_FLOOR
 # Automatic brake: once there is no throttle (|desired_speed| under brake_input_deadzone) and the
 # rover is slower than brake_speed (m/s), or rolls back against the way it was last driven (hill
 # hold), every wheel is held by a Coulomb brake of up to brake_torque (Nm per wheel: 25, about 3
@@ -122,8 +139,18 @@ var battery: BatteryPart = null
 var motor_part: MotorPart = null
 # Fraction (0..1) of the controller's input that reaches the motor as voltage this step
 var supply_voltage_factor: float = 1.0
-# Electrical power (W) the motor drew this step
+# Electrical power (W) the motor drew this step, and the motors' shaft power (W, driving only)
 var electrical_power: float = 0.0
+var mechanical_power: float = 0.0
+# The electronics' draw this step (W), and whether the charging pad powers them instead (set by ChargingPad)
+var electronics_power: float = 0.0
+var external_power: bool = false
+var heater_power: float = 0.0
+var heater_requested: bool = false
+# Mounted part mass (kg) and the part on the cargo mount's (kg). Read by robot_hud.gd
+var parts_mass: float = 0.0
+var cargo_mass: float = 0.0
+var _sockets: Array = []
 
 # Object pickup (shared with the player, see ObjectHolder)
 var holder: ObjectHolder
@@ -182,7 +209,8 @@ func _ready() -> void:
 
 	# The robot is on the props layer, so the pickup ray must not pick up the robot itself
 	raycast.add_exception(self)
-	for socket in find_children("*", "HotswapSocket", true, false):
+	_sockets = find_children("*", "HotswapSocket", true, false)
+	for socket in _sockets:
 		socket.part_mounted.connect(func(_part) -> void: _update_ray_exceptions())
 		socket.part_unmounted.connect(func(_part) -> void: _update_ray_exceptions())
 	_update_ray_exceptions()
@@ -209,6 +237,9 @@ func _ready() -> void:
 		# and whether the mast camera may pick things up (RoverLevel.rover_pickup)
 		if level.get("rover_pickup") is bool:
 			pickup_enabled = level.rover_pickup
+		if level.get("loose_regolith") is bool and level.loose_regolith:
+			rolling_resistance_coefficient = ROLLING_RESISTANCE_REGOLITH
+	_update_mass()
 
 
 ## Sets the running gear's suspension to the scene's values with `overrides` (RunningGear
@@ -359,6 +390,26 @@ func _physics_process(delta: float) -> void:
 	holder.update(delta)
 	_update_wheel_parts()
 	_update_power_parts()
+	_update_mass()
+
+
+# Total mass follows the mounted parts (mounted parts are frozen, so the engine ignores theirs);
+# the inertia scales with it
+func _update_mass() -> void:
+	var total: float = 0.0
+	var cargo: float = 0.0
+	for socket in _sockets:
+		var part := socket.part as HotswapPart
+		if part:
+			total += part.mass
+			if part.part_type == HotswapPart.PartType.CARGO:
+				cargo += part.mass
+	parts_mass = total
+	cargo_mass = cargo
+	var new_mass: float = CHASSIS_MASS + total
+	if not is_equal_approx(mass, new_mass):
+		mass = new_mass
+		inertia = REFERENCE_INERTIA * (new_mass / REFERENCE_MASS)
 
 
 # Visible wheel centres for this frame: the physics' ground check, run from where the rover is
@@ -473,6 +524,8 @@ func _step_drivetrain(step: float) -> void:
 	motor_angular_velocity = 0.0
 	motor_torque = 0.0
 	electrical_power = 0.0
+	mechanical_power = 0.0
+	var weight_share: float = mass * get_gravity().length() * share
 	var throttle: bool = absf(controller.desired_speed) >= brake_input_deadzone
 	if throttle:
 		_last_drive_sign = signf(controller.desired_speed)
@@ -488,7 +541,8 @@ func _step_drivetrain(step: float) -> void:
 		var wheel_speed: float = wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY]
 		var wheel_motor_speed: float = wheel_speed * combined_gear_ratio
 		var wheel_motor_torque: float = torques[wheel] * traction_factors[wheel]
-		electrical_power += engine.get_electrical_power(wheel_motor_torque / share, voltage) * share
+		electrical_power += engine.get_electrical_power(wheel_motor_torque / share, wheel_motor_speed) * share
+		mechanical_power += maxf(0.0, wheel_motor_torque * wheel_motor_speed)
 		motor_angular_velocity += wheel_motor_speed * share
 		motor_torque += wheel_motor_torque
 
@@ -501,14 +555,20 @@ func _step_drivetrain(step: float) -> void:
 			(wheel_motor_torque * combined_gear_ratio - wheel_state[RunningGear.WheelState.TORQUE])
 			/ inertia * step
 		)
-		var friction_torque: float = rolling_resistance_force * share * radius + (brake_torque if braking else 0.0)
+		var wheel_part: WheelPart = wheel_sockets[wheel].part as WheelPart if wheel_sockets.get(wheel) else null
+		var tread: float = LUGGED_TREAD_ROLLING_FACTOR if wheel_part and wheel_part.lugged else 1.0
+		var rolling_force: float = rolling_resistance_coefficient * tread * weight_share
+		var friction_torque: float = rolling_force * radius + (brake_torque if braking else 0.0)
 		var friction_change: float = friction_torque / inertia * step
 		wheel_state[RunningGear.WheelState.ANGULAR_VELOCITY] = (
 			0.0 if absf(free_speed) <= friction_change else free_speed - signf(free_speed) * friction_change
 		)
 
+	var powered: bool = battery != null and not battery.is_empty() and not external_power
+	electronics_power = ELECTRONICS_POWER if powered else 0.0
+	heater_power = HEATER_POWER if powered and heater_requested else 0.0
 	if battery:
-		battery.drain(electrical_power * step / 3600.0)
+		battery.drain((electrical_power + electronics_power + heater_power) * step / 3600.0)
 
 # Traction control. Each driven wheel's target factor: while its motor drives it (torque the
 # way the wheel turns, or from a standstill) and that torque adds to the slip, from 1 at

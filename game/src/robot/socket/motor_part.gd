@@ -13,9 +13,6 @@ extends HotswapPart
 @export var no_load_speed: float = 345.0
 ## Rotor inertia (kg m^2). Named `rotor_inertia` because RigidBody3D already has `inertia`.
 @export var rotor_inertia: float = 0.01
-## Electrical power drawn from the battery at standstill with full voltage (W).
-## The draw scales with voltage and torque, so cruising costs far less than launching.
-@export var stall_power: float = 1500.0
 ## Optional shape multiplier on the torque, see RobotEngine.torque_curve
 @export var torque_curve: Curve
 
@@ -28,5 +25,5 @@ func get_stat_lines() -> PackedStringArray:
 	return PackedStringArray([
 		"Stall torque %.1f Nm" % stall_torque,
 		"No-load speed %.0f rad/s" % no_load_speed,
-		"Stall power %.0f W" % stall_power,
+		"Stall power %.0f W" % (stall_torque * no_load_speed),
 	])

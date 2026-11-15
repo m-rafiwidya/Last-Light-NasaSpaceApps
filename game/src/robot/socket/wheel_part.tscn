@@ -10,6 +10,7 @@ height = 0.24
 radius = 0.15
 
 [node name="WheelPart" unique_id=836262940 instance=ExtResource("1_base")]
+mass = 3.0
 script = ExtResource("2_script")
 radius = 0.15
 grip = 1.0

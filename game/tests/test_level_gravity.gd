@@ -323,6 +323,8 @@ func _run() -> void:
 	# the Moon level's (RoverLevel.rover_suspension) under the Moon's
 	for g in [EARTH, MOON]:
 		rover.apply_suspension({} if g == EARTH else level.rover_suspension)
+		# Rolling resistance scales with weight: Earth runs on a hard floor's coefficient, not regolith's
+		rover.rolling_resistance_coefficient = rover.ROLLING_RESISTANCE_HARD_FLOOR if g == EARTH else rover.ROLLING_RESISTANCE_REGOLITH
 		await _measure_rover(rover, g)
 	_set_space_gravity(MOON)
 

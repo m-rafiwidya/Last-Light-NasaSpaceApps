@@ -80,6 +80,23 @@ Mass remains mass on the Moon. Weight is mass times local gravity. A rough tract
 
 Show a measured-route reserve estimate/range, not an exact return guarantee. Account for loaded return and heater use. Grip may reduce energy wasted slipping; do not hard-code every better wheel as consuming more energy in every situation.
 
+#### Rover mass and driving as built (`Robot`, `RobotEngine`)
+
+Constants live in one block at the top of `src/robot/robot.gd`; the balance numbers come from `tests/test_rover_mass.gd -- routes`.
+
+| Value | Used | Status |
+|---|---|---|
+| Total mass = 37 kg chassis + every mounted part (standard build 80 kg: six 3 kg wheels, motor, battery, mast head, antenna and tool turret at 5 kg each) | Rigid-body mass and inertia, wheel loads, rolling resistance | Game assumption (authored part masses) |
+| Lunar surface gravity 1.62 m/s² | Weight, wheel load, rolling resistance | [NASA Moon by the Numbers](https://science.nasa.gov/moon/by-the-numbers/) |
+| Rolling resistance on loose regolith: coefficient 0.12 × weight | Drag on every driven wheel, more for a heavier Kite | Sourced range: rigid plain wheels on the TRI-1 lunar soil simulant measured about 0.118 to 0.130 ([sinkage and rolling resistance study, TRI-1 simulant](https://www.researchgate.net/publication/345142748_A_Study_on_Wheel_Sinkage_and_Rolling_Resistance_with_variations_in_wheel_geometry_for_Plain_and_Lugged_wheels_on_TRI_-1_Soil_Simulant)). A simulant soil-bin value, not an Apollo measurement |
+| High-grip (lugged) wheels: rolling resistance × 1.6, grip × 1.3 | Costs energy on easy ground, keeps traction on slopes and rough ground | Game assumption, within the same study's lugged-wheel result (about 0.243, roughly 1.9 times its plain wheel) |
+| Hard floor (test level only): coefficient 0.0153 | Keeps the earlier 12 N tuning on the test floor | Game assumption |
+| Always-on electronics (avionics, radio, cameras, thermal control): 240 W whenever a charged battery is mounted and Kite is off the charging pad, moving or not; the pad powers them while Kite is in its dock zone | Battery drain while away, HUD watts, the return estimate | Game assumption informed by real rover practice: planetary rovers carry a standing "hotel" load for computers, radios and thermal control on top of driving. The value is chosen for balance with time compressed (a mission takes minutes, not hours), so it is higher than a small rover's real avionics draw |
+| Electronics-bay heater: 500 W while Kite is in an active cold zone with the heater fitted (on battery power only) | Battery drain in shade, HUD watts and HEATER line | Game assumption, chosen so crossing the short route's shade costs about 6 % of the battery. Time is compressed like the electronics load; the cover and heater rule for cold shutdown is unchanged |
+| Drive motor: ideal brushed DC, electrical power = shaft power + winding loss (torque² × no-load speed / stall torque); stall draw = stall torque × no-load speed (3.7 kW); no regeneration | Battery drain, HUD watts | Standard DC motor model; motor values are authored game assumptions |
+
+What it means (flat regolith, 3 m/s): driving alone costs the empty Kite about 130 W (0.012 Wh/m) and the 12 kg module adds about 20 W; four grip wheels add about a third to the driving share; the electronics add 240 W on top, also while stopped. Round trips at 3 m/s from the workshop apron with a first-time player's stops (90 s at IRIS in M1, 150 s in M2, 120 s at the far rim in M3), 100 Wh battery, heater not included: M1 15 %; M2 with the module 19 %; M3 short route (840 m) 34 %; M3 long route (1,070 m) 44 % with the thermal kit and logger, 48 % with grip wheels too. With the heater (thermal kit and logger, same stops): a Courier order (daylight, only the short route's shade is cold) takes M3 short to 41 % (45 s in shade, heater 6 %) and leaves M3 long at 44 % (no shade on it); a Freighter order (near nightfall, the far rim is cold too, and Kite stops there for the logger) takes M3 short to 60 % (186 s in shade, heater 26 %) and M3 long to 63 % (141 s, 20 %). The return estimate learns Wh per metre only while Kite moves, so it includes the electronics at the pace driven and isn't inflated by stops.
+
 ### Parts-delivery mission
 
 The player selects a fictional service/manifest with capacity, credit cost, declared staging/orbit assumptions and a descent-reserve check. Essential completion equipment remains available for every allowed selection. Include packaging and structural/dry mass; service capacity and delta-v margin are separate constraints.
@@ -105,7 +122,7 @@ The console's Planning tab offers two fictional services. Every value below is a
 | Courier lander: 30 kg delivered payload, arrives story day 4 | Mass check, M3 timing | Game assumption |
 | Freighter lander: 40 kg delivered payload, arrives story day 11 | Mass check, M3 timing | Game assumption |
 | Packaging and structure: 2 kg per order | Counted in the mass total | Game assumption |
-| Item masses (module 12 kg, wheel 5 kg each, cover 0.9 kg, heater 0.6 kg, scoop 0.4 kg, containers 0.5 kg each, thermal turret 5.3 kg) | Read from the part scenes | Authored part data, the same values the rover physics uses |
+| Item masses (module 12 kg, high-grip wheel 5 kg each, cover 0.9 kg, heater 0.6 kg, scoop 0.4 kg, containers 0.5 kg each, thermal turret 5.3 kg) | Read from the part scenes | Authored part data, the same values the rover physics uses |
 | Descent from low lunar orbit: delta-v 1,900 m/s | Shown in the flight panel only; it doesn't constrain the order | Declared game assumption, of the order of published lunar descent budgets. No rocket-equation margin is computed in this build |
 | Flight phases (launch, transfer, lunar arrival, delivery) and their days | Flight panel, 18 s, skippable | Game assumption; story days compressed and labelled |
 | Lunar day: 708.7 hours, about 29.5 Earth days | Local time of M3 | [NASA Moon by the Numbers](https://science.nasa.gov/moon/by-the-numbers/) |

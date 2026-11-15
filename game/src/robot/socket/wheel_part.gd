@@ -20,6 +20,8 @@ const RADIUS_TOLERANCE: float = 0.001
 		if is_node_ready():
 			_apply_radius()
 @export var grip: float = 1.0
+## Lugged (high-grip) tread: more rolling resistance (Robot.LUGGED_TREAD_ROLLING_FACTOR)
+@export var lugged: bool = false
 
 @onready var _wheel_left: Node3D = $Model/WheelL
 @onready var _wheel_right: Node3D = $Model/WheelR
@@ -51,7 +53,7 @@ func detach() -> void:
 
 
 func get_stat_lines() -> PackedStringArray:
-	return PackedStringArray(["Grip %.2f (standard 1.00)" % grip, "Radius %.2f m" % radius])
+	return PackedStringArray(["Grip %.2f (standard 1.00)" % grip, "Radius %.2f m" % radius, "Mass %.0f kg" % mass])
 
 
 ## Refuses any radius other than the kit's (ROVER_KIT.md 3.1).
