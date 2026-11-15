@@ -6,86 +6,107 @@
   },
   "mira_m1_02": {
     "speaker": "Mira",
-    "text": "Kite has power. Open the mission console, select Control Kite, and head for IRIS."
+    "text": "Kite has power. Open the mission console, select Control Kite, and head for IRIS.",
+    "audio": "res://res/audio/voice/mira_m1_02.ogg"
   },
   "hana_m1_01": {
     "speaker": "Hana",
-    "text": "That's Evan's service panel. The image is clear. Bring Kite home so we can check the fault."
+    "text": "That's Evan's service panel. The image is clear. Bring Kite home so we can check the fault.",
+    "audio": "res://res/audio/voice/hana_m1_01.ogg"
   },
   "mira_m1_03": {
     "speaker": "Mira",
-    "text": "Good docking. Leave Kite and send the inspection from the console's Downlink tab."
+    "text": "Good docking. Leave Kite and send the inspection from the console's Downlink tab.",
+    "audio": "res://res/audio/voice/mira_m1_03.ogg"
   },
   "mira_m1_04": {
     "speaker": "Mira",
-    "text": "Diagnosis confirmed: IRIS's radio-power module failed, but its stored records survived. We need a replacement."
+    "text": "Diagnosis confirmed: IRIS's radio-power module failed, but its stored records survived. We need a replacement.",
+    "audio": "res://res/audio/voice/mira_m1_04.ogg"
   },
   "mira_m2_01": {
     "speaker": "Mira",
-    "text": "First, open Planning on the mission console. Choose a lander and order the radio-power module without exceeding the mass limit."
+    "text": "First, open Planning on the mission console. Choose a lander and order the radio-power module without exceeding the mass limit.",
+    "audio": "res://res/audio/voice/mira_m2_01.ogg"
   },
   "mira_m2_02": {
     "speaker": "Mira",
-    "text": "The crate is at the landing zone, three hundred metres out. Take control of Kite, load it onto the cargo mount, and bring it back to the workshop"
+    "text": "The crate is at the landing zone, three hundred metres out. Take control of Kite, load it onto the cargo mount, and bring it back to the workshop",
+    "audio": "res://res/audio/voice/mira_m2_02.ogg"
   },
   "mira_m2_cargo_retrieved": {
     "speaker": "Mira",
-    "text": "Good, the crate is back in the workshop. The replacement module is beside the charging pad. Mount it on Kite before heading to IRIS."
+    "text": "Good, the crate is back in the workshop. The replacement module is beside the charging pad. Mount it on Kite before heading to IRIS.",
+    "audio": "res://res/audio/voice/mira_m2_cargo_retrieved.ogg"
   },
   "mira_m2_03": {
     "speaker": "Mira",
-    "text": "The module adds twelve kilograms. Take it steady on the way to IRIS, and watch your battery reserve."
+    "text": "The module adds twelve kilograms. Take it steady on the way to IRIS, and watch your battery reserve.",
+    "audio": "res://res/audio/voice/mira_m2_03.ogg"
   },
   "mira_m2_04": {
     "speaker": "Mira",
-    "text": "The replacement module is seated. Run the station activation check."
+    "text": "The replacement module is seated. Run the station activation check.",
+    "audio": "res://res/audio/voice/mira_m2_04.ogg"
   },
   "hana_m2_01": {
     "speaker": "Hana",
-    "text": "IRIS is transmitting again. After four years, we finally have a signal. Let's bring those records home."
+    "text": "IRIS is transmitting again. After four years, we finally have a signal. Let's bring those records home.",
+    "audio": "res://res/audio/voice/hana_m2_01.ogg"
   },
   "hana_m2_02": {
     "speaker": "Hana",
-    "text": "Reference sample secured. That's useful context for IRIS's stored observations."
+    "text": "Reference sample secured. That's useful context for IRIS's stored observations.",
+    "audio": "res://res/audio/voice/hana_m2_02.ogg"
   },
   "mira_m2_05": {
     "speaker": "Mira",
-    "text": "Kite is docked. Open Downlink at the mission console to receive IRIS's telemetry."
+    "text": "Kite is docked. Open Downlink at the mission console to receive IRIS's telemetry.",
+    "audio": "res://res/audio/voice/mira_m2_05.ogg"
   },
   "hana_m2_03": {
     "speaker": "Hana",
-    "text": "IRIS's data is here, but one record is still missing: Evan's field logger at the far rim."
+    "text": "IRIS's data is here, but one record is still missing: Evan's field logger at the far rim.",
+    "audio": "res://res/audio/voice/hana_m2_03.ogg"
   },
   "mira_m3_01": {
     "speaker": "Mira",
-    "text": "At the far rim, take two ground-temperature readings near Evan's logger: one in sunlight, one in shade. Fit the thermal turret, watch the cold zones, and save enough power to return."
+    "text": "At the far rim, take two ground-temperature readings near Evan's logger: one in sunlight, one in shade. Fit the thermal turret, watch the cold zones, and save enough power to return.",
+    "audio": "res://res/audio/voice/mira_m3_01.ogg"
   },
   "hana_m3_01": {
     "speaker": "Hana",
-    "text": "There it is—Evan's field logger. Both labels are still attached. Bring it back safely."
+    "text": "There it is—Evan's field logger. Both labels are still attached. Bring it back safely.",
+    "audio": "res://res/audio/voice/hana_m3_01.ogg"
   },
   "mira_m3_02": {
     "speaker": "Mira",
-    "text": "Kite recovered. Open the Downlink tab and send the logger's archive."
+    "text": "Kite recovered. Open the Downlink tab and send the logger's archive.",
+    "audio": "res://res/audio/voice/mira_m3_02.ogg"
   },
   "hana_m3_end": {
     "speaker": "Hana",
-    "text": "That's Evan's last record, the one he never got to send. He left everything ready for someone to finish. Thank you."
+    "text": "That's Evan's last record, the one he never got to send. He left everything ready for someone to finish. Thank you.",
+    "audio": "res://res/audio/voice/hana_m3_end.ogg"
   },
   "mira_m3_end": {
     "speaker": "Mira",
-    "text": "Kite recovered, IRIS online, archive received. I'm closing the field report. Good work out there."
+    "text": "Kite recovered, IRIS online, archive received. I'm closing the field report. Good work out there.",
+    "audio": "res://res/audio/voice/mira_m3_end.ogg"
   },
   "mira_alert_low_battery": {
     "speaker": "Mira",
-    "text": "Kite's charge is close to what it needs to get home. Turn back soon."
+    "text": "Kite's charge is close to what it needs to get home. Turn back soon.",
+    "audio": "res://res/audio/voice/mira_alert_low_battery.ogg"
   },
   "mira_alert_cold": {
     "speaker": "Mira",
-    "text": "Kite's in shade without its thermal kit. Get it back into sunlight before the electronics shut down."
+    "text": "Kite's in shade without its thermal kit. Get it back into sunlight before the electronics shut down.",
+    "audio": "res://res/audio/voice/mira_alert_cold.ogg"
   },
   "mira_alert_recovery": {
     "speaker": "Mira",
-    "text": "Emergency recovery under way. Kite will be back on the pad shortly."
+    "text": "Emergency recovery under way. Kite will be back on the pad shortly.",
+    "audio": "res://res/audio/voice/mira_alert_recovery.ogg"
   }
 }

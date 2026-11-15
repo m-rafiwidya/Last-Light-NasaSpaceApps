@@ -19,14 +19,19 @@ static func requests(mission: String) -> Array:
 	return data().get("missions", {}).get(mission, {}).get("requests", [])
 
 
-## The mission's radio lines in order: each request, then the mission's extra lines. {"id", "speaker", "text"}
+## The mission's radio lines in order: requests then extra lines. Include optional OGG voice paths.
 static func radio_lines(mission: String) -> Array:
 	var result: Array = []
 	for request in requests(mission):
-		result.append({"id": "crew:" + str(request["id"]), "speaker": request["speaker"], "text": request["radio"]})
+		var request_id: String = str(request["id"])
+		var filename: String = "crew_" + request_id.replace(".", "_") + ".ogg"
+		result.append({"id": "crew:" + request_id, "speaker": request["speaker"],
+			"text": request["radio"], "audio": "res://res/audio/voice/" + filename})
 	var extra: Array = data().get("missions", {}).get(mission, {}).get("lines", [])
 	for i in extra.size():
-		result.append({"id": "crew:%s.line%d" % [mission, i], "speaker": extra[i]["speaker"], "text": extra[i]["text"]})
+		var filename: String = "crew_%s_line%d.ogg" % [mission, i]
+		result.append({"id": "crew:%s.line%d" % [mission, i], "speaker": extra[i]["speaker"],
+			"text": extra[i]["text"], "audio": "res://res/audio/voice/" + filename})
 	return result
 
 
