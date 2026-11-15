@@ -96,7 +96,7 @@ Common sizes at 1600 × 900 (scale proportionally):
 
 ### Pause (`Pause.dc.html`)
 
-Centred: PAUSED, a 48 px rule, then RESUME / SWITCH TO TEST LEVEL / SETTINGS / QUIT TO MENU / QUIT TO DESKTOP as underline buttons growing from the centre. Game view blurred behind. No objective panel here.
+Centred: PAUSED, a 48 px rule, then RESUME / SAVE GAME / LOAD GAME / SETTINGS / QUIT TO MENU / QUIT TO DESKTOP as underline buttons growing from the centre. Game view blurred behind. No objective panel here.
 
 ### Settings (`Settings.dc.html`, also reachable from Pause)
 

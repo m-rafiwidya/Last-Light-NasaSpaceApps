@@ -13,6 +13,8 @@ extends Control
 ##   list scrolls to keep the selected card in view. With every slot used, START NEW CAMPAIGN asks
 ##   first, naming the slot it would replace; Cancel (or Esc) returns to the popup.
 ## Esc or the back button closes it; `closed` is emitted as it starts closing.
+## `load_only` (the pause menu's Load): only the readable saves, no Delete or START NEW CAMPAIGN, and
+## loading over unsaved progress asks first.
 
 signal closed
 
@@ -32,6 +34,7 @@ const HEADING_GAP: float = 33.6
 const START_GAP: float = 38.4
 
 var is_open: bool = false
+var load_only: bool = false
 
 var _tween: Tween
 var _confirm: Control
@@ -40,6 +43,7 @@ var _confirm_ok: Button
 var _confirm_cancel: Button
 var _confirm_return: Control
 var _confirm_replace_slot: String = ""
+var _confirm_load_slot: String = ""
 var _blur_material: ShaderMaterial
 
 @onready var _blur: ColorRect = $Blur
@@ -158,17 +162,20 @@ func _populate() -> void:
 	for child in _cards.get_children():
 		_cards.remove_child(child)
 		child.queue_free()
-	var slots: Array[SaveSlotInfo] = SaveIndex.list_slots()
+	var slots: Array[SaveSlotInfo] = SaveIndex.list_saves() if load_only else SaveIndex.list_slots()
 	var any: bool = slots.any(func(info: SaveSlotInfo) -> bool: return not info.is_empty())
 	_no_save.visible = not any
 	_saves.visible = any
 	_load_chip.visible = any
+	_start_empty.visible = not load_only
+	_start_list.visible = not load_only
 	if not any:
 		_lock_focus(_start_empty, null, null)
 		return
 	var cards: Array[SaveCard] = []
 	for info in slots:
 		var card := SaveCard.new()
+		card.load_only = load_only
 		card.setup(info)
 		card.activated.connect(_on_card_activated.bind(info))
 		card.delete_confirmed.connect(_on_delete_confirmed.bind(info.slot_id))
@@ -176,10 +183,12 @@ func _populate() -> void:
 		_cards.add_child(card)
 		cards.append(card)
 	# Up/down walk the cards, then START NEW CAMPAIGN; focus never leaves the popup
+	var last: Control = null if load_only else _start_list
 	for i in cards.size():
 		_lock_focus(cards[i], cards[i - 1] if i > 0 else null,
-			cards[i + 1] if i + 1 < cards.size() else _start_list)
-	_lock_focus(_start_list, cards[-1], null)
+			cards[i + 1] if i + 1 < cards.size() else last)
+	if last:
+		_lock_focus(_start_list, cards[-1], null)
 	var n: int = cards.size()
 	var list_height: float = n * SaveCard.SIZE.y + (n - 1) * CARD_GAP + 2.0 * LIST_MARGIN
 	_scroll.custom_minimum_size.y = minf(list_height, MAX_LIST_HEIGHT)
@@ -210,6 +219,14 @@ func _keep_in_view(card: SaveCard) -> void:
 
 func _on_card_activated(info: SaveSlotInfo) -> void:
 	if not is_open:
+		return
+	if load_only and SaveIndex.has_unsaved_progress():
+		_confirm_message.text = "Load Slot %d (%s, %s)?\nProgress since your last save will be lost." % [
+			SaveIndex.slot_number(info.slot_id), info.mission_title, SaveIndex.format_date(info.saved_at)]
+		_confirm_ok.text = "LOAD"
+		_confirm_load_slot = info.slot_id
+		_confirm_replace_slot = ""
+		_show_confirm()
 		return
 	if info.is_empty():
 		SaveIndex.start_new_campaign(info.slot_id)
@@ -244,8 +261,13 @@ func _on_start_pressed() -> void:
 	_confirm_message.text = "All save slots are in use.\nStarting a new campaign replaces Slot %d (%s)." % [
 		SaveIndex.slot_number(slot.slot_id), what]
 	_confirm_ok.text = "REPLACE SLOT %d" % SaveIndex.slot_number(slot.slot_id)
-	_confirm_return = get_viewport().gui_get_focus_owner() as Control
 	_confirm_replace_slot = slot.slot_id
+	_confirm_load_slot = ""
+	_show_confirm()
+
+
+func _show_confirm() -> void:
+	_confirm_return = get_viewport().gui_get_focus_owner() as Control
 	_content.focus_behavior_recursive = Control.FOCUS_BEHAVIOR_DISABLED
 	_content.mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
 	_confirm.show()
@@ -269,9 +291,14 @@ func _close_confirm() -> void:
 
 func _on_confirm_ok() -> void:
 	if is_open and is_confirming():
-		var slot: String = _confirm_replace_slot
 		_confirm.hide()
-		SaveIndex.start_new_campaign(slot)
+		if _confirm_load_slot:
+			if not SaveIndex.load_slot(_confirm_load_slot):
+				_set_interactive(true)
+				_populate()
+				_focus_default()
+			return
+		SaveIndex.start_new_campaign(_confirm_replace_slot)
 
 
 func _build_confirm() -> void:

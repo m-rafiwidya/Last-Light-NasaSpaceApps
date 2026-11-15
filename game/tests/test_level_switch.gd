@@ -2,15 +2,16 @@ extends SceneTree
 ## Headless test: switches levels the way the player does and checks nothing of the old level
 ## is left behind.
 ##   1. Main menu: the test level is no longer on it, so the `testlevel` console command. Drive the ready rover and pick up a pile part with it, Esc
-##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), "Switch to Moon".
+##      out (the rover keeps holding it), pick up a box on foot, Esc (pause), then load the Moon from the pause
+##      (the pause menu has no level switch: SceneLoader.load_scene, as the console does).
 ##   2. On the Moon: the level's contents (the workshop; no outdoor drive trigger or pile), then
 ##      drive its rover from the workshop console with the rack's cartridge on its cargo mount, Esc out,
-##      restock the rack, pick up a rack part on foot, pause, "Switch to Test level".
+##      restock the rack, pick up a rack part on foot, pause, load the test level.
 ##   3. Back in the test level: the same checks, then pause, "Quit To Menu".
 ## After every switch: one level under Main and the old one freed; no rover driven
 ## (GameState.robot, root.get_node("Debug").current_robot); the new player's camera is current and holds
 ## nothing; robot HUD hidden, player HUD shown; tree unpaused, normal time scale; only the
-## new level's rovers in the tree; the pause menu offers only the other level.
+## new level's rovers in the tree; the pause menu offers no level switch.
 ## Prints one line per check and PASS / FAIL.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_level_switch.gd
@@ -47,6 +48,11 @@ func _press_esc() -> void:
 		event.physical_keycode = KEY_ESCAPE
 		event.pressed = pressed
 		Input.parse_input_event(event)
+
+
+func _no_switch() -> bool:
+	return _ui("PauseMenu").find_child("LevelChoice", true, false) == null and not _ui("PauseMenu").find_children(
+		"*", "Button", true, false).any(func(b: Button) -> bool: return b.text.to_lower().begins_with("switch to"))
 
 
 func _pause_button(label: String) -> Button:
@@ -142,9 +148,9 @@ func _run_step():
 			return 0.8
 		4:
 			_check("[test_level] paused", GS.state == GS.State.PAUSED and paused)
-			_check("[test_level] pause menu offers only Moon", _pause_button("Switch to Moon") != null and _pause_button("Switch to Test level") == null)
+			_check("[test_level] pause menu has no level switch", _no_switch())
 			_remember_old()
-			_pause_button("Switch to Moon").pressed.emit()
+			SL.load_scene("moon_level")
 		5:
 			if GS.state != GS.State.IN_GAME_PLAYER or SL.current_level_id != "moon_level":
 				return null
@@ -179,9 +185,9 @@ func _run_step():
 			_press_esc()
 			return 0.8
 		10:
-			_check("[moon_level] pause menu offers only Test level", _pause_button("Switch to Test level") != null and _pause_button("Switch to Moon") == null)
+			_check("[moon_level] pause menu has no level switch", _no_switch())
 			_remember_old()
-			_pause_button("Switch to Test level").pressed.emit()
+			SL.load_scene("test_level")
 		11:
 			if GS.state != GS.State.IN_GAME_PLAYER or SL.current_level_id != "test_level":
 				return null

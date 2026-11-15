@@ -18,6 +18,7 @@ extends Node
 ##   and the player is back inside, suit refilled, with no load screen.
 ## - Carrying: Player picks Kite up with the usual pickup when `allows_lift()` (stranded or stuck, out
 ##   in the field); here the tray is secured while Kite is held and let go on the drop.
+## - Back inside from a spacewalk: an autosave is asked for (it waits while the player still carries Kite).
 ## - Hand pickups of mission cargo outdoors are refused (`hand_pickup_refused`): only Kite does that.
 
 signal oxygen_changed(fraction: float)
@@ -54,6 +55,7 @@ var _critical_clock: float = 0.0
 var _held_robot: Robot = null
 var _ridden: Array[HotswapPart] = []
 var _holder: ObjectHolder = null
+var _was_outside: bool = false
 
 
 func _ready() -> void:
@@ -153,7 +155,11 @@ func _physics_process(delta: float) -> void:
 	var player := GameState.player
 	if not is_instance_valid(player):
 		return
-	if workshop.contains(player.global_position):
+	var inside: bool = workshop.contains(player.global_position)
+	if inside and _was_outside and director:
+		SaveIndex.request_save()
+	_was_outside = not inside
+	if inside:
 		oxygen_s = minf(oxygen_s + capacity_s / REFILL_SECONDS * delta, capacity_s)
 		_critical_clock = 0.0
 	else:

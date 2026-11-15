@@ -78,6 +78,8 @@ var _traction: float = 1.0
 var _reading_points: Dictionary = {}
 var _far_rim := Vector2.INF
 var landing_zone: Node3D = null
+## The loaded save had Kite out in the field: it was put back there, cargo and all
+var _restored_in_field: bool = false
 
 
 func _ready() -> void:
@@ -94,12 +96,14 @@ func _ready() -> void:
 	CampaignState.objective_completed.connect(_on_progress)
 	CampaignState.mission_completed.connect(_on_progress)
 	CampaignState.mission_started.connect(_on_progress)
-	SceneLoader.level_unloaded.connect(_on_progress)
 	get_tree().node_added.connect(_on_node_added)
 	for target in get_tree().get_nodes_in_group(&"scan_target"):
 		_watch(target)
 	if pad:
 		pad.docked.connect(_on_docked)
+		pad.docked.connect(func(docked_rover: Robot) -> void:
+			if docked_rover == rover:
+				SaveIndex.request_save())
 	cutscenes = CutsceneDirector.new()
 	cutscenes.name = "Cutscenes"
 	cutscenes.level = get_parent()
@@ -132,10 +136,22 @@ func _start() -> void:
 	_prepare_mission()
 	workshop.set_rover_pool(_starting_parts(loading))
 	if loading:
-		KiteSave.apply(rover, SaveIndex.pending_kite)
+		var saved: Dictionary = SaveIndex.pending_kite
 		SaveIndex.pending_kite = {}
-		dock_rover()
-		_returned_by_recovery = true
+		KiteSave.apply(rover, saved)
+		var pose: Variant = KiteSave.field_pose(saved)
+		_restored_in_field = pose != null
+		if pose == null:
+			dock_rover()
+			_returned_by_recovery = true
+		else:
+			rover.global_transform = pose
+			rover.linear_velocity = Vector3.ZERO
+			rover.angular_velocity = Vector3.ZERO
+			if saved.get("stranded") == true:
+				_restore_stranding(str(saved.get("stranded_cause", "battery")),
+					saved["stranded_detail"] if saved.get("stranded_detail") is Dictionary else {})
+		workshop.set_carried_parts(KiteSave.apply_tray(rover, saved))
 		left_parts.restore(get_parent())
 	_settle_cargo()
 	_apply_iris_online(true)
@@ -170,9 +186,26 @@ func _starting_parts(skip_battery: bool) -> Array:
 
 func _on_progress(_id: String) -> void:
 	if rover and is_instance_valid(rover):
+		SaveIndex.request_save()
+
+
+## SaveIndex calls this just before it writes: the field state that lives in the campaign's stats
+func before_save() -> void:
+	if rover and is_instance_valid(rover):
 		_note_crate_on_kite()
 		if left_parts and not CampaignState.current_mission().is_empty():
 			left_parts.record()
+
+
+## What KiteSave keeps of Kite's situation: on the pad (or being brought back to it), stranded and why
+func field_state() -> Dictionary:
+	return {"on_pad": recovering or pad == null or pad.is_in_zone(rover), "stranded": stranded,
+		"stranded_cause": stranded_cause, "stranded_detail": _stranded_detail.duplicate(true)}
+
+
+## Closing the window keeps the progress when saving is allowed; no toast, the game is going
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and rover and is_instance_valid(rover):
 		SaveIndex.save_current(rover)
 
 
@@ -497,6 +530,15 @@ func request_recovery() -> bool:
 ## Kite stops where it is: its battery is flat (or the cold killed it: the pack is drained) and the
 ## alert says to go and get it. Nothing moves it; the emergency recovery stays available from the
 ## console once it has been still for STILL_FOR s, and suit oxygen running out runs it too.
+## A loaded save had Kite stranded: the same state and alert, nothing drained, recorded or refilled
+func _restore_stranding(cause: String, detail: Dictionary) -> void:
+	stranded = true
+	stranded_cause = cause
+	_stranded_detail = detail.duplicate(true)
+	alert = STRANDED_COLD_MESSAGE if cause == "cold" else STRANDED_MESSAGE
+	stranded_changed.emit(true)
+
+
 func _strand(cause: String, detail: Dictionary = {}) -> void:
 	if stranded:
 		return
@@ -686,7 +728,7 @@ func _settle_cargo() -> void:
 	if CargoPlan.awaiting_retrieval():
 		for crate: HotswapPart in _crates():
 			crate.mass = maxf(CargoPlan.crate_mass(), 1.0)
-		if crate_on_kite():
+		if crate_on_kite() and not _restored_in_field:
 			var at: Variant = stats.get(CRATE_AT_KEY)
 			var where: Vector3 = Vector3(at[0], at[1], at[2]) if at is Array and at.size() == 3 else crate_point()
 			left_parts.leave((rover.get_node(CARGO_SOCKET) as HotswapSocket).unmount(), CARGO_SOCKET, drop_point(where))

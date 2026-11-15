@@ -5,9 +5,8 @@
 [ext_resource type="Shader" path="res://src/ui/components/backdrop_blur.gdshader" id="3_blur"]
 [ext_resource type="PackedScene" path="res://src/ui/components/underline_button_centre.tscn" id="4_button"]
 [ext_resource type="Script" uid="uid://dvlm1ln22f2ch" path="res://src/ui/button_style_components/button_sound_component.gd" id="5_sound"]
-[ext_resource type="Script" path="res://src/ui/level_choice/level_choice.gd" id="6_levels"]
-[ext_resource type="PackedScene" path="res://src/ui/level_choice/level_button_pause.tscn" id="7_level_button"]
 [ext_resource type="PackedScene" uid="uid://c1jnwms2d5kjv" path="res://src/ui/sub_screens/settings_sub_menu.tscn" id="8_settings"]
+[ext_resource type="PackedScene" path="res://src/ui/main_menu/play_popup.tscn" id="9_popup"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_blur"]
 shader = ExtResource("3_blur")
@@ -101,17 +100,26 @@ text = "RESUME"
 script = ExtResource("5_sound")
 press_sound = &""
 
-[node name="LevelChoice" type="VBoxContainer" parent="Root/Content/Column/Nav"]
+[node name="SaveGame" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
-mouse_filter = 2
-script = ExtResource("6_levels")
-button_scene = ExtResource("7_level_button")
-text_format = "Switch to %s"
-uppercase = true
-press_sound = &"confirm"
-hide_current_level = true
+theme_type_variation = &"UnderlineButtonPause"
+text = "SAVE GAME"
+
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/SaveGame"]
+script = ExtResource("5_sound")
+
+[node name="LoadGame" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"UnderlineButtonPause"
+text = "LOAD GAME"
+
+[node name="ButtonSoundComponent" type="Node" parent="Root/Content/Column/Nav/LoadGame"]
+script = ExtResource("5_sound")
+press_sound = &"menu_open"
 
 [node name="Settings" parent="Root/Content/Column/Nav" instance=ExtResource("4_button")]
 unique_name_in_owner = true
@@ -146,5 +154,9 @@ text = "QUIT TO DESKTOP"
 script = ExtResource("5_sound")
 
 [node name="SettingsSubMenu" parent="Root" instance=ExtResource("8_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="LoadPopup" parent="Root" instance=ExtResource("9_popup")]
 unique_name_in_owner = true
 layout_mode = 1

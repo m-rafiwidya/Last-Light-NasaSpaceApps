@@ -23,6 +23,8 @@ const TAG_COLOR: Color = Color("#34343A")
 const TAG_SLANT: float = 9.6
 
 var info: SaveSlotInfo
+## The pause menu's Load: no Delete, and an empty slot does nothing
+var load_only: bool = false
 
 var _mouse_down: bool = false
 var _delete_armed: bool = false
@@ -71,7 +73,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _activate() -> void:
-	if info.state == SaveSlotInfo.State.UNREADABLE:
+	if info.state == SaveSlotInfo.State.UNREADABLE or (load_only and info.is_empty()):
 		return
 	AudioManager.play_ui(&"game_start")
 	activated.emit()
@@ -79,7 +81,7 @@ func _activate() -> void:
 
 ## The first call arms the delete, the second deletes; empty slots have nothing to delete
 func request_delete() -> void:
-	if info.is_empty():
+	if info.is_empty() or load_only:
 		return
 	if _delete_armed:
 		_set_delete_armed(false)
@@ -192,6 +194,8 @@ func _overlay() -> Control:
 
 
 func _add_delete_button(overlay: Control) -> void:
+	if load_only:
+		return
 	_delete_button = Button.new()
 	_delete_button.name = "Delete"
 	_delete_button.text = "Delete"

@@ -1,8 +1,8 @@
 extends SceneTree
 ## Save slots are separate worlds: nothing of one slot shows in another.
 ##   1. Slot A (new campaign): tyre tracks, a loose part on the floor, Kite's battery and wheel,
-##      a shown tip, a console order in flight, a queued dialogue; autosaved on quitting.
-##   2. A new campaign in slot B starts clean (none of the above); B is saved by quitting.
+##      a shown tip, a console order in flight, a queued dialogue; saved by Save & Quit.
+##   2. A new campaign in slot B starts clean (none of the above); B is saved by Save & Quit.
 ##   3. Loading A again restores only what A saved (campaign, Kite, tips) and no tracks or floor parts.
 ##   4. Loading B shows none of A's state.
 ## Saves go to user://saves_test (SaveIndex under a script run), cleared before and after.
@@ -61,7 +61,9 @@ func _enter_moon() -> bool:
 	return true
 
 
+## Save & Quit: quitting alone no longer saves
 func _to_menu() -> void:
+	SI.save_now()
 	SL.load_scene("main_menu")
 	await _wait_state(GS.State.MAIN_MENU, "main_menu")
 
@@ -177,7 +179,7 @@ func _run() -> void:
 	_check("[A] set up: battery objective, loose part, tip, flight, dialogue", CS.is_objective_done("m1.kite_prepared")
 		and _loose_parts() == loose_baseline + 1 and _tips().visible and console.flying() and DS.is_playing())
 	await _to_menu()
-	_check("[A] saved on quitting, tips included", FileAccess.file_exists(SI.slot_path("slot_1"))
+	_check("[A] saved on Save & Quit, tips included", FileAccess.file_exists(SI.slot_path("slot_1"))
 		and CS.is_tip_shown("on_foot"))
 
 	# 2. New campaign in slot B
