@@ -55,9 +55,9 @@ Default method for everything: our Blender script pipeline (flat-shaded, shared 
 ## 3. Build order
 
 **M1 (inspect IRIS): do first**
-1. A07 IRIS (the only blocking missing asset): placeholder first = one box + a thin cylinder mast with an emissive indicator box. **Goriorio can use this placeholder meanwhile** for mission state, position and the photo/scan trigger. Final mesh later.
+1. A07 IRIS (the only blocking missing asset): placeholder first = one box + a thin cylinder mast with an emissive indicator box. **Former teammate can use this placeholder meanwhile** for mission state, position and the photo/scan trigger. Final mesh later.
 2. Position IRIS on the terrain with route markers (A08, reuse `ws_marker_post`/`ws_sign_route`) and a scan anchor.
-3. A06: confirm two batteries and two wheel sets exist in the catalog and the rack; add the second battery if missing. Goriorio: use the current `power_unit` and `wheel` as stand-ins.
+3. A06: confirm two batteries and two wheel sets exist in the catalog and the rack; add the second battery if missing. Former teammate: use the current `power_unit` and `wheel` as stand-ins.
 4. A05 decision (section 4). A01–A04, A08, A09: already ready, no work.
 5. A18: Kite note and IRIS note text.
 
@@ -71,7 +71,7 @@ Default method for everything: our Blender script pipeline (flat-shaded, shared 
 2. A14 sensor and A17 thermal kit: **done** (2026-10-14, same script). Masses and power above are estimates (`SCIENCE_AND_DATA.md` has no part masses); none is wired into the rover's physics.
 3. A18 logger note. Then P2: rocks, audio, optional gloves.
 
-Placeholders Goriorio can use now: IRIS (box + mast), module (cartridge), containers (cylinders), logger (cargo box), targets (coloured discs), sensor (none: UI reading only).
+Placeholders the former teammate can use now: IRIS (box + mast), module (cartridge), containers (cylinders), logger (cargo box), targets (coloured discs), sensor (none: UI reading only).
 
 ## 4. Conflicts between brief and repo
 

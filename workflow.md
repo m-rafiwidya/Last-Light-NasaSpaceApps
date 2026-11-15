@@ -8,10 +8,10 @@ This is how the four of us build the rest of Last Light in parallel before NASA 
 |---|---|---|
 | Fahd | Core mission flow | `CampaignState`, mission data, the full M1 loop, docking, downlink, mission console, saves, final integration |
 | Rafi | Field interactions | IRIS repair and activation, radio-power module cargo, sampling, temperature readings, field logger |
-| Goriorio | Rover and dialogue system | Rover fixes and tuning, part effects in physics, `DialogServer` queue, voice playback |
+| Former teammate | Rover and dialogue system | Rover fixes and tuning, part effects in physics, `DialogServer` queue, voice playback |
 | Faiq | Voices, story content, playtesting | Recording Mira, Hana and Evan, the dialogue data files, testing every build |
 
-Fahd and Rafi use Claude Code. Goriorio codes by hand, and his tasks are sized for that. Faiq's work needs no code except editing JSON files.
+Fahd and Rafi use Claude Code. The former teammate codes by hand, and his tasks are sized for that. Faiq's work needs no code except editing JSON files.
 
 ## Scene ownership
 
@@ -21,8 +21,8 @@ Godot `.tscn` files merge very badly. If two people edit the same scene on diffe
 |---|---|
 | Moon level, workshop, mission console | Fahd |
 | IRIS station, module cradle, sample sites, logger, thermal sensor (each as its own self-contained scene) | Rafi |
-| Rover (Kite) and its parts | Goriorio |
-| Dialogue / radio UI | Goriorio |
+| Rover (Kite) and its parts | Former teammate |
+| Dialogue / radio UI | Former teammate |
 
 Rafi builds each interaction as a separate scene that works on its own. Fahd places those scenes into the Moon level. If Rafi needs something moved or added in the level, he tells Fahd instead of editing it. If you need a change in a scene you don't own, ask the owner in the group chat.
 
@@ -34,7 +34,7 @@ Everyone branches off `main` and keeps one branch per area:
 |---|---|
 | `feat/campaign-state` (first), then `feat/m1-loop` | Fahd |
 | `feat/field-interactions` | Rafi |
-| `feat/rover-fixes`, then `feat/dialogue` | Goriorio |
+| `feat/rover-fixes`, then `feat/dialogue` | Former teammate |
 | `content/voices` | Faiq |
 
 Merge your branch into `main` at least once a day, even if your feature isn't finished, as long as the game still launches. Before merging, pull the latest `main` into your branch and check the game still runs. Small daily merges are easy. One giant merge on Friday is not.
@@ -62,7 +62,7 @@ Claude Code fixes and writes code, and you handle git yourself. When you give it
 
 ## Shared contracts (agreed on day 1)
 
-These let everyone work at the same time. Rafi, Goriorio and Faiq build against them on day 1 without waiting for Fahd's full implementation. Fahd merges a working stub of `CampaignState` to `main` on day 1, and after that the names below don't change without telling the group.
+These let everyone work at the same time. Rafi, the former teammate and Faiq build against them on day 1 without waiting for Fahd's full implementation. Fahd merges a working stub of `CampaignState` to `main` on day 1, and after that the names below don't change without telling the group.
 
 ### CampaignState (autoload singleton)
 
@@ -167,11 +167,11 @@ The radio and log lines live in two JSON files that Faiq owns:
 
 Cutscene lines are separate: they live in `game/res/story/cutscenes.json` (Fahd), with their own `cs_*` IDs, and never appear in `lines.json` or `dialogue_triggers.json`, so no line plays both ways. Their audio follows the same naming rule.
 
-Audio files go in `game/res/audio/voice/` and are named exactly like the line ID. Goriorio's dialogue system reads both files and listens to `CampaignState` signals, so Faiq can add or change lines without touching code. A line with no audio yet shows its subtitle only.
+Audio files go in `game/res/audio/voice/` and are named exactly like the line ID. The former teammate's dialogue system reads both files and listens to `CampaignState` signals, so Faiq can add or change lines without touching code. A line with no audio yet shows its subtitle only.
 
 ## Schedule
 
-| Day | Fahd | Rafi | Goriorio | Faiq |
+| Day | Fahd | Rafi | Former teammate | Faiq |
 |---|---|---|---|---|
 | Mon 9 | `CampaignState` stub and mission data merged to `main` | Read the contracts, start the IRIS station scene | Esc pauses instead of exiting, motor sizing | Draft `lines.json` from the story script |
 | Tue 10 | M1 loop: fit parts, drive, scan IRIS | IRIS repair and module cargo | Gravity tuning, part masses and heater in physics | Record M1 lines |

@@ -107,7 +107,7 @@ Reuse the existing rover, wheels, motors, batteries, arm, cameras and terrain pi
 
 | Owner | Main responsibility |
 |---|---|
-| Goriorio | Reliable rover/control handoff, part effects, dock and mission state |
+| Former teammate | Reliable rover/control handoff, part effects, dock and mission state |
 | Fahd | Single terrain pipeline, workshop/station kit, tools, collision and imports |
 | Faiq | Script, logs, radio triggers and voice direction |
 | Rafi | Objective clarity, mission placement, external playtests and judge demo |

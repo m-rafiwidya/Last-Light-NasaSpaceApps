@@ -30,6 +30,13 @@ holders and licence of every third-party component in the engine).
 - **Sound effects:** Claude Code's synthesis scripts (`game/music/`), plus the Kenney CC0 samples and
   the GeneralUser GS soundfont (see Sound and music above), which `game/music/samples/SOURCES.md`
   lists.
+- **Voices:** ElevenLabs text to speech (`game/res/audio/voice/`), reading lines the team wrote.
+
+## Early base code
+
+The first version of the player controller, the dialogue system, the mission console and the first
+rover with its part system (October 2026) was written by a former teammate who withdrew before
+judging. It is used and built on with his permission; his commits remain in the git history.
 
 ## Title logo
 

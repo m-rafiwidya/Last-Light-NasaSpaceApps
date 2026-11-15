@@ -60,8 +60,8 @@ func _run() -> void:
 	for section in sections:
 		by_title[section["title"]] = section["entries"]
 	var team: Array = by_title.get("TEAM", [])
-	_check("TEAM: four name rows with university and country", team.size() == 4 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
-		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[3]["name"] == "RAYHAN SATRIO ADI NURDJAMAN")
+	_check("TEAM: three name rows with university and country", team.size() == 3 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
+		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[2]["name"] == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN")
 	var data: Array = by_title.get("REAL DATA", [])
 	_check("REAL DATA: seven sources, lines kept", data.size() == 7 and "\n" in data[2]["text"]
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
@@ -128,7 +128,7 @@ func _run() -> void:
 		and column.size.y > screen_height, "%.0f of %.0f" % [column.size.y, screen_height])
 	var widest: float = 0.0
 	for label: Label in credits.get_node("%Roll").find_children("*", "Label", true, false):
-		if label.text == "RAYHAN SATRIO ADI NURDJAMAN" or label.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN":
+		if label.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN":
 			widest = maxf(widest, label.get_minimum_size().x)
 	_check("the longest team names fit on the screen", widest > 0.0 and widest < credits.get_node("%Root").size.x - 80.0,
 		"%.0f of %.0f" % [widest, credits.get_node("%Root").size.x])

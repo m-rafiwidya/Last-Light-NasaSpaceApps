@@ -20,7 +20,6 @@ TANDBORSTE | Made for the NASA Space Apps Challenge 2026
 FAHD MUHAMMAD ZAHID | Institut Teknologi Bandung · Indonesia
 MUHAMMAD RAFI WIDYATAMA | Universiti Malaya · Malaysia
 FAIQ HAIDAR DZIKRULLAH SATRIAWAN | Monash University · Australia
-RAYHAN SATRIO ADI NURDJAMAN | National University of Singapore · Singapore
 
 ### REAL DATA
 
@@ -76,6 +75,9 @@ by Anthropic, used through Claude Code
 Code, the Blender scripts that build the
 3D models, and the music composition
 
+Voices: ElevenLabs text to speech,
+reading lines written by the team
+
 Images: Claude Code, through Blender
 and render scripts
 
@@ -118,6 +120,10 @@ by S. Christian Collins
 NASA Space Apps Challenge 2026,
 the Melbourne local event organisers,
 and everyone who playtested Last Light.
+
+A former teammate, for the early base code:
+the player, the dialogue system, the console
+and the first rover. Used with permission.
 
 ### CLOSING NOTE
 
