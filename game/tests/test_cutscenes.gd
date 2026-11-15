@@ -13,7 +13,14 @@ extends SceneTree
 ##   7. Layout at five window sizes: the title card and its caption inside the safe margins, the
 ##      longest line inside the bottom bar, clear of the skip key.
 ##   8. Ending, started on foot: the full astronaut stands in where the player is.
-##   Throughout: during every cutscene at most one line is on screen (and playing), always inside
+##   9. Opening, played through: the plume starts only below 10 m and stops at engine cutoff; the
+##      radio clicks on and off for every line, one touchdown thump; the music down by touchdown and
+##      back after.
+##   10. Gameplay lines on foot (overlapping, then one alone): the HUD's backing shows only with them.
+##   Throughout: no subtitle backing is ever visible while its text is empty or transparent, nor
+##   more opaque than its text, and a cutscene's subtitles have no backing at all;
+##   the cutscene camera never under the terrain (+0.9 m) nor inside the lander;
+##   during every cutscene at most one line is on screen (and playing), always inside
 ##   the bottom bar; the player's first-person body is never visible to a cutscene camera.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_cutscenes.gd
@@ -31,6 +38,10 @@ const SIZES: Array[Vector2i] = [
 ]
 var watch: Dictionary = {"frames": 0, "most_shown": 0, "most_playing": 0, "outside": 0, "outside_at": "", "body_seen": 0, "camera_frames": 0}
 var line_times: Array = []
+var cam: Dictionary = {"frames": 0, "low": 0, "low_at": "", "inside": 0, "inside_at": ""}
+var plume: Dictionary = {"first_on_altitude": -1.0, "on_above_10": 0, "on_after_cutoff": 0, "frames_on": 0, "engine_was_on": false, "off_at_cutoff": false}
+var music_at_touchdown: float = 0.0
+var backing: Dictionary = {"frames": 0, "cutscene_frames": 0, "gameplay_frames": 0, "empty": 0, "cutscene_backing": 0, "at": ""}
 
 
 func _initialize() -> void:
@@ -97,6 +108,7 @@ func _run() -> void:
 	_clear_dir()
 	var screen = root.get_node("Main").find_child("CutsceneScreen", true, false)
 	process_frame.connect(_watch_lines.bind(screen))
+	process_frame.connect(_watch_backing.bind(screen))
 	DS.dialog_played.connect(func(_d) -> void: line_times.append(["start", _clock(), GS.cutscene_active]))
 	DS.dialog_ended.connect(func(_d) -> void: line_times.append(["end", _clock(), GS.cutscene_active]))
 
@@ -233,9 +245,25 @@ func _run() -> void:
 		and root.get_viewport().get_camera_3d().name == "CutsceneCamera")
 	_check("[iris] the rover takes no input", not rover.controller.is_input_enabled() and not GS.player.controller.is_input_enabled())
 	var iris: Node3D = level.get_node("Iris")
-	var view: Vector3 = -root.get_viewport().get_camera_3d().global_basis.z
-	var to_iris: Vector3 = (iris.global_position + Vector3.UP * 1.6 - root.get_viewport().get_camera_3d().global_position).normalized()
-	_check("[iris] the camera frames IRIS", view.dot(to_iris) > 0.99, "%.3f" % view.dot(to_iris))
+	var iris_camera: Camera3D = root.get_viewport().get_camera_3d()
+	var indicator: Node3D = iris.highlight_node
+	var dish: Node3D = iris.find_child("iris_antenna_dish", true, false)
+	_check("[iris] the camera frames the indicator and the antenna, close", iris_camera.is_position_in_frustum(indicator.global_position)
+		and iris_camera.is_position_in_frustum(dish.global_position) and iris_camera.global_position.distance_to(indicator.global_position) < 7.0
+		and iris.is_online, "%.1f m" % iris_camera.global_position.distance_to(indicator.global_position))
+	var iris_cutscenes = cutscenes
+	var antenna_tracked: Array = [false]
+	var earth_seen: Array = [false]
+	var earth_dir: Vector3 = level.get("earth_direction").normalized()
+	var watch_iris := func() -> void:
+		var c: Camera3D = root.get_viewport().get_camera_3d()
+		if iris_cutscenes.playing_id != "iris_online" or c == null or c.name != "CutsceneCamera":
+			return
+		if iris.antenna_pose().is_equal_approx(iris.ANTENNA_TRACKED) and c.is_position_in_frustum(dish.global_position):
+			antenna_tracked[0] = true
+			if c.is_position_in_frustum(c.global_position + earth_dir * 1000.0):
+				earth_seen[0] = true
+	process_frame.connect(watch_iris)
 	var time_before: float = cutscenes.time
 	GS.change_state_to(GS.State.PAUSED)
 	await _ticks(1.0)
@@ -244,6 +272,9 @@ func _run() -> void:
 	await _ticks(0.2)
 	_check("[pause] resume returns to the cutscene", GS.state == GS.State.CUTSCENE)
 	await _wait(func() -> bool: return not cutscenes.is_playing(), 30.0)
+	process_frame.disconnect(watch_iris)
+	_check("[iris] the antenna seen locked on, then Earth behind it in one frame", antenna_tracked[0] and earth_seen[0],
+		"tracked %s, earth %s" % [antenna_tracked[0], earth_seen[0]])
 	await _ticks(0.2)
 	_check("[iris] the robot state and its camera are back", GS.state == GS.State.IN_GAME_ROBOT and GS.robot == rover
 		and root.get_viewport().get_camera_3d() == rover_camera and rover.controller.is_input_enabled())
@@ -261,6 +292,10 @@ func _run() -> void:
 		return
 	cutscenes = _cutscenes()
 	line_times.clear()
+	process_frame.connect(_watch_plume)
+	var sound = cutscenes.sound
+	var lander_node: Node = SL.current_scene.get_node("Lander")
+	lander_node.touched_down.connect(func() -> void: music_at_touchdown = root.get_node("AudioManager").music_player.volume_db)
 	var length: float = cutscenes.duration("opening")
 	_check("[full] the opening is 60 to 90 s", length >= 60.0 and length <= 90.0, "%.1f s" % length)
 	var hatch_start: float = length - 8.0
@@ -272,8 +307,18 @@ func _run() -> void:
 		and stand_in.global_position.distance_to(marker.global_position) < 0.05 and helmet != null and helmet.is_visible_in_tree()
 		and helmet.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY,
 		str(stand_in.global_position.distance_to(marker.global_position)) if stand_in else "no stand-in")
+	var events: Array = sound.events.duplicate() if is_instance_valid(sound) else []
 	await _wait(func() -> bool: return not cutscenes.is_playing(), 240.0)
+	if is_instance_valid(sound):
+		events = sound.events.duplicate()
+	process_frame.disconnect(_watch_plume)
 	await process_frame
+	_check("[plume] starts below 10 m, never above, growing as the lander drops", plume["frames_on"] > 100
+		and plume["first_on_altitude"] <= 10.0 and plume["first_on_altitude"] > 8.0 and plume["on_above_10"] == 0, str(plume))
+	_check("[plume] stops at engine cutoff, never after", plume["off_at_cutoff"] and plume["on_after_cutoff"] == 0, str(plume))
+	_check("[sound] a radio click on and off for each of the 9 lines, one thump", events.count("click_on") == 9
+		and events.count("click_off") >= 8 and events.count("thump") == 1, str(events))
+	_check("[music] near-silent by touchdown", music_at_touchdown < -40.0, "%.1f dB" % music_at_touchdown)
 	_check("[full] at the cut: the stand-in gone, the player's first-person view and body", cutscenes.stand_in == null
 		and root.get_viewport().get_camera_3d() == GS.player.camera and GS.player.get_node("Body").visible)
 	var gaps: Array = []
@@ -312,10 +357,66 @@ func _run() -> void:
 		and not GS.player.get_node("Body").is_visible_in_tree())
 	await _wait(func() -> bool: return not cutscenes.is_playing(), 30.0)
 	await process_frame
+	_check("[cameras] never under the terrain (+0.9 m)", cam["frames"] > 1000 and cam["low"] == 0, "%d of %d %s" % [cam["low"], cam["frames"], cam["low_at"]])
+	_check("[cameras] never inside the lander", cam["inside"] == 0, "%d %s" % [cam["inside"], cam["inside_at"]])
+	await _ticks(7.0)
+	_check("[music] back to its normal level after the cutscenes", root.get_node("AudioManager").music_player.volume_db > -3.0,
+		"%.1f dB" % root.get_node("AudioManager").music_player.volume_db)
 	_check("[cameras] the first-person body never visible to a cutscene camera", watch["camera_frames"] > 1000 and watch["body_seen"] == 0,
 		"%d of %d frames" % [watch["body_seen"], watch["camera_frames"]])
+	await _gameplay_lines()
+	_check("[backing] never visible while its text is empty or transparent", backing["frames"] > 1000 and backing["empty"] == 0,
+		"%d bad of %d frames %s" % [backing["empty"], backing["frames"], backing["at"]])
+	_check("[backing] none behind cutscene subtitles", backing["cutscene_frames"] > 1000 and backing["cutscene_backing"] == 0,
+		"%d of %d" % [backing["cutscene_backing"], backing["cutscene_frames"]])
+	_check("[backing] gameplay lines show it with their text", backing["gameplay_frames"] > 100, str(backing["gameplay_frames"]))
 	await _layout_checks(data)
 	_finish()
+
+
+## Lines on foot: two overlapping (the second arrives while the first is still up), then one alone
+func _gameplay_lines() -> void:
+	await _wait(func() -> bool: return GS.state == GS.State.IN_GAME_PLAYER and not GS.cutscene_active, 30.0)
+	DS.stop_all()
+	await _ticks(1.0)
+	var sequence := DialogSequence.new()
+	sequence.dialogs = [DT.make_dialog({"speaker": "Mira", "text": "Short line one."}),
+		DT.make_dialog({"speaker": "Hana", "text": "A second line, a little longer than the first, so the backing changes size."})]
+	DS.queue_sequence(sequence)
+	await _wait(func() -> bool: return not DS.is_sequence_waiting(sequence) and DS._active_dialogs.is_empty(), 30.0)
+	await _ticks(5.0)
+	DS.play_dialog(DT.make_dialog({"speaker": "Mira", "text": "And one on its own."}))
+	await _ticks(8.0)
+
+
+## Every frame: each subtitle stack's backing against its text, measured from the nodes themselves
+func _watch_backing(screen) -> void:
+	for stack in root.get_tree().get_nodes_in_group(&"subtitle_stack"):
+		if not stack.is_visible_in_tree() or stack.size.y < 0.5:
+			continue
+		var fill: float = 0.0
+		var style: StyleBox = stack.get_theme_stylebox(&"panel")
+		if style is StyleBoxFlat:
+			fill = (style as StyleBoxFlat).bg_color.a
+		fill = maxf(fill, stack.backing_alpha() * stack._backing_color.a)
+		var text: float = 0.0
+		for box in stack.boxes.get_children():
+			if box.is_queued_for_deletion() or not box.visible:
+				continue
+			var label: RichTextLabel = box.get_node("Content/Column/RichTextLabel")
+			if not label.get_parsed_text().strip_edges().is_empty():
+				text = maxf(text, box.modulate.a)
+		var in_cutscene: bool = stack == screen.subtitles
+		backing["frames"] += 1
+		if in_cutscene:
+			backing["cutscene_frames"] += 1
+			if fill > 0.0:
+				backing["cutscene_backing"] += 1
+		elif fill > 0.01:
+			backing["gameplay_frames"] += 1
+		if fill > 0.01 and (text < 0.01 or fill > text * 0.8 + 0.01):
+			backing["empty"] += 1
+			backing["at"] = "%s fill %.2f text %.2f" % [stack.get_path(), fill, text]
 
 
 ## Every frame of a cutscene: how many lines are shown and playing, and whether a shown line
@@ -331,6 +432,8 @@ func _watch_lines(screen) -> void:
 	if GS == null:
 		return
 	var camera: Camera3D = root.get_viewport().get_camera_3d()
+	if camera and camera.name == "CutsceneCamera":
+		_watch_camera(camera)
 	if camera and camera.name == "CutsceneCamera" and is_instance_valid(GS.player):
 		watch["camera_frames"] += 1
 		if GS.player.get_node("Body").is_visible_in_tree():
@@ -347,6 +450,54 @@ func _watch_lines(screen) -> void:
 		if box.visible and not bar.encloses(box.get_global_rect()):
 			watch["outside"] += 1
 			watch["outside_at"] = "%s in %s" % [box.get_global_rect(), bar]
+
+
+## The camera against the terrain and the lander's collision (a 0.2 m sphere)
+func _watch_camera(camera: Camera3D) -> void:
+	var level: Node = SL.current_scene
+	var terrain: Node = level.get_node_or_null("Terrain") if level else null
+	var lander: Node3D = level.get_node_or_null("Lander") if level else null
+	if terrain == null or lander == null:
+		return
+	cam["frames"] += 1
+	var at: Vector3 = camera.global_position
+	var clearance: float = at.y - terrain.height_at(at.x, at.z)
+	if clearance < 0.9:
+		cam["low"] += 1
+		cam["low_at"] = "%.2f m at %s, %s" % [clearance, at, _cutscenes().playing_id]
+	var query := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.2
+	query.shape = sphere
+	query.transform = Transform3D(Basis.IDENTITY, at)
+	query.collision_mask = 0xFFFFFFFF
+	for hit in camera.get_world_3d().direct_space_state.intersect_shape(query, 8):
+		if hit["collider"] is Node and lander.is_ancestor_of(hit["collider"]):
+			cam["inside"] += 1
+			cam["inside_at"] = "%s at %.1f s" % [at, _clock()]
+	if lander.get_node("Body") and lander.to_local(at).y < lander.HULL.end.y and lander.HULL.has_point(lander.to_local(at)):
+		cam["inside"] += 1
+		cam["inside_at"] = "hull box %s at %.1f s" % [lander.to_local(at), _clock()]
+
+
+func _watch_plume() -> void:
+	var level: Node = SL.current_scene
+	var lander: Node = level.get_node_or_null("Lander") if level else null
+	if lander == null or not GS.cutscene_active:
+		return
+	var p = lander.plume
+	if lander.engine_on:
+		plume["engine_was_on"] = true
+	if p.rate > 0.0:
+		plume["frames_on"] += 1
+		if plume["first_on_altitude"] < 0.0:
+			plume["first_on_altitude"] = p.altitude
+		if p.altitude > 10.0:
+			plume["on_above_10"] += 1
+		if not lander.engine_on:
+			plume["on_after_cutoff"] += 1
+	elif plume["engine_was_on"] and not lander.engine_on and plume["frames_on"] > 0 and not plume["off_at_cutoff"]:
+		plume["off_at_cutoff"] = true
 
 
 func _layout_checks(data: Dictionary) -> void:

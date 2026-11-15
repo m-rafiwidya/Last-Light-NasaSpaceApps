@@ -160,6 +160,9 @@ func _run() -> void:
 	_check("slider ticks are throttled", _one_shots().size() == before + 1, "%d ticks" % (_one_shots().size() - before))
 
 	# 5. Volume settings through the menu sliders
+	_check("a script run keeps its audio settings apart, from the defaults", AudioSettings.path != AudioSettings.PATH
+		and AudioSettings.options.path == AudioSettings.path
+		and AudioSettings.DEFAULTS.keys().all(func(key: String) -> bool: return AudioSettings.get_volume(key) == AudioSettings.DEFAULTS[key]))
 	var main_slider: HSlider = _volume_slider("UIManager/MainMenu/SettingsSubMenu", "Music Volume")
 	var pause_slider: HSlider = _volume_slider("UIManager/PauseMenu/Root/SettingsSubMenu", "Music Volume")
 	_check("both menus have a Music Volume slider", main_slider != null and pause_slider != null)
@@ -168,7 +171,7 @@ func _run() -> void:
 		var bus_db: float = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music"))
 		_check("Music slider sets the Music bus", is_equal_approx(bus_db, linear_to_db(0.35)), "%.2f dB" % bus_db)
 		var config := ConfigFile.new()
-		config.load(SETTINGS_PATH)
+		config.load(AudioSettings.path)
 		_check("volume is saved with the settings", is_equal_approx(config.get_value("audio", "music", -1.0), 35.0))
 		_check("the other menu's slider follows", is_equal_approx(pause_slider.value, 35.0))
 
