@@ -163,6 +163,9 @@ enum WheelProperty{
 }
 
 var wheel_properties: Dictionary
+## Traction of the ground under the rover (1.0 normal, lower on loose ground): multiplies every
+## wheel's friction on top of its grip. Set through Robot.ground_traction.
+var ground_traction: float = 1.0
 
 ## The properties a level may set for its rovers (RoverLevel.rover_suspension)
 const SUSPENSION_PROPERTIES: Array[String] = [
@@ -269,12 +272,12 @@ func get_steer_angle(wheel: Wheel, steer: float) -> float:
 		wheel_properties[wheel][WheelProperty.STEER_BIAS]
 	)
 
-## Friction coefficients of a wheel, including its grip multiplier
+## Friction coefficients of a wheel, including its grip multiplier and the ground's traction
 func get_longitudinal_friction(wheel: Wheel) -> float:
-	return longitudinal_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP]
+	return longitudinal_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * ground_traction
 
 func get_lateral_friction(wheel: Wheel) -> float:
-	return lateral_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP]
+	return lateral_friction_coefficient * wheel_properties[wheel][WheelProperty.GRIP] * ground_traction
 
 ## `steer` is -1 (full left) .. 1 (full right).
 ## `wheel_inertias` optionally maps a Wheel to the inertia (kg m^2) that its tyre torque

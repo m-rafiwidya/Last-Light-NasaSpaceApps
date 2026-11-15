@@ -65,12 +65,25 @@ const ELECTRONICS_POWER: float = 240.0
 # Electronics-bay heater, W: drawn on top while heater_requested (MissionDirector: Kite in an
 # active cold zone with the heater fitted) and the battery powers Kite
 const HEATER_POWER: float = 500.0
+# Range estimate (plan v2 G1), measured on M3's routes with test_m3_routes: Kite averages
+# RANGE_SPEED (m/s) including turns, and its motors use DRIVE_WH_PER_M at REFERENCE_MASS on
+# standard tread, scaling with mass and the tread factor. The electronics draw per second, so
+# their share per metre follows the speed.
+const RANGE_SPEED: float = 1.8
+const DRIVE_WH_PER_M: float = 0.0081
 # Rolling resistance, applied through the driven wheels as a Coulomb friction torque (each
 # wheel: coefficient * its tread factor * a sixth of the weight): it opposes the wheels' turning
 # and holds them still while the other torques on them are smaller (a parked rover stays put up
 # to about atan(coefficient)). It is what finally stops the robot once back-EMF braking has
 # faded out, and it pulls the top speed below the motor's no-load speed, more so when loaded.
 var rolling_resistance_coefficient: float = ROLLING_RESISTANCE_HARD_FLOOR
+## Traction of the ground under Kite: 1.0 normally; a loose-ground zone lowers it while Kite is
+## inside (plan v2 F1). Multiplies every wheel's grip (RunningGear.ground_traction).
+var ground_traction: float = 1.0:
+	set(value):
+		ground_traction = value
+		if running_gear:
+			running_gear.ground_traction = value
 # Automatic brake: once there is no throttle (|desired_speed| under brake_input_deadzone) and the
 # rover is slower than brake_speed (m/s), or rolls back against the way it was last driven (hill
 # hold), every wheel is held by a Coulomb brake of up to brake_torque (Nm per wheel: 25, about 3
@@ -410,6 +423,26 @@ func _update_mass() -> void:
 	if not is_equal_approx(mass, new_mass):
 		mass = new_mass
 		inertia = REFERENCE_INERTIA * (new_mass / REFERENCE_MASS)
+
+
+## Energy a trip costs per metre (Wh/m) with the parts fitted now: the electronics at the average
+## trip speed, plus the motors for this mass and tread. No heater, no cold.
+func planned_wh_per_metre() -> float:
+	var wheels: int = 0
+	var lugged: int = 0
+	for socket in wheel_sockets.values():
+		var part := socket.part as WheelPart if socket else null
+		if part:
+			wheels += 1
+			lugged += 1 if part.lugged else 0
+	var tread: float = lerpf(1.0, LUGGED_TREAD_ROLLING_FACTOR, float(lugged) / wheels) if wheels else 1.0
+	return ELECTRONICS_POWER / RANGE_SPEED / 3600.0 + DRIVE_WH_PER_M * mass / REFERENCE_MASS * tread
+
+
+## Metres Kite can still drive on its battery's charge (0 without a battery), for the plan's
+## range estimate: compare it with a route's round trip before leaving
+func range_estimate() -> float:
+	return battery.charge / planned_wh_per_metre() if battery else 0.0
 
 
 # Visible wheel centres for this frame: the physics' ground check, run from where the rover is
