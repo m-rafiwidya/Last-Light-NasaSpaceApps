@@ -528,6 +528,8 @@ func _card_lines() -> PackedStringArray:
 		lines.append("[color=%s][b]%s[/b]  limit %.1f kg, arrives day %d[/color]" % [_hex(&"text" if picked else &"text_2"),
 			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
+		if entry.get("order_note", ""):
+			lines.append("    [b]%s[/b]" % entry["order_note"])
 		if CargoPlan.is_late(id):
 			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall and the north loop are in shade, so the thermal kit is needed on either route."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
