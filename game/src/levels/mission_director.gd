@@ -36,6 +36,11 @@ const SAMPLE_OBJECTIVE: String = "m2.near_sample_collected"
 const SAMPLE_ID: String = "sample_container"
 const SAMPLE_MISSING: String = "SAMPLE NOT ABOARD: sample container S-1 fell out of the tray on the way, %d m from here. Drive back to it, pick it up with the claw (R, then click) into the tray, then dock again."
 const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
+const PAIR_TOO_FAR: String = "Reading taken, but too far from Evan's logger. Take the pair within 40 m of it."
+const PAIR_SUN_FIRST: String = "Sun reading saved. Now a shade reading near the logger: try the marker post's shadow or Kite's own."
+const PAIR_SHADE_FIRST: String = "Shade reading saved. Now a sunlit one near the logger."
+const PAIR_DONE: String = "Sun and shade pair recorded."
+const PAIR_ALREADY: String = "Thermal pair already recorded."
 const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
 const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the pad."
 ## Kite away from the pad and still this long (s): the console offers the emergency recovery
@@ -46,8 +51,12 @@ const RECOVERY_MINUTES: float = 45.0
 const PAIR_OBJECTIVE: String = "m3.thermal_pair_recorded"
 ## Set when both thermal readings were taken at the far rim (the pair may come before the logger)
 const PAIR_FLAG: String = "m3_thermal_pair_far_rim"
+## One flag per kind read at the far rim, saved, so the pair survives a load between the two readings
+const RIM_READING_FLAG: String = "m3_thermal_far_rim_%s"
 ## Both readings within this of the far-rim logger site (m, horizontal)
 const FAR_RIM_RADIUS: float = 40.0
+## FarLogger's field position in moon_level.tscn, used when the level has no field logger
+const FAR_RIM_SITE := Vector2(1.819, -59.287)
 const LOGGER_ID: String = "field_logger"
 const LANDING_ZONE_GROUP: StringName = &"landing_zone"
 const LANDER_SCENE: String = "res://src/field/lander.tscn"
@@ -79,8 +88,8 @@ var _level_sun := Vector2.ZERO
 var _low_warned: bool = false
 var left_parts: LeftParts = null
 var _traction: float = 1.0
-var _reading_points: Dictionary = {}
-var _far_rim := Vector2.INF
+var _far_rim := FAR_RIM_SITE
+var _pair_done_before: bool = false
 var landing_zone: Node3D = null
 ## The loaded save had Kite out in the field: it was put back there, cargo and all
 var _restored_in_field: bool = false
@@ -125,9 +134,9 @@ func _ready() -> void:
 	CampaignState.objective_completed.connect(func(_id: String) -> void: _try_pair())
 	for sensor in get_tree().get_nodes_in_group(ThermalSensor.GROUP):
 		sensor.reading_taken.connect(_on_reading_taken)
-		sensor.pair_completed.connect(_on_pair_completed.bind(sensor))
-	var logger: Node3D = get_parent().get_node_or_null("FarLogger")
-	if logger:
+		sensor.message_source = pair_message
+	var logger := get_parent().get_node_or_null("FarLogger") as HotswapPart
+	if logger and not logger.is_mounted():
 		_far_rim = Vector2(logger.global_position.x, logger.global_position.z)
 	_start()
 
@@ -161,6 +170,7 @@ func _start() -> void:
 	_apply_iris_online(true)
 	_last_position = rover.global_position
 	_prepare_mission()
+	_try_pair()
 	workshop.account_rack()
 	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
 		socket.part_mounted.connect(_on_part_mounted.bind(socket))
@@ -494,27 +504,36 @@ func returning() -> bool:
 
 # --- Thermal pair at the far rim (m3.thermal_pair_recorded) -------------------------------------
 
+## Readings elsewhere never undo one taken at the far rim
 func _on_reading_taken(kind: String, _celsius: float, point: Vector3) -> void:
-	_reading_points[kind] = Vector2(point.x, point.z)
-	if _reading_points.size() == 2 and _pair_at_far_rim() and CampaignState.current_mission() == COLD_MISSION:
-		CampaignState.set_flag(PAIR_FLAG)
+	_pair_done_before = _pair_done()
+	if _counts_for_pair(point):
+		CampaignState.set_flag(RIM_READING_FLAG % kind)
 		_try_pair()
 
 
-func _on_pair_completed(sensor: ThermalSensor) -> void:
-	if sensor.has_pair() and _pair_at_far_rim() and CampaignState.current_mission() == COLD_MISSION:
-		CampaignState.set_flag(PAIR_FLAG)
-		_try_pair()
+func _counts_for_pair(point: Vector3) -> bool:
+	return CampaignState.current_mission() == COLD_MISSION and Vector2(point.x, point.z).distance_to(_far_rim) <= FAR_RIM_RADIUS
 
 
-func _pair_at_far_rim() -> bool:
-	for kind in ["sun", "shade"]:
-		if not _reading_points.has(kind) or (_reading_points[kind] as Vector2).distance_to(_far_rim) > FAR_RIM_RADIUS:
-			return false
-	return true
+## The sensor's subtitle after the temperature (called after reading_taken, so the flags are current)
+func pair_message(kind: String, point: Vector3) -> String:
+	if _pair_done_before and CampaignState.current_mission() == COLD_MISSION:
+		return PAIR_ALREADY
+	if not _counts_for_pair(point):
+		return PAIR_TOO_FAR
+	if _pair_done():
+		return PAIR_DONE
+	return PAIR_SUN_FIRST if kind == "sun" else PAIR_SHADE_FIRST
+
+
+func _pair_done() -> bool:
+	return CampaignState.has_flag(PAIR_FLAG) or CampaignState.is_objective_done(PAIR_OBJECTIVE)
 
 
 func _try_pair() -> void:
+	if CampaignState.has_flag(RIM_READING_FLAG % "sun") and CampaignState.has_flag(RIM_READING_FLAG % "shade"):
+		CampaignState.set_flag(PAIR_FLAG)
 	if CampaignState.has_flag(PAIR_FLAG) and not CampaignState.is_objective_done(PAIR_OBJECTIVE):
 		try_complete(PAIR_OBJECTIVE)
 

@@ -7,6 +7,8 @@ extends SceneTree
 ##   3. The chain: E beside FarLogger completes m3.logger_recovered, docking m3.kite_docked, the
 ##      downlink m3.archive_sent, and m3 completes.
 ##   4. Ending: the campaign is complete and the result screen opens.
+##   5. The thermal pair under the Courier's and the Freighter's M3 sun: readings before or after the
+##      logger, with a save and load between the readings and after the pair, and docking completes.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_m3_loop.gd
 
@@ -261,7 +263,135 @@ func _run() -> void:
 
 	# 5. No soft-lock: every valid M2 order leaves an M3 route Kite can be built for, and the thermal turret
 	await _soft_lock()
+
+	# 6. The pair counts in any order, and across a save and load
+	await _pair_orders()
 	_finish()
+
+
+## A real reading (ThermalSensor.record) of `kind` on the ground within `radius` m of the far logger site
+## under the current sun; false when there is no such spot
+func _read(kind: String, radius: float = 25.0) -> bool:
+	var sensor: Node = level.get_node("ThermalSensor")
+	var space := rover.get_world_3d().direct_space_state
+	var centre: Vector3 = Vector3(rover.global_position.x, 0.0, rover.global_position.z)
+	for step in range(1, int(radius * 4.0)):
+		for a in range(0, 360, 10):
+			var p: Vector3 = centre + Vector3(cos(deg_to_rad(a)), 0.0, sin(deg_to_rad(a))) * step * 0.25
+			if Vector2(p.x, p.z).distance_to(director._far_rim) > radius:
+				continue
+			var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(p + Vector3.UP * 30.0, p + Vector3.DOWN * 30.0, 1))
+			if hit and sensor.kind_at(hit["position"], hit["normal"]) == kind:
+				return sensor.record(hit["position"], hit["normal"]) == kind
+	return false
+
+
+func _m3_level(service: String) -> bool:
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+	CS.load_state({"current": "m3", "objectives": M1_DONE + M2_DONE, "missions_done": ["m1", "m2"],
+		"flags": ["iris_online", "cargo_delivered"], "items": {"cargo.service." + service: 1}})
+	SL.load_scene("moon_level")
+	if not await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"):
+		return false
+	_grab_level()
+	director = level.get_tree().get_first_node_in_group("mission_director")
+	await _ticks(1.0)
+	return true
+
+
+func _load_logger() -> void:
+	var far_logger: Node3D = level.get_node("FarLogger")
+	GS.drive(rover)
+	await _place(far_logger.global_position + Vector3(1.0, 0.0, 0.0), Vector3.FORWARD)
+	rover.linear_velocity = Vector3.ZERO
+	await _ticks(0.3)
+	Input.action_press(&"interact_use")
+	await _ticks(0.1)
+	Input.action_release(&"interact_use")
+	await _ticks(0.5)
+
+
+func _dock() -> void:
+	var dock: Transform3D = workshop.get_dock_transform()
+	dock.origin += Vector3.UP * 0.3
+	rover.global_transform = dock
+	rover.linear_velocity = Vector3.ZERO
+	rover.angular_velocity = Vector3.ZERO
+	await _ticks(2.0)
+
+
+func _save_and_load() -> bool:
+	SI.save_current(rover, false)
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+	CS.reset()
+	if not SI.load_slot(SI.current_slot) or not await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"):
+		return false
+	_grab_level()
+	director = level.get_tree().get_first_node_in_group("mission_director")
+	await _ticks(1.0)
+	return true
+
+
+func _docks_done(tag: String) -> void:
+	await _dock()
+	_check("%s docking completes m3.kite_docked" % tag, CS.is_objective_done("m3.kite_docked")
+		and director.alert != director.PAIR_MISSING, director.alert)
+
+
+func _pair_orders() -> void:
+	SI.current_slot = "slot_1"
+	var CP: GDScript = load("res://src/levels/cargo_plan.gd")
+	for service in ["courier", "freighter"]:
+		for save_between in [false, true]:
+			var tag: String = "[pair %s%s]" % [service, " save" if save_between else ""]
+			# Readings first, then the logger
+			if not await _m3_level(service):
+				_check("%s the Moon level comes up in m3" % tag, false)
+				return
+			var sky: Node = level.get_node("WorldEnvironment")
+			var sun: Vector2 = CP.sun_on_day(CP.m3_day(service))
+			if not save_between:
+				_check("%s M3's sun (%.0f deg up)" % [tag, sun.y], is_equal_approx(sky.sun_elevation, sun.y)
+					and is_equal_approx(sky.sun_azimuth, sun.x), "%.1f %.1f" % [sky.sun_azimuth, sky.sun_elevation])
+			GS.drive(rover)
+			await _place(Vector3(director._far_rim.x + 6.0, 0.0, director._far_rim.y), Vector3.FORWARD)
+			var read: bool = _read("sun")
+			if save_between and not await _save_and_load():
+				_check("%s reload between the readings" % tag, false)
+				return
+			read = read and _read("shade")
+			_check("%s readings first: both taken, the pair waits for the logger" % tag, read
+				and not CS.is_objective_done("m3.thermal_pair_recorded") and CS.current_objective() == "m3.logger_recovered",
+				CS.current_objective())
+			if save_between and not await _save_and_load():
+				_check("%s reload" % tag, false)
+				return
+			await _load_logger()
+			_check("%s readings first, then the logger: both done" % tag, CS.is_objective_done("m3.logger_recovered")
+				and CS.is_objective_done("m3.thermal_pair_recorded"), CS.current_objective())
+			await _docks_done(tag + " readings first:")
+
+			# The logger first, then the readings
+			if not await _m3_level(service):
+				_check("%s the Moon level comes up in m3" % tag, false)
+				return
+			await _load_logger()
+			_check("%s logger first: m3.logger_recovered" % tag, CS.is_objective_done("m3.logger_recovered"))
+			if save_between and not await _save_and_load():
+				_check("%s reload" % tag, false)
+				return
+			read = _read("shade") and _read("sun")
+			_check("%s logger first, then the readings: the pair counts" % tag, read
+				and CS.is_objective_done("m3.thermal_pair_recorded"), CS.current_objective())
+			level.get_node("ThermalSensor").reading_taken.emit("sun", 100.0, Vector3(-250.0, 0.0, 200.0))
+			if save_between and not await _save_and_load():
+				_check("%s reload after the pair" % tag, false)
+				return
+			_check("%s a later reading elsewhere or a load: the pair stays counted" % tag,
+				CS.is_objective_done("m3.thermal_pair_recorded"))
+			await _docks_done(tag + " logger first:")
 
 
 const ORDERS: Array = [["courier", []], ["courier", ["thermal_kit"]], ["freighter", ["thermal_kit"]],
