@@ -16,7 +16,7 @@ const SIDE: float = 53.0
 const MIN_WIDTH: float = 560.0
 const MAX_WIDTH: float = 960.0
 const GAP: float = 24.0
-const SINGLE_FADE: float = 0.2
+const SINGLE_FADE: float = 0.25
 
 var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
 var dialog_boxes: Dictionary = {}

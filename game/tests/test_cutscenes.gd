@@ -12,8 +12,9 @@ extends SceneTree
 ##   6. Opening, played through (a second campaign): every line once, in order, then the held line.
 ##   7. Layout at five window sizes: the title card and its caption inside the safe margins, the
 ##      longest line inside the bottom bar, clear of the skip key.
+##   8. Ending, started on foot: the full astronaut stands in where the player is.
 ##   Throughout: during every cutscene at most one line is on screen (and playing), always inside
-##   the bottom bar.
+##   the bottom bar; the player's first-person body is never visible to a cutscene camera.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_cutscenes.gd
 
@@ -28,7 +29,8 @@ var played: Array[String] = []
 const SIZES: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1080), Vector2i(1024, 640),
 ]
-var watch: Dictionary = {"frames": 0, "most_shown": 0, "most_playing": 0, "outside": 0, "outside_at": ""}
+var watch: Dictionary = {"frames": 0, "most_shown": 0, "most_playing": 0, "outside": 0, "outside_at": "", "body_seen": 0, "camera_frames": 0}
+var line_times: Array = []
 
 
 func _initialize() -> void:
@@ -95,6 +97,8 @@ func _run() -> void:
 	_clear_dir()
 	var screen = root.get_node("Main").find_child("CutsceneScreen", true, false)
 	process_frame.connect(_watch_lines.bind(screen))
+	DS.dialog_played.connect(func(_d) -> void: line_times.append(["start", _clock(), GS.cutscene_active]))
+	DS.dialog_ended.connect(func(_d) -> void: line_times.append(["end", _clock(), GS.cutscene_active]))
 
 	# 1. Data
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://res/story/cutscenes.json"))
@@ -256,9 +260,29 @@ func _run() -> void:
 		_finish()
 		return
 	cutscenes = _cutscenes()
+	line_times.clear()
 	var length: float = cutscenes.duration("opening")
 	_check("[full] the opening is 60 to 90 s", length >= 60.0 and length <= 90.0, "%.1f s" % length)
+	var hatch_start: float = length - 8.0
+	await _wait(func() -> bool: return cutscenes.time >= hatch_start + 7.6 or not cutscenes.is_playing(), 240.0)
+	var stand_in: Node3D = cutscenes.stand_in
+	var marker: Node3D = SL.current_scene.get_node("Lander/Hatch")
+	var helmet: GeometryInstance3D = stand_in.find_child("astronaut_helmet", true, false) if stand_in else null
+	_check("[full] the hatch shot ends on the full astronaut, stepped out to the porch", stand_in != null and stand_in.visible
+		and stand_in.global_position.distance_to(marker.global_position) < 0.05 and helmet != null and helmet.is_visible_in_tree()
+		and helmet.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY,
+		str(stand_in.global_position.distance_to(marker.global_position)) if stand_in else "no stand-in")
 	await _wait(func() -> bool: return not cutscenes.is_playing(), 240.0)
+	await process_frame
+	_check("[full] at the cut: the stand-in gone, the player's first-person view and body", cutscenes.stand_in == null
+		and root.get_viewport().get_camera_3d() == GS.player.camera and GS.player.get_node("Body").visible)
+	var gaps: Array = []
+	var shown: float = 0.0
+	for i in line_times.size() - 1:
+		if line_times[i][0] == "end" and line_times[i + 1][0] == "start" and line_times[i + 1][2]:
+			gaps.append(line_times[i + 1][1] - line_times[i][1])
+	_check("[timing] the opening's lines run on without holding a shot, gaps under 5 s", cutscenes.held_time < 0.1
+		and not gaps.is_empty() and gaps.max() < 5.0, "held %.2f s, gaps %s" % [cutscenes.held_time, str(gaps.map(func(g): return snappedf(g, 0.01)))])
 	await _ticks(0.5)
 	var texts: Array = data["lines"].keys().map(func(id: String) -> String: return data["lines"][id]["text"])
 	var own: Array = played.filter(func(text: String) -> bool: return text in texts)
@@ -277,14 +301,41 @@ func _run() -> void:
 	_check("[lines] every line inside the bottom bar", watch["outside"] == 0, str(watch["outside_at"]))
 	print("RESULT [lines] the opening's shots were held %.1f s for their lines" % cutscenes.held_time)
 	_check("[full] no line played twice", counts.values().all(func(n: int) -> bool: return n == 1), str(counts.values()))
+
+	# 8. Ending, on foot
+	await _ticks(1.0)
+	var player_at: Vector3 = GS.player.global_position
+	cutscenes.play("ending", GS.State.IN_GAME_PLAYER)
+	await _ticks(0.5)
+	_check("[ending] on foot: the full astronaut where the player stands, the body hidden", cutscenes.stand_in != null
+		and Vector2(cutscenes.stand_in.global_position.x, cutscenes.stand_in.global_position.z).distance_to(Vector2(player_at.x, player_at.z)) < 0.3
+		and not GS.player.get_node("Body").is_visible_in_tree())
+	await _wait(func() -> bool: return not cutscenes.is_playing(), 30.0)
+	await process_frame
+	_check("[cameras] the first-person body never visible to a cutscene camera", watch["camera_frames"] > 1000 and watch["body_seen"] == 0,
+		"%d of %d frames" % [watch["body_seen"], watch["camera_frames"]])
 	await _layout_checks(data)
 	_finish()
 
 
 ## Every frame of a cutscene: how many lines are shown and playing, and whether a shown line
 ## leaves the bottom bar (once the bars are in)
+## The playing cutscene's clock (s)
+func _clock() -> float:
+	var level: Node = SL.current_scene if SL else null
+	var cutscenes: Node = level.get_node_or_null("MissionDirector/Cutscenes") if level else null
+	return cutscenes.time if cutscenes else 0.0
+
+
 func _watch_lines(screen) -> void:
-	if GS == null or not GS.cutscene_active or not screen.visible:
+	if GS == null:
+		return
+	var camera: Camera3D = root.get_viewport().get_camera_3d()
+	if camera and camera.name == "CutsceneCamera" and is_instance_valid(GS.player):
+		watch["camera_frames"] += 1
+		if GS.player.get_node("Body").is_visible_in_tree():
+			watch["body_seen"] += 1
+	if not GS.cutscene_active or not screen.visible:
 		return
 	watch["frames"] += 1
 	watch["most_shown"] = maxi(watch["most_shown"], screen.subtitles.shown_count())

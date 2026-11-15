@@ -63,6 +63,8 @@ func fade_in(seconds: float = 0.5, grow: bool = true):
 	var tween := _create_tween(Tween.EASE_OUT)
 	if grow:
 		tween.tween_property(self, "reveal", 1.0, seconds)
+	else:
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property(self, "modulate", Color.WHITE, seconds)
 
 
@@ -76,6 +78,8 @@ func fade_out(hold: float = 3.0, seconds: float = 0.5, shrink: bool = true):
 		tween.tween_interval(hold)
 	if shrink:
 		tween.tween_property(self, "reveal", 0.0, seconds)
+	else:
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property(self, "modulate", Color.TRANSPARENT, seconds)
 	tween.tween_callback(queue_free)
 
