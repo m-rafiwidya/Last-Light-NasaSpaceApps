@@ -10,6 +10,9 @@ const ACCEL_AIR: float = 3.0
 
 const SPEED_WALK: float = 2.0
 const SPEED_SPRINT: float = 3.0
+## Walking and sprinting outside the workshop on the Moon go this much faster: the field is hundreds of
+## metres wide and a real walking pace made fetching Kite a chore (carrying Kite keeps its slow pace)
+const OUTSIDE_SPEED_FACTOR: float = 3.0
 const SPEED_CROUCH: float = 1.0
 ## Carrying a rover (the EVA rescue): the crouch pace, no sprint, no jump
 const SPEED_CARRY: float = SPEED_CROUCH
@@ -276,6 +279,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			else:
 				speed = SPEED_WALK
 				#viewmodel_controller.step_size = 1.5
+			var workshop: Node = get_tree().get_first_node_in_group(&"workshop")
+			if workshop and not workshop.contains(global_position):
+				speed *= OUTSIDE_SPEED_FACTOR
 		accel = ACCEL_GROUND
 	else:
 		speed = SPEED_AIR
