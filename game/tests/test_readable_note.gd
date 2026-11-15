@@ -81,7 +81,8 @@ func _run() -> void:
 	_check("workshop: an Evan subtitle with the note's text",
 		line != null and line.speaker == "Evan" and line.subtitle.begins_with("KITE — STORAGE CHECK"),
 		line.get_display_text() if line else "none")
-	_check("workshop: no voice file yet, so text only", line != null and line.audio_stream == null)
+	var voice_exists: bool = ResourceLoader.exists("res://res/audio/voice/evan_note_kite.ogg")
+	_check("workshop: voice file loads when available", line != null and (line.audio_stream != null) == voice_exists)
 	_check("workshop: reading again skips it", kite_note.toggle() and not kite_note.is_showing() and not DS.is_playing())
 	kite_note.get_node("InteractTrigger").interact(GS.player)
 	_check("workshop: the player reads it through its InteractTrigger", kite_note.is_showing())
