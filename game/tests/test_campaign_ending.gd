@@ -205,9 +205,9 @@ func _run() -> void:
 	_check("[result] one emergency recovery, play time counted", summary["recoveries"] == 1
 		and summary["play_time_sec"] >= int(play_time_before), str(summary))
 	var text: String = result.get_node("%Summary").text
-	_check("[result] no optional-tasks stat or skipped line; recoveries and Mars", not text.contains("skipped")
+	_check("[result] no optional-tasks stat or skipped line; recoveries and the standing-by line", not text.contains("skipped")
 		and result.stat_texts().all(func(t: Array) -> bool: return t[1] != "Optional tasks")
-		and result.stat_texts().has(["1", "Emergency recoveries"]) and text.contains("Mars"), text)
+		and result.stat_texts().has(["1", "Emergency recoveries"]) and text.contains("Next assignment: standing by"), text)
 	_check("[ending] ran once", ending_runs == 1, str(ending_runs))
 	_check("[ending] IRIS's online_changed never fired", online_changes == 0 and iris.is_online, str(online_changes))
 	CS.mission_completed.emit("m3")

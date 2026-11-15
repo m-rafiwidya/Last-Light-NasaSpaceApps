@@ -36,7 +36,6 @@ const COLORS: Dictionary = {
 	# Settings key-bind slab while it waits for a key (Settings.dc.html .ll-key.is-listen)
 	"key_listen": Color("3A3A40"),
 	"moon": Color("C9C4BB"),
-	"mars": Color("C8643A"),
 	"earth": Color("4C8FD6"),
 	# Thin rules on the boards: rgba(236,233,227,.14) header, .12 stat dividers, .10 rows
 	"rule": Color("ECE9E3", 0.14),

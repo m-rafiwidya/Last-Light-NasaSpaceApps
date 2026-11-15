@@ -156,17 +156,11 @@ unchanged. The source TIFF is not committed (`.gitignore`).
 
 ## Planet explorer
 
-`game/res/textures/planets/`: the colour maps on the main menu's planet explorer globes (the Moon
-uses `lroc_color_4k.jpg` above). Both are equirectangular, 4096 x 2048, centred on 0° longitude,
-made by resampling the sources below with Python (Pillow) and saved as quality-90 JPEGs; the
-sources are not committed.
+`game/res/textures/planets/`: the colour map of the main menu's planet explorer Earth globe (the Moon
+uses `lroc_color_4k.jpg` above). It is equirectangular, 4096 x 2048, centred on 0° longitude,
+made by resampling the source below with Python (Pillow) and saved as a quality-90 JPEG; the
+source is not committed.
 
-- `mars_viking_color_4k.jpg`: **Mars Viking Global Color Mosaic 925m**
-  (`Mars_Viking_ClrMosaic_global_925m.tif`, 23059 x 11530, simple cylindrical, planetocentric,
-  east-positive), USGS Astrogeology Science Center, from NASA Viking Orbiter images,
-  <https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m>, downloaded from
-  <https://planetarymaps.usgs.gov/mosaic/Mars_Viking_ClrMosaic_global_925m.tif> (MD5 matches the
-  published `.md5`). Box-filtered down. Public domain.
 - `earth_blue_marble_4k.jpg`: **Blue Marble: Next Generation**, December 2004 with topography and
   bathymetry (`world.topo.bathy.200412.3x5400x2700.jpg`), NASA Earth Observatory (Reto Stöckli,
   NASA Goddard Space Flight Center), <https://visibleearth.nasa.gov/images/73909>. Lanczos-resampled

@@ -63,10 +63,10 @@ func _run() -> void:
 	_check("TEAM: three name rows with university and country", team.size() == 3 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
 		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[2]["name"] == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN")
 	var data: Array = by_title.get("REAL DATA", [])
-	_check("REAL DATA: seven sources, lines kept", data.size() == 7 and "\n" in data[2]["text"]
+	_check("REAL DATA: six sources, lines kept", data.size() == 6 and "\n" in data[2]["text"]
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
-	_check("REAL DATA: the USGS Gazetteer entry", (data[6]["text"] as String).contains("Head crater")
-		and (data[6]["text"] as String).contains("USGS Gazetteer of Planetary Nomenclature"))
+	_check("REAL DATA: the USGS Gazetteer entry", (data[5]["text"] as String).contains("Head crater")
+		and (data[5]["text"] as String).contains("USGS Gazetteer of Planetary Nomenclature"))
 	var space_apps: String = "\n".join((by_title.get("NASA SPACE APPS CHALLENGE RESOURCES", []) as Array).map(
 		func(e: Dictionary) -> String: return e["text"]))
 	_check("Space Apps resources: the four, and no endorsement", space_apps.contains("Design and Develop Science Missions")

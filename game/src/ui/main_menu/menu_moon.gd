@@ -70,7 +70,7 @@ var _frame_drag: Vector2 = Vector2.ZERO
 ## Angular velocity (lon, lat per second) carried on after a drag
 var _velocity: Vector2 = Vector2.ZERO
 var _idle: float = 0.0
-## The atmosphere's rim glow (Mars, Earth; none for the Moon), the board's ring as in PlanetGlobe
+## The atmosphere's rim glow (Earth; none for the Moon), the board's ring as in PlanetGlobe
 var _glow: TextureRect
 
 @onready var _container: SubViewportContainer = $Container

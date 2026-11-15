@@ -33,34 +33,6 @@ const PLANETS: Array[Dictionary] = [
 			"rows": [["LANDED", "11 Dec 1972"], ["CREW", "Gene Cernan, Harrison Schmitt"], ["REGION", "Taurus–Littrow"]],
 			"note": "The last crewed landing so far. Schmitt was the first geologist to walk on the Moon." },
 	] },
-	{ "id": &"mars", "title": "MARS", "tab": "MARS", "color": &"mars",
-		"map": "res://res/textures/planets/mars_viking_color_4k.jpg", "atmosphere": Color(0.902, 0.588, 0.431, 0.25),
-		"view": Vector2(0.2, 1.2), "lock_hint": "COMPLETE THE MOON MISSIONS", "sites": [
-		{ "id": &"v1", "name": "VIKING 1", "lat": 22.27, "lon": -47.95,
-			"rows": [["LANDED", "20 Jul 1976"], ["AGENCY", "NASA"], ["REGION", "Chryse Planitia"]],
-			"note": "NASA’s first Mars landing. It sent back the first clear pictures from the surface." },
-		{ "id": &"v2", "name": "VIKING 2", "lat": 47.64, "lon": -134.29,
-			"rows": [["LANDED", "3 Sep 1976"], ["AGENCY", "NASA"], ["REGION", "Utopia Planitia"]],
-			"note": "Photographed frost on the ground during the Martian winter." },
-		{ "id": &"pf", "name": "PATHFINDER", "lat": 19.33, "lon": -33.55,
-			"rows": [["LANDED", "4 Jul 1997"], ["AGENCY", "NASA"], ["REGION", "Ares Vallis"]],
-			"note": "Carried Sojourner, the first rover to drive on Mars." },
-		{ "id": &"sp", "name": "SPIRIT", "lat": -14.57, "lon": 175.47,
-			"rows": [["LANDED", "4 Jan 2004"], ["AGENCY", "NASA"], ["REGION", "Gusev crater"]],
-			"note": "Planned for 90 days, it kept working for six years." },
-		{ "id": &"op", "name": "OPPORTUNITY", "lat": -1.95, "lon": -5.53,
-			"rows": [["LANDED", "25 Jan 2004"], ["AGENCY", "NASA"], ["REGION", "Meridiani Planum"]],
-			"note": "Drove over 45 km, a record for driving on another world." },
-		{ "id": &"cu", "name": "CURIOSITY", "lat": -4.59, "lon": 137.44, "badge": "THE ROVER THAT INSPIRED OURS",
-			"rows": [["LANDED", "6 Aug 2012"], ["AGENCY", "NASA"], ["REGION", "Gale crater"]],
-			"note": "Still climbing Mount Sharp. Our rover’s design is based on it." },
-		{ "id": &"pe", "name": "PERSEVERANCE", "lat": 18.44, "lon": 77.45,
-			"rows": [["LANDED", "18 Feb 2021"], ["AGENCY", "NASA"], ["REGION", "Jezero crater"]],
-			"note": "Collects rock samples for a future return to Earth, and brought the Ingenuity helicopter." },
-		{ "id": &"zh", "name": "ZHURONG", "lat": 25.07, "lon": 109.93,
-			"rows": [["LANDED", "15 May 2021"], ["AGENCY", "CNSA"], ["REGION", "Utopia Planitia"]],
-			"note": "China’s first Mars rover." },
-	] },
 	{ "id": &"earth", "title": "EARTH", "tab": "EARTH", "color": &"earth",
 		"map": "res://res/textures/planets/earth_blue_marble_4k.jpg", "atmosphere": Color(0.431, 0.667, 1.0, 0.35),
 		"view": Vector2(-0.22, 2.0), "lock_hint": "FINISH THE GAME",
@@ -76,12 +48,9 @@ const PLANETS: Array[Dictionary] = [
 
 
 ## Whether the explorer shows `id`'s globe and sites, or a lock and its hint: the Moon always,
-## Mars after the Moon chapter (m3 completed), Earth after the end of the game.
+## Earth after the end of the game.
 static func is_unlocked(id: StringName) -> bool:
-	var campaign: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null(^"CampaignState")
-	return unlock_all or id == &"moon" \
-		or (id == &"mars" and campaign != null and campaign.is_mission_completed("m3")) \
-		or (id == &"earth" and campaign_finished())
+	return unlock_all or id == &"moon" or (id == &"earth" and campaign_finished())
 
 
 ## A campaign's ending has played: in this profile (it survives a new campaign) or in the loaded one
