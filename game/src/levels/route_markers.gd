@@ -14,6 +14,9 @@ const COLORS: Dictionary = {"short": Color(1.0, 0.62, 0.12), "long": Color(0.25,
 ## energy_wh() adds SAFETY_MARGIN (+10%), so the forecast never says "enough" when it isn't.
 const ENERGY_WH: Dictionary = {"short": 58.7, "long": 66.2}
 const GRIP_EXTRA_WH: float = 12.0
+## The heater in the nightfall shade (Wh per round trip), measured with tests/test_m3_routes.gd on the
+## 70 Wh battery (15 Nov 2026): the forecast adds it to the distance when a late order puts the route in shade
+const HEATER_WH: Dictionary = {"short": 7.0, "long": 11.0}
 const SAFETY_MARGIN: float = 1.1
 const POLE_HEIGHT: float = 2.4
 const SIGN_DISTANCE: float = 18.0

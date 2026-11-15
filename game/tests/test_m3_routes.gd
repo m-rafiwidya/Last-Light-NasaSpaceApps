@@ -235,6 +235,28 @@ func _run() -> void:
 	await physics_frame
 
 	var args: PackedStringArray = OS.get_cmdline_user_args()
+	# The console's forecast must call every case the way the drives end (fast: no driving)
+	var console: Node = get_first_node_in_group(&"mission_console")
+	for sv in SERVICES:
+		_set_service(sv)
+		for l in LOADOUTS:
+			_fit(LOADOUTS[l])
+			if not LOADOUTS[l]["wheels"]:
+				for socket in rover.find_children("*", "HotswapSocket", true, false):
+					if socket.part and socket.part.part_type == 0:
+						_swap(socket, "wheel_part")
+			for i in 48:
+				await physics_frame
+			_battery().charge = _battery().capacity
+			for r in ["short", "long"]:
+				var key: String = "%s %s %s" % [r, l, sv]
+				var ready: bool = (console.route_needs(r, sv) as Array).all(func(n: Dictionary) -> bool: return console._has_need(n, rover))
+				_check("forecast %s" % key, ready == (EXPECTED[key] == "home"), "forecast %s, drive target %s, range %.0f m" % [
+					"ready" if ready else "not ready", EXPECTED[key], rover.range_estimate()])
+	if args.size() >= 1 and args[0] == "forecast":
+		print("RESULT test_m3_routes %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+		quit(1 if failures else 0)
+		return
 	var cases: Array = []
 	if args.size() >= 2:
 		cases.append([args[0], args[1], args[2] if args.size() >= 3 else "courier"])

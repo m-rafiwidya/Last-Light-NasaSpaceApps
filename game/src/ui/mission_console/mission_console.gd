@@ -624,9 +624,12 @@ func route_needs(route: String, service_id: String) -> Array:
 		needs.append({"hazard": "Cold shade (%s)" % ", ".join(cold), "part": "thermal cover and heater", "kind": "thermal"})
 	var wh: float = RouteMarkers.energy_wh(route, grip_needed)
 	var metres: float = _route_metres(route) * RouteMarkers.SAFETY_MARGIN
+	var heater_wh: float = float(RouteMarkers.HEATER_WH.get(route, 0.0)) if cold else 0.0
 	var rover: Robot = _director().rover if _director() else null
 	var part: String = "a range of %d m" % roundi(metres) if _has_range(rover) else "about %d Wh" % roundi(wh)
-	needs.append({"hazard": "Distance", "part": part, "kind": "energy", "wh": wh, "metres": metres})
+	if heater_wh > 0.0 and _has_range(rover):
+		part += " plus %d Wh for the heater in shade" % roundi(heater_wh)
+	needs.append({"hazard": "Distance", "part": part, "kind": "energy", "wh": wh, "metres": metres, "heater_wh": heater_wh})
 	return needs
 
 
@@ -645,7 +648,9 @@ func _has_need(need: Dictionary, rover: Robot) -> bool:
 			return director.thermal_kit_fitted()
 		"energy":
 			if _has_range(rover):
-				return float(rover.call("range_estimate")) >= float(need["metres"])
+				# The heater's share comes off the range first: what is left must still cover the distance
+				var heater_m: float = float(need.get("heater_wh", 0.0)) / rover.planned_wh_per_metre()
+				return float(rover.call("range_estimate")) - heater_m >= float(need["metres"])
 			return rover.battery != null and rover.battery.capacity >= float(need["wh"])
 	return true
 
