@@ -3,7 +3,8 @@ extends SceneTree
 ##   1. Setup: IRIS has a ModuleCradle on the module seat, in group iris_module_cradle, with the
 ##      bay's mesh as highlight_node and the park_module marker; empty, IRIS offline.
 ##   2. Order: in m2 with the module on Kite's cargo mount and Kite parked at the bay, the install
-##      is refused until m2.cargo_ordered and m2.module_loaded are done.
+##      is refused until every M2 objective before m2.module_installed is done (missions.json:
+##      cargo ordered, retrieved from the landing zone, module loaded).
 ##   3. Position: too far from the bay refuses it and the hint says to come closer.
 ##   4. Install: parked and stopped, the hint says "In position"; try_install seats the module on
 ##      the seat (within 5 mm), empties the cargo mount, completes m2.module_installed and
@@ -97,10 +98,15 @@ func _run() -> void:
 	await _place(cradle.park_marker.global_position, facing)
 	_check("order: parked at the bay", cradle.park_distance(rover) <= cradle.PARK_RANGE,
 		"%.2f m" % cradle.park_distance(rover))
-	_check("order: refused before m2.cargo_ordered and m2.module_loaded",
+	var before: Array = []
+	for objective in CS.mission_objectives("m2"):
+		if objective == "m2.module_installed":
+			break
+		before.append(objective)
+	_check("order: refused before " + ", ".join(before),
 		not cradle.try_install(rover) and cargo.part == module and not CS.is_objective_done("m2.module_installed"))
-	CS.complete_objective("m2.cargo_ordered")
-	CS.complete_objective("m2.module_loaded")
+	for objective in before:
+		CS.complete_objective(objective)
 	_check("order: allowed after them", cradle.campaign_allows())
 
 	# 3. Position
