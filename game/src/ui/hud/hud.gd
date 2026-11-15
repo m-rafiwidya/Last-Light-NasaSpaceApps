@@ -6,6 +6,7 @@ var tips := TipCard.new()
 
 func _ready() -> void:
 	add_child(BoundaryHint.new(false))
+	tips.avoid = $SubtitleStack
 	add_child(tips)
 	hide()
 

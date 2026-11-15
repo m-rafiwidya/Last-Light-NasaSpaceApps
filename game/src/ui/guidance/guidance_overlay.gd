@@ -9,6 +9,7 @@ const BACKING := Color(0.0, 0.0, 0.0, 0.55)
 const EDGE_MARGIN: float = 72.0
 const MARKER_SIZE: float = 14.0
 const MARKER_LIFT: float = 1.5
+const LABEL_PAD: float = 8.0
 
 var guidance: Guidance = null
 var tracker := PanelContainer.new()
@@ -101,6 +102,11 @@ func marker_text() -> String:
 	return "%s  %d m" % [guidance.current_step().get("label", ""), roundi(distance)]
 
 
+## Horizontal shift that brings the label box `back` inside a viewport `width` wide
+static func label_shift(back: Rect2, width: float) -> float:
+	return maxf(LABEL_PAD - back.position.x, 0.0) - maxf(back.end.x - (width - LABEL_PAD), 0.0)
+
+
 ## A v2 theme colour token ("text", "warn", ...)
 static func ui_color(token: StringName) -> Color:
 	return UI_THEME.get_color(token, &"UIColor")
@@ -126,6 +132,9 @@ func _draw_marker() -> void:
 	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, 240, font_size).x
 	var back := Rect2(label_at.x + (240.0 - width) * 0.5 - 8.0, label_at.y - font.get_ascent(font_size) - 3.0,
 		width + 16.0, font.get_height(font_size) + 6.0)
+	var dx: float = label_shift(back, marker.get_viewport_rect().size.x)
+	back.position.x += dx
+	label_at.x += dx
 	marker.draw_rect(back, BACKING)
 	marker.draw_string(font, label_at, text, HORIZONTAL_ALIGNMENT_CENTER, 240, font_size, light)
 
