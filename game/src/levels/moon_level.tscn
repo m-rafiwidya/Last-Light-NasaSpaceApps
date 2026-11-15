@@ -10,7 +10,11 @@
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_base.glb" id="32_sign"]
 [ext_resource type="PackedScene" path="res://src/iris/iris.tscn" id="33_iris"]
 [ext_resource type="PackedScene" path="res://res/models/workshop_kit/ws_sign_route.glb" id="34_route_sign"]
-[ext_resource type="PackedScene" path="res://res/models/iris_kit/sample_site_near.glb" id="35_sample_site"]
+[ext_resource type="PackedScene" path="res://src/field/near_sample_site.tscn" id="35_sample_site"]
+[ext_resource type="PackedScene" path="res://src/field/thermal_sensor.tscn" id="60_thermal"]
+[ext_resource type="PackedScene" path="res://src/field/evan_note_kite.tscn" id="61_note_kite"]
+[ext_resource type="PackedScene" path="res://src/field/evan_note_iris.tscn" id="62_note_iris"]
+[ext_resource type="PackedScene" path="res://src/field/evan_note_logger.tscn" id="63_note_logger"]
 [ext_resource type="PackedScene" path="res://res/models/iris_kit/sample_site_far.glb" id="36_far_site"]
 [ext_resource type="PackedScene" path="res://src/robot/socket/field_logger_part.tscn" id="37_far_logger"]
 [ext_resource type="Shader" path="res://src/levels/lunar_sky.gdshader" id="9_sky_shader"]
@@ -104,6 +108,9 @@ start_assembled = true
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302, -5.37, 260)
 rover = NodePath("../ReadyRover")
 
+[node name="EvanNoteKite" parent="." instance=ExtResource("61_note_kite")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -303.882, -5.37, 259.26)
+
 [node name="BaseSign" type="Node3D" parent="."]
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -294.62, -5.371, 245.21)
 
@@ -123,8 +130,11 @@ text = "BASE"
 [node name="Iris" parent="." instance=ExtResource("33_iris")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
 
-[node name="SampleSiteNear" parent="." instance=ExtResource("35_sample_site")]
+[node name="NearSampleSite" parent="." instance=ExtResource("35_sample_site")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -204, -3.256, 136)
+
+[node name="EvanNoteIris" parent="." instance=ExtResource("62_note_iris")]
+transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -201.734, -3.282, 134.928)
 
 [node name="SampleSitePost" parent="." instance=ExtResource("31_post")]
 transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513, -207.89, -3.256, 135.76)
@@ -138,6 +148,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.942, -1.679, -57.165)
 [node name="FarLogger" parent="." instance=ExtResource("37_far_logger")]
 transform = Transform3D(-0.139205, -0.138575, 0.98052, 0.000463191, 0.990151, 0.140002, -0.990263, 0.0199433, -0.13777, 1.81907, -0.690507, -59.2873)
 sleeping = true
+
+[node name="EvanNoteLogger" parent="." instance=ExtResource("63_note_logger")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, -0.817, -60.1)
 
 [node name="FieldLoggerPickup" parent="." instance=ExtResource("44_logger_pickup")]
 
@@ -154,6 +167,8 @@ transform = Transform3D(-0.770513, 0, 0.637424, 0, 1, 0, -0.637424, 0, -0.770513
 
 [node name="Sign" parent="IrisGate/PostRight" instance=ExtResource("34_route_sign")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -0.03)
+
+[node name="ThermalSensor" parent="." instance=ExtResource("60_thermal")]
 
 [node name="ColdZones" type="Node3D" parent="."]
 

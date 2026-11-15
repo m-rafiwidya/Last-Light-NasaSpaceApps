@@ -48,6 +48,7 @@ var _last_mouse_motion: float = -INF
 var _quiet_until: float = -INF
 var _last_slider_tick: float = -INF
 var _window_focused: bool = true
+var _music_tween: Tween
 
 
 func _ready() -> void:
@@ -130,12 +131,19 @@ func _start_music() -> void:
 	music_player.volume_db = MUSIC_SILENT_DB
 	add_child(music_player)
 	music_player.play()
-	var tween := create_tween()
-	tween.set_ignore_time_scale(true)   # pausing tweens Engine.time_scale to 0
-	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(music_player, "volume_db", 0.0, MUSIC_FADE_IN)
+	fade_music(0.0, MUSIC_FADE_IN)
+
+
+## Moves the music's level to `db` over `seconds` (cutscenes; 0 dB is its normal level)
+func fade_music(db: float, seconds: float) -> void:
+	if _music_tween:
+		_music_tween.kill()
+	_music_tween = create_tween()
+	_music_tween.set_ignore_time_scale(true)   # pausing tweens Engine.time_scale to 0
+	_music_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_music_tween.set_trans(Tween.TRANS_SINE)
+	_music_tween.set_ease(Tween.EASE_IN_OUT if db < music_player.volume_db else Tween.EASE_OUT)
+	_music_tween.tween_property(music_player, "volume_db", maxf(db, MUSIC_SILENT_DB), maxf(seconds, 0.01))
 
 
 func _on_state_changed(old_state, new_state) -> void:

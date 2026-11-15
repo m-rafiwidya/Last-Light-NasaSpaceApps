@@ -7,9 +7,9 @@
 		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving; on foot too when the step has on_foot: true), hint_from (optional, same syntax as target: the live get_hint(rover) text comes from that node instead of the target, while the highlight and waypoint stay on target) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
 		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat.",
-		"downlink: the console's Downlink tab for this mission. objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
+		"downlink: the console's Downlink tab for this mission. skip_note (optional: objective + text, a warning shown before the action while that optional objective is not done; it does not block the downlink), objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
 		"ending (last mission): event (the dialogue_triggers.json event whose lines play in the closing sequence), lines (fallback id/speaker/text used while dialogue_triggers.json has no line for that event) and next_assignment (shown on the result screen).",
-		"placeholder: a guidance step still waiting for its real target (Rafi's field scenes). Search for \"placeholder\" to fill them in."
+		"checklist: extra lines the console's Mission tab shows under the objectives while the mission is open. They are reminders, not objectives."
 	],
 	"content_version": "2026-11-10",
 	"mission_order": [
@@ -242,6 +242,10 @@
 				"IRIS is transmitting again and its stored data has arrived. The far-rim field logger is silent, so its record is missing: recover it in M3."
 			],
 			"downlink": {
+				"skip_note": {
+					"objective": "m2.near_sample_collected",
+					"text": "The near sample has not been collected. Receiving telemetry ends M2, and the optional sample cannot be taken afterwards."
+				},
 				"objective": "m2.telemetry_received",
 				"action": "Receive telemetry",
 				"progress": "Receiving IRIS's telemetry...",
@@ -343,9 +347,8 @@
 				"m2.iris_activated": [
 					{
 						"text": "Bring IRIS online",
-						"label": "",
-						"target": "",
-						"placeholder": "TODO Thursday: target for IRIS activation (Rafi)"
+						"label": "IRIS",
+						"target": "path:Iris"
 					}
 				],
 				"m2.kite_docked": [
@@ -425,9 +428,8 @@
 				"m2.near_sample_collected": [
 					{
 						"text": "Optional: collect the near-site sample",
-						"label": "",
-						"target": "",
-						"placeholder": "TODO Thursday: target for the near sample site (Rafi)"
+						"label": "Near sample site",
+						"target": "group:near_sample_site"
 					}
 				]
 			},
@@ -443,6 +445,9 @@
 				"m3.archive_sent"
 			],
 			"optional_objectives": [],
+			"checklist": [
+				"Check the shade marker before the return climb"
+			],
 			"objective_titles": {
 				"m3.logger_recovered": "Recover Evan's logger from the far rim",
 				"m3.kite_docked": "Return Kite to the charging pad",

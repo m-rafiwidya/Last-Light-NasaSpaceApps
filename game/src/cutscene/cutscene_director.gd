@@ -31,6 +31,10 @@ const DIALOGUE_GRACE: float = 4.0
 ## Longest a shot is held at its end for its lines to finish
 const MAX_SHOT_HOLD: float = 12.0
 const CAMERA_CLEARANCE: float = 1.0
+## Nodes a cutscene camera never enters: they move it out with keep_camera_out(point)
+const SOLID_GROUP: StringName = &"cutscene_solid"
+## The music's level back after a cutscene that changed it (s to fade in)
+const MUSIC_RETURN: float = 6.0
 const CAMERA_FAR: float = 50000.0
 const OPENING_EVENT: String = "campaign_start"
 const MANUAL_EVENT: String = "manual"
@@ -75,6 +79,11 @@ var _step_from: Vector3
 var _step_to: Vector3
 var _step_time: float = -1.0
 var _shot_hold: float = 0.0
+var _shot_index: int = -1
+var _music_changed: bool = false
+## Seconds the cutscene has run, holds included (the handheld drift never freezes)
+var _clock: float = 0.0
+var sound: CutsceneSound = null
 
 
 func _ready() -> void:
@@ -92,6 +101,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_remove_stand_in()
+	_end_sound()
 	if phase != Phase.IDLE:
 		GameState.cutscene_active = false
 		if _held_dialogue:
@@ -172,6 +182,12 @@ func play(id: String, after_state: int = -1) -> bool:
 	_shot_hold = 0.0
 	skip_hold = 0.0
 	skipped = false
+	_shot_index = -1
+	_clock = 0.0
+	if cutscene.get("sound") is Dictionary:
+		sound = CutsceneSound.new()
+		add_child(sound)
+		sound.setup(self, cutscene["sound"])
 	_skip_armed = not Input.is_action_pressed(&"cutscene_skip")
 	GameState.cutscene_active = true
 	GameState.change_state_to(GameState.State.CUTSCENE)
@@ -200,7 +216,10 @@ func _process(delta: float) -> void:
 	if phase == Phase.IDLE:
 		return
 	var step: float = minf(delta, MAX_STEP)
+	_clock += step
 	_update_stand_in(step)
+	if sound:
+		sound.update(step)
 	var screen := _screen()
 	match phase:
 		Phase.PLAYING:
@@ -267,6 +286,7 @@ func _finish() -> void:
 	var id := playing_id
 	phase = Phase.IDLE
 	_remove_stand_in()
+	_end_sound()
 	GameState.cutscene_active = false
 	var screen := _screen()
 	if screen:
@@ -368,6 +388,10 @@ func _remember_rest(path: String) -> void:
 func _evaluate(t: float) -> void:
 	var shot: Dictionary = _shot_at(t)
 	if not shot.is_empty():
+		var index: int = _shots.find(shot)
+		if index != _shot_index:
+			_shot_index = index
+			_start_shot(shot["data"])
 		var local: float = t - shot["start"]
 		_update_camera(shot["data"], local, shot["end"] - shot["start"])
 		_update_screen(shot["data"], local, shot["end"] - shot["start"])
@@ -383,6 +407,22 @@ func _evaluate(t: float) -> void:
 		if not line["done"] and line["at"] <= t:
 			line["done"] = true
 			_queue_line(line["id"])
+
+
+func _start_shot(shot: Dictionary) -> void:
+	var music: Variant = shot.get("music")
+	if music is Dictionary:
+		AudioManager.fade_music(float(music.get("db", 0.0)), float(music.get("time", 2.0)))
+		_music_changed = true
+
+
+func _end_sound() -> void:
+	if is_instance_valid(sound):
+		sound.queue_free()
+	sound = null
+	if _music_changed:
+		_music_changed = false
+		AudioManager.fade_music(0.0, MUSIC_RETURN)
 
 
 func _shot_at(t: float) -> Dictionary:
@@ -449,11 +489,49 @@ func _update_camera(shot: Dictionary, local: float, length: float) -> void:
 		else:
 			target = origin + _vec(from.get("look")).lerp(_vec(to.get("look", from.get("look"))), e)
 		fov = lerpf(float(from.get("fov", 60.0)), float(to.get("fov", from.get("fov", 60.0))), e)
-	position.y = maxf(position.y, _ground(position) + CAMERA_CLEARANCE)
+	var motion: Array = camera_motion(data, local, _clock)
+	position += motion[0]
+	target += motion[1]
+	position = keep_clear(position)
 	camera.global_position = position
 	camera.fov = fov
 	if not position.is_equal_approx(target):
 		camera.look_at(target, Vector3.UP if absf((target - position).normalized().y) < 0.999 else Vector3.FORWARD)
+
+
+## Out of every solid (SOLID_GROUP) and CAMERA_CLEARANCE above the terrain
+func keep_clear(position: Vector3) -> Vector3:
+	for solid in get_tree().get_nodes_in_group(SOLID_GROUP):
+		if solid.is_inside_tree() and solid.has_method("keep_camera_out"):
+			position = solid.keep_camera_out(position)
+	position.y = maxf(position.y, _ground(position) + CAMERA_CLEARANCE)
+	return position
+
+
+## [position offset, look offset]: a slow handheld drift ("handheld": metres) and a decaying
+## shake ("shake": {at, amount (m), time (s)}) at `local` seconds into the shot
+static func camera_motion(data: Dictionary, local: float, clock: float) -> Array:
+	var position := Vector3.ZERO
+	var look := Vector3.ZERO
+	var handheld: float = float(data.get("handheld", 0.0))
+	if handheld > 0.0:
+		position += handheld * Vector3(_drift(clock, 0.0), 0.6 * _drift(clock, 2.1), _drift(clock, 4.3))
+		look += 0.5 * handheld * Vector3(_drift(clock, 6.7), _drift(clock, 8.9), _drift(clock, 1.3))
+	var shake: Variant = data.get("shake")
+	if shake is Dictionary:
+		var t: float = local - float(shake.get("at", 0.0))
+		var length: float = float(shake.get("time", 0.6))
+		if t >= 0.0 and t < length:
+			var a: float = float(shake.get("amount", 0.05)) * (1.0 - t / length) * (1.0 - t / length)
+			var jolt := Vector3(sin(t * 71.0), sin(t * 89.0 + 1.0), sin(t * 53.0 + 2.0))
+			position += a * jolt
+			look += 0.6 * a * Vector3(sin(t * 61.0 + 0.5), sin(t * 97.0), 0.0)
+	return [position, look]
+
+
+## Smooth noise in -1..1 from three slow sines (0.1 to 0.5 Hz)
+static func _drift(t: float, seed: float) -> float:
+	return (sin(t * 0.73 + seed) + 0.6 * sin(t * 1.37 + seed * 1.9) + 0.35 * sin(t * 2.91 + seed * 3.7)) / 1.95
 
 
 func _anchor_origin(data: Dictionary) -> Vector3:

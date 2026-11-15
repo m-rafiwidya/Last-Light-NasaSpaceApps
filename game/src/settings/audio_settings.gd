@@ -7,8 +7,12 @@ extends RefCounted
 ## (AudioManager.set_volume), so every open settings menu can follow.
 ## `options` holds the other audio setting, mute_when_unfocused: while the window isn't focused
 ## AudioManager mutes Master (set_focus_muted) and unmutes it when focus comes back.
+## A script run (tests, tools) never touches the player's audio settings: it starts from DEFAULTS
+## (reading saved ones only when SettingsSection.read_saved is set, as the other sections) and
+## keeps what it saves in TEST_PATH.
 
 const PATH: String = GraphicsSettings.PATH
+const TEST_PATH: String = "user://settings_test.cfg"
 const SECTION: String = "audio"
 ## Setting key -> bus it controls
 ## (effects: the gameplay sounds; the Ambience bus sends to SFX, so it follows too)
@@ -17,7 +21,9 @@ const BUSES: Dictionary = {"master": &"Master", "music": &"Music", "effects": &"
 ## Setting key -> default percent (the settings menu's original defaults)
 const DEFAULTS: Dictionary = {"master": 80.0, "music": 70.0, "effects": 80.0, "voice": 90.0, "interface": 50.0}
 
-static var options := SettingsSection.new(SECTION, {"mute_when_unfocused": true})
+## The file the audio settings live in (TEST_PATH in a script run)
+static var path: String = TEST_PATH if SettingsSection._is_script_run() else PATH
+static var options := _make_options()
 
 static var _percent: Dictionary = {}
 static var _loaded: bool = false
@@ -30,7 +36,7 @@ static func load_settings() -> void:
 		return
 	_loaded = true
 	var config := ConfigFile.new()
-	var ok: bool = config.load(PATH) == OK
+	var ok: bool = SettingsSection.read_saved and config.load(path) == OK
 	for key in BUSES:
 		var value: float = config.get_value(SECTION, key, DEFAULTS[key]) if ok else DEFAULTS[key]
 		_percent[key] = clampf(value, 0.0, 100.0)
@@ -47,9 +53,15 @@ static func set_volume(key: String, percent: float) -> void:
 	_percent[key] = clampf(percent, 0.0, 100.0)
 	_apply_bus(key)
 	var config := ConfigFile.new()
-	config.load(PATH)
+	config.load(path)
 	config.set_value(SECTION, key, _percent[key])
-	config.save(PATH)
+	config.save(path)
+
+
+static func _make_options() -> SettingsSection:
+	var section := SettingsSection.new(SECTION, {"mute_when_unfocused": true})
+	section.path = path
+	return section
 
 
 static func mute_when_unfocused() -> bool:

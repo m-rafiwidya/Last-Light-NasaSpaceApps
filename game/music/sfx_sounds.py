@@ -51,8 +51,10 @@ LEVELS = {
     "door_start": -22, "door_loop": -26, "door_stop": -21,
     "charger_connect": -22, "charger_full": -20, "charger_fault": -23,
     "amb_workshop": -30, "amb_moon": -36,
+    "engine_rumble_loop": -22, "radio_static_loop": -46, "radio_click_on": -30, "radio_click_off": -31,
 }
-STEREO = {"link_open", "link_close", "battery_low", "amb_workshop", "amb_moon"}
+STEREO = {"link_open", "link_close", "battery_low", "amb_workshop", "amb_moon",
+          "radio_static_loop", "radio_click_on", "radio_click_off"}
 
 # ---------------------------------------------------------------- building blocks
 
@@ -448,6 +450,57 @@ def amb_moon():
     return np.stack(sides, axis=1)
 
 
+# ---------------------------------------------------------------- lander and radio
+
+RUMBLE_SECONDS = 6.0
+STATIC_SECONDS = 8.0
+
+
+def engine_rumble_loop():
+    """The descent engine felt through the lander's structure (no sound crosses the vacuum): a deep
+    unpitched rumble with a slow, uneven flutter of combustion, no hiss."""
+    s = RUMBLE_SECONDS
+    deep = loop_noise(s, 61, tilt=2.0, low=22, high=110)
+    body = loop_noise(s, 62, tilt=1.0, low=60, high=320)
+    flutter = 1.0 + 0.18 * loop_sine(7.0, s) + 0.12 * loop_sine(11.5, s, 1.3) + 0.1 * loop_noise(s, 63, tilt=2.0, high=18)
+    return circular(lambda x: filt(x, LP(400)), (0.85 * deep + 0.3 * body) * flutter)
+
+
+def radio_hiss(seconds, seed):
+    return loop_noise(seconds, seed, tilt=1.0, low=500, high=2200)
+
+
+def radio_static_loop():
+    """The suit radio's open carrier under a line: a faint, soft band-limited hiss breathing slowly,
+    no crackle. Stereo from two noise seeds."""
+    s = STATIC_SECONDS
+    sides = []
+    for c in range(2):
+        hiss = circular(lambda x: filt(x, LP(1800)), radio_hiss(s, 72 + c))
+        sides.append(hiss * (1.0 + 0.12 * loop_sine(1 / 4.0, s, c)))
+    return np.stack(sides, axis=1)
+
+
+def radio_burst(seconds, seed, attack, decay):
+    n = filt(noise(seconds, seed), HP(600), LP(2200))
+    return n / np.abs(n).max() * env(seconds, attack, decay)
+
+
+def radio_click_on():
+    """Push-to-talk keyed at the far end: a soft dull click, then the carrier opening."""
+    click = filt(noise(0.03, 81), HP(300), LP(1500)) * env(0.03, 0.001, 0.004)
+    x = mixm(0.9 * click / np.abs(click).max(), at(0.35 * radio_burst(0.12, 82, 0.01, 0.04), 0.008))
+    return done(stereo(x), lowpass=2200, wet=0.02)
+
+
+def radio_click_off():
+    """Released: a short squelch tail cut by a softer click."""
+    tail = radio_burst(0.09, 83, 0.004, 0.05)
+    click = filt(noise(0.03, 84), HP(300), LP(1200)) * env(0.03, 0.001, 0.004)
+    x = mixm(0.4 * tail, at(0.7 * click / np.abs(click).max(), 0.07))
+    return done(stereo(x), lowpass=2000, wet=0.02)
+
+
 # ---------------------------------------------------------------- catalogue
 
 SOUNDS = {}
@@ -470,7 +523,8 @@ for i in range(3):
     SOUNDS[f"bump_{i + 1}"] = lambda i=i: bump(i)
 SOUNDS.update(rolling_loop=rolling_loop, door_start=door_start, door_loop=door_loop, door_stop=door_stop,
               charger_connect=charger_connect, charger_full=charger_full, charger_fault=charger_fault,
-              amb_workshop=amb_workshop, amb_moon=amb_moon)
+              amb_workshop=amb_workshop, amb_moon=amb_moon, engine_rumble_loop=engine_rumble_loop,
+              radio_static_loop=radio_static_loop, radio_click_on=radio_click_on, radio_click_off=radio_click_off)
 
 
 def base_name(name):

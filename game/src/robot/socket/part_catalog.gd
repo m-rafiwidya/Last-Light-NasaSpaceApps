@@ -60,8 +60,8 @@ const ENTRIES: Dictionary = {
 	},
 	"sample_scoop": {
 		"name": "Sampling scoop",
-		"description": "Takes a spoonful of regolith from a marked site. 0.4 kg. Held by the arm tool.",
-		"mounts": "Carried by the arm tool; stored on the sample bench",
+		"description": "A spare scoop, 0.4 kg. It does no sampling yet: Kite takes samples with a sealed container (S-1, S-2) on its cargo mount.",
+		"mounts": "Rides on the rover's cargo mount; stored on the sample bench",
 	},
 	"sample_container": {
 		"name": "Sample container S-1",

@@ -20,6 +20,15 @@ var _stuck_shown: bool = false
 
 func _ready() -> void:
 	director = get_parent() as MissionDirector
+	for sensor in get_tree().get_nodes_in_group(ThermalSensor.GROUP):
+		sensor.reading_taken.connect(_on_reading_taken)
+
+
+## The latest sun and shade readings go into the current mission's stats (the Science section shows them)
+func _on_reading_taken(kind: String, celsius: float, _point: Vector3) -> void:
+	var stats := CampaignState.mission_stats(CampaignState.current_mission())
+	if not stats.is_empty() and not stats.get("sent", false):
+		stats["thermal_" + kind] = celsius
 
 
 func _physics_process(delta: float) -> void:

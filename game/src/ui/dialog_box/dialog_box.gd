@@ -48,6 +48,10 @@ func set_text(text: String):
 	$Content/Column/RichTextLabel.text = text
 
 
+func is_empty() -> bool:
+	return ($Content/Column/RichTextLabel as RichTextLabel).get_parsed_text().strip_edges().is_empty()
+
+
 ## The line's text, with the speaker's name on its own small line above it (none: no name line)
 func set_line(speaker: String, text: String) -> void:
 	var name_label: Label = $Content/Column/Speaker

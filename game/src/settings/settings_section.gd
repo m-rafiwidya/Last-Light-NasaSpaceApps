@@ -8,7 +8,8 @@ extends RefCounted
 ## announced (`changed`) when it changes, so every open settings menu can follow.
 ## A script driving the game (tests, tools: Godot's `-s`) starts from the defaults instead of the
 ## player's saved choices, so a frame cap, a slower mouse or a rebound key can't change a test;
-## a test of saving sets `read_saved` and calls reload(). Saving always writes the file.
+## a test of saving sets `read_saved` and calls reload(). Saving always writes the file (`path`:
+## user://settings.cfg, or the section's own file, e.g. AudioSettings' test file in a script run).
 
 ## changed(key): after `key` changed (set_value, reset)
 signal changed(key: String)
@@ -19,6 +20,7 @@ const PATH: String = GraphicsSettings.PATH
 static var read_saved: bool = not _is_script_run()
 
 var section: String
+var path: String = PATH
 var defaults: Dictionary
 ## key -> Vector2(min, max) for numbers
 var ranges: Dictionary
@@ -46,9 +48,9 @@ func set_value(key: String, value: Variant) -> bool:
 		return false
 	_values[key] = value
 	var config := ConfigFile.new()
-	config.load(PATH)
+	config.load(path)
 	config.set_value(section, key, value)
-	config.save(PATH)
+	config.save(path)
 	changed.emit(key)
 	return true
 
@@ -70,7 +72,7 @@ func _load() -> void:
 		return
 	_loaded = true
 	var config := ConfigFile.new()
-	var ok: bool = read_saved and config.load(PATH) == OK
+	var ok: bool = read_saved and config.load(path) == OK
 	for key in defaults:
 		_values[key] = _clean(key, config.get_value(section, key, defaults[key]) if ok else defaults[key])
 

@@ -9,6 +9,9 @@ extends PanelContainer
 ## objective panel): the oldest lines go first. At most MAX_ENTRIES lines show at once; a line
 ## always shows in full, wrapped. With `one_at_a_time` (cutscenes) only one line ever shows: a line
 ## fades out as soon as it ends, and the next waits until it is gone, then fades in.
+## The backing (theme variation SubtitleBacking) is drawn here, never by the panel style: as opaque as
+## the most opaque line in it, so it fades and resizes with its text and is never seen empty.
+## `backing` false (cutscenes: the text sits on the letterbox bar) draws none.
 
 const MAX_ENTRIES: int = 2
 const BOTTOM: float = 53.0
@@ -27,6 +30,8 @@ var keep_out: Array[Control] = []
 ## Controls the stack must stay under
 var keep_below: Array[Control] = []
 var one_at_a_time: bool = false
+var backing: bool = true
+var _backing_color: Color = Color(0.0, 0.0, 0.0, 0.8)
 ## Lines waiting for the shown one to leave (one_at_a_time)
 var _waiting: Array[Dialog] = []
 
@@ -34,6 +39,14 @@ var _waiting: Array[Dialog] = []
 
 
 func _ready() -> void:
+	add_to_group(&"subtitle_stack")
+	var style: StyleBox = get_theme_stylebox(&"panel")
+	if style is StyleBoxFlat:
+		_backing_color = (style as StyleBoxFlat).bg_color
+	var empty := StyleBoxEmpty.new()
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		empty.set_content_margin(side, style.get_content_margin(side) if style else 0.0)
+	add_theme_stylebox_override(&"panel", empty)
 	DialogServer.dialog_played.connect(_on_dialog_played)
 	DialogServer.dialog_ended.connect(_on_dialog_ended)
 	GeneralSettings.section.changed.connect(func(_key: String) -> void: _apply_subtitles())
@@ -46,6 +59,28 @@ func _process(_delta: float) -> void:
 	if not _waiting.is_empty() and boxes.get_child_count() == 0:
 		_show(_waiting.pop_front())
 	place()
+	queue_redraw()
+
+
+func _draw() -> void:
+	var alpha: float = backing_alpha()
+	if alpha > 0.0 and size.y > 0.0:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(_backing_color, _backing_color.a * alpha))
+
+
+## How opaque the backing is now (0..1 of its colour): its most opaque line's opacity
+func backing_alpha() -> float:
+	return text_alpha() if backing else 0.0
+
+
+## The most opaque line with text in it (0: none)
+func text_alpha() -> float:
+	var alpha: float = 0.0
+	for box in boxes.get_children():
+		if box.is_queued_for_deletion() or not box.visible or box.is_empty():
+			continue
+		alpha = maxf(alpha, box.modulate.a)
+	return alpha
 
 
 ## How many lines are on screen (fading ones included)

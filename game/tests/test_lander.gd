@@ -9,6 +9,8 @@ extends SceneTree
 ##      blend on, m1.workshop_entered completed.
 ##   4. Flight: away from its spot the ramp folds up and the hatch shuts; back, the hatch light
 ##      lowers the ramp and opens the hatch.
+##   5. Plume: none above 10 m, growing below it, never with the plume or engine off; off at engine
+##      cutoff, every grain down within 4.5 s. Touchdown: the stage sinks on its struts and settles.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_lander.gd
 
@@ -190,6 +192,40 @@ func _run() -> void:
 	await _ticks(3.0)
 	_check("[flight] the ramp down, the hatch open", lander.is_deployed()
 		and absf(lander.get_node("RampHinge").rotation_degrees.x + RAMP_SLOPE_DEG) < 0.5)
+
+	# 5. Plume and touchdown
+	var plume = lander.plume
+	var rate_at := func(height: float) -> float:
+		lander.global_position = rest + Vector3.UP * height
+		await _ticks(0.05)
+		return plume.rate
+	lander.set_engine(true)
+	lander.set_plume(false)
+	_check("[plume] engine on, plume off: nothing", await rate_at.call(3.0) == 0.0)
+	lander.set_plume(true)
+	var high: float = await rate_at.call(30.0)
+	var edge: float = await rate_at.call(10.5)
+	var mid: float = await rate_at.call(6.0)
+	var low: float = await rate_at.call(1.0)
+	_check("[plume] none above 10 m, growing as the lander drops", high == 0.0 and edge == 0.0 and mid > 0.05 and low > mid and low > 0.9,
+		"30 m %.2f, 10.5 m %.2f, 6 m %.2f, 1 m %.2f, altitude %.2f" % [high, edge, mid, low, plume.altitude])
+	_check("[plume] grains from the ground under the bell", plume.particles.emitting
+		and (plume.particles.process_material as ShaderMaterial).get_shader_parameter("emit_ratio") > 0.0)
+	lander.set_engine(false)
+	await _ticks(0.02)
+	_check("[plume] engine cutoff stops it at once", plume.rate == 0.0
+		and (plume.particles.process_material as ShaderMaterial).get_shader_parameter("emit_ratio") == 0.0)
+	_check("[plume] no air: every grain down within 4.5 s", plume.particles.lifetime <= 4.5
+		and plume.max_flight_time(1.62) < 4.0, "lifetime %.2f s" % plume.particles.lifetime)
+	lander.global_position = rest
+	lander.touchdown()
+	var deepest: float = 1.0
+	for i in int(0.5 * TICKS):
+		await physics_frame
+		deepest = minf(deepest, lander.model.scale.y)
+	await _ticks(0.6)
+	_check("[touchdown] the stage sinks 5-15 cm on its struts, then settles", deepest < 1.0 - 0.05 / 6.8
+		and deepest > 1.0 - 0.15 / 6.8 and lander.model.scale.y == 1.0, "%.3f m" % ((1.0 - deepest) * 6.8))
 	_finish()
 
 

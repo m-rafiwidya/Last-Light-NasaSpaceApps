@@ -1,6 +1,6 @@
 extends SceneTree
 ## Headless test: M2's optional near sample (NearSampleSite, plan item S).
-##   1. Setup: placed where IRIS is, the site joins its group, highlights its patch and finds anchor_sample.
+##   1. Setup: the level's NearSampleSite is where IRIS is, the site joins its group, highlights its patch and finds anchor_sample.
 ##   2. Mission: in m1 nothing happens, even parked at the patch with S-1 on the cargo mount.
 ##   3. Container: in m2 without S-1 the hint asks for it and nothing happens.
 ##   4. Position: 6 m out the hint says to come closer.
@@ -72,14 +72,13 @@ func _run() -> void:
 	level = SL.current_scene
 	rover = level.get_node("ReadyRover")
 	cargo = rover.get_node("CargoSocket")
-	site = load("res://src/field/near_sample_site.tscn").instantiate()
-	level.add_child(site)
-	site.global_transform = level.get_node("SampleSiteNear").global_transform
+	site = level.get_node("NearSampleSite")
 	await _ticks(1.0)
 
 	# 1. Setup
 	var park: Vector3 = site.find_child("park_sample", true, false).global_position
-	_check("setup: in group near_sample_site", get_first_node_in_group(&"near_sample_site") == site)
+	_check("setup: in group near_sample_site, at IRIS's transform", get_first_node_in_group(&"near_sample_site") == site
+		and site.global_transform == level.get_node("Iris").global_transform and level.get_node_or_null("SampleSiteNear") == null)
 	_check("setup: highlight_node is the patch", site.highlight_node == site.get_node("Site")
 		and not site.highlight_node.find_children("*", "MeshInstance3D", true, false).is_empty())
 	_check("setup: park_sample is within SAMPLE_RANGE of the patch",

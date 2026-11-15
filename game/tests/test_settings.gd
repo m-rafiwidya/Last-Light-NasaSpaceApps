@@ -46,6 +46,8 @@ func _initialize() -> void:
 	if _had_settings:
 		_saved_settings = FileAccess.get_file_as_string(SETTINGS_PATH)
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
+	if FileAccess.file_exists(AudioSettings.path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(AudioSettings.path))
 	# This test is about the saved file: read it as a launch would
 	SettingsSection.read_saved = true
 	_relaunch()
@@ -75,6 +77,8 @@ func _restore() -> void:
 		file.close()
 	elif FileAccess.file_exists(SETTINGS_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
+	if FileAccess.file_exists(AudioSettings.path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(AudioSettings.path))
 
 
 ## Reads every setting back from the file, as a new launch would (the InputMap starts from the
@@ -94,7 +98,7 @@ func _relaunch() -> void:
 
 func _saved(section: String, key: String) -> Variant:
 	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
+	if config.load(AudioSettings.path if section == AudioSettings.SECTION else SETTINGS_PATH) != OK:
 		return null
 	return config.get_value(section, key, null)
 
