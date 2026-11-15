@@ -132,7 +132,9 @@ func _layout() -> void:
 	var text_height: float = subtitles.size.y if subtitles.visible and subtitles.shown_count() > 0 else 0.0
 	# Only once the line is wrapped at the band's width and its height has settled (the first
 	# frames can report it wrapped narrower)
-	_steady = _steady + 1 if text_height == _last_height and absf(subtitles.size.x - minf(width, subtitles.MAX_WIDTH)) < 1.0 else 0
+	# Within a pixel: with display scaling the sizes jitter by fractions, and an exact match never
+	# came, so the bar never grew and a second line hung off the screen (Rafi's laptop, 14 Nov)
+	_steady = _steady + 1 if absf(text_height - _last_height) < 1.0 and absf(subtitles.size.x - minf(width, subtitles.MAX_WIDTH)) < 2.0 else 0
 	_last_height = text_height
 	if text_height > 0.0 and _steady >= STEADY_FRAMES:
 		_bar_need = clampf(text_height + 2.0 * SUBTITLE_PAD, _bar_need, view.y * MAX_BAR_SHARE)

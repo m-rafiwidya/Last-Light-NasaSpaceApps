@@ -4,7 +4,7 @@ extends SceneTree
 ##      position".
 ##   2. Pick: E has the arm pick the crate up; it ends on the cargo mount (the box refuses it), the
 ##      arm stowed high over it (turret clear of the crate) and free again.
-##   3. Tray: a sample container on the ground goes into the storage tray.
+##   3. Small parts: a sample container is the manual claw's job; E won't pick it and the hint says so.
 ##   4. Interrupted before the latch: the rover moving stops the pick; nothing is taken.
 ##   5. Interrupted while carrying: the part drops where it is.
 ##
@@ -137,22 +137,14 @@ func _run() -> void:
 		rover.get_node("Visuals").stow_pose() == rover.get_node("Visuals").ARM_STOWED_HIGH
 		and not _aabb(turret).intersects(_aabb(crate)), "turret %s, crate %s" % [_aabb(turret), _aabb(crate)])
 
-	# 3. A sample container from the ground into the storage tray
+	# 3. A sample container is the manual claw's job: E won't pick it, the hint says to use the claw
 	var jar: RigidBody3D = (load("res://src/robot/socket/sample_container_part.tscn") as PackedScene).instantiate()
 	level.add_child(jar)
 	jar.add_to_group(&"claw_target")
-	var jar_reach := -1.0
-	for d in [reach, reach - 0.05, reach + 0.05, reach - 0.1, reach + 0.1]:
-		await _place(jar, d)
-		if claw.ready_for(jar):
-			jar_reach = d
-			break
-	_check("tray: a sample container on the ground is in reach", jar_reach > 0.0, claw.get_hint())
-	_check("tray: its destination is the storage tray", claw.destination_for(jar) == tray)
-	claw.handle_interact()
-	await _wait_idle(40.0)
-	await _ticks(1.0)
-	_check("tray: the arm drops it into the tray", tray.holds(jar) and not jar.is_mounted(), str(jar.global_position))
+	await _place(jar, reach)
+	_check("small part: it's for the manual claw (it fits the tray)", claw.hand_only(jar))
+	_check("small part: E doesn't pick it", not claw.ready_for(jar) and not claw.handle_interact() and claw.phase == claw.Phase.IDLE)
+	_check("small part: the hint points to the claw", claw.get_hint().contains("claw"), claw.get_hint())
 	jar.queue_free()
 
 	# 4. Interrupted before the latch (a second crate; the first leaves the cargo mount)

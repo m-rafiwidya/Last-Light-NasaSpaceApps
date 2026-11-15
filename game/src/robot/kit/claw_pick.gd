@@ -118,8 +118,15 @@ func nearest_part() -> HotswapPart:
 
 
 ## True when E would start picking `target` now
+## Small parts (they fit the storage tray) are the manual claw's job (R, aim, click), not E's: that
+## hand work into the tray, and driving gently so it stays in, is what the claw is for (Rafi, 14 Nov)
+func hand_only(target: HotswapPart) -> bool:
+	var tray := robot.get_node_or_null("StorageBox") as StorageTray
+	return tray != null and tray.fits(target)
+
+
 func ready_for(target: HotswapPart) -> bool:
-	if target == null or delivery._latch() == null or delivery.is_busy() or destination_for(target) == null:
+	if target == null or delivery._latch() == null or delivery.is_busy() or destination_for(target) == null 			or hand_only(target):
 		return false
 	var manual := robot.get_node_or_null("ManualClaw") as ManualClaw
 	if manual and manual.active:
@@ -142,6 +149,10 @@ func get_hint() -> String:
 	var name: String = target.get_display_name()
 	if delivery._latch() == null:
 		return "%s: mount the arm tool turret to pick it up" % name
+	if hand_only(target):
+		if visuals.cargo_loaded():
+			return "%s: empty the cargo mount, then pick it up with the claw" % name
+		return "%s: press %s to work the claw, click to grab, drop it in the tray" % [name, InputBindings.action_text(&"arm_toggle", "R")]
 	if destination_for(target) == null:
 		return "%s: no free spot on Kite for it" % name
 	var m: Dictionary = measure(target)

@@ -50,6 +50,8 @@ var _held_layers: Vector2i = Vector2i.ZERO
 var _held_height: float = 0.0
 var _marker: MeshInstance3D = null
 var _marker_material := StandardMaterial3D.new()
+## Seconds left showing why R didn't start the claw
+var _why_not_time: float = 0.0
 
 
 func _ready() -> void:
@@ -137,6 +139,8 @@ func _on_arm_toggle() -> void:
 	# Deploying is RoverVisuals' (the claw takes over once the arm is out); stowing is ours
 	if active:
 		deactivate()
+	elif not available():
+		_why_not_time = 4.0
 
 
 ## The world point the crosshair looks at (within AIM_RANGE), not counting the held part
@@ -217,6 +221,12 @@ func release() -> void:
 ## What the robot HUD should say ("" for nothing)
 func get_hint() -> String:
 	if not active:
+		# R pressed but the claw can't take over: say why instead of leaving the player guessing
+		if _why_not_time > 0.0 and GameState.robot == robot and not delivery.is_busy():
+			if delivery._latch() == null:
+				return "Claw: mount the arm tool turret first"
+			if visuals.cargo_loaded():
+				return "Claw: the cargo mount is full, the arm stays clear of it. Empty it to use the claw"
 		return ""
 	if not reachable:
 		return "Claw: out of the arm's reach"
@@ -229,6 +239,7 @@ func get_hint() -> String:
 
 
 func _physics_process(delta: float) -> void:
+	_why_not_time = maxf(_why_not_time - delta, 0.0)
 	if not active:
 		# The arm out (RoverVisuals deployed it and is done moving it): the claw takes over
 		if visuals.arm_deployed and visuals.arm_target.is_empty() and available() \
