@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://src/robot/kit/rover_scanner.gd" id="25_scanner"]
 [ext_resource type="Script" path="res://src/robot/kit/claw_pick.gd" id="26_claw_pick"]
 [ext_resource type="Script" path="res://src/robot/kit/storage_tray.gd" id="27_tray"]
+[ext_resource type="Script" path="res://src/robot/kit/manual_claw.gd" id="28_manual_claw"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 friction = 0.6
@@ -35,23 +36,23 @@ size = Vector3(0.22, 0.01, 0.22)
 
 [sub_resource type="BoxMesh" id="BoxMesh_box_side"]
 material = SubResource("StandardMaterial3D_box")
-size = Vector3(0.008, 0.07, 0.22)
+size = Vector3(0.008, 0.05, 0.22)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tray_floor"]
 size = Vector3(0.22, 0.02, 0.22)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tray_side"]
-size = Vector3(0.02, 0.07, 0.24)
+size = Vector3(0.02, 0.05, 0.24)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tray_end"]
-size = Vector3(0.204, 0.07, 0.02)
+size = Vector3(0.204, 0.05, 0.02)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tray_inside"]
 size = Vector3(0.2, 0.12, 0.2)
 
 [sub_resource type="BoxMesh" id="BoxMesh_box_end"]
 material = SubResource("StandardMaterial3D_box")
-size = Vector3(0.204, 0.07, 0.008)
+size = Vector3(0.204, 0.05, 0.008)
 
 [node name="Robot" type="RigidBody3D" unique_id=405660351 node_paths=PackedStringArray("body_model", "body_collision", "running_gear", "engine", "pivot", "camera", "raycast", "front_left_socket", "front_right_socket", "middle_left_socket", "middle_right_socket", "rear_left_socket", "rear_right_socket", "motor_socket", "battery_socket", "headlights")]
 collision_layer = 6
@@ -221,7 +222,7 @@ accepts_any_type = false
 accepted_type = 6
 mount_offset = Vector3(0, 0, 0)
 capture_size = Vector3(0.4, 0.3, 0.26)
-capture_offset = Vector3(0, 0.15, 0)
+capture_offset = Vector3(0, 0.22, 0)
 trigger_size = Vector3(0.3, 0.12, 0.2)
 trigger_offset = Vector3(0, 0.05, 0)
 anchor = &"socket_cargo_item"
@@ -255,19 +256,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.44, 0.015)
 shape = SubResource("BoxShape3D_tray_floor")
 
 [node name="TrayWallL" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.242, 0.475, 0.015)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.242, 0.465, 0.015)
 shape = SubResource("BoxShape3D_tray_side")
 
 [node name="TrayWallR" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.018, 0.475, 0.015)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.018, 0.465, 0.015)
 shape = SubResource("BoxShape3D_tray_side")
 
 [node name="TrayWallF" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.475, -0.097)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.465, -0.097)
 shape = SubResource("BoxShape3D_tray_end")
 
 [node name="TrayWallB" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.475, 0.127)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0.465, 0.127)
 shape = SubResource("BoxShape3D_tray_end")
 
 [node name="StorageBox" type="Node3D" parent="."]
@@ -279,19 +280,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 0)
 mesh = SubResource("BoxMesh_box_floor")
 
 [node name="SideL" type="MeshInstance3D" parent="StorageBox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.106, 0.035, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.106, 0.025, 0)
 mesh = SubResource("BoxMesh_box_side")
 
 [node name="SideR" type="MeshInstance3D" parent="StorageBox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.106, 0.035, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.106, 0.025, 0)
 mesh = SubResource("BoxMesh_box_side")
 
 [node name="EndF" type="MeshInstance3D" parent="StorageBox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.106)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -0.106)
 mesh = SubResource("BoxMesh_box_end")
 
 [node name="EndB" type="MeshInstance3D" parent="StorageBox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, 0.106)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0.106)
 mesh = SubResource("BoxMesh_box_end")
 
 [node name="TrayArea" type="Area3D" parent="StorageBox"]
@@ -307,6 +308,9 @@ script = ExtResource("24_cargo_delivery")
 
 [node name="ClawPick" type="Node" parent="."]
 script = ExtResource("26_claw_pick")
+
+[node name="ManualClaw" type="Node" parent="."]
+script = ExtResource("28_manual_claw")
 
 [node name="RoverScanner" type="Node" parent="."]
 script = ExtResource("25_scanner")

@@ -26,8 +26,10 @@ func holds(part: HotswapPart) -> bool:
 	return part in items()
 
 
-## Inside of the tray (m): parts must fit within it, lying as they are
-const INSIDE := Vector3(0.19, 0.15, 0.19)
+## Inside of the tray (m): parts must fit within it, lying as they are. Low enough (0.12 m) to stay
+## under the cargo mount's capture box, which starts 7 cm above the mount and would grab a cargo
+## part poking up into it from the tray's front edge
+const INSIDE := Vector3(0.19, 0.12, 0.19)
 
 
 ## True when `part` would fit in the tray (its meshes' box, either way round)

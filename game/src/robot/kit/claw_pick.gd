@@ -12,8 +12,7 @@ extends Node
 ## over the cargo mount and the part is then let go just above the tray, where it drops in; the
 ## manual claw will place it there itself.
 ##
-## Only parts at least MIN_GRAB_HEIGHT tall can be grabbed (the delivery crate): the turret hangs
-## below the latch. Short parts (sample containers, the logger) say so in the hint.
+## Parts lower than MIN_GRAB_HEIGHT say so in the hint.
 ##
 ## The rover moving, driving input, or the arm getting within 20 mm of the terrain aborts the pick.
 ## Before the latch the arm just stows; after it the part drops where it is (careful driving).
@@ -31,10 +30,10 @@ const STROKE: float = 0.12
 const SEAT_GAP: float = 0.006
 ## Parts within this distance (horizontal, m) of the arm's yaw axis get a hint
 const HINT_RANGE: float = 3.0
-## Lowest top (m above the ground under it) the latch can grab: the tool turret hangs about 0.19 m
-## below the latch, so anything shorter would put it in the ground (measured: a 0.24 m crate
-## leaves the arm 47 mm clear). Smaller parts need a gripper tool.
-const MIN_GRAB_HEIGHT: float = 0.22
+## Lowest top (m above the ground under it) the latch can grab without the arm touching the ground
+## (measured: a 3 cm top leaves 35 mm, a 10 cm jar 105 mm; the old 0.22 m limit came from the tool
+## socket's hidden marker mesh, which the clearance check used to count)
+const MIN_GRAB_HEIGHT: float = 0.03
 
 @onready var robot: Robot = get_parent() as Robot
 @onready var visuals: RoverVisuals = robot.get_node("Visuals")
@@ -121,6 +120,9 @@ func nearest_part() -> HotswapPart:
 ## True when E would start picking `target` now
 func ready_for(target: HotswapPart) -> bool:
 	if target == null or delivery._latch() == null or delivery.is_busy() or destination_for(target) == null:
+		return false
+	var manual := robot.get_node_or_null("ManualClaw") as ManualClaw
+	if manual and manual.active:
 		return false
 	if robot.linear_velocity.length() > CargoDelivery.STOPPED_SPEED:
 		return false

@@ -328,6 +328,16 @@ func _arm_tool() -> HotswapPart:
 ## them: rays down from each mesh's ARM_GROUND_SAMPLES lowest vertices. Negative = inside the
 ## terrain; INF with no terrain within 2 m below. With `lookahead` (s) each point is also
 ## checked where the rover's motion will carry it by then.
+# True for a mesh of a part the arm carries on its latch (not the tool's own): it may sit on the ground
+func _carried(mesh: Node, tool: Node) -> bool:
+	var node: Node = mesh.get_parent()
+	while node and node != tool and node != robot:
+		if node is HotswapPart:
+			return true
+		node = node.get_parent()
+	return false
+
+
 func arm_ground_clearance(lookahead: float = 0.0) -> float:
 	var meshes: Array = []
 	for joint in ["J3", "J4"]:
@@ -341,6 +351,9 @@ func arm_ground_clearance(lookahead: float = 0.0) -> float:
 	var lowest: float = INF
 	var centre: Vector3 = robot.global_transform * robot.center_of_mass
 	for mesh in meshes:
+		# Hidden meshes don't count: the tool socket's hidden Base marker sat 0.2 m below the grip
+		if not (mesh as MeshInstance3D).is_visible_in_tree() or _carried(mesh, tool):
+			continue
 		var to_world: Transform3D = (mesh as MeshInstance3D).global_transform
 		var points: Array = _vertices(mesh).map(func(v: Vector3) -> Vector3: return to_world * v)
 		points.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.y < b.y)
@@ -372,7 +385,9 @@ func _vertices(mesh: MeshInstance3D) -> Array:
 ## X, the yaw (Blender Z) to Godot Y. J5 turns the tool turret, mounted in the arm tool socket.
 func apply_arm_pose() -> void:
 	for joint in _arm_nodes:
-		var angle: float = clampf(arm_joints[joint], ARM_RANGES[joint].x, ARM_RANGES[joint].y)
+		# A script (the manual claw) may lean the shoulder back past vertical to reach the tray
+		var high: float = ManualClaw.J2_MAX if joint == "J2" and arm_scripted else ARM_RANGES[joint].y
+		var angle: float = clampf(arm_joints[joint], ARM_RANGES[joint].x, high)
 		var node: Node3D = _arm_nodes[joint]
 		if joint == "J1":
 			node.rotation = Vector3(0.0, deg_to_rad(angle), 0.0)

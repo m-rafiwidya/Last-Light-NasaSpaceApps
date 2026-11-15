@@ -3,7 +3,7 @@ extends SceneTree
 ##   1. Settle: two sample containers dropped in the tray come to rest inside it, no jitter.
 ##   2. Careful: driving off gently, cruising at 1.2 m/s and stopping gently keeps both in.
 ##   3. Normal: 2.4 m/s with turns, then a normal stop, keeps both in.
-##   4. Reckless: full throttle down the short route's lane through the boulder field and a
+##   4. Reckless: full throttle straight across the boulder field (not its cleared lane) and a
 ##      full-reverse stop throw at least one out (bumps do it: in lunar gravity Kite can't brake
 ##      harder than the parts' own friction holds them on flat ground).
 ## Prints how far the parts moved in the tray, for tuning the rim, friction and bounce.
@@ -169,7 +169,10 @@ func _run() -> void:
 	_check("normal: 2.4 m/s with turns keeps both in", _inside() == 2, "%d inside, moved %s" % [_inside(), _moved(before)])
 
 	# 4. Reckless: full throttle down the short route's lane through the boulder field, then a hard stop
-	var lane: Array = Array(routes.route("short")).slice(0, 4)
+	# Straight across the boulder field (not its cleared lane): from 35 m out, through its centre
+	var field: Node3D = level.get_node("BoulderField")
+	var centre := Vector2(field.global_position.x, field.global_position.z)
+	var lane: Array = [centre + Vector2(0.0, 35.0), centre, centre + Vector2(0.0, -30.0)]
 	var a: Vector2 = lane[0]
 	var b: Vector2 = lane[1]
 	rover.global_transform = Transform3D(Basis.looking_at(Vector3(b.x - a.x, 0.0, b.y - a.y).normalized()),
