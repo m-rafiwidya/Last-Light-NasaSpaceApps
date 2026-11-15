@@ -4,7 +4,8 @@ extends SceneTree
 ##      required, a late Freighter needs the thermal kit.
 ##   2. Console: Planning closed before m1 is complete; Confirm disabled over the limit and without
 ##      the module; the flight can be skipped; delivery records the items once, completes
-##      m2.cargo_ordered and fills the rack and bench.
+##      m2.cargo_ordered and lands the crate at the landing zone; unpacked in the bay it fills the
+##      rack and bench.
 ##   3. Save/load keeps the order. 4. Cold zones: Head crater has no shade under a Courier M3's
 ##      high sun; after a late arrival its west wall is cold, the thermal kit protects, the timer
 ##      ends in recovery; the forecast names both routes.
@@ -66,6 +67,18 @@ func _stock(workshop: Node) -> Dictionary:
 		if part.has_method("get_catalog_id") and not part.is_queued_for_deletion():
 			counts[part.get_catalog_id()] = int(counts.get(part.get_catalog_id(), 0)) + 1
 	return counts
+
+
+## The crate at the landing zone put on Kite (docked in the bay), as a fetch does: unpacked at once
+func _retrieve(director: Node) -> bool:
+	var entries: Array = director.left_parts.entries.filter(func(e: Dictionary) -> bool: return is_instance_valid(e["part"]))
+	if entries.is_empty():
+		return false
+	var crate: RigidBody3D = entries.back()["part"]
+	crate.freeze = false
+	director.rover.get_node("CargoSocket").mount(crate)
+	await _ticks(0.5)
+	return CS.is_objective_done("m2.cargo_retrieved") and not CS.has_flag("cargo_at_landing_zone")
 
 
 func _order(service: String, items: Array) -> void:
@@ -151,7 +164,7 @@ func _run() -> void:
 	console.skip_flight()
 	await physics_frame
 	_check("[flight] Skip delivers at once", not console.flying() and CS.is_objective_done("m2.cargo_ordered")
-		and CS.current_objective() == "m2.module_loaded")
+		and CS.current_objective() == "m2.cargo_retrieved")
 	console.skip_flight()
 	var items: Dictionary = CS.save_state()["items"]
 	_check("[delivery] items recorded once", items.get("cargo.radio_module") == 1 and items.get("cargo.thermal_kit") == 1
@@ -159,6 +172,12 @@ func _run() -> void:
 		and not items.has("cargo.grip_wheels") and not items.has("cargo.thermal_turret") and CS.has_flag("cargo_delivered"), str(items))
 	_check("[delivery] a second delivery is refused", not CargoPlan.deliver("courier", ["radio_module"]))
 	await physics_frame
+	stock = _stock(workshop)
+	_check("[stock] the crate is out at the landing zone: nothing ordered on the bench yet", CS.has_flag("cargo_at_landing_zone")
+		and not stock.has("thermal_cover") and not stock.has("sample_scoop"), str(stock))
+	var unpacked: bool = await _retrieve(director)
+	_check("[unpack] Kite in the bay with the crate: m2.cargo_retrieved", unpacked
+		and CS.current_objective() == "m2.module_loaded", CS.current_objective())
 	stock = _stock(workshop)
 	_check("[stock] the order fills the bench; the module goes to the crate; the thermal turret is always on the rack", stock.get("thermal_cover") == 1
 		and stock.get("thermal_heater") == 1 and stock.get("sample_scoop") == 1 and not stock.has("radio_module")
@@ -244,6 +263,7 @@ func _run() -> void:
 	await physics_frame
 	_check("[freighter] the full flight delivers", not console.flying() and CS.is_objective_done("m2.cargo_ordered")
 		and CargoPlan.delivered_service() == "freighter" and CargoPlan.m3_near_nightfall())
+	_check("[freighter] unpacked in the bay", await _retrieve(director))
 	stock = _stock(workshop)
 	_check("[freighter] the grip wheels are on the rack", stock.get("wheel_high_grip") == 4, str(stock))
 	CS.load_state(state)

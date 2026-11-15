@@ -165,7 +165,8 @@ func _ready() -> void:
 	_build_parts()
 	_build_lights()
 	_build_pad()
-	_build_cargo_crate()
+	if not CargoPlan.awaiting_retrieval():
+		_build_cargo_crate()
 	_build_doors()
 	_build_triggers()
 	_build_labels()
@@ -716,9 +717,16 @@ func account_rack() -> void:
 			stock.restock(pair[0], get_parent(), mounted)
 
 
+## The delivery lands out at the landing zone: the bay's crate goes until the crate is unpacked here
 func _on_cargo_flag(flag: String, _value: bool) -> void:
-	if flag == CargoPlan.DELIVERED_FLAG:
-		account_rack()
+	if flag != CargoPlan.DELIVERED_FLAG and flag != CargoPlan.AT_ZONE_FLAG:
+		return
+	if CargoPlan.awaiting_retrieval() and cargo_crate:
+		cargo_crate.queue_free()
+		cargo_crate = null
+	elif not CargoPlan.awaiting_retrieval() and cargo_crate == null:
+		_build_cargo_crate()
+	account_rack()
 
 
 func _mounted_parts() -> Array:

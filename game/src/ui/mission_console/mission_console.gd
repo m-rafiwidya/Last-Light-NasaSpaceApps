@@ -199,6 +199,9 @@ func _show_mission() -> void:
 		if mission == MissionDirector.COLD_MISSION:
 			lines.append("")
 			lines.append_array(route_forecast())
+		elif landing_zone_text():
+			lines.append("")
+			lines.append(landing_zone_text())
 	_set_text("%s  ·  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
 
 
@@ -246,6 +249,9 @@ func _show_kite() -> void:
 	var range_line := range_text(rover)
 	if range_line:
 		rows.append(["Range", range_line])
+	var cargo_line := landing_zone_text()
+	if cargo_line:
+		rows.append(["Cargo", cargo_line])
 	if director and director.left_parts and director.left_parts.has_parts():
 		rows.append(["Left out", "[color=%s]Cargo was left where Kite was recovered: drive there and fetch it[/color]" % _hex(&"warn")])
 	_set_text("Kite", _table(rows))
@@ -540,6 +546,7 @@ func _ledger_lines() -> PackedStringArray:
 		names.append(CargoPlan.item(item_id)["name"])
 	var lines: PackedStringArray = ["Delivered by the %s on story day %d." % [entry.get("name", "lander"), int(entry.get("arrival_day", 0))],
 		"Manifest: %s (%.1f kg)." % [", ".join(names), CargoPlan.order_mass(Array(CargoPlan.delivered_items()))],
+		landing_zone_text() if CargoPlan.awaiting_retrieval() else
 		"Parts are on the rack and the sample bench; the radio-power module is in the cargo crate by the pad.", ""]
 	lines.append_array(route_forecast())
 	return lines
@@ -641,6 +648,17 @@ func range_text(rover: Robot) -> String:
 	for route in RouteMarkers.TITLES:
 		trips.append("~%d m %s" % [_route_metres(route), route])
 	return "Round trip %s; range ~%d m." % [", ".join(trips), roundi(float(rover.call("range_estimate")) / 10.0) * 10]
+
+
+## "Crate at the landing zone: round trip ~640 m; Kite's range ~1140 m.", or "" once it is unpacked
+func landing_zone_text() -> String:
+	var director := _director()
+	if director == null or director.landing_zone == null or not CargoPlan.awaiting_retrieval():
+		return ""
+	var trip: float = director.landing_zone_round_trip()
+	var reach: float = director.kite_range()
+	return "Crate at the landing zone: round trip ~%d m; [color=%s]Kite's range ~%d m[/color]." % [
+		roundi(trip / 10.0) * 10, _hex(&"text" if reach >= trip * MissionDirector.RETURN_MARGIN else &"warn"), roundi(reach / 10.0) * 10]
 
 
 func _route_metres(id: String) -> int:

@@ -11,6 +11,13 @@ const DELIVERED_FLAG: String = "cargo_delivered"
 const ITEM_PREFIX: String = "cargo."
 const SERVICE_PREFIX: String = "cargo.service."
 const CRATE_GROUP: StringName = &"cargo_crate"
+## Set with the delivery and cleared when the crate is unpacked in the bay: until then the ordered
+## parts stay off the rack and bench
+const AT_ZONE_FLAG: String = "cargo_at_landing_zone"
+const RETRIEVED_OBJECTIVE: String = "m2.cargo_retrieved"
+const CRATE_ID: String = "cargo_crate"
+## The carryable crate. Stand-in until R2's crate part lands: swap this path for it.
+const CRATE_PART_SCENE: String = "res://src/levels/cargo_parcel.tscn"
 
 static var _data: Dictionary = {}
 static var _masses: Dictionary = {}
@@ -169,6 +176,8 @@ static func deliver(service_id: String, ids: Array) -> bool:
 	for id in ids:
 		CampaignState.add_item(ITEM_PREFIX + id)
 	CampaignState.add_item(SERVICE_PREFIX + service_id)
+	if CampaignState.mission_objectives(CampaignState.current_mission()).has(RETRIEVED_OBJECTIVE):
+		CampaignState.set_flag(AT_ZONE_FLAG)
 	CampaignState.set_flag(DELIVERED_FLAG)
 	CampaignState.complete_objective(objective())
 	return true
@@ -185,12 +194,23 @@ static func crate_parts() -> PackedStringArray:
 	return paths
 
 
-## Workshop slots (in `stock`: "rack" or "bench") still waiting for their delivery; none without a campaign
+## The crate is out at the landing zone (or on its way home)
+static func awaiting_retrieval() -> bool:
+	return CampaignState.has_flag(AT_ZONE_FLAG)
+
+
+## The delivered crate's mass: the order's payload with its packaging
+static func crate_mass() -> float:
+	return order_mass(Array(delivered_items()))
+
+
+## Workshop slots (in `stock`: "rack" or "bench") still waiting for their delivery or for the crate to
+## be unpacked; none without a campaign
 static func hidden_slots(stock: String) -> Array:
 	var hidden: Array = []
 	if CampaignState.current_mission().is_empty():
 		return hidden
 	for entry in items():
-		if not is_ordered(entry["id"]):
+		if not is_ordered(entry["id"]) or awaiting_retrieval():
 			hidden.append_array(entry.get("stock", {}).get(stock, []))
 	return hidden

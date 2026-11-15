@@ -213,6 +213,12 @@ script = ExtResource("46_boulders")
 [node name="Lander" parent="." instance=ExtResource("47_lander")]
 transform = Transform3D(-0.9847, 0, -0.1745, 0, 1, 0, 0.1745, 0, -0.9847, -307.6, -5.74, 211.8)
 
+[node name="LandingZone" type="Node3D" parent="." groups=["landing_zone"]]
+transform = Transform3D(0.314, 0, 0.9494, 0, 1, 0, -0.9494, 0, 0.314, 0, -5.57, 360)
+
+[node name="CratePoint" type="Marker3D" parent="LandingZone"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -10)
+
 [node name="MissionDirector" type="Node" parent="." node_paths=PackedStringArray("workshop")]
 script = ExtResource("40_director")
 workshop = NodePath("../Workshop")

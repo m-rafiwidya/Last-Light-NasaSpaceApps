@@ -3,17 +3,29 @@ extends SceneTree
 ## game's own paths (the console's Planning tab, the player's holder and Kite's cargo mount, the
 ## console's CONTROL KITE, IRIS's module cradle, the charging pad, the Downlink action), with no
 ## debug command. The campaign starts at m2 as a loaded save would.
-##   1. Delivery: the module is in the workshop's crate and nowhere else (not on the rack).
-##   2. Guidance: its targets resolve to the crate, the module itself, the cargo socket, the console
+##   1. Delivery (the heaviest valid order): the crate lands at the landing zone (flag
+##      cargo_at_landing_zone, the cargo lander there); nothing in the bay, the ordered parts off the rack.
+##   2. Recovery: Kite with the crate aboard, stuck, recovered: the crate stays where Kite stopped and
+##      is fetched again with E.
+##   3. No soft-lock: a real drive apron -> crate -> apron with the crate aboard, on the light battery
+##      at G1's 40 Wh; the round trip (pad legs included) + 30% fits in 40 Wh.
+##   4. Home: Kite in the bay completes m2.cargo_retrieved and unpacks: the module in the bay's crate,
+##      the ordered parts on the rack and bench.
+##   5. Guidance: its targets resolve to the crate, the module itself, the cargo socket, the console
 ##      and the IRIS module cradle, whose hint replaces the step line while driving.
-##   3. The chain: m2.cargo_ordered, module_loaded, module_installed + iris_activated, kite_docked,
-##      telemetry_received, and m2 completes.
-##   4. Save and load after the install: no radio module in the workshop (rack or crate), one in
+##   6. The chain: module_loaded, module_installed + iris_activated, kite_docked, telemetry_received,
+##      and m2 completes.
+##   7. Save and load after the install: no radio module in the workshop (rack or crate), one in
 ##      IRIS's bay.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_m2_loop.gd
 
 const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+## G1's light battery (Wh) and the margin the fetch must keep
+const LIGHT_WH: float = 40.0
+const FETCH_MARGIN: float = 1.3
+const SPEED: float = 3.0
+const TICKS: int = 240
 
 var GS: Node
 var SL: Node
@@ -89,6 +101,90 @@ func _place(at: Vector3, facing: Vector3) -> void:
 	await _ticks(2.0)
 
 
+## The heaviest order any service accepts: [service, ids, kg]
+func _heaviest_order() -> Array:
+	var optional: Array = plan.items().map(func(e: Dictionary) -> String: return e["id"]).filter(
+		func(id: String) -> bool: return not plan.required_items().has(id))
+	var best: Array = ["", [], -1.0]
+	for service in plan.services():
+		for mask in 1 << optional.size():
+			var ids: Array = Array(plan.required_items())
+			for k in optional.size():
+				if mask & (1 << k):
+					ids.append(optional[k])
+			if plan.validate(service["id"], ids) == "" and plan.order_mass(ids) > best[2]:
+				best = [service["id"], ids, plan.order_mass(ids)]
+	return best
+
+
+func _count(catalog_id: String) -> int:
+	var n: int = 0
+	for part in workshop.rack_stock.get_children() + workshop.bench_stock.get_children():
+		if part.has_method("get_catalog_id") and part.get_catalog_id() == catalog_id and not part.is_queued_for_deletion():
+			n += 1
+	return n
+
+
+func _crates() -> Array:
+	return level.find_children("*", "RigidBody3D", true, false).filter(func(p: Node) -> bool:
+		return p.has_method("get_catalog_id") and p.get_catalog_id() == "cargo_crate" and not p.is_queued_for_deletion())
+
+
+func _release_all() -> void:
+	for a in ["move_forward", "move_backward", "move_left", "move_right"]:
+		Input.action_release(a)
+
+
+## Drives to (x, z) at SPEED; true on arrival within 1.5 m
+func _drive_to(target: Vector2) -> bool:
+	var best: float = INF
+	var since: float = 0.0
+	while true:
+		await physics_frame
+		var forward: Vector3 = -rover.global_basis.z
+		var v: float = rover.linear_velocity.dot(forward)
+		var to := Vector2(target.x - rover.global_position.x, target.y - rover.global_position.z)
+		if to.length() < 1.5:
+			break
+		if to.length() < best - 2.0:
+			best = to.length()
+			since = 0.0
+		else:
+			since += 1.0 / TICKS
+			if since > 40.0 or rover.battery.charge <= 0.0:
+				_release_all()
+				return false
+		var heading := Vector2(forward.x, forward.z).normalized()
+		var steer: float = clampf(heading.angle_to(to.normalized()) / 0.25, -1.0, 1.0)
+		_release_all()
+		if v > SPEED + 0.15:
+			Input.action_press("move_backward", clampf((v - SPEED) * 0.6, 0.05, 0.6))
+		elif v < SPEED:
+			Input.action_press("move_forward", clampf(0.06 + (SPEED - v) * 0.3, 0.05, 0.5))
+		if steer > 0.05:
+			Input.action_press("move_right", steer)
+		elif steer < -0.05:
+			Input.action_press("move_left", -steer)
+	_release_all()
+	for i in TICKS:
+		await physics_frame
+		if rover.linear_velocity.length() < 0.05:
+			break
+	return true
+
+
+## Kite stopped alongside the crate (its deck beside it), then E
+func _fetch(crate: Node3D) -> bool:
+	var side := Vector3(1.0, 0.0, 0.3).normalized()
+	await _place(crate.global_position + side * 1.1, Vector3(-side.z, 0.0, side.x))
+	Input.action_press(&"interact_use")
+	await physics_frame
+	await physics_frame
+	Input.action_release(&"interact_use")
+	await _ticks(0.3)
+	return rover.get_node("CargoSocket").part == crate
+
+
 func _run() -> void:
 	await process_frame
 	GS = root.get_node("GameState")
@@ -117,23 +213,112 @@ func _run() -> void:
 		return
 	_grab_level()
 	await _ticks(1.0)
-	var crate: Node3D = workshop.cargo_crate
+	var director: Node = level.get_node("MissionDirector")
+	var zone: Node3D = level.get_node("LandingZone")
 
-	# 1. Delivery
-	_check("[crate] before the order: hidden, no module anywhere", not crate.visible and _modules(level).is_empty())
+	# 1. Delivery: the heaviest order any lander takes lands at the landing zone
+	_check("[crate] before the order: the bay's crate hidden, no module anywhere", not workshop.cargo_crate.visible and _modules(level).is_empty())
+	var order: Array = _heaviest_order()
 	console.select_section(console.Section.PLANNING)
-	console.select_service("courier")
+	console.select_service(order[0])
 	for entry in plan.items():
-		console.set_item(entry["id"], entry["id"] == "radio_module")
+		console.set_item(entry["id"], order[1].has(entry["id"]))
 	console._on_action_pressed()
 	await _ticks(0.5)
 	console.skip_flight()
 	await _ticks(2.5)
-	_check("[order] m2.cargo_ordered done through the console", CS.is_objective_done("m2.cargo_ordered")
-		and CS.has_flag("cargo_delivered") and CS.current_objective() == "m2.module_loaded")
+	_check("[order] m2.cargo_ordered through the console; the crate is out at the landing zone", CS.is_objective_done("m2.cargo_ordered")
+		and CS.has_flag("cargo_delivered") and CS.has_flag("cargo_at_landing_zone") and CS.current_objective() == "m2.cargo_retrieved",
+		CS.current_objective())
+	var crates: Array = _crates()
+	var parcel: RigidBody3D = crates[0] if crates.size() == 1 else null
+	_check("[zone] one crate, set down at the landing zone, as heavy as the order", parcel != null
+		and parcel.global_position.distance_to(director.crate_point()) < 1.0 and is_equal_approx(parcel.mass, order[2]),
+		"%s, %s %.1f kg" % [crates, order[0], order[2]])
+	_check("[zone] the cargo lander stands there; the zone is in group landing_zone", zone.has_node("CargoLander")
+		and zone.is_in_group(&"landing_zone"))
+	var pad_xz := Vector2(workshop.pad.global_position.x, workshop.pad.global_position.z)
+	var zone_m: float = Vector2(zone.global_position.x, zone.global_position.z).distance_to(pad_xz)
+	_check("[zone] a few hundred metres from the pad", zone_m > 200.0 and zone_m < 400.0, "%.0f m" % zone_m)
+	_check("[zone] nothing in the bay yet: no crate, no module, no grip wheels on the rack", workshop.cargo_crate == null
+		and _modules(level).is_empty() and _count("wheel_high_grip") == 0)
+	await _ticks(0.3)
+	_check("[guidance] fetch: the console first", guidance.index == 0 and guidance.step_text().ends_with("Open the mission console"),
+		guidance.step_text())
+	console.select_section(console.Section.KITE)
+	var kite_tab: String = console.get_node("%Description").text
+	_check("[console] the Kite tab gives the trip and Kite's range", kite_tab.contains("Crate at the landing zone: round trip ~")
+		and kite_tab.contains("Kite's range ~"), kite_tab)
+
+	# 2. Fetch, stuck, recovered: the crate stays where Kite stopped
+	console._on_control_kite_pressed()
+	await _ticks(0.5)
+	_check("[guidance] driving: the landing zone waypoint", GS.state == GS.State.IN_GAME_ROBOT
+		and guidance.target == zone.get_node("CargoLander") and guidance.is_waypoint(), str(guidance.target))
+	_check("[fetch] stopped beside the crate, E loads it", await _fetch(parcel), str(rover.get_node("CargoSocket").part))
+	await _ticks(0.3)
+	_check("[guidance] loaded: bring it home", guidance.target == workshop.get_node("Parts/ws_pad_01") and guidance.is_waypoint(),
+		str(guidance.target))
+	var stopped_at: Vector3 = rover.global_position
+	await _ticks(director.STILL_FOR + 0.5)
+	_check("[recovery] stuck: the console offers the recovery", director.request_recovery())
+	await _ticks(director.RECOVERY_DELAY + 1.0)
+	var left: Vector3 = parcel.global_position - stopped_at
+	left.y = 0.0
+	_check("[recovery] Kite on the pad, the crate left where Kite stopped, still to fetch", workshop.pad.is_in_zone(rover)
+		and rover.get_node("CargoSocket").part == null and left.length() < 1.5 and director.left_parts.has_parts()
+		and CS.has_flag("cargo_at_landing_zone") and not CS.is_objective_done("m2.cargo_retrieved"), "%.2f m" % left.length())
+
+	# 3. No soft-lock: the round trip with the heaviest crate on G1's 40 Wh light battery
+	var socket: Node = rover.battery_socket
+	var old_battery: RigidBody3D = socket.unmount()
+	old_battery.freeze = true
+	old_battery.global_position = Vector3(0.0, 500.0, 0.0)
+	var light: Node3D = (load("res://src/robot/socket/battery_light_part.tscn") as PackedScene).instantiate()
+	level.add_child(light)
+	light.global_position = socket.global_position
+	socket.mount(light)
+	light.capacity = LIGHT_WH
+	light.charge = LIGHT_WH
+	var apron: Vector2 = level.get_node("RouteMarkers").start()
+	var crate_xz := Vector2(parcel.global_position.x, parcel.global_position.z)
+	var toward: Vector2 = (crate_xz - apron).normalized()
+	await _place(Vector3(apron.x, 0.0, apron.y), Vector3(toward.x, 0.0, toward.y))
+	var charge: float = light.charge
+	var short_of: Vector2 = crate_xz - toward * 4.0
+	var out_ok: bool = await _drive_to(short_of)
+	var out_wh: float = charge - light.charge
+	_check("[trip] Kite drives out to the crate", out_ok, "%.0f m, %.1f Wh" % [apron.distance_to(short_of), out_wh])
+	_check("[fetch] the crate fetched again after the recovery", await _fetch(parcel))
+	charge = light.charge
+	var from := Vector2(rover.global_position.x, rover.global_position.z)
+	var home_ok: bool = await _drive_to(apron)
+	var back_wh: float = charge - light.charge
+	var back_m: float = from.distance_to(apron)
+	var pad_wh: float = 2.0 * apron.distance_to(pad_xz) * back_wh / maxf(back_m, 1.0)
+	var total: float = out_wh + back_wh + pad_wh
+	_check("[trip] home with the crate; the round trip + 30%% fits %d Wh" % LIGHT_WH, home_ok
+		and rover.get_node("CargoSocket").part == parcel and total * FETCH_MARGIN <= LIGHT_WH,
+		"%.1f kg crate, crate %.0f m from the pad: %.1f Wh out + %.1f Wh back + %.1f Wh pad legs = %.1f Wh, x%.1f = %.1f Wh" % [
+			order[2], crate_xz.distance_to(pad_xz), out_wh, back_wh, pad_wh, total, FETCH_MARGIN, total * FETCH_MARGIN])
+
+	# 4. Home: in the bay the crate is unpacked
+	var bay: Transform3D = workshop.get_dock_transform()
+	bay.origin += Vector3.UP * 0.3
+	rover.global_transform = bay
+	rover.linear_velocity = Vector3.ZERO
+	await _ticks(1.0)
+	_check("[home] Kite in the bay: m2.cargo_retrieved, flag cleared, crate unpacked", CS.is_objective_done("m2.cargo_retrieved")
+		and not CS.has_flag("cargo_at_landing_zone") and _crates().is_empty() and CS.current_objective() == "m2.module_loaded",
+		CS.current_objective())
+	_check("[home] the ordered parts are on the rack and bench", _count("wheel_high_grip") == 4 and _count("thermal_cover") == 1
+		and _count("sample_scoop") == 1, str([_count("wheel_high_grip"), _count("thermal_cover"), _count("sample_scoop")]))
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	await _ticks(0.5)
+	var crate: Node3D = workshop.cargo_crate
 	var modules: Array = _modules(level)
-	_check("[crate] open, and the module is in it and nowhere else", crate.visible and crate.is_open and modules.size() == 1
-		and crate.is_ancestor_of(modules[0]) and _modules(workshop.rack_stock).is_empty()
+	_check("[crate] open in the bay, and the module is in it and nowhere else", crate != null and crate.visible and crate.is_open
+		and modules.size() == 1 and crate.is_ancestor_of(modules[0]) and _modules(workshop.rack_stock).is_empty()
 		and _modules(rover).is_empty() and _modules(iris).is_empty(), str(modules))
 	var local: Vector3 = crate.to_local(modules[0].global_position) if modules.size() == 1 else Vector3.INF
 	_check("[crate] the module lies inside it", absf(local.x) < crate.SIZE.x / 2.0 and absf(local.z) < crate.SIZE.z / 2.0
@@ -145,7 +330,7 @@ func _run() -> void:
 		and absf(crate.global_position.distance_to(workshop.pad.global_position)) < 2.5,
 		"%.2f, %.1f m from the pad" % [front.dot(door.normalized()), crate.global_position.distance_to(workshop.pad.global_position)])
 
-	# 2. Guidance and the module's pickup
+	# 5. Guidance and the module's pickup
 	var player: Node3D = GS.player
 	var module: RigidBody3D = modules[0]
 	await _ticks(0.3)
@@ -166,7 +351,7 @@ func _run() -> void:
 		and CS.is_objective_done("m2.module_loaded") and CS.current_objective() == "m2.module_installed",
 		"%s, %s" % [cargo_socket.part, CS.current_objective()])
 
-	# 3. Install
+	# 6. Install
 	_check("[guidance] install: the console first", guidance.index == 0 and guidance.step_text().ends_with("Open the mission console"), guidance.step_text())
 	console._on_control_kite_pressed()
 	await _ticks(0.5)
@@ -191,7 +376,7 @@ func _run() -> void:
 	_check("[install] the module is seated in IRIS's bay, once", cradle.occupant == module and _modules(level).size() == 1
 		and _modules(workshop).is_empty())
 
-	# 4. Back to the pad and the downlink
+	# 6b. Back to the pad and the downlink
 	await _place(workshop.get_dock_transform().origin - workshop.global_basis.z * 2.0, -workshop.global_basis.z)
 	var dock: Transform3D = workshop.get_dock_transform()
 	dock.origin += Vector3.UP * 0.3
@@ -211,7 +396,7 @@ func _run() -> void:
 	_check("[downlink] m2.telemetry_received and m2 complete, no debug command used", CS.is_objective_done("m2.telemetry_received")
 		and CS.is_mission_completed("m2"), CS.current_objective())
 
-	# 5. Save and load
+	# 7. Save and load
 	await _ticks(0.5)
 	_check("[save] the slot was written", SI.save_current(rover) == OK)
 	SL.load_scene("main_menu")

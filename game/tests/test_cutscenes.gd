@@ -7,6 +7,8 @@ extends SceneTree
 ##   3. Walk-in: arrival mode (curtain off, bay door opens for the player outside), guidance and the
 ##      on-foot waypoint on the bay door, the tip at the hatch, m1.workshop_entered only once inside.
 ##   4. Load: cutscenes_played saved; loading never replays the opening.
+##   5a. Cargo landing: the delivery plays it once (the lander descends onto the landing zone), a held
+##      skip lands it with the crate shown.
 ##   5. IRIS: m2.iris_activated plays it from the rover, input blocked, pause returns to it, the
 ##      robot state and camera restored after, never twice.
 ##   6. Opening, played through (a second campaign): every line once, in order, then the held line.
@@ -119,9 +121,11 @@ func _run() -> void:
 	var trigger_lines: Array = DT.triggers.map(func(t: Dictionary) -> String: return t["line"])
 	_check("[data] cutscene lines are not in lines.json or the triggers", shared.is_empty()
 		and not data["lines"].keys().any(func(id: String) -> bool: return id in trigger_lines), str(shared))
-	_check("[data] the nine approved opening lines and the two narrator placeholders are there", data["lines"].size() == 11
-		and data["lines"].keys().all(func(id: String) -> bool: return id.begins_with("cs_open_"))
-		and data["lines"].keys().filter(func(id: String) -> bool: return data["lines"][id].get("placeholder", false)) == ["cs_open_n1", "cs_open_n2"])
+	var opening_ids: Array = data["lines"].keys().filter(func(id: String) -> bool: return id.begins_with("cs_open_"))
+	_check("[data] the nine approved opening lines and the two narrator placeholders are there", opening_ids.size() == 11
+		and opening_ids.filter(func(id: String) -> bool: return data["lines"][id].get("placeholder", false)) == ["cs_open_n1", "cs_open_n2"])
+	_check("[data] the cargo landing's two placeholder lines are there", ["cs_cargo_01", "cs_cargo_02"].all(
+		func(id: String) -> bool: return data["lines"].has(id) and data["lines"][id].get("placeholder", false)))
 
 	# 2. Opening, skipped
 	if not await _new_campaign("slot_1"):
@@ -239,7 +243,33 @@ func _run() -> void:
 	rover = level.get_node("ReadyRover")
 	var debug: Node = root.get_node("Debug")
 	debug.parse_command("startmission m2")
-	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed"]:
+
+	# 5a. Cargo landing: the delivery plays it once, the lander descending onto the landing zone
+	await _ticks(0.3)
+	load("res://src/levels/cargo_plan.gd").deliver("courier", ["radio_module"])
+	await _ticks(0.3)
+	var cargo_lander: Node3D = level.get_node_or_null("LandingZone/CargoLander")
+	var zone: Node3D = level.get_node("LandingZone")
+	_check("[cargo] the delivery plays the cargo landing, the lander high over the zone, engine on",
+		GS.state == GS.State.CUTSCENE and cutscenes.playing_id == "cargo_landing" and cargo_lander != null
+		and cargo_lander.global_position.y > zone.global_position.y + 50.0 and cargo_lander.engine_on,
+		str(cargo_lander.global_position if cargo_lander else null))
+	await _ticks(5.0)
+	var lower: bool = cargo_lander.global_position.y < zone.global_position.y + 30.0
+	Input.action_press(&"cutscene_skip")
+	await _ticks(1.3)
+	Input.action_release(&"cutscene_skip")
+	await _wait(func() -> bool: return not cutscenes.is_playing(), 10.0)
+	await _ticks(0.3)
+	_check("[cargo] held skip: landed on the zone, engine off, the crate shown, the player back",
+		lower and cargo_lander.global_position.distance_to(zone.global_position) < 0.1 and not cargo_lander.engine_on
+		and level.get_node("LandingZone/Crate").visible and GS.state == GS.State.IN_GAME_PLAYER
+		and CS.is_cutscene_played("cargo_landing"))
+	CS.objective_completed.emit("m2.cargo_ordered")
+	await _ticks(0.3)
+	_check("[cargo] it never plays twice", GS.state == GS.State.IN_GAME_PLAYER and not cutscenes.is_playing())
+
+	for id in ["m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed"]:
 		debug.parse_command("objective " + id)
 	GS.drive(rover)
 	await _ticks(0.3)

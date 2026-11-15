@@ -60,6 +60,11 @@ func _prune() -> void:
 		return is_instance_valid(e["part"]) and not (e["part"] as HotswapPart).is_mounted())
 
 
+## Rewrites the saved list from the parts still lying out (a part mounted by any route drops off it)
+func record() -> void:
+	_record()
+
+
 func _record() -> void:
 	_prune()
 	var stats := CampaignState.mission_stats(CampaignState.current_mission())

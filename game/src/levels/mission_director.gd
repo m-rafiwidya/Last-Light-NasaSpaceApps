@@ -38,6 +38,10 @@ const PAIR_FLAG: String = "m3_thermal_pair_far_rim"
 ## Both readings within this of the far-rim logger site (m, horizontal)
 const FAR_RIM_RADIUS: float = 40.0
 const LOGGER_ID: String = "field_logger"
+const LANDING_ZONE_GROUP: StringName = &"landing_zone"
+const LANDER_SCENE: String = "res://src/field/lander.tscn"
+## Where Kite was when the campaign saved with the crate aboard: a load leaves it there
+const CRATE_AT_KEY: String = "crate_on_kite_at"
 
 @export var workshop: Workshop
 
@@ -62,12 +66,14 @@ var left_parts: LeftParts = null
 var _traction: float = 1.0
 var _reading_points: Dictionary = {}
 var _far_rim := Vector2.INF
+var landing_zone: Node3D = null
 
 
 func _ready() -> void:
 	add_to_group(&"mission_director")
 	rover = workshop.rover if workshop else null
 	pad = workshop.pad if workshop else null
+	landing_zone = get_tree().get_first_node_in_group(LANDING_ZONE_GROUP) as Node3D
 	var sky := _sky()
 	if sky:
 		_level_sun = Vector2(sky.sun_azimuth, sky.sun_elevation)
@@ -120,6 +126,7 @@ func _start() -> void:
 		dock_rover()
 		_returned_by_recovery = true
 		left_parts.restore(get_parent())
+	_settle_cargo()
 	_apply_iris_online(true)
 	_last_position = rover.global_position
 	_prepare_mission()
@@ -128,9 +135,11 @@ func _start() -> void:
 		socket.part_mounted.connect(_on_part_mounted.bind(socket))
 
 
-func _on_flag_changed(flag: String, _value: bool) -> void:
+func _on_flag_changed(flag: String, value: bool) -> void:
 	if flag == IRIS_ONLINE_FLAG:
 		_apply_iris_online(false)
+	elif flag == CargoPlan.DELIVERED_FLAG and value:
+		_land_cargo()
 
 
 func _apply_iris_online(instant: bool) -> void:
@@ -150,6 +159,9 @@ func _starting_parts(skip_battery: bool) -> Array:
 
 func _on_progress(_id: String) -> void:
 	if rover and is_instance_valid(rover):
+		_note_crate_on_kite()
+		if left_parts and not CampaignState.current_mission().is_empty():
+			left_parts.record()
 		SaveIndex.save_current(rover)
 
 
@@ -250,6 +262,7 @@ func _physics_process(delta: float) -> void:
 		_returned_by_recovery = false
 	_learn_consumption()
 	_update_ground()
+	_update_crate()
 	if recovering:
 		_recovery_time -= delta
 		if _recovery_time <= 0.0:
@@ -514,3 +527,103 @@ func _finish_recovery() -> void:
 	_last_position = rover.global_position
 	_last_charge = rover.battery.charge if rover.battery else -1.0
 	recovery_finished.emit(rover)
+
+
+# --- The cargo at the landing zone (m2.cargo_retrieved) -----------------------------------------
+
+## Where the delivered crate is set down: the zone's CratePoint
+func crate_point() -> Vector3:
+	if landing_zone == null:
+		return Vector3.ZERO
+	var marker := landing_zone.get_node_or_null("CratePoint") as Node3D
+	return marker.global_position if marker else landing_zone.global_position
+
+
+## Metres from the pad to the crate's spot at the landing zone and back (0 without a zone)
+func landing_zone_round_trip() -> float:
+	if landing_zone == null or pad == null:
+		return 0.0
+	var offset: Vector3 = crate_point() - pad.global_position
+	offset.y = 0.0
+	return 2.0 * offset.length()
+
+
+## Kite's range on its charge now: the rover's own estimate (G1) when it has one, else the charge
+## over the consumption learned this session
+func kite_range() -> float:
+	if rover == null:
+		return 0.0
+	if rover.has_method("range_estimate"):
+		return float(rover.call("range_estimate"))
+	return rover.battery.charge / wh_per_metre() if rover.battery else 0.0
+
+
+func crate_on_kite() -> bool:
+	var socket := rover.get_node_or_null(CARGO_SOCKET) as HotswapSocket if rover else null
+	return socket != null and socket.part != null and socket.part.get_catalog_id() == CargoPlan.CRATE_ID
+
+
+func _crates() -> Array:
+	return get_parent().find_children("*", "HotswapPart", true, false).filter(func(p: HotswapPart) -> bool:
+		return p.get_catalog_id() == CargoPlan.CRATE_ID and not p.is_queued_for_deletion())
+
+
+func _land_cargo() -> void:
+	if landing_zone == null or not CargoPlan.awaiting_retrieval():
+		return
+	_show_cargo_lander()
+	var crate := (load(CargoPlan.CRATE_PART_SCENE) as PackedScene).instantiate() as HotswapPart
+	crate.name = "Crate"
+	crate.mass = maxf(CargoPlan.crate_mass(), 1.0)
+	landing_zone.add_child(crate)
+	left_parts.leave(crate, CARGO_SOCKET, crate_point())
+
+
+func _show_cargo_lander() -> void:
+	if landing_zone == null or not CargoPlan.is_delivered() or landing_zone.has_node("CargoLander"):
+		return
+	var lander: Node3D = (load(LANDER_SCENE) as PackedScene).instantiate()
+	lander.name = "CargoLander"
+	landing_zone.add_child(lander)
+
+
+## After a load: the cargo lander, the crate's mass, and a crate saved aboard Kite left where Kite was
+## (Kite itself is put back on the pad, so the crate stays out there, as after a recovery)
+func _settle_cargo() -> void:
+	_show_cargo_lander()
+	var mission := CampaignState.current_mission()
+	var stats := CampaignState.mission_stats(mission)
+	if CargoPlan.awaiting_retrieval():
+		for crate: HotswapPart in _crates():
+			crate.mass = maxf(CargoPlan.crate_mass(), 1.0)
+		if crate_on_kite():
+			var at: Variant = stats.get(CRATE_AT_KEY)
+			var where: Vector3 = Vector3(at[0], at[1], at[2]) if at is Array and at.size() == 3 else crate_point()
+			left_parts.leave((rover.get_node(CARGO_SOCKET) as HotswapSocket).unmount(), CARGO_SOCKET, drop_point(where))
+		elif _crates().is_empty():
+			_land_cargo()
+	elif CargoPlan.is_delivered() and CampaignState.mission_objectives(mission).has(CargoPlan.RETRIEVED_OBJECTIVE):
+		try_complete(CargoPlan.RETRIEVED_OBJECTIVE)       # a save from before the landing zone
+	stats.erase(CRATE_AT_KEY)
+
+
+func _note_crate_on_kite() -> void:
+	var mission := CampaignState.current_mission()
+	if mission.is_empty():
+		return
+	var stats := CampaignState.mission_stats(mission)
+	if crate_on_kite():
+		var p: Vector3 = rover.global_position
+		stats[CRATE_AT_KEY] = [p.x, p.y, p.z]
+	else:
+		stats.erase(CRATE_AT_KEY)
+
+
+## Kite in the bay with the crate aboard: unpacked, its parts to the rack, bench and the bay's crate
+func _update_crate() -> void:
+	if recovering or not CargoPlan.awaiting_retrieval() or not crate_on_kite() or not workshop.contains(rover.global_position):
+		return
+	(rover.get_node(CARGO_SOCKET) as HotswapSocket).unmount().queue_free()
+	CampaignState.mission_stats(CampaignState.current_mission()).erase(CRATE_AT_KEY)
+	CampaignState.set_flag(CargoPlan.AT_ZONE_FLAG, false)
+	try_complete(CargoPlan.RETRIEVED_OBJECTIVE)
