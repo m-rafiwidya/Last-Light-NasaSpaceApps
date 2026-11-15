@@ -55,6 +55,8 @@ teammate who withdrew before judging; it is used with his permission ([CREDITS.m
 - **AI tools:** Claude (Anthropic), through Claude Code, for code, the Blender scripts that build the
   models, and music and sound scripts; ElevenLabs for the voices. The mission design, balance, story
   and data research are the team's. Details: [CREDITS.md](CREDITS.md).
+- **Licence:** the team's code and content are under the [MIT License](LICENSE); third-party material
+  keeps its own licence, listed in [CREDITS.md](CREDITS.md).
 
 ## Docs
 
