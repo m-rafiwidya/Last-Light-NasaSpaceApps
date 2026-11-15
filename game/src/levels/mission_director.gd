@@ -25,6 +25,7 @@ const COLD_MISSION: String = "m3"
 const COLD_LIMIT: float = 20.0
 const COLD_WARNING: String = "COLD: Kite is in shade without its thermal cover and heater. Cold shutdown in %d s: get back to sunlight."
 const COLD_MESSAGE: String = "Kite's electronics got too cold. Emergency recovery: Kite is being returned to the pad."
+const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
 const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
 const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the pad."
 ## Kite away from the pad and still this long (s): the console offers the emergency recovery
@@ -248,6 +249,10 @@ func _on_docked(docked_rover: Robot) -> void:
 		return
 	if CampaignState.current_mission() == COLD_MISSION and not has_part(LOGGER_ID):
 		return
+	if CampaignState.current_mission() == COLD_MISSION and not CampaignState.is_objective_done(PAIR_OBJECTIVE):
+		alert = PAIR_MISSING
+		Debug.add_log(PAIR_MISSING)
+		return
 	var objective: String = DOCK_OBJECTIVES.get(CampaignState.current_mission(), "")
 	var charge: float = rover.battery.get_charge_fraction() if rover.battery else 0.0
 	if objective and try_complete(objective):
@@ -269,6 +274,7 @@ func _physics_process(delta: float) -> void:
 			_finish_recovery()
 		return
 	_update_cold(delta)
+	_update_pair_alert()
 	_update_still(delta)
 	if recovering or CampaignState.current_mission().is_empty() or rover.battery == null:
 		_low_warned = false
@@ -431,6 +437,11 @@ func _pair_at_far_rim() -> bool:
 func _try_pair() -> void:
 	if CampaignState.has_flag(PAIR_FLAG) and not CampaignState.is_objective_done(PAIR_OBJECTIVE):
 		try_complete(PAIR_OBJECTIVE)
+
+
+func _update_pair_alert() -> void:
+	if alert == PAIR_MISSING and (not pad.is_in_zone(rover) or CampaignState.is_objective_done(PAIR_OBJECTIVE)):
+		alert = ""
 
 
 func _update_still(delta: float) -> void:

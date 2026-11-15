@@ -17,6 +17,11 @@ const GRIP_EXTRA_WH: float = 12.0
 const SAFETY_MARGIN: float = 1.1
 const POLE_HEIGHT: float = 2.4
 const SIGN_DISTANCE: float = 18.0
+## Each route's signpost stands this far to its own side of the line from the apron (short left,
+## long right) and the long one is taller, so the two labels read apart from the pad and the outpost
+const SIGN_SIDE: float = 4.5
+const SIGN_SIDES: Dictionary = {"short": -1.0, "long": 1.0}
+const SIGN_EXTRA_HEIGHT: Dictionary = {"short": 0.0, "long": 0.8}
 
 @export var terrain_path: NodePath = ^"../Terrain"
 @export var workshop_path: NodePath = ^"../Workshop"
@@ -59,11 +64,31 @@ func _ready() -> void:
 		for i in points.size() - 1:
 			_stake(terrain, points[i], COLORS[id], "")
 		var from: Vector2 = start()
-		var sign_at: Vector2 = from + (points[0] - from).normalized() * SIGN_DISTANCE
-		_stake(terrain, sign_at, COLORS[id], TITLES[id].to_upper())
+		var along: Vector2 = (points[0] - from).normalized()
+		var sign_at: Vector2 = from + along * SIGN_DISTANCE + along.orthogonal() * SIGN_SIDE * SIGN_SIDES[id]
+		_stake(terrain, sign_at, COLORS[id], TITLES[id].to_upper(), SIGN_EXTRA_HEIGHT[id])
+	_update_visibility()
 
 
-func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String) -> void:
+## The routes are only marked from M3 (and in free play), or once the delivered cargo opens M3's
+## route forecast in the console
+func should_show() -> bool:
+	var mission := CampaignState.current_mission()
+	return mission == MissionDirector.COLD_MISSION or CampaignState.is_mission_completed(MissionDirector.COLD_MISSION) \
+		or not CargoPlan.delivered_service().is_empty()
+
+
+func _update_visibility() -> void:
+	var show_markers: bool = should_show()
+	if show_markers != visible:
+		visible = show_markers
+
+
+func _process(_delta: float) -> void:
+	_update_visibility()
+
+
+func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String, extra_height: float = 0.0) -> void:
 	var stake := Node3D.new()
 	stake.name = "Stake"
 	add_child(stake)
@@ -72,13 +97,13 @@ func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String) -> vo
 	var cylinder := CylinderMesh.new()
 	cylinder.top_radius = 0.035
 	cylinder.bottom_radius = 0.035
-	cylinder.height = POLE_HEIGHT
+	cylinder.height = POLE_HEIGHT + extra_height
 	cylinder.radial_segments = 6
 	var pole_material := StandardMaterial3D.new()
 	pole_material.albedo_color = Color(0.85, 0.85, 0.82)
 	cylinder.material = pole_material
 	pole.mesh = cylinder
-	pole.position.y = POLE_HEIGHT * 0.5
+	pole.position.y = (POLE_HEIGHT + extra_height) * 0.5
 	stake.add_child(pole)
 	var flag := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -90,7 +115,7 @@ func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String) -> vo
 	flag_material.emission_energy_multiplier = 0.4
 	box.material = flag_material
 	flag.mesh = box
-	flag.position = Vector3(0.27, POLE_HEIGHT - 0.2, 0.0)
+	flag.position = Vector3(0.27, POLE_HEIGHT + extra_height - 0.2, 0.0)
 	stake.add_child(flag)
 	if text:
 		var label := Label3D.new()
@@ -99,5 +124,5 @@ func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String) -> vo
 		label.pixel_size = 0.004
 		label.modulate = color
 		label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-		label.position.y = POLE_HEIGHT + 0.35
+		label.position.y = POLE_HEIGHT + extra_height + 0.35
 		stake.add_child(label)

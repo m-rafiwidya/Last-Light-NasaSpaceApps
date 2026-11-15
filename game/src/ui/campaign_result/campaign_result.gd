@@ -142,8 +142,12 @@ func _on_state_changed(_old_state, new_state) -> void:
 
 
 func _on_continue_pressed() -> void:
-	if GameState.state == GameState.State.IN_GAME_MENU:
-		GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
+	if GameState.state != GameState.State.IN_GAME_MENU:
+		return
+	GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
+	if CampaignState.is_campaign_complete() and not CampaignState.has_flag(CampaignState.CREDITS_FLAG):
+		CampaignState.set_flag(CampaignState.CREDITS_FLAG)
+		GameState.open_credits()
 
 
 func open_data_sources() -> void:

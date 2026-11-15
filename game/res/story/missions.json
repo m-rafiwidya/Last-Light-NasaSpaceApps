@@ -211,7 +211,7 @@
 				"action": "Send inspection",
 				"progress": "Sending the inspection to Earth...",
 				"ready": "The inspection is stored on the console and ready to send to Earth.",
-				"attachment": "res://res/textures/dev/grey.png"
+				"attachment": "res://res/ui/missions/wake_kite.png"
 			}
 		},
 		{

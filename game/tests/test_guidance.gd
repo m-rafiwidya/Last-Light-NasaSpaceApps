@@ -139,20 +139,21 @@ func _run() -> void:
 	_check("arrival: spawned inside the workshop, the walk-in is done", CS.is_objective_done("m1.workshop_entered")
 		and CS.current_objective() == "m1.kite_prepared", CS.current_objective())
 	var overlay = guidance.overlay
-	var battery: RigidBody3D = workshop.rack_stock.get_node("Slot12")
+	var battery: RigidBody3D = workshop.rack_stock.get_node("Slot16")
 
 	# 1-2. kite_prepared, stuck hint
-	_check("prepared: step 1 is picking up a battery", guidance.index == 0 and _step() == "Pick up a battery from the parts rack", _step())
+	_check("prepared: step 1 is picking up the light battery", guidance.index == 0 and _step() == "Pick up the light battery from the parts rack", _step())
 	_check("tracker: on foot it shows the objective and the step with its key",
 		overlay.tracker.visible and overlay.objective_label.text == "OBJECTIVE  Fit a battery to Kite"
-		and overlay.step_label.text.ends_with("]  Pick up a battery from the parts rack"), overlay.step_label.text)
+		and overlay.step_label.text.ends_with("]  Pick up the light battery from the parts rack"), overlay.step_label.text)
 	_check("highlight: the rack battery glows, one name label", guidance.target == battery
 		and _all_under(guidance.highlighted_meshes(), battery) and _overlay_count() == guidance.highlighted_meshes().size()
 		and _markers().size() == 1, "%d meshes, %d markers" % [_overlay_count(), _markers().size()])
 	var replaced: RigidBody3D = battery
 	workshop._on_restock_interacted(player)
 	await _ticks(0.3)
-	battery = workshop.rack_stock.get_node("Slot12")
+	battery = workshop.rack_stock.get_node("Slot16")
+	var rack_basis: Basis = battery.global_basis
 	_check("restock: the rack battery was replaced", battery != replaced and not is_instance_valid(replaced))
 	_check("restock: the highlight follows the new battery, one label", guidance.target == battery
 		and _all_under(guidance.highlighted_meshes(), battery) and _overlay_count() == guidance.highlighted_meshes().size()
@@ -199,6 +200,8 @@ func _run() -> void:
 	player.holder.pickup(battery)
 	await _ticks(0.3)
 	player.holder.release()
+	# Dropped the way it sits on the rack: the light battery jams on the chassis upside down
+	battery.global_basis = rack_basis
 	battery.global_position = rover.battery_socket.global_position + Vector3.UP * 0.05
 	battery.linear_velocity = Vector3.ZERO
 	await _ticks(1.5)
@@ -257,6 +260,9 @@ func _run() -> void:
 		and _step() == "Drive back onto the charging pad and stop", _step())
 	await _ticks(0.2)
 	_check("waypoint: on screen while facing the pad", overlay.place_marker() and overlay.marker_on_screen, str(overlay.marker_position))
+	var pad_label: Node3D = guidance.get_node_or_null("GuidanceLabel")
+	_check("waypoint: the world label is hidden while the screen marker names the pad", pad_label != null and not pad_label.visible
+		and guidance.waypoint_marker_shown())
 	await _place(rover.global_position, -to_pad.normalized())
 	await _ticks(0.2)
 	var size: Vector2 = overlay.marker.get_viewport_rect().size

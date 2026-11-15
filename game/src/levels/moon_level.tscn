@@ -110,7 +110,7 @@ transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -302, -5.3
 rover = NodePath("../ReadyRover")
 
 [node name="EvanNoteKite" parent="." instance=ExtResource("61_note_kite")]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -303.882, -5.37, 259.26)
+transform = Transform3D(0.5, 0, 0.866025, 0, 1, 0, -0.866025, 0, 0.5, -298.596, -4.02, 258.444)
 
 [node name="BaseSign" type="Node3D" parent="."]
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -294.62, -5.371, 245.21)

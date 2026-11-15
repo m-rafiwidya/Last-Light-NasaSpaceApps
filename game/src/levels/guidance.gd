@@ -27,6 +27,7 @@ var _complete_text: Dictionary = {}
 var _highlighted: Array[GeometryInstance3D] = []
 var _markers: Array[Node] = []
 var _follows: Array = []
+var _world_label: Label3D = null
 var _material: ShaderMaterial = null
 
 
@@ -332,6 +333,7 @@ func _refresh_highlight() -> void:
 		var at: Vector3 = bounds.get_center() + Vector3.UP * (bounds.size.y * 0.5 + LABEL_LIFT)
 		label.global_position = at
 		_markers.append(label)
+		_world_label = label
 		_follows.append([label, target, target.global_transform.affine_inverse() * at])
 
 
@@ -368,9 +370,18 @@ func _clear_highlight() -> void:
 			marker.free()
 	_markers.clear()
 	_follows.clear()
+	_world_label = null
+
+
+## The screen waypoint (GuidanceOverlay) names the target already: its world label would sit on it
+func waypoint_marker_shown() -> bool:
+	var on_foot: bool = GameState.state == GameState.State.IN_GAME_PLAYER and current_step().get("on_foot", false)
+	return enabled() and is_waypoint() and (GameState.state == GameState.State.IN_GAME_ROBOT or on_foot)
 
 
 func _follow_markers() -> void:
+	if is_instance_valid(_world_label):
+		_world_label.visible = not waypoint_marker_shown()
 	for item in _follows:
 		var marker: Variant = item[0]
 		var node: Variant = item[1]

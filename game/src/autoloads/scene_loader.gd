@@ -34,6 +34,9 @@ const PLAYABLE_LEVELS: Dictionary = {
 	"moon_level": "Moon",
 }
 
+## Levels only a debug build offers (the exported game has no way into them)
+const DEBUG_LEVELS: Array[String] = ["test_level"]
+
 ## Longest wait (s) for a level's content (MoonTerrain's meshes) before starting it anyway
 const CONTENT_TIMEOUT: float = 120.0
 
@@ -73,6 +76,15 @@ func _ready() -> void:
 	for level_name in PLAYABLE_LEVELS:
 		if not LEVEL_PATHS.has(level_name):
 			push_error('SceneLoader: playable level "%s" is not in LEVEL_PATHS' % level_name)
+
+
+## PLAYABLE_LEVELS without the debug-only ones in a release build
+func playable_levels() -> Dictionary:
+	var levels: Dictionary = PLAYABLE_LEVELS.duplicate()
+	if not OS.is_debug_build():
+		for id in DEBUG_LEVELS:
+			levels.erase(id)
+	return levels
 
 
 func load_scene(level_name: String, no_fade_in: bool = false) -> void:

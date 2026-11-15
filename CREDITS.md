@@ -7,7 +7,72 @@ NASA's media usage guidelines; no endorsement by NASA or ESA is implied.
 
 The in-game credits roll (team, real data sources, type, special thanks) is written in
 `game/res/credits.md`, which the game reads (an exported build includes it); edit it there. The
-asset sections below stay the full provenance record.
+asset sections below stay the full provenance record. The roll's last section, **Godot Engine
+licence**, is not in that file: `CreditsData.engine_section()` builds it at run time from
+`Engine.get_license_text()` and `Engine.get_copyright_info()` (Godot's licence and the copyright
+holders and licence of every third-party component in the engine).
+
+## Engine and tools
+
+- **Godot Engine** 4.7, <https://godotengine.org>. MIT licence; the licence text and the
+  third-party notices are in the credits roll (see above).
+- **Blender** 5.2, <https://www.blender.org>. Runs the generator scripts in `tools/blender/scripts/`;
+  the models it exports are this project's own.
+
+## AI tools
+
+- **Claude Opus 5.5 and Claude Sonnet 5.5** (Anthropic), used through Claude Code: the code (the game's
+  GDScript, the build tools, the terrain pipeline), the Blender scripts that build every 3D model, and
+  the music composition (`game/music/`). Commits made with it carry a `Co-Authored-By: Claude` line.
+- **Images:** Claude Code, through the Blender generator scripts and the render scripts (for example
+  `game/tools/render_mission_images.gd`). No separate image generator was used. The title logo was
+  drawn by Claude (next section).
+- **Sound effects:** Claude Code's synthesis scripts (`game/music/`), plus the Kenney CC0 samples and
+  the GeneralUser GS soundfont (see Sound and music above), which `game/music/samples/SOURCES.md`
+  lists.
+
+## Title logo
+
+`game/res/ui/astronaut_logo.svg` (the same file as `docs/ui/assets/astronaut-logo.svg`): an
+**AI-generated silhouette** drawn as SVG by Claude, based on NASA's photograph of Bruce McCandless II,
+STS-41-B, 1984 (public domain; NASA image S84-27017). The photograph is not in this
+repository. No endorsement by NASA is implied.
+
+## Reference images
+
+`tools/blender/reference/curiosity.jpg`: NASA/JPL-Caltech artist's concept of Curiosity (public
+domain), modelling reference only, not shipped. <https://science.nasa.gov/mission/msl-curiosity/>
+
+## Fonts
+
+All four are under the SIL Open Font License, Version 1.1 (<https://openfontlicense.org>); the full
+licence is next to each font file in `game/res/fonts/` (`LICENSE-*.txt`) and `docs/ui/assets/fonts/`.
+The credits roll prints the copyright lines and the licence name.
+
+- **Michroma** by Vernon Adams. Copyright 2011 The Michroma Project Authors,
+  <https://github.com/googlefonts/Michroma-font>. Titles and headings.
+- **Exo 2** by Natanael Gama. Copyright 2013 The Exo 2 Project Authors,
+  <https://github.com/googlefonts/Exo-2.0>. UI text.
+- **IBM Plex Mono** by IBM. Copyright 2017 IBM Corp. All rights reserved, <https://github.com/IBM/plex>.
+  Readouts and the console.
+- **Caveat** (Evan's handwriting). Copyright 2014 The Caveat Project Authors,
+  <https://github.com/googlefonts/caveat>.
+
+## Sound and music
+
+Details in `game/music/samples/SOURCES.md`; nothing here is copied into the game as is.
+
+- **Impact Sounds** 1.0 by Kenney (2019-12-19), <https://kenney.nl/assets/impact-sounds>. Creative
+  Commons Zero (CC0 1.0), no credit required (`game/music/samples/kenney_impact/License.txt`). 30
+  files, slowed, filtered and mixed by `game/music/sfx_sounds.py` into the footsteps, landings and
+  impacts in `game/res/audio/sfx/`.
+- **GeneralUser GS** 2.0.3 soundfont by S. Christian Collins, <https://www.schristiancollins.com>.
+  Free for private and commercial use (`game/music/soundfonts/LICENSE.txt`); the author notes that
+  he cannot be sure of the origin of every sample inside it. Only the felt piano of
+  `game/res/audio/music/deep_space_memory.ogg` is rendered from it, then heavily processed. The
+  `.sf2` itself is not in the repository.
+- Everything else (the other music voices, UI sounds, ambience, engine and door loops) is
+  synthesised by this project's scripts with no samples.
 
 ## Workshop kit
 
@@ -127,6 +192,9 @@ resampled. Authored additions (rocks, the graded base) are listed in `terrain.js
   <https://www.lroc.asu.edu/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf>
 - **JPL Horizons** (NASA/JPL Solar System Dynamics) for the sun, Earth and the star map's
   orientation seen from the site at 1969-11-20 05:49 UTC, <https://ssd.jpl.nasa.gov/horizons/>
+- **Gazetteer of Planetary Nomenclature**, Head crater (3.01° S, 23.43° W, 120 m), USGS
+  Astrogeology Science Center for the IAU, <https://planetarynames.wr.usgs.gov/Feature/2396>. Shown
+  on the Data Sources screen; the short M3 route crosses the crater.
 
 Every source file's URL, byte count (and byte range) and SHA-256 are recorded in `terrain.json`
 (`sources`), the DTM window and constant in `provenance`.
@@ -136,3 +204,15 @@ pipeline settings remain) came from the LOLA 5 m/pixel south pole landing site D
 PGDA product 78; Barker et al. 2021, doi:10.1016/j.pss.2020.105119), the LOLA permanently
 shadowed regions map (PGDA product 90) and the LOLA gridded data records `LDEM_875S_20M` and
 `LDEM_85S_40M` (NASA PDS Geosciences Node).
+
+## NASA Space Apps Challenge resources
+
+Public NASA material that the missions' design follows (the Data Sources screen explains how). Ideas
+only; nothing is copied. NASA does not endorse this game.
+
+- *Design and Develop Science Missions*, NASA Systems Engineering Webinar (2025),
+  <https://www.nasa.gov/wp-content/uploads/2025/04/250323-design-and-develop-science-mission.pdf>
+- *Concept Maturity Levels*, NASA JPL, <https://dataverse.jpl.nasa.gov/dataset.xhtml?persistentId=hdl:2014/44299>
+- Mission Design Lab, NASA Goddard, <https://etd.gsfc.nasa.gov/capabilities/integrated-design-center/mission-design-lab/>
+- *Build It Yourself: A Learning Game About Telescopes*, NASA Webb,
+  <https://science.nasa.gov/mission/webb/game-build-it-yourself/>

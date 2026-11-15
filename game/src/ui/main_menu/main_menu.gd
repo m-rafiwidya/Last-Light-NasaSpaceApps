@@ -41,6 +41,7 @@ var _sub_tween: Tween
 @onready var _settings: Button = %Settings
 @onready var _quit: Button = %Quit
 @onready var _data_sources: Button = %DataSources
+@onready var _credits: Button = %Credits
 @onready var _popup: PlayPopup = %PlayPopup
 @onready var _settings_screen: SettingsSubMenu = $SettingsSubMenu
 @onready var _explorer: PlanetExplorer = %PlanetExplorer
@@ -52,12 +53,13 @@ func _ready() -> void:
 	_settings.pressed.connect(_on_settings_pressed)
 	_quit.pressed.connect(_on_quit_pressed)
 	_data_sources.pressed.connect(_on_data_sources_pressed)
+	_credits.pressed.connect(_on_credits_pressed)
 	_settings_screen.back_requested.connect(_on_back_pressed)
 	_moon.moon_clicked.connect(_on_moon_clicked)
 	_explorer.back_requested.connect(_close_explorer)
 	_intro.finished.connect(_on_intro_finished)
 	# The mouse and keyboard/gamepad share one highlight: hovering an item focuses it
-	for button in _menu_buttons():
+	for button: Button in [_play, _settings, _data_sources, _credits, _quit]:
 		button.mouse_entered.connect(button.grab_focus)
 	# The title's holder keeps the final size, so the letters can spread out inside it during the
 	# opening sequence without moving anything else
@@ -70,7 +72,7 @@ func _ready() -> void:
 
 
 func _menu_buttons() -> Array[Button]:
-	return [_play, _settings, _data_sources, _quit]
+	return [_play, _settings, _data_sources, _credits, _quit] if _credits.visible else [_play, _settings, _data_sources, _quit]
 
 
 func _on_play_pressed() -> void:
@@ -155,6 +157,20 @@ func _on_data_sources_closed() -> void:
 	_data_sources.grab_focus()
 
 
+func _on_credits_pressed() -> void:
+	var screen := get_tree().get_first_node_in_group(&"credits_screen") as CreditsScreen
+	if screen == null or not _shown or _popup.is_open or _settings_screen.is_open or _explorer.is_open:
+		return
+	_set_menu_interactive(false)
+	screen.closed.connect(_on_credits_closed, CONNECT_ONE_SHOT)
+	screen.open()
+
+
+func _on_credits_closed() -> void:
+	_set_menu_interactive(true)
+	_credits.grab_focus()
+
+
 func _on_quit_pressed() -> void:
 	get_tree().quit()
 
@@ -174,6 +190,7 @@ func fade_in() -> void:
 	_settings_screen.close(false)
 	_explorer.close(false)
 	_moon.set_planet(PlanetData.menu_planet())
+	_credits.visible = PlanetData.campaign_finished()
 	if _sub_tween:
 		_sub_tween.kill()
 	_sub.modulate.a = 1.0
@@ -231,7 +248,8 @@ func skip_intro() -> void:
 func _start_intro() -> void:
 	if not _shown:
 		return
-	var items: Array[Control] = [_play, _settings, _data_sources, _quit]
+	var items: Array[Control] = []
+	items.assign(_menu_buttons())
 	_intro.play(_moon, %Drift, %Title, %TitleGroup, items)
 
 

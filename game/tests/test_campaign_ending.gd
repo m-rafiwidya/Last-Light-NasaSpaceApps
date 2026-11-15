@@ -107,7 +107,7 @@ func _run() -> void:
 	await _open_console()
 	_check("[m2] Receive telemetry is shown but disabled at the start", _action().visible and _action().disabled
 		and _action().text.nocasecmp_to("Receive telemetry") == 0, _action().text)
-	for id in ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
+	for id in ["m2.cargo_ordered", "m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
 		_cmd("objective " + id)
 	var iris: Node = level.get_node("Iris")
 	var flag_changes: Array = []
@@ -147,6 +147,7 @@ func _run() -> void:
 	_check("[m3] Send archive is disabled at the start", _action().visible and _action().disabled
 		and _action().text.nocasecmp_to("Send archive") == 0, _action().text)
 	_cmd("objective m3.logger_recovered")
+	_cmd("objective m3.thermal_pair_recorded")
 	console.refresh()
 	_check("[m3] still disabled before the dock", _action().disabled)
 	_cmd("objective m3.kite_docked")
@@ -212,12 +213,30 @@ func _run() -> void:
 	_check("[ending] doesn't fire again", ending_runs == 1 and result.is_open())
 	result.get_node("%Continue").pressed.emit()
 	await _ticks(0.8)
-	_check("[result] Continue returns to the workshop", GS.state == GS.State.IN_GAME_PLAYER and not result.visible)
+	_check("[credits] Continue plays the credits once, over the workshop", GS.state == GS.State.CREDITS
+		and not result.visible and CS.has_flag(CS.CREDITS_FLAG), str(GS.state))
+	_check("[earth] the ending set the profile setting and unlocked Earth", UiSettings.campaign_finished()
+		and PlanetData.is_unlocked(&"earth"))
+	GS.return_to_game()
+	await _ticks(0.5)
+	_check("[credits] closing them returns to the workshop", GS.state == GS.State.IN_GAME_PLAYER)
 
 	# 4. Load
+	GS.change_state_to(GS.State.IN_GAME_MENU)
 	result.get_node("%MainMenu").pressed.emit()
 	await _wait_state(GS.State.MAIN_MENU)
 	CS.reset()
+	_check("[earth] Earth stays unlocked after a new campaign (profile setting)", PlanetData.is_unlocked(&"earth")
+		and not CS.is_campaign_complete())
+	await _ticks(0.5)
+	var menu_credits: Button = root.get_node("Main/UIManager/MainMenu").get_node("%Credits")
+	_check("[credits] the main menu offers CREDITS once the campaign is finished", menu_credits.is_visible_in_tree())
+	menu_credits.pressed.emit()
+	await _ticks(0.5)
+	var credits_screen: Node = root.get_node("Main/UIManager/Credits")
+	_check("[credits] the menu's CREDITS opens the roll", credits_screen.is_open())
+	credits_screen.close()
+	UiSettings.set_campaign_finished(false)
 	ending_runs = 0
 	_check("[load] load_slot starts loading", SI.load_slot("slot_1"))
 	if not await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"):

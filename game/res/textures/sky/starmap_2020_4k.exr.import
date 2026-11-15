@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfijwclf47cyf"
 path.bptc="res://.godot/imported/starmap_2020_4k.exr-8d08bce9f919f53dff84f7d52ae7fb06.bptc.ctex"
+path.astc="res://.godot/imported/starmap_2020_4k.exr-8d08bce9f919f53dff84f7d52ae7fb06.astc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://res/textures/sky/starmap_2020_4k.exr"
-dest_files=["res://.godot/imported/starmap_2020_4k.exr-8d08bce9f919f53dff84f7d52ae7fb06.bptc.ctex"]
+dest_files=["res://.godot/imported/starmap_2020_4k.exr-8d08bce9f919f53dff84f7d52ae7fb06.bptc.ctex", "res://.godot/imported/starmap_2020_4k.exr-8d08bce9f919f53dff84f7d52ae7fb06.astc.ctex"]
 
 [params]
 

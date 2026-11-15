@@ -154,8 +154,23 @@ func _run() -> void:
 	_check("[load] E beside the logger: on the cargo mount, m3.logger_recovered", cargo.part == far_logger
 		and CS.is_objective_done("m3.logger_recovered") and CS.current_objective() == "m3.thermal_pair_recorded", CS.current_objective())
 
-	# 3b. The thermal pair: away from the far rim it doesn't count, at the far rim it does
+	# 3a. Docking with the logger but without the pair: nothing completes and the alert says what is missing
 	director = level.get_tree().get_first_node_in_group("mission_director")
+	var far_spot: Vector3 = rover.global_position
+	var early_dock: Transform3D = workshop.get_dock_transform()
+	early_dock.origin += Vector3.UP * 0.3
+	rover.global_transform = early_dock
+	rover.linear_velocity = Vector3.ZERO
+	rover.angular_velocity = Vector3.ZERO
+	await _ticks(2.0)
+	_check("[dock] without the pair: m3.kite_docked waits, the alert says the pair is missing",
+		not CS.is_objective_done("m3.kite_docked") and director.alert == director.PAIR_MISSING
+		and director.alert.contains("sun and a shade") and director.alert.contains("far logger"), director.alert)
+	await _place(far_spot, Vector3.FORWARD)
+	await _ticks(0.3)
+	_check("[dock] leaving the pad clears the alert", director.alert.is_empty(), director.alert)
+
+	# 3b. The thermal pair: away from the far rim it doesn't count, at the far rim it does
 	var sensor: Node = level.get_node("ThermalSensor")
 	var rim: Vector3 = far_logger.global_position
 	sensor.readings = {"sun": 100.0, "shade": -150.0}
