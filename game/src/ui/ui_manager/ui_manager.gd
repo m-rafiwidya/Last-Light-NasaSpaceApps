@@ -45,7 +45,7 @@ func _process(_delta: float) -> void:
 	# of this frame: that Esc must not also pause the game or leave the robot.
 	var console_was_open: bool = Debug.console_open
 	# (Not a key a settings key slab just took to rebind)
-	if Input.is_action_just_pressed("console") and not KeyBindSlab.took_key_this_frame():
+	if OS.is_debug_build() and Input.is_action_just_pressed("console") and not KeyBindSlab.took_key_this_frame():
 		if $Console.visible:
 			$Console.hide()
 		else:

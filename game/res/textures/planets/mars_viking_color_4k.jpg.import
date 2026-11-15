@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://83awtyirrmvm"
 path.s3tc="res://.godot/imported/mars_viking_color_4k.jpg-13439ade273473ff1a1604dfb2a29096.s3tc.ctex"
+path.etc2="res://.godot/imported/mars_viking_color_4k.jpg-13439ade273473ff1a1604dfb2a29096.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://res/textures/planets/mars_viking_color_4k.jpg"
-dest_files=["res://.godot/imported/mars_viking_color_4k.jpg-13439ade273473ff1a1604dfb2a29096.s3tc.ctex"]
+dest_files=["res://.godot/imported/mars_viking_color_4k.jpg-13439ade273473ff1a1604dfb2a29096.s3tc.ctex", "res://.godot/imported/mars_viking_color_4k.jpg-13439ade273473ff1a1604dfb2a29096.etc2.ctex"]
 
 [params]
 

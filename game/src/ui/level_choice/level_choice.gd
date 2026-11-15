@@ -28,10 +28,11 @@ var _buttons: Dictionary = {}   # level id -> Button
 func _ready() -> void:
 	# Same spacing as the menu's own button list
 	add_theme_constant_override("separation", get_parent().get_theme_constant("separation"))
-	for level_id in SceneLoader.PLAYABLE_LEVELS:
+	var levels: Dictionary = SceneLoader.playable_levels()
+	for level_id in levels:
 		var button := button_scene.instantiate() as Button
 		button.name = level_id
-		button.text = text_format % SceneLoader.PLAYABLE_LEVELS[level_id]
+		button.text = text_format % levels[level_id]
 		if uppercase:
 			button.text = button.text.to_upper()
 		button.pressed.connect(level_chosen.emit.bind(level_id))

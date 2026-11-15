@@ -156,6 +156,20 @@ script = ExtResource("8_sound")
 press_sound = &"menu_open"
 metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
 
+[node name="Credits" parent="MainMenuSubScreen/Column/Nav" instance=ExtResource("7_ubutton")]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_type_variation = &"UnderlineButtonMenu"
+text = "CREDITS"
+
+[node name="ButtonSoundComponent" type="Node" parent="MainMenuSubScreen/Column/Nav/Credits"]
+script = ExtResource("8_sound")
+press_sound = &"menu_open"
+metadata/_custom_type_script = "uid://dvlm1ln22f2ch"
+
 [node name="Quit" parent="MainMenuSubScreen/Column/Nav" instance=ExtResource("7_ubutton")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 58)

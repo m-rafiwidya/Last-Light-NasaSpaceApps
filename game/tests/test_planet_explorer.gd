@@ -92,6 +92,15 @@ func _run() -> void:
 	var tip: Control = explorer.find_child("Tip", true, false)
 	_check("explorer closed at first", not explorer.is_open and not explorer.visible and not globe.is_active())
 	PlanetData.unlock_all = false
+	_check("Earth is locked before any campaign ending", not PlanetData.is_unlocked(&"earth"))
+	UiSettings.set_campaign_finished()
+	UiSettings.section.read_saved = true
+	UiSettings.section.reload()
+	_check("a finished campaign unlocks Earth and survives a reload of the saved setting",
+		UiSettings.campaign_finished() and PlanetData.is_unlocked(&"earth") and not PlanetData.is_unlocked(&"mars"))
+	UiSettings.set_campaign_finished(false)
+	UiSettings.section.read_saved = false
+	_check("Earth is locked again once the setting is cleared", not PlanetData.is_unlocked(&"earth"))
 
 	# Clicking the Moon (a real click on its disc) opens the explorer on the Moon
 	var moon_centre: Vector2 = _window_point(moon, Vector2(700.0, 700.0))

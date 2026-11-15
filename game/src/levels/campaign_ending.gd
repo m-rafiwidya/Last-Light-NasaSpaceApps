@@ -22,6 +22,7 @@ func _on_mission_completed(id: String) -> void:
 		return
 	playing = true
 	CampaignState.set_flag(CampaignState.COMPLETE_FLAG)
+	UiSettings.set_campaign_finished()
 	if director and is_instance_valid(director.rover):
 		SaveIndex.save_current(director.rover)
 	_play.call_deferred()

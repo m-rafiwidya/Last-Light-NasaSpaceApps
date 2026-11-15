@@ -9,6 +9,8 @@ signal campaign_reset
 
 const MISSIONS_PATH: String = "res://res/story/missions.json"
 const COMPLETE_FLAG: String = "campaign_complete"
+## The credits have played after the ending (once per campaign)
+const CREDITS_FLAG: String = "credits_seen"
 
 var _missions: Dictionary = {}
 var _mission_order: PackedStringArray = []

@@ -21,8 +21,15 @@ const EARTH_LINE: String = "EARTH UNLOCKED · VISIT IT FROM THE MAIN MENU"
 ## Sections titled like this show their first name row large (A GAME BY: the studio)
 const STUDIO_SECTION: String = "A GAME BY"
 
-## The roll takes 48 s, linear, from just below the screen to just above it (.ll-roll)
+## The roll takes 48 s, linear, from just below the screen to just above it (.ll-roll). That is the
+## time for the roll without the engine licence; the licence's fine print (a hundred lines) adds time
+## at the same speed, so `roll_time` is the real duration.
 const ROLL_TIME: float = 48.0
+## The engine licence's fine print: size, wrap width, line spacing, gap between its paragraphs
+const FINE_SIZE: int = 12
+const FINE_WIDTH: float = 880.0
+const FINE_LINE_SPACING: int = 3
+const FINE_GAP: int = 14
 const SECTION_GAP: float = 144.0
 const BOTTOM_PADDING: float = 240.0
 ## The astronaut drifts across in the same time (.ll-drift: from -260,120 / -20 deg to 160,-80 / 12 deg)
@@ -40,6 +47,8 @@ const LINE_SPACING: int = 12
 
 var rolling: bool = false
 var ended: bool = false
+## How long this roll takes: ROLL_TIME stretched by the engine licence section (set in play())
+var roll_time: float = ROLL_TIME
 
 var _generation: int = 0
 var _fonts: Dictionary = {}
@@ -48,6 +57,7 @@ var _float_tween: Tween
 var _end_tween: Tween
 var _fade_tween: Tween
 var _column: VBoxContainer
+var _engine_box: Control
 ## What had the keyboard focus before the screen opened (it takes the focus meanwhile, so Enter
 ## doesn't press a button of the screen underneath)
 var _previous_focus: Control
@@ -65,6 +75,7 @@ var _previous_focus: Control
 
 
 func _ready() -> void:
+	add_to_group(&"credits_screen")
 	_skip.pressed.connect(skip)
 	_again.pressed.connect(play)
 	_menu.pressed.connect(close)
@@ -133,9 +144,14 @@ func play() -> void:
 	_roll_tween = create_tween().set_ignore_time_scale(true).set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_roll_tween.set_trans(Tween.TRANS_LINEAR)
 	_column.position.y = _root.size.y
-	_roll_tween.tween_property(_column, "position:y", -_column.size.y, ROLL_TIME)
-	_roll_tween.parallel().tween_property(_drift, "position", DRIFT_HOME + DRIFT_TO, ROLL_TIME).from(DRIFT_HOME + DRIFT_FROM)
-	_roll_tween.parallel().tween_property(_drift, "rotation_degrees", DRIFT_ROTATION.y, ROLL_TIME).from(DRIFT_ROTATION.x)
+	# The speed is the one the roll has without the engine licence
+	var main_height: float = _column.size.y
+	if _engine_box:
+		main_height -= _engine_box.size.y + SECTION_GAP
+	roll_time = ROLL_TIME * (_root.size.y + _column.size.y) / (_root.size.y + main_height)
+	_roll_tween.tween_property(_column, "position:y", -_column.size.y, roll_time)
+	_roll_tween.parallel().tween_property(_drift, "position", DRIFT_HOME + DRIFT_TO, roll_time).from(DRIFT_HOME + DRIFT_FROM)
+	_roll_tween.parallel().tween_property(_drift, "rotation_degrees", DRIFT_ROTATION.y, roll_time).from(DRIFT_ROTATION.x)
 	_roll_tween.finished.connect(_show_end.bind(generation))
 	_start_float()
 
@@ -205,6 +221,7 @@ func _start_float() -> void:
 func _build_roll() -> void:
 	if _column:
 		_column.queue_free()
+	_engine_box = null
 	_column = VBoxContainer.new()
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -235,6 +252,9 @@ func _build_section(section: Dictionary) -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", 26)
 	var title: String = section["title"]
+	if title == CreditsData.ENGINE_TITLE:
+		_engine_box = box
+		box.add_theme_constant_override(&"separation", FINE_GAP)
 	if not title.is_empty():
 		_add_label(box, title, PLEX_MONO, 14, 7, &"muted")
 	var first_name: bool = true
@@ -247,6 +267,14 @@ func _build_section(section: Dictionary) -> Control:
 			_add_label(row, entry["sub"], PLEX_MONO, 16, 2, &"muted")
 			box.add_child(row)
 			first_name = false
+		elif entry.has("fine"):
+			# Fine print (the engine licence): small, left-aligned, wrapped
+			var fine := _add_label(box, entry["fine"], PLEX_MONO, FINE_SIZE, 0, &"muted")
+			fine.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			fine.add_theme_constant_override(&"line_spacing", FINE_LINE_SPACING)
+			fine.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			fine.custom_minimum_size.x = minf(FINE_WIDTH, _root.size.x - 160.0)
+			fine.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		elif title.is_empty():
 			# The closing note: muted, wrapped to a narrow column
 			var note := _add_label(box, entry["text"], PLEX_MONO, 18, 0, &"muted")
