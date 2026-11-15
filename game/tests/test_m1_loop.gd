@@ -187,8 +187,14 @@ func _run() -> void:
 	# 6. Retry
 	rover.battery.charge = 0.0
 	await _ticks(0.5)
-	_check("retry: a flat battery in the field starts the recovery, the HUD says so",
-		director.recovering and hint.alert_label.text == director.RECOVERY_MESSAGE, hint.alert_label.text)
+	_check("retry: a flat battery in the field strands Kite where it is, the HUD says to go and get it",
+		director.stranded and not director.recovering and hint.alert_label.text == director.STRANDED_MESSAGE, hint.alert_label.text)
+	_check("retry: the console offers the emergency recovery at once for a stranded Kite, still or not", director.can_request_recovery(),
+		"still %.1f s, speed %.2f m/s, mission %s" % [director.still_time, rover.linear_velocity.length(), CS.current_mission()])
+	director.request_recovery()
+	await _ticks(0.5)
+	_check("retry: requesting it starts the recovery, the HUD says so",
+		director.recovering and not director.stranded and hint.alert_label.text == director.RECOVERY_MESSAGE, hint.alert_label.text)
 	await _ticks(director.RECOVERY_DELAY + 4.0)
 	_check("retry: Kite is back on the pad, recharged", workshop.pad.is_docked() and rover.battery.get_charge_fraction() > 0.99,
 		"%s, %.0f%%" % [workshop.pad.get_status_text(), rover.battery.get_charge_fraction() * 100.0])

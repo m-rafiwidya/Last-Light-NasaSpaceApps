@@ -6,7 +6,7 @@ class_name MissionReport
 
 const ROUTES: Dictionary = {"short": "Short route through Head crater", "long": "Long route round Head"}
 const CAUSES: Dictionary = {"battery": "battery ran flat", "cold": "electronics got too cold", "stuck": "Kite was stuck",
-	"slip": "Kite slipped on loose ground"}
+	"slip": "Kite slipped on loose ground", "oxygen": "suit oxygen ran out"}
 const COUNTS: Array[String] = ["No", "One", "Two", "Three", "Four", "Five"]
 
 
@@ -143,7 +143,12 @@ static func _assistance_why(stats: Dictionary) -> String:
 static func why_line(entry: Dictionary) -> String:
 	var metres: int = roundi(float(entry.get("distance_m", 0.0)))
 	var leg: String = "on the way back" if entry.get("leg", "") == "back" else "on the way out"
+	if entry.get("rescued_on_foot", false):
+		return "%s %d m from the pad %s: carried home on foot, no recovery cost." % [
+			CAUSES.get(entry.get("cause", ""), "Stranded").capitalize(), metres, leg]
 	match entry.get("cause", ""):
+		"oxygen":
+			return "Suit oxygen ran out %d m from the habitat %s: turn back at the low-oxygen warning, carrying Kite home is slow." % [metres, leg]
 		"slip":
 			return "Slipped on the %s %s with standard wheels: fit the high-grip wheels or take the long route." % [
 				entry.get("zone", "loose ground"), leg]

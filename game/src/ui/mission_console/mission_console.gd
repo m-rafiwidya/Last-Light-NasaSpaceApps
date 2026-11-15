@@ -191,6 +191,12 @@ func _show_mission() -> void:
 	if CampaignState.is_mission_completed(mission):
 		lines.append("\n[b]Mission complete.[/b]")
 	else:
+		# The current step's text, on request: the HUD no longer says it after a timer
+		var step_lines := current_step_lines()
+		if not step_lines.is_empty():
+			lines.append("")
+			for step_line in step_lines:
+				lines.append("[color=%s]STEP    %s[/color]" % [_hex(&"text_2"), step_line])
 		var checklist := CampaignState.mission_checklist(mission)
 		if not checklist.is_empty():
 			lines.append("")
@@ -203,6 +209,22 @@ func _show_mission() -> void:
 			lines.append("")
 			lines.append(landing_zone_text())
 	_set_text("%s  ·  %s" % [mission.to_upper(), CampaignState.mission_title(mission)], "\n".join(lines))
+
+
+## The words of the objective's current guidance step, then its longer hint (what the old stuck hint
+## said), if any: on request here, never on a timer
+func current_step_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	var guidance := get_tree().get_first_node_in_group(&"guidance") as Guidance
+	if guidance == null or not guidance.active or guidance.current_step().is_empty():
+		return lines
+	var text: String = guidance.step_text()
+	if not text.is_empty():
+		lines.append(text)
+	var more: String = str(guidance.current_step().get("stuck", ""))
+	if not more.is_empty() and more != text:
+		lines.append(more)
+	return lines
 
 
 ## "REQUEST  Hana: Collect the near-site sample" under the objectives, with met / missed once the downlink is sent

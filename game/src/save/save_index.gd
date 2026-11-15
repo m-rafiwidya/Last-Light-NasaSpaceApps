@@ -83,6 +83,8 @@ static func _read_save(slot_id: String) -> Variant:
 static func save_current(rover: Robot) -> Error:
 	if current_slot.is_empty() or CampaignState.current_mission().is_empty():
 		return ERR_UNCONFIGURED
+	if not SaveGate.block_reason().is_empty():
+		return ERR_BUSY
 	var mission: String = CampaignState.current_mission()
 	var info := SaveSlotInfo.new()
 	info.slot_id = current_slot

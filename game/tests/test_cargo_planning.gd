@@ -229,7 +229,12 @@ func _run() -> void:
 	director._update_cold(1.0)
 	_check("[cold] without the kit: a warning", director.cold_time > 0.0 and director.alert.begins_with("COLD"), director.alert)
 	director._update_cold(MD.COLD_LIMIT)
-	_check("[cold] the timer ends in the emergency recovery", director.recovering and director.alert == MD.COLD_MESSAGE)
+	_check("[cold] the timer shuts Kite down where it is: stranded, the pack drained, nothing moves it",
+		director.stranded and director.stranded_cause == "cold" and not director.recovering and director.alert == MD.STRANDED_COLD_MESSAGE
+		and (rover.battery == null or rover.battery.is_empty()), director.alert)
+	# (this Kite has no battery, which the console's request needs: the recovery it would start is started directly)
+	director._start_recovery(MD.COLD_MESSAGE, director.stranded_cause)
+	_check("[cold] the emergency recovery starts and ends the stranding", director.recovering and not director.stranded)
 	await _ticks(MD.RECOVERY_DELAY + 0.5)
 	_check("[cold] Kite is recovered to the pad", not director.recovering and workshop.pad.is_in_zone(rover))
 	for socket in rover.find_children("*", "HotswapSocket", true, false):

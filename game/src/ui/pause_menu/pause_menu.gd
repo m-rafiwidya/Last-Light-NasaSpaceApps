@@ -33,6 +33,8 @@ var _blur_tween: Tween
 var _content_tween: Tween
 var _items_tween: Tween
 var _blur_material: ShaderMaterial
+## Why the game can't be saved right now (SaveGate), under the items; hidden when it can
+var save_note := Label.new()
 
 @onready var _root: Control = %Root
 @onready var _blur: ColorRect = %Blur
@@ -47,6 +49,12 @@ var _blur_material: ShaderMaterial
 
 func _ready() -> void:
 	_blur_material = _blur.material
+	save_note.name = "SaveNote"
+	save_note.theme_type_variation = &"LabelHudCaption"
+	save_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	save_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	save_note.hide()
+	_resume.get_parent().get_parent().add_child(save_note)
 	_resume.pressed.connect(_on_resume_pressed)
 	_level_choice.level_chosen.connect(_on_level_chosen)
 	_settings_button.pressed.connect(_on_settings_pressed)
@@ -70,6 +78,12 @@ func _menu_buttons() -> Array[Button]:
 ## Title, rule, then the buttons in order: the things that fade in one after another
 func _entrance_items() -> Array[Control]:
 	return [%Title, %Rule, _resume, _level_choice, _settings_button, _quit_to_menu, _quit_to_desktop]
+
+
+## The reason saving is unavailable ("Return to the habitat to save", "Release the claw to save"), or nothing
+func refresh_save_note() -> void:
+	save_note.text = SaveGate.block_reason(get_tree())
+	save_note.visible = save_note.text != ""
 
 
 func _on_resume_pressed():
@@ -123,6 +137,7 @@ func fade_in():
 	sub_screen = SubScreen.PAUSE_MENU
 	_settings.close(false)
 	_level_choice.refresh()
+	refresh_save_note()
 	_kill_tweens()
 	_root.show()
 	_set_content_interactive(true)

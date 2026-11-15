@@ -162,13 +162,14 @@ func _run() -> void:
 	await _ticks(43.5)
 	_check("stuck: no stuck hint before 45 s", overlay.stuck_label.text == "" and guidance.stuck_text() == "", "%.1f s" % guidance.stuck_time)
 	await _ticks(2.0)
-	_check("stuck: the stuck hint shows after 45 s", overlay.stuck_label.text.begins_with("The rack is"), overlay.stuck_label.text)
+	_check("stuck: timed hints are off, still nothing after 45 s", not guidance.STUCK_HINTS and overlay.stuck_label.text == ""
+		and guidance.stuck_text() == "" and guidance.current_step().get("stuck", "") != "", overlay.stuck_label.text)
 	player.global_position = rover.global_position + rover.global_basis.z * 1.2 + Vector3.UP * 0.1
 	await _ticks(0.3)
 	player.holder.pickup(battery)
 	await _ticks(0.3)
 	_check("prepared: holding a battery moves to fitting it", guidance.index == 1 and _step() == "Drop the battery into Kite's rear battery socket", _step())
-	_check("stuck: the hint is cleared on the next step", guidance.stuck_text() == "" and guidance.stuck_time < 1.0)
+	_check("stuck: the timer restarts on the next step", guidance.stuck_text() == "" and guidance.stuck_time < 1.0)
 	var capture: Node = rover.battery_socket.get_node("PartCapture")
 	var names: Array = _markers().map(func(n: Node) -> String: return n.name)
 	var socket_box: Node3D = guidance.get_node_or_null("GuidanceBox")
@@ -354,7 +355,7 @@ func _run() -> void:
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.3)
 
-	# 7b. M2 and M3: the objective and the waypoint; a step's text only as the stuck hint
+	# 7b. M2 and M3: the objective and the waypoint; a step's text only on request (the console's Mission tab)
 	var m1_objective: String = CS.current_objective()
 	var m1_step: String = guidance.hud_step_text()
 	_check("m1: the step text is on the HUD", m1_step != "" and hint.step_label.text == m1_step and overlay.step_label.text == m1_step, m1_step)
@@ -369,8 +370,8 @@ func _run() -> void:
 			"%s / %s / %s" % [hint.step_label.text, overlay.step_label.text, hint.stuck_label.text])
 		guidance.stuck_time = guidance.STUCK_TIME + 1.0
 		await _ticks(0.2)
-		_check("%s: when stuck, the step's stuck text shows" % mission_id, first_step.get("stuck", "") != ""
-			and hint.stuck_label.text == first_step["stuck"] and hint.step_label.text == "", hint.stuck_label.text)
+		_check("%s: a long-stuck step still shows no timed hint" % mission_id, first_step.get("stuck", "") != ""
+			and hint.stuck_label.text == "" and overlay.stuck_label.text == "" and hint.step_label.text == "", hint.stuck_label.text)
 	CS._current = "m1"
 	await _ticks(0.3)
 	_check("m1 again: the step text is back", CS.current_objective() == m1_objective and hint.step_label.text != "", hint.step_label.text)

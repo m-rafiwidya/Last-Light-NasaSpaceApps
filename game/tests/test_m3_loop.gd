@@ -187,6 +187,10 @@ func _run() -> void:
 	var stop := Vector3(-185.0, 0.0, 40.0)
 	await _place(stop, Vector3.BACK)
 	rover.battery.charge = 0.0
+	await _ticks(1.0)
+	_check("[recovery] a flat battery strands Kite where it stopped", director.stranded and not director.recovering)
+	await _ticks(director.STILL_FOR + 1.0)
+	director.request_recovery()
 	await _ticks(director.RECOVERY_DELAY + 1.0)
 	var on_pad: bool = workshop.pad.is_in_zone(rover)
 	_check("[recovery] Kite back on the pad, the logger left where it stopped", on_pad and cargo.part == null
