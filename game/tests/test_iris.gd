@@ -450,7 +450,7 @@ func _run() -> void:
 	m2_far.free()
 	m2_near.free()
 	_check("M2 parts: catalog entries, masses (module heavier than the battery), two distinct containers", m2_kit_ok, m2_kit_detail)
-	var m2_site: Node3D = level.get_node("SampleSiteNear")
+	var m2_site: Node3D = level.get_node("NearSampleSite")
 	var m2_centre: Node3D = m2_site.find_child("anchor_sample", true, false)
 	var m2_park: Node3D = m2_site.find_child("park_sample", true, false)
 	var m2_query := PhysicsRayQueryParameters3D.create(m2_centre.global_position + Vector3.UP * 3.0, m2_centre.global_position + Vector3.DOWN * 3.0, 1)

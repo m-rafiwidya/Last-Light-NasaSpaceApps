@@ -15,7 +15,7 @@ static func sections(mission: String) -> Array:
 	var stats := CampaignState.mission_stats(mission)
 	var result: Array = [
 		{"title": "Objectives", "why": _objectives_why(mission, stats)},
-		{"title": "Science", "why": _science_why(stats), "body": CampaignState.mission_report(mission)},
+		{"title": "Science", "why": _science_why(stats), "body": _science_body(mission, stats)},
 		{"title": "Rover", "why": _rover_why(mission, stats), "body": _payload(stats)},
 		{"title": "Resources", "why": _resources_why(mission, stats), "body": _battery_line(stats)},
 		{"title": "Assistance", "why": _assistance_why(stats), "body": "Stuck hints shown: %d." % int(stats.get("stuck_hints", 0))},
@@ -61,6 +61,23 @@ static func _objectives_why(mission: String, stats: Dictionary) -> String:
 	if total > 0:
 		line += ", %d of %d optional done" % [done.size(), total]
 	return line + "."
+
+
+## The mission's report text, then the ground temperature line when the thermal turret took readings
+static func _science_body(mission: String, stats: Dictionary) -> String:
+	var report := CampaignState.mission_report(mission)
+	if not (stats.has("thermal_sun") or stats.has("thermal_shade")):
+		return report
+	return "%s\n%s" % [report, ground_temperature(stats)]
+
+
+## "Ground temperature: sun +112 °C, shade -150 °C"
+static func ground_temperature(stats: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for kind in ["sun", "shade"]:
+		var key: String = "thermal_" + kind
+		parts.append("%s %s" % [kind, "%+d °C" % roundi(float(stats[key])) if stats.has(key) else "not measured"])
+	return "Ground temperature: %s" % ", ".join(parts)
 
 
 static func _science_why(stats: Dictionary) -> String:

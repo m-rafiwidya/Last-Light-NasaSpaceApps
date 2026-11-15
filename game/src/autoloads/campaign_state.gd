@@ -89,6 +89,10 @@ func mission_report(id: String) -> String:
 	return _missions[id]["report"] if _missions.has(id) else ""
 
 
+func mission_checklist(id: String) -> PackedStringArray:
+	return PackedStringArray(_missions[id]["checklist"]) if _missions.has(id) else PackedStringArray()
+
+
 func mission_downlink(id: String) -> Dictionary:
 	return _missions[id]["downlink"] if _missions.has(id) else {}
 
@@ -364,6 +368,7 @@ func _load_missions() -> void:
 		var optional: Array = _strings(entry.get("optional_objectives"))
 		_missions[id] = {"objectives": required, "optional_objectives": optional,
 			"title": str(entry.get("title", id)), "report": "\n".join(_strings(entry.get("report"))),
+			"checklist": _strings(entry.get("checklist")),
 			"downlink": entry.get("downlink") if entry.get("downlink") is Dictionary else {},
 			"ending": entry.get("ending") if entry.get("ending") is Dictionary else {}}
 		var titles: Variant = entry.get("objective_titles")
