@@ -126,11 +126,11 @@ All IDs are lowercase with dots. Use these exact names in your code and data fil
 
 | Mission | Objectives, in order |
 |---|---|
-| m1 (Wake Kite) | `m1.kite_prepared`, `m1.iris_scanned`, `m1.kite_docked`, `m1.inspection_sent` |
+| m1 (Wake Kite) | `m1.workshop_entered`, `m1.kite_prepared`, `m1.iris_scanned`, `m1.kite_docked`, `m1.inspection_sent` |
 | m2 (First Signal) | `m2.cargo_ordered`, `m2.module_loaded`, `m2.module_installed`, `m2.iris_activated`, `m2.telemetry_received`, `m2.kite_docked`, optional `m2.near_sample_collected` |
 | m3 (Beyond the Rim) | `m3.logger_recovered`, `m3.kite_docked`, `m3.archive_sent` |
 
-A mission completes when all its required objectives are done. Optional objectives never block completion. Flags describe world state, like `iris_online`. If you need a new ID, ask Fahd in the chat so it gets added to the mission data.
+`m1.workshop_entered` (added for the opening cutscene) completes when the player walks from the lander into the workshop bay. A mission completes when all its required objectives are done. Optional objectives never block completion. Flags describe world state, like `iris_online`. If you need a new ID, ask Fahd in the chat so it gets added to the mission data.
 
 ### Cargo order (M2)
 
@@ -164,6 +164,8 @@ The radio and log lines live in two JSON files that Faiq owns:
   { "on": "mission_started:m2", "line": "hana_m2_01" }
 ]
 ```
+
+Cutscene lines are separate: they live in `game/res/story/cutscenes.json` (Fahd), with their own `cs_*` IDs, and never appear in `lines.json` or `dialogue_triggers.json`, so no line plays both ways. Their audio follows the same naming rule.
 
 Audio files go in `game/res/audio/voice/` and are named exactly like the line ID. Goriorio's dialogue system reads both files and listens to `CampaignState` signals, so Faiq can add or change lines without touching code. A line with no audio yet shows its subtitle only.
 

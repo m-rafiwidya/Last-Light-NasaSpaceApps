@@ -18,6 +18,10 @@ func _ready() -> void:
 	$LoadingScreen.finished_fade_in.connect(SceneLoader._on_finished_fade_in)
 	# Settings > General > Show FPS Counter, above every screen
 	add_child(FpsCounter.new())
+	# Under the pause menu, over the HUDs
+	var cutscene_screen := CutsceneScreen.new()
+	add_child(cutscene_screen)
+	move_child(cutscene_screen, $PauseMenu.get_index())
 	# Closing the roll (MAIN MENU, Esc) hands the game back; opened from the main menu it has no state
 	$Credits.closed.connect(_on_credits_closed)
 	#$MainMenu.offset = Vector2(-1920.0, 0.0)
@@ -48,7 +52,7 @@ func _process(_delta: float) -> void:
 		return
 	if Input.is_action_just_pressed("ui_cancel"):
 		match GameState.state:
-			GameState.State.IN_GAME_PLAYER:
+			GameState.State.IN_GAME_PLAYER, GameState.State.CUTSCENE:
 				GameState.change_state_to(GameState.State.PAUSED)
 			GameState.State.IN_GAME_ROBOT:
 				# Esc leaves the robot and gives control back to the player

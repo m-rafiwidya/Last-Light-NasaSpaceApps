@@ -1,0 +1,111 @@
+{
+	"_readme": [
+		"Cutscenes played by CutsceneDirector (src/cutscene/cutscene_director.gd). Owned by Fahd.",
+		"lines: line id -> speaker, text, optional audio (res://res/audio/voice/<id>.ogg). Cutscene lines live only here, never in lines.json or dialogue_triggers.json, so they can't also play as triggers.",
+		"cutscenes: id -> on (campaign_start: a new campaign's first level load; manual: started by code; else a dialogue-trigger event such as objective:<id> or mission_completed:<id>), letterbox (bars, default true), hold_dialogue (trigger lines fired meanwhile wait until it ends), shots.",
+		"A shot: name, duration (s), optional black (title card background), fade_in (s from black), title {text, caption, text_in, caption_in, out}, caption (top bar text), camera, actions, lines [{id, at}]. Times inside a shot are seconds from its start.",
+		"camera, either from/to {pos, look, fov} as offsets in world axes from anchor (a node path from the level root; its place when the cutscene started, or where it is now with live: true), with optional look_node (+ look_offset) followed live; or frame (node) with side (the node whose side the camera is on; @kite is the rover, @player the player), turn (deg), distance, height, fov (a number or [from, to]) and look_height. ease: linear, in, out, in_out (default). The camera is kept 1 m above the terrain.",
+		"actions: {at, do, node, ...}: path (keys [[t, x, y, z], ...], offsets in world axes from the node's place at the start, smooth through every key, stopping at the last), call (method, args), visible (on), place_player (stands the player on the node, facing its -Z). Skipping applies every action's end state."
+	],
+	"lines": {
+		"cs_open_01": { "speaker": "Mira", "text": "Rotation one, Surface Research Programme. This is Mira, systems support, from Earth.", "audio": "res://res/audio/voice/cs_open_01.ogg" },
+		"cs_open_02": { "speaker": "Mira", "text": "You're the crew's astronaut and its robotics engineer. Anything down there with wheels is now your problem.", "audio": "res://res/audio/voice/cs_open_02.ogg" },
+		"cs_open_03": { "speaker": "Mira", "text": "It's a small crew. Hana and I are with you from here, about a second behind.", "audio": "res://res/audio/voice/cs_open_03.ogg" },
+		"cs_open_04": { "speaker": "Hana", "text": "Hana, science lead. That's Head crater under you. IRIS is just past it, and it's been silent for four years.", "audio": "res://res/audio/voice/cs_open_04.ogg" },
+		"cs_open_05": { "speaker": "Hana", "text": "The last crew ran out of spare parts. The replacement stock missed their rotation, so they had to go home and leave it.", "audio": "res://res/audio/voice/cs_open_05.ogg" },
+		"cs_open_06": { "speaker": "Hana", "text": "Part of its archive never reached Earth. Evan, their field technician, labelled everything twice. You'll see.", "audio": "res://res/audio/voice/cs_open_06.ogg" },
+		"cs_open_07": { "speaker": "Mira", "text": "Touchdown. Engine safe.", "audio": "res://res/audio/voice/cs_open_07.ogg" },
+		"cs_open_08": { "speaker": "Hana", "text": "No air to hold the dust up. It's already coming down.", "audio": "res://res/audio/voice/cs_open_08.ogg" },
+		"cs_open_09": { "speaker": "Mira", "text": "The workshop is a short walk ahead. Kite's in the bay. It's waited four years; it can manage another minute.", "audio": "res://res/audio/voice/cs_open_09.ogg" }
+	},
+	"cutscenes": {
+		"opening": {
+			"on": "campaign_start",
+			"letterbox": true,
+			"hold_dialogue": true,
+			"shots": [
+				{
+					"name": "title",
+					"duration": 9.0,
+					"black": true,
+					"title": { "text": "SURFACE RESEARCH PROGRAMME", "caption": "2058 · Apollo 12 site, Oceanus Procellarum · Rotation day 1", "text_in": 0.8, "caption_in": 3.8, "out": 1.4 },
+					"camera": { "anchor": "Lander", "from": { "pos": [600, 2, -1110], "look": [1564, 1400, -1547], "fov": 10 } },
+					"actions": [
+						{ "at": 0.0, "do": "path", "node": "Lander", "keys": [[9, 1564, 1400, -1547], [27, 675, 500, -668], [37, 262, 200, -260], [47, 78, 60, -77], [55, 7, 15, -7], [58, 1.5, 5, -1.5], [61, 0, 0, 0]] }
+					]
+				},
+				{
+					"name": "space",
+					"duration": 18.0,
+					"fade_in": 1.5,
+					"camera": { "anchor": "Lander", "from": { "pos": [600, 2, -1110], "fov": 10 }, "to": { "pos": [600, 2, -1110], "fov": 6 }, "look_node": "Lander", "ease": "linear" },
+					"actions": [
+						{ "at": 16.0, "do": "call", "node": "Lander", "method": "set_engine", "args": [true] }
+					],
+					"lines": [ { "id": "cs_open_01", "at": 1.0 }, { "id": "cs_open_02", "at": 7.0 }, { "id": "cs_open_03", "at": 13.0 } ]
+				},
+				{
+					"name": "head_crater",
+					"duration": 10.0,
+					"camera": { "anchor": "Lander", "from": { "pos": [202, 3, -255], "fov": 55 }, "to": { "pos": [200, 3, -250], "fov": 45 }, "look_node": "Lander" },
+					"lines": [ { "id": "cs_open_04", "at": 1.0 }, { "id": "cs_open_05", "at": 9.0 } ]
+				},
+				{
+					"name": "tracking",
+					"duration": 10.0,
+					"camera": { "anchor": "Lander", "live": true, "from": { "pos": [25, 6, 25], "fov": 50 }, "to": { "pos": [18, 3, 28], "fov": 50 }, "look_node": "Lander", "look_offset": [0, 1.6, 0] },
+					"lines": [ { "id": "cs_open_06", "at": 8.0 } ]
+				},
+				{
+					"name": "approach",
+					"duration": 8.0,
+					"camera": { "anchor": "Lander", "from": { "pos": [12, 2, 46], "fov": 40 }, "to": { "pos": [12, 2, 46], "fov": 35 }, "look_node": "Lander", "look_offset": [0, 1.6, 0] }
+				},
+				{
+					"name": "touchdown",
+					"duration": 13.0,
+					"camera": { "anchor": "Lander", "from": { "pos": [22, 1.6, 10], "look": [0, 2.5, 0], "fov": 45 }, "to": { "pos": [19, 1.5, 9], "look": [0, 2.2, 0], "fov": 45 } },
+					"actions": [
+						{ "at": 2.0, "do": "call", "node": "Lander", "method": "set_plume", "args": [true] },
+						{ "at": 6.4, "do": "call", "node": "Lander", "method": "set_engine", "args": [false] },
+						{ "at": 6.6, "do": "call", "node": "Lander", "method": "set_plume", "args": [false] }
+					],
+					"lines": [ { "id": "cs_open_07", "at": 7.0 }, { "id": "cs_open_08", "at": 9.0 } ]
+				},
+				{
+					"name": "hatch",
+					"duration": 8.0,
+					"camera": { "anchor": "Lander/Hatch", "from": { "pos": [2.2, 1.7, 8.0], "look": [0, 1.5, -0.6], "fov": 40 }, "to": { "pos": [1.3, 1.6, 5.2], "look": [0, 1.5, -0.6], "fov": 40 } },
+					"actions": [
+						{ "at": 1.0, "do": "call", "node": "Lander", "method": "set_hatch_light", "args": [true] },
+						{ "at": 7.9, "do": "place_player", "node": "Lander/Hatch" }
+					],
+					"lines": [ { "id": "cs_open_09", "at": 1.0 } ]
+				}
+			]
+		},
+		"iris_online": {
+			"on": "objective:m2.iris_activated",
+			"letterbox": true,
+			"shots": [
+				{
+					"name": "iris",
+					"duration": 8.0,
+					"camera": { "frame": "Iris", "side": "@kite", "turn": 25, "distance": [8, 6], "height": [2.4, 2.0], "look_height": 1.6, "fov": 55 }
+				}
+			]
+		},
+		"ending": {
+			"on": "manual",
+			"letterbox": true,
+			"shots": [
+				{
+					"name": "iris",
+					"duration": 4.0,
+					"caption": "Kite docked. IRIS online, transmitting.",
+					"camera": { "frame": "Iris", "side": "Workshop", "distance": 9, "height": 3, "look_height": 1.5, "fov": 75 }
+				}
+			]
+		}
+	}
+}

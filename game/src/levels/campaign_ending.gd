@@ -4,10 +4,9 @@ extends Node
 
 signal finished
 
+const CUTSCENE_ID: String = "ending"
 const IRIS_SHOT_TIME: float = 4.0
 const DIALOGUE_TIMEOUT_EXTRA: float = 5.0
-const CAMERA_DISTANCE: float = 9.0
-const CAMERA_HEIGHT: float = 3.0
 
 var director: MissionDirector = null
 var playing: bool = false
@@ -29,14 +28,17 @@ func _on_mission_completed(id: String) -> void:
 
 
 func _play() -> void:
-	GameState.change_state_to(GameState.State.IN_GAME_MENU)
 	var closing := _closing_sequence()
 	if director and director.rover and director.pad and not director.pad.is_in_zone(director.rover):
 		director.dock_rover()
-	await _show_iris()
+	var cutscenes: CutsceneDirector = director.cutscenes if director else null
+	if cutscenes and cutscenes.has_cutscene(CUTSCENE_ID):
+		await cutscenes.play(CUTSCENE_ID, GameState.State.IN_GAME_PLAYER)
+	else:
+		await _wait(IRIS_SHOT_TIME)
+		GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
 	if not is_inside_tree():
 		return
-	GameState.change_state_to(GameState.State.IN_GAME_PLAYER)
 	await _wait_for_dialogue(closing, DialogServer.queued_duration() + DIALOGUE_TIMEOUT_EXTRA)
 	if not is_inside_tree():
 		return
@@ -46,32 +48,6 @@ func _play() -> void:
 		result.open()
 	playing = false
 	finished.emit()
-
-
-func _show_iris() -> void:
-	var result := _result_screen()
-	var iris := director.get_parent().get_node_or_null("Iris") as Node3D if director else null
-	if iris == null:
-		await _wait(IRIS_SHOT_TIME)
-		return
-	var previous := get_viewport().get_camera_3d()
-	var camera := Camera3D.new()
-	camera.name = "EndingCamera"
-	director.get_parent().add_child(camera)
-	var away: Vector3 = (director.workshop.global_position - iris.global_position) if director.workshop else Vector3.BACK
-	away.y = 0.0
-	away = away.normalized() if away.length() > 0.01 else Vector3.BACK
-	camera.global_position = iris.global_position + away * CAMERA_DISTANCE + Vector3.UP * CAMERA_HEIGHT
-	camera.look_at(iris.global_position + Vector3.UP * 1.5)
-	camera.make_current()
-	if result:
-		result.show_caption("Kite docked. IRIS online, transmitting.")
-	await _wait(IRIS_SHOT_TIME)
-	if result:
-		result.hide_caption()
-	if is_instance_valid(previous):
-		previous.make_current()
-	camera.queue_free()
 
 
 ## The trigger system's sequence for the ending event, else the missions.json fallback lines queued here

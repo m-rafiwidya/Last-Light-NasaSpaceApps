@@ -30,7 +30,7 @@ var level: Node
 var rover: RigidBody3D
 var director: Node
 var _spare_wheels: Array = []
-const M1_DONE: Array = ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
 const M2_DONE: Array = ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
 	"m2.kite_docked", "m2.telemetry_received"]
 var markers: Node

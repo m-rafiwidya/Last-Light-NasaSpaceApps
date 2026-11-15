@@ -22,6 +22,7 @@ var _flags: Dictionary = {}
 var _items: Dictionary = {}
 var _played_triggers: Dictionary = {}
 var _shown_tips: Dictionary = {}
+var _played_cutscenes: Dictionary = {}
 var play_time_sec: float = 0.0
 var recoveries: int = 0
 ## Per-mission stats for the downlink report (MissionStats fills them while the mission runs)
@@ -197,6 +198,14 @@ func is_tip_shown(id: String) -> bool:
 	return _shown_tips.has(id)
 
 
+func mark_cutscene_played(id: String) -> void:
+	_played_cutscenes[id] = true
+
+
+func is_cutscene_played(id: String) -> bool:
+	return _played_cutscenes.has(id)
+
+
 func has_objective(id: String) -> bool:
 	return _objective_mission.has(id)
 
@@ -213,6 +222,7 @@ func reset() -> void:
 	_items.clear()
 	_played_triggers.clear()
 	_shown_tips.clear()
+	_played_cutscenes.clear()
 	play_time_sec = 0.0
 	recoveries = 0
 	_mission_stats.clear()
@@ -244,6 +254,7 @@ func save_state() -> Dictionary:
 		"items": _items.duplicate(),
 		"triggers_played": _played_triggers.keys(),
 		"tips_shown": _shown_tips.keys(),
+		"cutscenes_played": _played_cutscenes.keys(),
 		"play_time_sec": play_time_sec,
 		"recoveries": recoveries,
 		"campaign_id": campaign_id,
@@ -279,6 +290,10 @@ func load_state(data: Dictionary) -> bool:
 	if tips is Array:
 		for tip in tips:
 			_shown_tips[str(tip)] = true
+	var cutscenes: Variant = data.get("cutscenes_played")
+	if cutscenes is Array:
+		for cutscene in cutscenes:
+			_played_cutscenes[str(cutscene)] = true
 	var time: Variant = data.get("play_time_sec")
 	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
 	var recovered: Variant = data.get("recoveries")

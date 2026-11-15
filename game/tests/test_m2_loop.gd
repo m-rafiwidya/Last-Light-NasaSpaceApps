@@ -13,7 +13,7 @@ extends SceneTree
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_m2_loop.gd
 
-const M1_DONE: Array = ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
 
 var GS: Node
 var SL: Node

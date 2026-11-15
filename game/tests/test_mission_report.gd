@@ -10,7 +10,7 @@ extends SceneTree
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_mission_report.gd
 
-const M1_DONE: Array = ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
 const M2_DONE: Array = ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
 	"m2.kite_docked", "m2.telemetry_received"]
 const SECTIONS: Array = ["OBJECTIVES", "SCIENCE", "ROVER", "RESOURCES", "ASSISTANCE", "CREW REQUEST"]

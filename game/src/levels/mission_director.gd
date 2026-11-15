@@ -6,6 +6,7 @@ signal recovery_started(rover: Robot)
 signal recovery_finished(rover: Robot)
 
 const SCAN_OBJECTIVES: Dictionary = {"iris_panel": "m1.iris_scanned"}
+const ARRIVAL_OBJECTIVE: String = "m1.workshop_entered"
 const MOUNT_OBJECTIVES: Dictionary = {"radio_module": "m2.module_loaded", "field_logger": "m3.logger_recovered"}
 const CARGO_SOCKET: String = "CargoSocket"
 const IRIS_ONLINE_FLAG: String = "iris_online"
@@ -35,6 +36,7 @@ const STILL_SPEED: float = 0.2
 var rover: Robot = null
 var pad: ChargingPad = null
 var ending: CampaignEnding = null
+var cutscenes: CutsceneDirector = null
 var stats: MissionStats = null
 var recovering: bool = false
 var alert: String = ""
@@ -68,6 +70,11 @@ func _ready() -> void:
 		_watch(target)
 	if pad:
 		pad.docked.connect(_on_docked)
+	cutscenes = CutsceneDirector.new()
+	cutscenes.name = "Cutscenes"
+	cutscenes.level = get_parent()
+	cutscenes.director = self
+	add_child(cutscenes)
 	ending = CampaignEnding.new()
 	ending.name = "CampaignEnding"
 	add_child(ending)
@@ -209,6 +216,7 @@ func _on_docked(docked_rover: Robot) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_arrival()
 	if rover == null or pad == null:
 		return
 	if _returned_by_recovery and not pad.is_in_zone(rover):
@@ -225,6 +233,17 @@ func _physics_process(delta: float) -> void:
 		return
 	if rover.battery.is_empty() and not pad.is_in_zone(rover):
 		_start_recovery()
+
+
+## m1 starts at the lander: the workshop lets the player in until they are inside
+func _update_arrival() -> void:
+	if workshop == null:
+		return
+	var arriving: bool = CampaignState.current_mission() == "m1" and not CampaignState.is_objective_done(ARRIVAL_OBJECTIVE)
+	workshop.set_arrival(arriving)
+	if arriving and GameState.state == GameState.State.IN_GAME_PLAYER and not cutscenes.is_busy() \
+			and is_instance_valid(GameState.player) and workshop.is_arrived(GameState.player.global_position):
+		try_complete(ARRIVAL_OBJECTIVE)
 
 
 func _learn_consumption() -> void:

@@ -59,14 +59,15 @@ func _run() -> void:
 	CS.complete_objective("m1.iris_scanned")
 	_check("an objective completes and signals once", CS.is_objective_done("m1.iris_scanned") and objectives == ["m1.iris_scanned"])
 	_check("the mission isn't completed yet", completed.is_empty())
+	CS.complete_objective("m1.workshop_entered")
 	CS.complete_objective("m1.kite_prepared")
 	CS.complete_objective("m1.kite_docked")
 	_check("still not completed with one objective left", completed.is_empty())
 	CS.complete_objective("m1.inspection_sent")
 	_check("mission_completed fires when every objective is done", completed == ["m1"])
-	_check("objective_completed came first for the last one", objectives.size() == 4 and objectives.back() == "m1.inspection_sent")
+	_check("objective_completed came first for the last one", objectives.size() == 5 and objectives.back() == "m1.inspection_sent")
 	CS.complete_objective("m1.inspection_sent")
-	_check("nothing is emitted again", completed == ["m1"] and objectives.size() == 4)
+	_check("nothing is emitted again", completed == ["m1"] and objectives.size() == 5)
 
 	_clear_logs()
 	CS.start_mission("m2")
@@ -135,7 +136,7 @@ func _run() -> void:
 		and not CS.has_flag("iris_online") and not CS.has_item("module") and CS._done_missions.is_empty())
 	_clear_logs()
 	CS.start_mission("m1")
-	for id in ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
+	for id in ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
 		CS.complete_objective(id)
 	_check("a mission can be completed again after a reset", completed == ["m1"])
 

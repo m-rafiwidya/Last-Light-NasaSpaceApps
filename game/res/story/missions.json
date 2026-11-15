@@ -4,7 +4,7 @@
 		"IDs are lowercase with dots. A mission is mN, an objective is mN.thing. Objective IDs are unique across all missions.",
 		"objectives: all required for mission_completed. optional_objectives: can be completed but do not count.",
 		"objective_titles: what the console and the rover HUD show for each objective. report: the lines the console's Downlink tab shows once the mission's data is sent.",
-		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving), hint_from (optional, same syntax as target: the live get_hint(rover) text comes from that node instead of the target, while the highlight and waypoint stay on target) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
+		"guidance: per objective, the ordered steps the guidance tracker shows (Guidance, src/levels/guidance.gd). A step: text, label (the name over the highlighted target), target (path:<from the level root>, group:<group>, scan:<target_id>, part:<catalog_id> (the part wherever it is: rack, crate, held, on Kite or seated), kite:<Robot property or child node>[/<child path>]), key (an input action), stuck (shown after 45 s), waypoint (on-screen marker while driving; on foot too when the step has on_foot: true), hint_from (optional, same syntax as target: the live get_hint(rover) text comes from that node instead of the target, while the highlight and waypoint stay on target) and done_when (all must hold: state / not_state (GameState names), holding_part (part type), mounted (socket target), near + distance (Kite to the target, m), player_near + distance (the player to the target, m), view (rover camera view), console_section). The current step is the one after the last met step; a step without done_when stays until the objective completes. While Kite is driven, a target with get_hint(rover) shows that text as the step line instead of the step's text (an empty hint falls back to the step text). Guidance never completes objectives. complete_guidance: shown once the mission is complete.",
 		"legacy_id: the id the same mission has in docs/examples/MISSIONS.json (the save metadata still uses those).",
 		"Wording and order follow game/docs/STORY_SCRIPT.md. New IDs go here; tell the group in the chat.",
 		"downlink: the console's Downlink tab for this mission. objective (enabled once every objective before it is done), action (button text), progress (shown while sending), ready (shown when it can be sent), attachment (optional image under the report).",
@@ -23,6 +23,7 @@
 			"legacy_id": "wake_kite",
 			"title": "Wake Kite",
 			"objectives": [
+				"m1.workshop_entered",
 				"m1.kite_prepared",
 				"m1.iris_scanned",
 				"m1.kite_docked",
@@ -30,6 +31,7 @@
 			],
 			"optional_objectives": [],
 			"objective_titles": {
+				"m1.workshop_entered": "Walk from the lander into the workshop",
 				"m1.kite_prepared": "Fit a battery to Kite",
 				"m1.iris_scanned": "Scan IRIS's service panel with the mast camera",
 				"m1.kite_docked": "Return Kite to the charging pad",
@@ -39,6 +41,16 @@
 				"IRIS's radio-power module has failed, so the station cannot transmit. Its stored data is intact: fit a replacement module in M2."
 			],
 			"guidance": {
+				"m1.workshop_entered": [
+					{
+						"text": "Walk to the workshop and in through the bay door",
+						"label": "Workshop",
+						"target": "path:Workshop/Parts/ws_wall_bay_door_01/ws_wall_bay_door/bay_door",
+						"waypoint": true,
+						"on_foot": true,
+						"stuck": "Follow the marker to the building with the lit bay door. It opens as you walk up; go in past the docked rover."
+					}
+				],
 				"m1.kite_prepared": [
 					{
 						"text": "Pick up a battery from the parts rack",

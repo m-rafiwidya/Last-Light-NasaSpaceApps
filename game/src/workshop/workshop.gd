@@ -41,11 +41,16 @@ const HALF_X: float = 5.0
 const HALF_Z: float = 4.0
 const CEILING: float = 3.0
 const DOOR_OPEN_ANGLE: float = -90.0
+const CURTAIN_Z: float = -3.85
+## How far past the curtain the player must be to count as inside on arrival
+const ARRIVAL_DEPTH: float = 1.0
 
 ## The rover this workshop serves: the console drives it, the pad charges it
 @export var rover: Robot
 ## The pressure curtain in the bay door (the player can't walk out)
 @export var airlock_barrier: bool = true
+
+var arrival: bool = false
 ## Put the rover parts on the rack
 @export var stock_rack: bool = true
 ## Dress the workshop (DECOR_KIT.md): clutter, safety gear, crew things, history cards, exterior
@@ -316,7 +321,7 @@ func _build_doors() -> void:
 		box.size = Vector3(4.0, 2.5, 0.1)
 		shape.shape = box
 		curtain.add_child(shape)
-		curtain.position = Vector3(-1.0, 1.25, -3.85)
+		curtain.position = Vector3(-1.0, 1.25, CURTAIN_Z)
 		add_child(curtain)
 
 
@@ -559,7 +564,7 @@ func _build_astronauts() -> void:
 func _on_game_state_changed(_old_state, new_state) -> void:
 	# The operator stays seated through a pause; leaving the rover (or the level) stands them up
 	if new_state != GameState.State.IN_GAME_ROBOT and new_state != GameState.State.PAUSED \
-			and new_state != GameState.State.CREDITS:
+			and new_state != GameState.State.CREDITS and new_state != GameState.State.CUTSCENE:
 		operator.visible = false
 
 
@@ -602,6 +607,21 @@ func get_dock_transform() -> Transform3D:
 ## True when `world_point` is within the building's footprint
 func contains(world_point: Vector3) -> bool:
 	return _is_inside(world_point)
+
+
+## Arrival (the walk in from the lander): the bay door opens for the player outside and the
+## curtain lets them in; off again once they are inside
+func set_arrival(on: bool) -> void:
+	if on == arrival:
+		return
+	arrival = on
+	if curtain:
+		curtain.collision_layer = 0 if on else 1 << (PLAYER_BARRIER_LAYER - 1)
+
+
+## Well inside the bay, past where the curtain stands
+func is_arrived(world_point: Vector3) -> bool:
+	return _is_inside(world_point) and to_local(world_point).z > CURTAIN_Z + ARRIVAL_DEPTH
 
 
 func _is_inside(world_point: Vector3) -> bool:
@@ -727,7 +747,7 @@ func _update_bay_door(delta: float) -> void:
 	for body in _door_area.get_overlapping_bodies():
 		if body is Robot and driving:
 			wanted = true
-		elif body is Player and not airlock_barrier:
+		elif body is Player and (not airlock_barrier or arrival):
 			wanted = true                           # on foot in the test level: walk in and out
 	if driving and is_instance_valid(GameState.robot) and _is_inside(GameState.robot.global_position):
 		wanted = true

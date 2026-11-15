@@ -25,11 +25,11 @@ func _process(_delta: float) -> void:
 		%PartTooltip.hide()
 
 
-## The on-foot tip, the first time the player is in the workshop
+## The on-foot tip: at the lander's hatch on arrival, else the first time the player is in the workshop
 func _update_tips() -> void:
 	var workshop := get_tree().get_first_node_in_group(&"workshop") as Workshop
 	if GameState.state == GameState.State.IN_GAME_PLAYER and workshop and is_instance_valid(GameState.player):
-		if workshop.contains(GameState.player.global_position):
+		if workshop.arrival or workshop.contains(GameState.player.global_position):
 			tips.offer(&"on_foot")
 	elif GameState.state == GameState.State.IN_GAME_ROBOT:
 		tips.dismiss()

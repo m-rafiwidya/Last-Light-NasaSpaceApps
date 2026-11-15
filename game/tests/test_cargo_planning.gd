@@ -121,7 +121,7 @@ func _run() -> void:
 	console.select_section(console.Section.PLANNING)
 	_check("[console] Planning is closed before m1 is complete", not console.planning_open()
 		and console.tab_button(console.Section.PLANNING).disabled and not _action().visible)
-	for id in ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
+	for id in ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
 		CS.complete_objective(id)
 	debug.parse_command("startmission m2")
 	console.refresh()
@@ -225,7 +225,7 @@ func _run() -> void:
 
 	# 5. The Freighter
 	var state: Dictionary = CS.save_state()
-	CS.load_state({"current": "m2", "objectives": ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"],
+	CS.load_state({"current": "m2", "objectives": ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"],
 		"missions_done": ["m1"], "flags": [], "items": {}})
 	workshop.account_rack()
 	console.select_section(console.Section.PLANNING)
