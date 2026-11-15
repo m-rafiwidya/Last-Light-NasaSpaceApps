@@ -3,7 +3,7 @@ class_name CampaignResult
 extends UIScreen
 
 ## The campaign's end (Complete.dc.html, centred like Pause): label, title, rule, one-line result,
-## four stats, the missions and optional tasks, the closing radio line, CONTINUE / MAIN MENU.
+## four stats, the missions and optional tasks (when a mission has any), the closing radio line, CONTINUE / MAIN MENU.
 
 var fade_tween: Tween = null
 
@@ -48,10 +48,12 @@ func summary() -> Dictionary:
 func open() -> void:
 	var data := summary()
 	var optional_total: int = data["optional_done"].size() + data["optional_skipped"].size()
-	_set_stats([["%d / %d" % [data["missions"].size(), CampaignState.mission_order().size()], "Missions completed"],
-		["%d / %d" % [data["optional_done"].size(), optional_total], "Optional tasks"],
-		[SaveIndex.format_play_time(data["play_time_sec"]), "Play time"],
+	var stats: Array = [["%d / %d" % [data["missions"].size(), CampaignState.mission_order().size()], "Missions completed"]]
+	if optional_total > 0:
+		stats.append(["%d / %d" % [data["optional_done"].size(), optional_total], "Optional tasks"])
+	stats.append_array([[SaveIndex.format_play_time(data["play_time_sec"]), "Play time"],
 		[str(data["recoveries"]), "Emergency recoveries"]])
+	_set_stats(stats)
 	var lines: PackedStringArray = []
 	for mission in data["missions"]:
 		lines.append("[color=%s]%s  ·  %s[/color]" % [_hex(&"text"), mission.to_upper(), CampaignState.mission_title(mission)])

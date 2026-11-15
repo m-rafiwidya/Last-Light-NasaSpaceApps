@@ -13,8 +13,8 @@ extends SceneTree
 ##      the ordered parts on the rack and bench.
 ##   5. Guidance: its targets resolve to the crate, the module itself, the cargo socket, the console
 ##      and the IRIS module cradle, whose hint replaces the step line while driving.
-##   6. The chain: module_loaded, module_installed + iris_activated, kite_docked, telemetry_received,
-##      and m2 completes.
+##   6. The chain: module_loaded, module_installed + iris_activated, near_sample_collected (S-1 from the
+##      bench, guidance's waypoint to the site), kite_docked, telemetry_received, and m2 completes.
 ##   7. Save and load after the install: no radio module in the workshop (rack or crate), one in
 ##      IRIS's bay.
 ##
@@ -312,7 +312,8 @@ func _run() -> void:
 		and not CS.has_flag("cargo_at_landing_zone") and _crates().is_empty() and CS.current_objective() == "m2.module_loaded",
 		CS.current_objective())
 	_check("[home] the ordered parts are on the rack and bench", _count("wheel_high_grip") == 4 and _count("thermal_cover") == 1
-		and _count("sample_scoop") == 1, str([_count("wheel_high_grip"), _count("thermal_cover"), _count("sample_scoop")]))
+		and _count("sample_scoop") == 1 and _count("sample_container") == 1,
+		str([_count("wheel_high_grip"), _count("thermal_cover"), _count("sample_scoop"), _count("sample_container")]))
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.5)
 	var crate: Node3D = workshop.cargo_crate
@@ -376,7 +377,35 @@ func _run() -> void:
 	_check("[install] the module is seated in IRIS's bay, once", cradle.occupant == module and _modules(level).size() == 1
 		and _modules(workshop).is_empty())
 
-	# 6b. Back to the pad and the downlink
+	# 6b. The near sample: S-1 from the bench on the cargo mount, E at the site
+	var site: Node3D = get_first_node_in_group(&"near_sample_site")
+	await _ticks(0.3)
+	_check("[sample] next: the near sample, a waypoint to its site", CS.current_objective() == "m2.near_sample_collected"
+		and guidance.target != null and (guidance.target == site or guidance.target == site.highlight_node)
+		and guidance.is_waypoint(), "%s, %s" % [CS.current_objective(), guidance.target])
+	var s1: RigidBody3D = null
+	for part in workshop.bench_stock.get_children():
+		if part.has_method("get_catalog_id") and part.get_catalog_id() == "sample_container":
+			s1 = part
+	_check("[sample] S-1 is on the bench", s1 != null)
+	if s1:
+		s1.get_parent().remove_child(s1)
+		level.add_child(s1)
+		s1.global_position = cargo_socket.global_position
+		cargo_socket.mount(s1)
+	var park: Vector3 = site.find_child("park_sample", true, false).global_position
+	await _place(park, -site.global_basis.z)
+	rover.linear_velocity = Vector3.ZERO
+	await _ticks(0.2)
+	_check("[sample] parked with S-1: In position", guidance.step_text().begins_with("In position"), guidance.step_text())
+	Input.action_press(&"interact_use")
+	await _ticks(0.1)
+	Input.action_release(&"interact_use")
+	await _ticks(0.5)
+	_check("[sample] E at the site: m2.near_sample_collected, then the dock", CS.is_objective_done("m2.near_sample_collected")
+		and CS.current_objective() == "m2.kite_docked", CS.current_objective())
+
+	# 6c. Back to the pad and the downlink
 	await _place(workshop.get_dock_transform().origin - workshop.global_basis.z * 2.0, -workshop.global_basis.z)
 	var dock: Transform3D = workshop.get_dock_transform()
 	dock.origin += Vector3.UP * 0.3

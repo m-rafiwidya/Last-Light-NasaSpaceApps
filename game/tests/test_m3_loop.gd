@@ -264,19 +264,18 @@ func _run() -> void:
 	_finish()
 
 
-const ORDERS: Array = [["courier", []], ["courier", ["thermal_kit"]], ["courier", ["sampling_kit"]], ["courier", ["thermal_kit", "sampling_kit"]],
-	["freighter", ["thermal_kit"]], ["freighter", ["thermal_kit", "sampling_kit"]], ["freighter", ["thermal_kit", "grip_wheels"]],
-	["freighter", ["thermal_kit", "grip_wheels", "sampling_kit"]]]
+const ORDERS: Array = [["courier", []], ["courier", ["thermal_kit"]], ["freighter", ["thermal_kit"]],
+	["freighter", ["thermal_kit", "grip_wheels"]]]
 const STANDARD_WH: float = 100.0
 
 
 func _soft_lock() -> void:
 	var CP: GDScript = load("res://src/levels/cargo_plan.gd")
 	_check("[orders] grip wheels on the Courier and no thermal kit on the Freighter are refused",
-		CP.validate("courier", ["radio_module", "grip_wheels"]) != "" and CP.validate("freighter", ["radio_module"]) != "")
+		CP.validate("courier", ["radio_module", "grip_wheels", "sampling_kit"]) != "" and CP.validate("freighter", ["radio_module", "sampling_kit"]) != "")
 	for order in ORDERS:
-		var ids: Array = ["radio_module"] + order[1]
-		var name: String = "%s %s" % [order[0], "+".join(order[1]) if order[1] else "module only"]
+		var ids: Array = ["radio_module", "sampling_kit"] + order[1]
+		var name: String = "%s %s" % [order[0], "+".join(order[1]) if order[1] else "required only"]
 		if CP.validate(order[0], ids) != "":
 			_check("[orders] %s is valid" % name, false, CP.validate(order[0], ids))
 			continue

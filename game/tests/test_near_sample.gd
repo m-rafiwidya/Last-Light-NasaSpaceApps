@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless test: M2's optional near sample (NearSampleSite, plan item S).
+## Headless test: M2's required near sample (NearSampleSite, plan item S).
 ##   1. Setup: the level's NearSampleSite faces as IRIS does (it stands clear of IRIS's shadow, on lit ground), the site joins its group, highlights its patch and finds anchor_sample.
 ##   2. Mission: in m1 nothing happens, even parked at the patch with S-1 on the cargo mount.
 ##   3. Container: in m2 without S-1 the hint asks for it and nothing happens.

@@ -163,9 +163,9 @@ func _run() -> void:
 	_check("[saves] three cards, one per slot", cards.size() == 3, str(cards.size()))
 	if cards.size() == 3:
 		var expected: Array = [
-			["12/10/2026 22:41", "First Signal", "16 min played", "50%", false],
-			["12/10/2026 22:27", "Wake Kite", "7 min played", "25%", false],
-			["11/10/2026 21:05", "Wake Kite", "3 min played", "13%", false],
+			["12/10/2026 22:41", "First Signal", "16 min played", "47%", false],
+			["12/10/2026 22:27", "Wake Kite", "7 min played", "24%", false],
+			["11/10/2026 21:05", "Wake Kite", "3 min played", "12%", false],
 		]
 		for i in 3:
 			var c: Control = cards[i]
@@ -296,13 +296,15 @@ func _run() -> void:
 		and not popup.is_open and SI.current_slot == "slot_2")
 	_check("[load] the Moon level comes up", await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level"))
 	await _seconds(0.6)
+	# Leaving a level doesn't save (save UI): save as Save & Quit does
+	_check("[load] the Save & Quit save on the Moon succeeds", SI.save_now() == OK)
 	DBG.parse_command("testlevel")
 	_check("`testlevel` loads the test level", await _wait_state(GS.State.IN_GAME_PLAYER, "test_level"))
 	await _seconds(0.6)
 	SL.load_scene("main_menu")
 	await _wait_state(GS.State.MAIN_MENU)
 	await process_frame
-	_check("[load] leaving the Moon saved the slot (no longer a fake)", SI.clear_fake_saves() == 2
+	_check("[load] the saved slot is no longer a fake, the other two still are", SI.clear_fake_saves() == 2
 		and SI.read_slot("slot_2").is_readable())
 	SI.delete_slot("slot_2")
 	_check("back on the menu: popup closed, PLAY focused", not popup.is_open and play.has_focus())

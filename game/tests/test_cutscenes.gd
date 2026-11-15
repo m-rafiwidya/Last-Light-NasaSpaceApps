@@ -213,8 +213,8 @@ func _run() -> void:
 	await _ticks(0.3)
 	_check("[arrival] inside: m1.workshop_entered, then the battery", CS.is_objective_done("m1.workshop_entered")
 		and CS.current_objective() == "m1.kite_prepared")
-	_check("[arrival] arrival off: the curtain holds again", not workshop.arrival
-		and workshop.curtain.collision_layer == 1 << (workshop.PLAYER_BARRIER_LAYER - 1))
+	_check("[arrival] arrival off: the curtain holds again unless the EVA exit is on", not workshop.arrival
+		and workshop.curtain.collision_layer == (0 if workshop.eva_exit else 1 << (workshop.PLAYER_BARRIER_LAYER - 1)))
 	await _wait(func() -> bool: return played.has(DT.lines["mira_m1_01"]["text"]), 20.0)
 	_check("[arrival] entering the workshop, after a skipped opening, plays mira_m1_01",
 		played.has(DT.lines["mira_m1_01"]["text"]) and CS.is_trigger_played("objective:m1.workshop_entered|mira_m1_01"))
@@ -246,7 +246,7 @@ func _run() -> void:
 
 	# 5a. Cargo landing: the delivery plays it once, the lander descending onto the landing zone
 	await _ticks(0.3)
-	load("res://src/levels/cargo_plan.gd").deliver("courier", ["radio_module"])
+	load("res://src/levels/cargo_plan.gd").deliver("courier", ["radio_module", "sampling_kit"])
 	await _ticks(0.3)
 	var cargo_lander: Node3D = level.get_node_or_null("LandingZone/CargoLander")
 	var zone: Node3D = level.get_node("LandingZone")

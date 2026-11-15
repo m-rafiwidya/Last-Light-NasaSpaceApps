@@ -87,7 +87,7 @@ func _run() -> void:
 
 	# 2. Delivery
 	CS.start_mission("m2")
-	_check("delivery: CargoPlan.deliver(courier, radio module)", plan.deliver("courier", ["radio_module"]))
+	_check("delivery: CargoPlan.deliver(courier, radio module + sampling kit)", plan.deliver("courier", ["radio_module", "sampling_kit"]))
 	await _ticks(2.5)
 	_check("delivery: the crate appears", crate.visible)
 	layers = 0

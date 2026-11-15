@@ -211,6 +211,8 @@ static func hidden_slots(stock: String) -> Array:
 	if CampaignState.current_mission().is_empty():
 		return hidden
 	for entry in items():
-		if not is_ordered(entry["id"]) or awaiting_retrieval():
+		# a required item counts as delivered even when an older save's order lacks it
+		var ordered: bool = is_ordered(entry["id"]) or (entry.get("required", false) and is_delivered())
+		if not ordered or awaiting_retrieval():
 			hidden.append_array(entry.get("stock", {}).get(stock, []))
 	return hidden

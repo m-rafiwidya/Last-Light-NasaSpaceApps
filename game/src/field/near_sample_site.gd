@@ -2,11 +2,11 @@ class_name NearSampleSite
 
 extends Node3D
 
-## M2's optional near sample (plan item S): the reference patch by IRIS (its own sample_site_near.glb,
+## M2's required near sample (plan item S): the reference patch by IRIS (its own sample_site_near.glb,
 ## in IRIS's frame, so this scene goes where IRIS is, replacing the level's SampleSiteNear). Kite brings
 ## the empty sample container S-1 on its cargo mount (or in its storage tray), stops at the patch and presses E (interact_use):
 ## the container fills (its model swaps to the full one) and m2.near_sample_collected completes.
-## Optional: nothing here blocks M2. In a campaign only during m2; outside a campaign any time.
+## In a campaign only during m2; outside a campaign any time.
 ##
 ## Simple version, no scoop animation: the container on Kite is the whole requirement.
 ##
@@ -129,7 +129,7 @@ func _cue(rover: Robot) -> void:
 	if key == "ready":
 		line.subtitle = "%s. Stop by the patch and press %s to take a sample." % [site_name, InputBindings.action_text(&"interact_use", "E")]
 	else:
-		line.subtitle = "%s (optional). Bring %s, on the cargo mount or in the storage tray, to take a sample here." % [site_name, container_name()]
+		line.subtitle = "%s. Bring %s, on the cargo mount or in the storage tray, to take a sample here." % [site_name, container_name()]
 	line.min_duration = 5.0
 	line.repeat_id = "kite_%s_%s" % [group, key]
 	DialogServer.play_dialog(line)
