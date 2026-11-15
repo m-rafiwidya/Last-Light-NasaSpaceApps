@@ -8,9 +8,13 @@ extends SceneTree
 ## Until the M3 retune (task F1) lands, ENFORCE is false: runs report "target" next to "now" and
 ## only completability is checked (some loadout gets home on some route). Flip ENFORCE after F1.
 ##
+## Each case also has a cargo service: the Courier's M3 is in daylight; the Freighter arrives late,
+## so M3 falls near nightfall (low sun, long shade, night-only cold zones on).
+##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_m3_routes.gd
-##     ... -s res://tests/test_m3_routes.gd -- short light     (one route and one loadout)
-## A full run drives about 7 km; run single cases in parallel processes to save time.
+##     ... -s res://tests/test_m3_routes.gd -- short light freighter   (one case; service defaults
+##                                                                       to courier)
+## A full run drives about 14 km; run single cases in parallel processes to save time.
 
 const TICKS: int = 240
 const ENFORCE: bool = false
@@ -23,11 +27,17 @@ const LOADOUTS: Dictionary = {
 	"standard": {"battery": "battery_part", "wheels": "", "thermal": false},
 	"crater": {"battery": "battery_part", "wheels": "wheel_high_grip_part", "thermal": true},
 }
-## "route loadout" -> the plan's target ending
+const SERVICES: Array[String] = ["courier", "freighter"]
+const SERVICE_PREFIX: String = "cargo.service."
+## "route loadout service" -> the plan's target ending. Near nightfall both routes are partly in
+## shade, so only the build with the thermal kit gets home.
 const EXPECTED: Dictionary = {
-	"short light": "fail", "long light": "fail",
-	"short standard": "fail", "long standard": "home",
-	"short crater": "home", "long crater": "home",
+	"short light courier": "fail", "long light courier": "fail",
+	"short standard courier": "fail", "long standard courier": "home",
+	"short crater courier": "home", "long crater courier": "home",
+	"short light freighter": "fail", "long light freighter": "fail",
+	"short standard freighter": "fail", "long standard freighter": "fail",
+	"short crater freighter": "home", "long crater freighter": "home",
 }
 
 var GS: Node
@@ -184,6 +194,16 @@ func _trip(route_id: String, loadout_id: String) -> Dictionary:
 	return stats
 
 
+## Records `id` as the service that delivered M2's cargo (as CargoPlan does) and shows its M3 sun,
+## so the cold zones and their shade follow it
+func _set_service(id: String) -> void:
+	for other in SERVICES:
+		if CS.has_item(SERVICE_PREFIX + other):
+			CS.remove_item(SERVICE_PREFIX + other)
+	CS.add_item(SERVICE_PREFIX + id)
+	director.apply_mission_sun()
+
+
 func _run() -> void:
 	await process_frame
 	GS = root.get_node("GameState")
@@ -212,14 +232,16 @@ func _run() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var cases: Array = []
 	if args.size() >= 2:
-		cases.append([args[0], args[1]])
+		cases.append([args[0], args[1], args[2] if args.size() >= 3 else "courier"])
 	else:
-		for r in ["short", "long"]:
-			for l in LOADOUTS:
-				cases.append([r, l])
+		for sv in SERVICES:
+			for r in ["short", "long"]:
+				for l in LOADOUTS:
+					cases.append([r, l, sv])
 	var any_home: bool = false
 	for c in cases:
-		var key: String = "%s %s" % c
+		var key: String = "%s %s %s" % c
+		_set_service(c[2])
 		var s: Dictionary = await _trip(c[0], c[1])
 		any_home = any_home or s["end"] == "home"
 		var detail: String = "%s at %s · %.0f m planned · %.0f s · %.1f Wh used · lowest %d%% · cold %.0f s · target %s" % [
@@ -228,7 +250,7 @@ func _run() -> void:
 		if ENFORCE:
 			_check("route %s" % key, matches, detail)
 		else:
-			print("ROUTE %-15s %s%s" % [key, detail, "" if matches else "  <- differs from target"])
+			print("ROUTE %-25s %s%s" % [key, detail, "" if matches else "  <- differs from target"])
 	if args.size() < 2:
 		_check("completable: some loadout gets home on some route", any_home)
 
