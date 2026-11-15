@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Data Sources screen (DataSourcesScreen, res/story/data_sources.json):
 ##   1. Data: every group and entry of the JSON is shown, each link on a LinkButton (opens in the
-##      browser); the NASA, science, assumptions and challenge groups exist, the challenge one a placeholder.
+##      browser); the NASA, science, assumptions and challenge groups exist, the challenge one has four entries and its note.
 ##   2. Main menu: DATA SOURCES opens it, Esc closes it and gives the menu back.
 ##   3. Campaign result: its DATA SOURCES button opens it; BACK closes it.
 ##   4. Fit: at five window sizes the panel and BACK are on screen, nothing runs wider than the
@@ -68,8 +68,9 @@ func _run() -> void:
 	_check("[data] each shows its name, use and link", missing.is_empty(), str(missing.map(func(e: Dictionary) -> String: return e["name"])))
 	var ids: Array = data["groups"].map(func(g: Dictionary) -> String: return g["id"])
 	var challenge: Dictionary = data["groups"][ids.find("challenge")] if "challenge" in ids else {}
-	_check("[data] NASA, science, assumptions and a placeholder challenge group", ids == GROUPS
-		and challenge.get("placeholder", false) and _text_shown(screen, challenge.get("note", "?")), str(ids))
+	_check("[data] NASA, science, assumptions and a filled challenge group with its note", ids == GROUPS
+		and not challenge.get("placeholder", false) and challenge.get("entries", []).size() == 4
+		and _text_shown(screen, challenge.get("note", "?")), str(ids))
 	var names: String = " ".join(expected.map(func(e: Array) -> String: return e[1]))
 	_check("[data] the DTM, SLDEM and Head crater's gazetteer entry are listed", names.contains("Apollo 12 landing site (2 m)")
 		and names.contains("SLDEM2015") and names.contains("Head crater"))

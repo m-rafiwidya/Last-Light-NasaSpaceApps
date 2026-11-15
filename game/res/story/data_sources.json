@@ -2,7 +2,7 @@
 	"_readme": [
 		"The Data Sources screen (DataSourcesScreen, src/ui/data_sources/). Edit this file to change it; no code change needed.",
 		"groups: shown in order. title, optional note, entries. An entry: name, use (what the game uses it for), link (optional, opens in the browser).",
-		"placeholder: true marks a group still to be filled (the challenge resources, added during the hackathon). Its note is shown while it has no entries.",
+		"placeholder: true marks a group still to be filled. Its note is shown only while it has no entries; otherwise a note is always shown.",
 		"Facts come from game/docs/SCIENCE_AND_DATA.md and CREDITS.md; keep them in step."
 	],
 	"content_version": "2026-11-13",
@@ -162,9 +162,29 @@
 		{
 			"id": "challenge",
 			"title": "NASA Space Apps Challenge resources",
-			"placeholder": true,
-			"note": "To be added during the hackathon (14 November 2026).",
-			"entries": []
+			"note": "Public NASA material that the game's design follows. NASA does not endorse this game.",
+			"entries": [
+				{
+					"name": "Design and Develop Science Missions (NASA Systems Engineering Webinar, 2025)",
+					"use": "The missions follow its four segments: launch (the cargo lander, Courier or Freighter), space (Kite and its loadout), ground (the workshop and mission console) and user (the scientists reading the Downlink report). They also follow its steps from goals to design to verify: each goal leads to a loadout, checked against the forecast before driving out.",
+					"link": "https://www.nasa.gov/wp-content/uploads/2025/04/250323-design-and-develop-science-mission.pdf"
+				},
+				{
+					"name": "Concept Maturity Levels (JPL)",
+					"use": "A mission concept matures in stages, from an idea to a checked design. So does each mission here, from a goal to a loadout the forecast says will work.",
+					"link": "https://dataverse.jpl.nasa.gov/dataset.xhtml?persistentId=hdl:2014/44299"
+				},
+				{
+					"name": "Mission Design Lab (NASA Goddard)",
+					"use": "Its trade studies and point designs, with power and thermal among the disciplines, are what the M3 route choice asks of you: the short route with grip wheels, or the long route with the standard battery.",
+					"link": "https://etd.gsfc.nasa.gov/capabilities/integrated-design-center/mission-design-lab/"
+				},
+				{
+					"name": "Build It Yourself: A Learning Game About Telescopes (NASA Webb)",
+					"use": "The same idea as this game: the science goal decides the engineering, choices are limited, and the results are explained afterwards (the report's why lines).",
+					"link": "https://science.nasa.gov/mission/webb/game-build-it-yourself/"
+				}
+			]
 		}
 	]
 }
