@@ -58,6 +58,10 @@ const TEXTS: Dictionary = {
 ## The seated module's turn about up, from the cartridge's pose (see module_seat_transform)
 const MODULE_SEAT_TURN: float = PI / 2.0
 
+## What Guidance lights up when IRIS itself is the target (`path:Iris`, M2's "Bring IRIS online"):
+## the station's online indicator on the mast (set in _ready)
+@export var highlight_node: Node3D
+
 var is_scanned: bool = false
 var has_cartridge: bool = false
 var is_online: bool = false
@@ -96,7 +100,8 @@ func _ready() -> void:
 	(model.find_child("iris_status_light", true, false) as GeometryInstance3D).material_override = _light
 	_indicator.emission_enabled = true
 	_indicator.roughness = 0.3
-	(model.find_child("iris_indicator", true, false) as GeometryInstance3D).material_override = _indicator
+	highlight_node = model.find_child("iris_indicator", true, false) as Node3D
+	(highlight_node as GeometryInstance3D).material_override = _indicator
 	_antenna_pan = model.find_child("iris_antenna_pan", true, false) as Node3D
 	_antenna_tilt = model.find_child("iris_antenna", true, false) as Node3D
 	module_socket = model.find_child("socket_module", true, false) as Node3D

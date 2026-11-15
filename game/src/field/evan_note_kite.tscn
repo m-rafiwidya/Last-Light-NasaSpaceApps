@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/field/readable_note.tscn" id="1_note"]
+
+[node name="EvanNoteKite" instance=ExtResource("1_note")]
+note_id = "evan_note_kite"
+text = "KITE — STORAGE CHECK
+Battery isolated. Frame and gripper inspected. Test the next wheel set under load before taking the crater-side approach."
