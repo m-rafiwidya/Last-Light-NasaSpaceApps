@@ -118,8 +118,9 @@ func _run() -> void:
 	var trigger_lines: Array = DT.triggers.map(func(t: Dictionary) -> String: return t["line"])
 	_check("[data] cutscene lines are not in lines.json or the triggers", shared.is_empty()
 		and not data["lines"].keys().any(func(id: String) -> bool: return id in trigger_lines), str(shared))
-	_check("[data] every line approved for the opening is there", data["lines"].size() == 9
-		and data["lines"].keys().all(func(id: String) -> bool: return id.begins_with("cs_open_")))
+	_check("[data] the nine approved opening lines and the two narrator placeholders are there", data["lines"].size() == 11
+		and data["lines"].keys().all(func(id: String) -> bool: return id.begins_with("cs_open_"))
+		and data["lines"].keys().filter(func(id: String) -> bool: return data["lines"][id].get("placeholder", false)) == ["cs_open_n1", "cs_open_n2"])
 
 	# 2. Opening, skipped
 	if not await _new_campaign("slot_1"):
@@ -178,9 +179,10 @@ func _run() -> void:
 		"%.2f m" % flat.call(GS.player.global_position).distance_to(flat.call(hatch)))
 	_check("[skip] still marked played, the cutscene camera gone", CS.is_cutscene_played("opening")
 		and level.get_node_or_null("CutsceneCamera") == null)
-	await _wait(func() -> bool: return played.has(DT.lines["mira_m1_01"]["text"]), 10.0)
-	_check("[skip] the held trigger line plays after, the cut opening lines don't", not DT.hold and played.has(DT.lines["mira_m1_01"]["text"])
-		and not played.has(data["lines"]["cs_open_09"]["text"]))
+	await _wait(func() -> bool: return not DT.hold, 10.0)
+	_check("[skip] the hold ends, the cut opening lines don't play, mira_m1_01 waits for the walk-in", not DT.hold
+		and not played.has(data["lines"]["cs_open_09"]["text"]) and not played.has(DT.lines["mira_m1_01"]["text"])
+		and not CS.is_objective_done("m1.workshop_entered"), "hold %s, played %s" % [DT.hold, str(played)])
 	await _ticks(0.8)
 	_check("[skip] the screen is gone", not screen.visible)
 
@@ -208,6 +210,9 @@ func _run() -> void:
 		and CS.current_objective() == "m1.kite_prepared")
 	_check("[arrival] arrival off: the curtain holds again", not workshop.arrival
 		and workshop.curtain.collision_layer == 1 << (workshop.PLAYER_BARRIER_LAYER - 1))
+	await _wait(func() -> bool: return played.has(DT.lines["mira_m1_01"]["text"]), 20.0)
+	_check("[arrival] entering the workshop, after a skipped opening, plays mira_m1_01",
+		played.has(DT.lines["mira_m1_01"]["text"]) and CS.is_trigger_played("objective:m1.workshop_entered|mira_m1_01"))
 
 	# 4. Load
 	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(SI.slot_path("slot_1")))
@@ -316,9 +321,9 @@ func _run() -> void:
 	_check("[plume] starts below 10 m, never above, growing as the lander drops", plume["frames_on"] > 100
 		and plume["first_on_altitude"] <= 10.0 and plume["first_on_altitude"] > 8.0 and plume["on_above_10"] == 0, str(plume))
 	_check("[plume] stops at engine cutoff, never after", plume["off_at_cutoff"] and plume["on_after_cutoff"] == 0, str(plume))
-	_check("[sound] a radio click on and off for each of the 9 lines, one thump", events.count("click_on") == 9
-		and events.count("click_off") >= 8 and events.count("thump") == 1, str(events))
-	_check("[music] near-silent by touchdown", music_at_touchdown < -40.0, "%.1f dB" % music_at_touchdown)
+	_check("[sound] a radio click on and off for each of the 11 lines, one thump", events.count("click_on") == 11
+		and events.count("click_off") >= 10 and events.count("thump") == 1, str(events))
+	_check("[music] ducked under the descent by touchdown, not silent", music_at_touchdown < -6.0 and music_at_touchdown > -20.0, "%.1f dB" % music_at_touchdown)
 	_check("[full] at the cut: the stand-in gone, the player's first-person view and body", cutscenes.stand_in == null
 		and root.get_viewport().get_camera_3d() == GS.player.camera and GS.player.get_node("Body").visible)
 	var gaps: Array = []
@@ -329,15 +334,24 @@ func _run() -> void:
 	_check("[timing] the opening's lines run on without holding a shot, gaps under 5 s", cutscenes.held_time < 0.1
 		and not gaps.is_empty() and gaps.max() < 5.0, "held %.2f s, gaps %s" % [cutscenes.held_time, str(gaps.map(func(g): return snappedf(g, 0.01)))])
 	await _ticks(0.5)
-	var texts: Array = data["lines"].keys().map(func(id: String) -> String: return data["lines"][id]["text"])
+	var order: Array = []
+	for shot in data["cutscenes"]["opening"]["shots"]:
+		for entry in shot.get("lines", []):
+			order.append(entry["id"])
+	var texts: Array = order.map(func(id: String) -> String: return data["lines"][id]["text"])
 	var own: Array = played.filter(func(text: String) -> bool: return text in texts)
 	_check("[full] every opening line played once, in order", own == texts, "%d of %d" % [own.size(), texts.size()])
 	_check("[full] not skipped, back to the player at the hatch", not cutscenes.skipped and GS.state == GS.State.IN_GAME_PLAYER
 		and Vector3(GS.player.global_position.x, 0, GS.player.global_position.z).distance_to(
 			Vector3(SL.current_scene.get_node("Lander/Hatch").global_position.x, 0, SL.current_scene.get_node("Lander/Hatch").global_position.z)) < 0.5)
+	_check("[full] mira_m1_01 has not played yet: the player is outside the workshop", not played.has(DT.lines["mira_m1_01"]["text"])
+		and not CS.is_objective_done("m1.workshop_entered"))
+	var full_workshop: Node3D = SL.current_scene.get_node("Workshop")
+	GS.player.global_position = full_workshop.to_global(Vector3(-1.0, 0.3, 0.0))
+	GS.player.linear_velocity = Vector3.ZERO
 	await _wait(func() -> bool: return played.has(DT.lines["mira_m1_01"]["text"]), 30.0)
-	_check("[full] the held trigger line plays after the opening", played.back() == DT.lines["mira_m1_01"]["text"]
-		or played.find(DT.lines["mira_m1_01"]["text"]) > played.find(texts.back()))
+	_check("[full] walking into the workshop plays mira_m1_01, after every opening line", CS.is_objective_done("m1.workshop_entered")
+		and played.find(DT.lines["mira_m1_01"]["text"]) > played.find(texts.back()))
 	var counts: Dictionary = {}
 	for text in played:
 		counts[text] = counts.get(text, 0) + 1

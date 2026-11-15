@@ -22,7 +22,6 @@ var _planning: VBoxContainer = null
 var _service_buttons: Dictionary = {}
 var _item_boxes: Dictionary = {}
 var _mass_label: Label = null
-var _skip: Button = null
 var _tabs: Array[Button] = []
 
 
@@ -410,13 +409,6 @@ func _build_planning() -> void:
 	_mass_label = Label.new()
 	_mass_label.theme_type_variation = &"LabelMonoValue"
 	_planning.add_child(_mass_label)
-	_skip = Button.new()
-	_skip.theme_type_variation = &"SkipButton"
-	_skip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_skip.text = "SKIP FLIGHT"
-	_skip.focus_mode = Control.FOCUS_NONE
-	_skip.pressed.connect(skip_flight)
-	_planning.add_child(_skip)
 	_planning.hide()
 
 
@@ -457,6 +449,7 @@ func confirm_order() -> bool:
 	return true
 
 
+## Tests only: the flight has no skip button for the first cargo order
 func skip_flight() -> void:
 	if _flight >= 0.0:
 		_finish_flight()
@@ -477,7 +470,6 @@ func _show_planning() -> void:
 	for id in _item_boxes:
 		_item_boxes[id].set_pressed_no_signal(_manifest[id])
 		_item_boxes[id].disabled = not editable or CargoPlan.item(id).get("required", false)
-	_skip.visible = _flight >= 0.0
 	_mass_label.visible = _flight < 0.0
 	if not planning_open():
 		_set_text("Planning", "Cargo planning opens once %s is complete." % CampaignState.mission_title(PLANNING_MISSION))

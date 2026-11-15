@@ -78,6 +78,22 @@ func lines_for(event: String) -> Array[Dialog]:
 	return result
 
 
+## The event whose lines open `mission`, after which its crew requests play: mission_started when it
+## has lines, else its first objective (M1: the walk into the workshop, at the hatch nothing is said yet)
+func crew_event(mission: String) -> String:
+	if has_trigger("mission_started:" + mission):
+		return "mission_started:" + mission
+	var objectives := CampaignState.mission_objectives(mission)
+	return ("objective:" + objectives[0]) if not objectives.is_empty() else "mission_started:" + mission
+
+
+func _crew_mission(event: String) -> String:
+	for mission in CampaignState.mission_order():
+		if crew_event(mission) == event:
+			return mission
+	return ""
+
+
 ## The sequence last queued for `event`, null if none
 func sequence_for(event: String) -> DialogSequence:
 	return _sequences.get(event)
@@ -100,9 +116,10 @@ func fire(event: String) -> DialogSequence:
 			continue
 		CampaignState.mark_trigger_played(id)
 		dialogs.append(make_dialog(lines[trigger["line"]]))
-	if event.begins_with("mission_started:"):
-		for line in CrewRequests.radio_lines(event.trim_prefix("mission_started:")):
-			var id := trigger_id({"on": event, "line": line["id"]})
+	var crew_mission := _crew_mission(event)
+	if not crew_mission.is_empty():
+		for line in CrewRequests.radio_lines(crew_mission):
+			var id := trigger_id({"on": "mission_started:" + crew_mission, "line": line["id"]})
 			if not CampaignState.is_trigger_played(id):
 				CampaignState.mark_trigger_played(id)
 				dialogs.append(make_dialog(line))

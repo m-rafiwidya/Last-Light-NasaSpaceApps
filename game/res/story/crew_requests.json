@@ -1,7 +1,7 @@
 {
 	"_readme": [
 		"Crew requests (CrewRequests, src/levels/crew_requests.gd): each mission Hana and Mira ask for one thing. Wording is Faiq's to rewrite; conditions are Fahd's.",
-		"radio: the subtitle line played once at mission start (after that mission's mission_started lines). summary: the short line in the console's Mission tab and the report.",
+		"radio: the subtitle line played once after the mission's opening radio lines: its mission_started lines (M2, M3), or, when it has none (M1), the lines on its first objective (m1.workshop_entered: after mira_m1_01), see DialogueTriggers.crew_event. summary: the short line in the console's Mission tab and the report.",
 		"condition.kind: max_slope (value: degrees, steepest slope driven), dock_battery_min (value: charge fraction on docking, no emergency recovery), objective_done (objective), no_recoveries, thermal_pair (sun and shade ground temperatures).",
 		"met / missed: the report's reason. Placeholders: {slope} {limit} {charge} {recoveries} {sun} {shade} {missing}. dock_battery_min also uses missed_recovery and missed_not_docked.",
 		"lines: extra radio lines for that mission's start, after the requests. planning_notes: shown beside a cargo item in the Planning tab."

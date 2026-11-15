@@ -6,6 +6,8 @@ signal step_changed(objective: String, index: int)
 
 const MISSIONS_PATH: String = "res://res/story/missions.json"
 const STUCK_TIME: float = 45.0
+## Only this mission shows each step's text; the others show the objective and the waypoint
+const TUTORIAL_MISSION: String = "m1"
 const LABEL_LIFT: float = 0.35
 const ACTIVE_STATES: Array[String] = ["IN_GAME_PLAYER", "IN_GAME_ROBOT", "MISSION_CONSOLE"]
 const GLOW_SHADER: Shader = preload("res://src/ui/guidance/guidance_glow.gdshader")
@@ -96,6 +98,14 @@ func step_text() -> String:
 		return hint
 	var key: String = step.get("key", "")
 	return ("[%s]  %s" % [InputBindings.action_text(StringName(key)), step["text"]]) if key else step["text"]
+
+
+## What the HUD shows as the step line: every step's text in the tutorial mission; elsewhere only
+## a live target hint while driving and the mission-complete line (a step's text is the stuck hint)
+func hud_step_text() -> String:
+	if CampaignState.current_mission() == TUTORIAL_MISSION or current_step().is_empty():
+		return step_text()
+	return target_hint()
 
 
 ## While driving, the hint source's own words (its get_hint(rover)), or "" for none
