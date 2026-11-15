@@ -16,6 +16,8 @@ extends Node3D
 ## Gravity in this level (m/s^2), applied by SceneLoader as the level loads: Earth's 9.8 (the
 ## project default) unless the level sets its own, e.g. 1.62 on the Moon
 @export var gravity: float = 9.8
+## Loose regolith underfoot: rovers get Robot.ROLLING_RESISTANCE_REGOLITH instead of a hard floor's
+@export var loose_regolith: bool = false
 ## How high the player jumps here (m), whatever the gravity (handed to the Player by
 ## SceneLoader); the Moon caps it at 1.2 m, still floaty: 2.4 s in the air
 @export var jump_height: float = Player.JUMP_HEIGHT

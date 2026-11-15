@@ -48,7 +48,7 @@
 			"id": "grip_wheels",
 			"name": "High-grip wheels (4)",
 			"description": "Traction for the short, rough route to the far rim.",
-			"parts": [{"scene": "res://src/robot/socket/wheel_part.tscn", "count": 4}],
+			"parts": [{"scene": "res://src/robot/socket/wheel_high_grip_part.tscn", "count": 4}],
 			"stock": {"rack": ["Slot07", "Slot08", "Slot09", "Slot10"]}
 		},
 		{

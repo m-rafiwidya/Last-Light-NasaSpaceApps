@@ -12,7 +12,10 @@ const IRIS_ONLINE_FLAG: String = "iris_online"
 const DOCK_OBJECTIVES: Dictionary = {"m1": "m1.kite_docked", "m2": "m2.kite_docked", "m3": "m3.kite_docked"}
 const RECOVERY_DELAY: float = 3.0
 const RECOVERY_MESSAGE: String = "Kite's battery is flat. Emergency recovery: Kite is being returned to the pad."
-const DEFAULT_WH_PER_M: float = 0.05
+# Before 20 m are learned: Kite on flat regolith at 3 m/s with its electronics on (test_rover_mass)
+const DEFAULT_WH_PER_M: float = 0.035
+const MIN_WH_PER_M: float = 0.003
+const LEARN_MIN_SPEED: float = 0.5
 const MIN_LEARN_DISTANCE: float = 20.0
 const RETURN_MARGIN: float = 1.3
 const MAX_STEP_DRAIN: float = 0.05
@@ -194,9 +197,12 @@ func _learn_consumption() -> void:
 	moved.y = 0.0
 	_last_position = rover.global_position
 	var charge: float = rover.battery.charge if rover.battery else -1.0
-	if moved.length() < 5.0:
+	# Learned only while moving, so time stopped doesn't inflate it; the electronics' draw at the
+	# pace driven is included, which is what the drive back costs at the same pace
+	var moving: bool = rover.linear_velocity.length() > LEARN_MIN_SPEED
+	if moving and moved.length() < 5.0:
 		_distance += moved.length()
-	if _last_charge >= 0.0 and charge >= 0.0 and charge < _last_charge and _last_charge - charge < MAX_STEP_DRAIN:
+	if moving and _last_charge >= 0.0 and charge >= 0.0 and charge < _last_charge and _last_charge - charge < MAX_STEP_DRAIN:
 		_energy += _last_charge - charge
 	_last_charge = charge
 
@@ -204,7 +210,7 @@ func _learn_consumption() -> void:
 func wh_per_metre() -> float:
 	if _distance < MIN_LEARN_DISTANCE:
 		return DEFAULT_WH_PER_M
-	return maxf(_energy / _distance, DEFAULT_WH_PER_M * 0.5)
+	return maxf(_energy / _distance, MIN_WH_PER_M)
 
 
 func distance_to_pad() -> float:
@@ -226,6 +232,11 @@ func return_warning() -> bool:
 	return rover.battery.get_charge_fraction() <= return_fraction_needed() + WARN_EXTRA
 
 
+func heater_fitted() -> bool:
+	var socket := rover.find_child("HeaterSocket", true, false) as HotswapSocket
+	return socket != null and socket.part != null and socket.part.get_catalog_id() == "thermal_heater"
+
+
 func thermal_kit_fitted() -> bool:
 	var fitted: Array = []
 	for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
@@ -245,7 +256,9 @@ func cold_zone_at(point: Vector3) -> ColdZone:
 
 
 func _update_cold(delta: float) -> void:
-	if cold_zone_at(rover.global_position) == null or thermal_kit_fitted():
+	var in_cold: bool = cold_zone_at(rover.global_position) != null
+	rover.heater_requested = in_cold and heater_fitted()
+	if not in_cold or thermal_kit_fitted():
 		if cold_time > 0.0:
 			cold_time = 0.0
 			alert = ""

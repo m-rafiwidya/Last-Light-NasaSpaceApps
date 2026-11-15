@@ -104,12 +104,12 @@ var _personnel_material := StandardMaterial3D.new()
 
 # Rack slots (WORKSHOP_KIT.md 6.3): slot -> [part scene, properties, rest rotation]
 const WHEEL: String = "res://src/robot/socket/wheel_part.tscn"
-const HIGH_GRIP: Dictionary = {"grip": 1.3, "catalog_id": "wheel_high_grip", "tint": Color(0.62, 0.34, 0.12, 1.0)}
+const HIGH_GRIP: String = "res://src/robot/socket/wheel_high_grip_part.tscn"
 const SLOTS: Dictionary = {
 	1: [WHEEL, {}, "wheel"], 2: [WHEEL, {}, "wheel"], 3: [WHEEL, {}, "wheel"],
 	4: [WHEEL, {}, "wheel"], 5: [WHEEL, {}, "wheel"], 6: [WHEEL, {}, "wheel"],
-	7: [WHEEL, HIGH_GRIP, "wheel"], 8: [WHEEL, HIGH_GRIP, "wheel"], 9: [WHEEL, HIGH_GRIP, "wheel"],
-	10: [WHEEL, HIGH_GRIP, "wheel"],
+	7: [HIGH_GRIP, {}, "wheel"], 8: [HIGH_GRIP, {}, "wheel"], 9: [HIGH_GRIP, {}, "wheel"],
+	10: [HIGH_GRIP, {}, "wheel"],
 	11: ["res://src/robot/socket/motor_part.tscn", {}, ""],
 	12: ["res://src/robot/socket/battery_part.tscn", {}, "side"],
 	13: ["res://src/robot/socket/mast_head_part.tscn", {}, ""],

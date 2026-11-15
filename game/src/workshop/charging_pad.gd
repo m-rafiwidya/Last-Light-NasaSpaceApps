@@ -94,7 +94,10 @@ func _find_rover() -> Robot:
 func _physics_process(delta: float) -> void:
 	_time += delta
 	var was_docked: bool = is_docked()
+	var previous: Robot = rover
 	rover = _find_rover()
+	if is_instance_valid(previous) and previous != rover:
+		previous.external_power = false
 	var target_xz := Vector2.ZERO
 	var raise := false
 	_fault_time = maxf(_fault_time - delta, 0.0)
@@ -104,6 +107,7 @@ func _physics_process(delta: float) -> void:
 		var offset := offset_of(rover)
 		var stopped: bool = rover.linear_velocity.length() < STOPPED_SPEED
 		var in_zone: bool = offset.length() <= DOCK_ZONE
+		rover.external_power = in_zone
 		if state in [State.CHARGING, State.FULL] and (offset - _contact_xz).length() > DRIFT_LIMIT:
 			_fault_time = FAULT_TIME                # it moved off the probe
 		if not in_zone or not stopped:

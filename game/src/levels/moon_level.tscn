@@ -44,6 +44,7 @@ tonemap_exposure = 1.3875
 [node name="MoonLevel" type="Node3D"]
 script = ExtResource("1_level")
 gravity = 1.62
+loose_regolith = true
 jump_height = 1.2
 ground_friction = 1.6
 earth_direction = Vector3(0.480189, 0.877163, 0.002010)
