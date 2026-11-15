@@ -86,6 +86,12 @@ func fire(event: String) -> DialogSequence:
 			continue
 		CampaignState.mark_trigger_played(id)
 		dialogs.append(make_dialog(lines[trigger["line"]]))
+	if event.begins_with("mission_started:"):
+		for line in CrewRequests.radio_lines(event.trim_prefix("mission_started:")):
+			var id := trigger_id({"on": event, "line": line["id"]})
+			if not CampaignState.is_trigger_played(id):
+				CampaignState.mark_trigger_played(id)
+				dialogs.append(make_dialog(line))
 	if dialogs.is_empty():
 		return null
 	var sequence := DialogSequence.new()

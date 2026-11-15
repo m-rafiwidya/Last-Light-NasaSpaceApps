@@ -121,6 +121,9 @@ func _run() -> void:
 	var order := played.map(func(d: Dialog) -> String: return d.subtitle)
 	var expected := ["mira_m1_01", "mira_m1_02", "hana_m1_01", "mira_m1_03"].map(
 		func(id: String) -> String: return DT.lines[id]["text"])
+	var crew: Array = load("res://src/levels/crew_requests.gd").radio_lines("m1")
+	for i in crew.size():
+		expected.insert(1 + i, crew[i]["text"])
 	_check("[queue] lines play in order, all of them", order == expected, str(order.size()))
 	_check("[queue] never two queued lines at once", max_active == 1, str(max_active))
 

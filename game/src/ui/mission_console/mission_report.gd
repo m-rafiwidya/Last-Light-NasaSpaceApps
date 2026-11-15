@@ -7,8 +7,14 @@ class_name MissionReport
 const ROUTES: Dictionary = {"short": "Short route through Head crater", "long": "Long route round Head"}
 const CAUSES: Dictionary = {"battery": "battery ran flat", "cold": "electronics got too cold", "stuck": "Kite was stuck"}
 const COUNTS: Array[String] = ["No", "One", "Two", "Three", "Four", "Five"]
-# Item G wires the real request; until then the slot shows this placeholder
-const CREW_REQUEST_PLACEHOLDER: String = "Request from Hana: (crew request, item G) met / missed"
+
+
+## "Hana: Collect the near-site sample. Met: the near-site sample came home with Kite."
+static func crew_lines(mission: String, stats: Dictionary) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for result in CrewRequests.results(mission, stats):
+		lines.append("%s: %s. %s: %s" % [result["speaker"], result["summary"], "Met" if result["met"] else "Missed", result["reason"]])
+	return lines
 
 
 static func sections(mission: String) -> Array:
@@ -19,7 +25,7 @@ static func sections(mission: String) -> Array:
 		{"title": "Rover", "why": _rover_why(mission, stats), "body": _payload(stats)},
 		{"title": "Resources", "why": _resources_why(mission, stats), "body": _battery_line(stats)},
 		{"title": "Assistance", "why": _assistance_why(stats), "body": "Stuck hints shown: %d." % int(stats.get("stuck_hints", 0))},
-		{"title": "Crew request", "why": CREW_REQUEST_PLACEHOLDER},
+		{"title": "Crew requests", "why": "\n".join(crew_lines(mission, stats))},
 	]
 	var line := comparison(stats.get("previous", {}))
 	if line:

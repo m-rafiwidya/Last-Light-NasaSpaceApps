@@ -338,6 +338,7 @@ func _close_stats(mission: String) -> void:
 	var optional: Array = _missions[mission]["optional_objectives"]
 	stats["optional_done"] = optional.filter(func(o: String) -> bool: return _done_objectives.has(o))
 	stats["optional_skipped"] = optional.filter(func(o: String) -> bool: return not _done_objectives.has(o))
+	stats["crew_requests"] = CrewRequests.evaluate(mission, stats)
 	MissionRecords.store(mission, campaign_id, stats)
 
 

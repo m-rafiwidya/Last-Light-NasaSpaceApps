@@ -211,8 +211,9 @@ func _on_docked(docked_rover: Robot) -> void:
 	if docked_rover != rover or _returned_by_recovery:
 		return
 	var objective: String = DOCK_OBJECTIVES.get(CampaignState.current_mission(), "")
-	if objective:
-		try_complete(objective)
+	var charge: float = rover.battery.get_charge_fraction() if rover.battery else 0.0
+	if objective and try_complete(objective):
+		CampaignState.mission_stats(CampaignState.current_mission())["dock_battery"] = charge
 
 
 func _physics_process(delta: float) -> void:

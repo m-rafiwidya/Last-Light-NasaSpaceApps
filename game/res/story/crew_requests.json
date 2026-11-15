@@ -1,0 +1,90 @@
+{
+	"_readme": [
+		"Crew requests (CrewRequests, src/levels/crew_requests.gd): each mission Hana and Mira ask for one thing. Wording is Faiq's to rewrite; conditions are Fahd's.",
+		"radio: the subtitle line played once at mission start (after that mission's mission_started lines). summary: the short line in the console's Mission tab and the report.",
+		"condition.kind: max_slope (value: degrees, steepest slope driven), dock_battery_min (value: charge fraction on docking, no emergency recovery), objective_done (objective), no_recoveries, thermal_pair (sun and shade ground temperatures).",
+		"met / missed: the report's reason. Placeholders: {slope} {limit} {charge} {recoveries} {sun} {shade} {missing}. dock_battery_min also uses missed_recovery and missed_not_docked.",
+		"lines: extra radio lines for that mission's start, after the requests. planning_notes: shown beside a cargo item in the Planning tab."
+	],
+	"missions": {
+		"m1": {
+			"requests": [
+				{
+					"id": "m1.hana",
+					"speaker": "Hana",
+					"radio": "Easy on the slopes out there. Kite's mast camera hasn't been aligned since Evan left, and I want a clean look at that panel.",
+					"summary": "Keep the drive gentle: no slope over 15°",
+					"condition": {"kind": "max_slope", "value": 15},
+					"met": "Steepest slope {slope}°, within {limit}°.",
+					"missed": "Steepest slope {slope}°, over the {limit}° limit."
+				},
+				{
+					"id": "m1.mira",
+					"speaker": "Mira",
+					"radio": "One thing from me: bring Kite back with at least half its battery. I want to know what margin we really have.",
+					"summary": "Dock Kite with at least 50% battery",
+					"condition": {"kind": "dock_battery_min", "value": 0.5},
+					"met": "Docked with {charge}% left.",
+					"missed": "Docked with {charge}%, under {limit}%.",
+					"missed_recovery": "Kite came home on an emergency recovery.",
+					"missed_not_docked": "Kite never docked on its own."
+				}
+			]
+		},
+		"m2": {
+			"requests": [
+				{
+					"id": "m2.hana",
+					"speaker": "Hana",
+					"radio": "If there's room on the manifest, take the sampling kit. Nobody has sampled the patch by IRIS yet.",
+					"summary": "Collect the near-site sample",
+					"condition": {"kind": "objective_done", "objective": "m2.near_sample_collected"},
+					"met": "The near-site sample came home with Kite.",
+					"missed": "No near-site sample this time."
+				},
+				{
+					"id": "m2.mira",
+					"speaker": "Mira",
+					"radio": "Twelve kilograms changes how Kite handles. Take it steady: no emergency recoveries this mission.",
+					"summary": "No emergency recoveries",
+					"condition": {"kind": "no_recoveries"},
+					"met": "Kite came home on its own.",
+					"missed": "{recoveries} during the mission."
+				}
+			],
+			"lines": [
+				{
+					"speaker": "Hana",
+					"text": "And for M3: I'll want ground temperatures, sun and shade. The thermal turret is worth the mass if the lander has room."
+				}
+			]
+		},
+		"m3": {
+			"requests": [
+				{
+					"id": "m3.hana",
+					"speaker": "Hana",
+					"radio": "While you're out at the rim, take two ground temperatures with the thermal turret: one in sunlight, one in shade.",
+					"summary": "Take both ground temperatures, sun and shade",
+					"condition": {"kind": "thermal_pair"},
+					"met": "Sun {sun}, shade {shade}.",
+					"missed": "Not measured: {missing}."
+				},
+				{
+					"id": "m3.mira",
+					"speaker": "Mira",
+					"radio": "The far rim is the longest drive yet. Dock with at least a quarter of the battery left, please.",
+					"summary": "Dock Kite with at least 25% battery",
+					"condition": {"kind": "dock_battery_min", "value": 0.25},
+					"met": "Docked with {charge}% left.",
+					"missed": "Docked with {charge}%, under {limit}%.",
+					"missed_recovery": "Kite came home on an emergency recovery.",
+					"missed_not_docked": "Kite never docked on its own."
+				}
+			]
+		}
+	},
+	"planning_notes": {
+		"thermal_turret": "Hana: needed for M3 ground temperatures"
+	}
+}
