@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: M2's required near sample (NearSampleSite, plan item S).
 ##   1. Setup: the level's NearSampleSite faces as IRIS does (it stands clear of IRIS's shadow, on lit ground), the site joins its group, highlights its patch and finds anchor_sample.
-##   2. Mission: in m1 nothing happens, even parked at the patch with S-1 on the cargo mount.
+##   2. Mission: in m1 nothing happens, even parked at the patch with S-1 in the storage tray.
 ##   3. Container: in m2 without S-1 the hint asks for it and nothing happens.
 ##   4. Position: 6 m out the hint says to come closer.
 ##   5. Collect: at park_sample, stopped, E while driving fills S-1 (full model) and completes
@@ -88,20 +88,26 @@ func _run() -> void:
 	# 2. Mission
 	container = load("res://src/robot/socket/sample_container_part.tscn").instantiate()
 	level.add_child(container)
-	container.global_position = cargo.global_position
-	cargo.mount(container)
+	var tray: StorageTray = rover.get_node("StorageBox")
+	container.global_position = tray.drop_point()
+	await _ticks(0.5)
+	tray.set_secured(true)  # _park teleports Kite; a loose jar would stay behind
 	await _park(park)
-	_check("mission: S-1 is on the cargo mount", cargo.part == container)
+	_check("mission: S-1 is in the storage tray", tray.holds(container))
 	_check("mission: refused in m1", CS.current_mission() == "m1" and not site.try_collect(rover)
 		and site.get_hint(rover) == "")
 
 	# 3. Container
 	CS.start_mission("m2")
-	cargo.unmount()
+	tray.set_secured(false)
+	container.global_position += Vector3(0.0, 0.0, 3.0)
+	await _ticks(0.3)
 	_check("container: without S-1 the hint asks for it", site.get_hint(rover).contains("S-1"), site.get_hint(rover))
 	_check("container: and nothing happens", not site.try_collect(rover))
-	cargo.mount(container)
-	await _ticks(0.2)
+	container.linear_velocity = Vector3.ZERO
+	container.global_position = tray.drop_point()
+	await _ticks(0.5)
+	tray.set_secured(true)
 
 	# 4. Position
 	await _park(park + site.global_basis.x * -6.0)
@@ -131,6 +137,17 @@ func _run() -> void:
 	_check("collect: S-1 shows the full model", kit != null
 		and kit.scene_file_path == "res://res/models/rover_kit/sample_container_full.glb", kit.scene_file_path if kit else "none")
 	_check("collect: a second try does nothing", not site.try_collect(rover) and site.get_hint(rover) == "")
+
+	# 6. Home: M2's dock waits for S-1 (tray, socket or workshop); a spilled jar out on the ground blocks it
+	var director: Node = level.get_node("MissionDirector")
+	(rover.get_node("StorageBox") as StorageTray).set_secured(false)
+	container.reparent(level)
+	container.global_position = park + Vector3(0.0, 1.0, 6.0)
+	await _ticks(0.5)
+	_check("home: S-1 spilled out in the field is not home", not director.sample_home())
+	container.global_position = director.pad.global_position + Vector3.UP
+	await _ticks(0.5)
+	_check("home: S-1 inside the workshop is home", director.sample_home())
 
 	print("RESULT test_near_sample %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)

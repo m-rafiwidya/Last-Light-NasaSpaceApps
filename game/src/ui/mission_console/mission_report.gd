@@ -8,6 +8,8 @@ const ROUTES: Dictionary = {"short": "Short route through Head crater", "long": 
 const CAUSES: Dictionary = {"battery": "battery ran flat", "cold": "electronics got too cold", "stuck": "Kite was stuck",
 	"slip": "Kite slipped on loose ground", "oxygen": "suit oxygen ran out"}
 const COUNTS: Array[String] = ["No", "One", "Two", "Three", "Four", "Five"]
+const LIGHT_PACK_WH: float = 40.0
+const LIGHT_PACK_WHY: String = "Kite carried only the 40 Wh pack: the 70 Wh battery wasn't in the M2 cargo order."
 
 
 ## "Hana: Collect the near-site sample. Met: the near-site sample came home with Kite."
@@ -110,6 +112,14 @@ static func _payload(stats: Dictionary) -> String:
 
 
 static func _resources_why(mission: String, stats: Dictionary) -> String:
+	var why := _resources_route_why(mission, stats)
+	if mission == "m3" and float(stats.get("min_capacity_wh", INF)) <= LIGHT_PACK_WH \
+			and (stats.get("battery_resupplied", false) or not CargoPlan.is_ordered(MissionDirector.BATTERY_ITEM)):
+		return LIGHT_PACK_WHY + "\n" + why
+	return why
+
+
+static func _resources_route_why(mission: String, stats: Dictionary) -> String:
 	var route := route_of(mission, stats)
 	var prefix: String = ROUTES[route] + ": " if route else ""
 	var heater: float = float(stats.get("heater_s", 0.0))

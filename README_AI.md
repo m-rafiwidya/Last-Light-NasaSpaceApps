@@ -65,7 +65,7 @@ Use explicit units: metres, kg, seconds, W and Wh. Charge integration includes `
 | T06 | Consequential cargo flight | Service/manifest checks; declared flight assumptions; arrival adds stock once; skip cannot bypass validation |
 | T07 | Dialogue/audio and finish | Actual-state triggers, subtitles, no overlapping voices or blocked driving |
 
-Owners: Goriorio owns rover/control/mission integration; Fahd owns terrain/assets/imports; Faiq owns story/audio content; Rafi owns objective clarity, playtests and demo. Coordinate edits to shared scenes/controllers through the owner. Adapt ticket order only for a real dependency.
+Owners: the former teammate owns rover/control/mission integration; Fahd owns terrain/assets/imports; Faiq owns story/audio content; Rafi owns objective clarity, playtests and demo. Coordinate edits to shared scenes/controllers through the owner. Adapt ticket order only for a real dependency.
 
 ## First prompt to paste into your coding assistant
 

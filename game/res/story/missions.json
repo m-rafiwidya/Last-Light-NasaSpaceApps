@@ -425,6 +425,19 @@
 						}
 					},
 					{
+						"text": "The sample fell out: drive to it and lift it back into the tray with the claw (R, then click)",
+						"label": "Spilled sample",
+						"target": "part:sample_container",
+						"waypoint": true,
+						"done_when": {
+							"state": [
+								"IN_GAME_ROBOT"
+							],
+							"near": "part:sample_container",
+							"distance": 2.5
+						}
+					},
+					{
 						"text": "Drive back onto the charging pad and stop",
 						"label": "Charging pad",
 						"target": "path:Workshop/Parts/ws_pad_01",
@@ -477,7 +490,7 @@
 				],
 				"m2.near_sample_collected": [
 					{
-						"text": "Take the near sample by IRIS with sample container S-1 on Kite",
+						"text": "Take the near sample by IRIS with sample container S-1 in Kite's storage tray",
 						"label": "Near sample site",
 						"target": "group:near_sample_site",
 						"key": "interact_use",

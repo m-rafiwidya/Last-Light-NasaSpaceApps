@@ -20,7 +20,10 @@ TANDBORSTE | Made for the NASA Space Apps Challenge 2026
 FAHD MUHAMMAD ZAHID | Institut Teknologi Bandung · Indonesia
 MUHAMMAD RAFI WIDYATAMA | Universiti Malaya · Malaysia
 FAIQ HAIDAR DZIKRULLAH SATRIAWAN | Monash University · Australia
-RAYHAN SATRIO ADI NURDJAMAN | National University of Singapore · Singapore
+
+### ORIGINAL PROTOTYPE
+
+RAYHAN SATRIO ADI NURDJAMAN | Former team member (first-person base, October 2026)
 
 ### REAL DATA
 
@@ -72,6 +75,9 @@ by Anthropic, used through Claude Code
 
 Code, the Blender scripts that build the
 3D models, and the music composition
+
+Voices: ElevenLabs text to speech,
+reading lines written by the team
 
 Images: Claude Code, through Blender
 and render scripts

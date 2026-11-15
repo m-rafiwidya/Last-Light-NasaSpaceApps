@@ -27,18 +27,22 @@ const LOADOUTS: Dictionary = {
 	"light": {"battery": "battery_light_part", "wheels": "", "thermal": false},
 	"standard": {"battery": "battery_part", "wheels": "", "thermal": false},
 	"crater": {"battery": "battery_part", "wheels": "wheel_high_grip_part", "thermal": true},
+	"night": {"battery": "battery_part", "wheels": "", "thermal": true},
 }
 const SERVICES: Array[String] = ["courier", "freighter"]
 const SERVICE_PREFIX: String = "cargo.service."
 ## "route loadout service" -> the plan's target ending. Near nightfall both routes are partly in
-## shade, so only the build with the thermal kit gets home.
+## shade, so only builds with the thermal kit get home, and the 70 Wh battery is tight: the grip
+## wheels' weight and drag cost too much for the long route then, so it takes standard wheels.
 const EXPECTED: Dictionary = {
 	"short light courier": "fail", "long light courier": "fail",
 	"short standard courier": "fail", "long standard courier": "home",
 	"short crater courier": "home", "long crater courier": "home",
+	"short night courier": "fail", "long night courier": "home",
 	"short light freighter": "fail", "long light freighter": "fail",
 	"short standard freighter": "fail", "long standard freighter": "fail",
-	"short crater freighter": "home", "long crater freighter": "home",
+	"short crater freighter": "home", "long crater freighter": "fail",
+	"short night freighter": "fail", "long night freighter": "home",
 }
 
 var GS: Node
@@ -231,6 +235,28 @@ func _run() -> void:
 	await physics_frame
 
 	var args: PackedStringArray = OS.get_cmdline_user_args()
+	# The console's forecast must call every case the way the drives end (fast: no driving)
+	var console: Node = get_first_node_in_group(&"mission_console")
+	for sv in SERVICES:
+		_set_service(sv)
+		for l in LOADOUTS:
+			_fit(LOADOUTS[l])
+			if not LOADOUTS[l]["wheels"]:
+				for socket in rover.find_children("*", "HotswapSocket", true, false):
+					if socket.part and socket.part.part_type == 0:
+						_swap(socket, "wheel_part")
+			for i in 48:
+				await physics_frame
+			_battery().charge = _battery().capacity
+			for r in ["short", "long"]:
+				var key: String = "%s %s %s" % [r, l, sv]
+				var ready: bool = (console.route_needs(r, sv) as Array).all(func(n: Dictionary) -> bool: return console._has_need(n, rover))
+				_check("forecast %s" % key, ready == (EXPECTED[key] == "home"), "forecast %s, drive target %s, range %.0f m" % [
+					"ready" if ready else "not ready", EXPECTED[key], rover.range_estimate()])
+	if args.size() >= 1 and args[0] == "forecast":
+		print("RESULT test_m3_routes %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
+		quit(1 if failures else 0)
+		return
 	var cases: Array = []
 	if args.size() >= 2:
 		cases.append([args[0], args[1], args[2] if args.size() >= 3 else "courier"])

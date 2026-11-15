@@ -54,14 +54,18 @@ func _run() -> void:
 	for section in sections:
 		titles.append(section["title"])
 	_check("sections in the board's order (closing note untitled)", titles == PackedStringArray(
-		["A GAME BY", "TEAM", "REAL DATA", "NASA SPACE APPS CHALLENGE RESOURCES", "BUILT WITH", "AI TOOLS", "TYPE",
+		["A GAME BY", "TEAM", "ORIGINAL PROTOTYPE", "REAL DATA", "NASA SPACE APPS CHALLENGE RESOURCES", "BUILT WITH", "AI TOOLS", "TYPE",
 		"MUSIC AND SOUND", "SPECIAL THANKS", "", "GODOT ENGINE LICENCE"]), str(titles))
 	var by_title: Dictionary = {}
 	for section in sections:
 		by_title[section["title"]] = section["entries"]
 	var team: Array = by_title.get("TEAM", [])
-	_check("TEAM: four name rows with university and country", team.size() == 4 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
-		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[3]["name"] == "RAYHAN SATRIO ADI NURDJAMAN")
+	_check("TEAM: three name rows with university and country", team.size() == 3 and team[0]["name"] == "FAHD MUHAMMAD ZAHID"
+		and team[0]["sub"] == "Institut Teknologi Bandung · Indonesia" and team[2]["name"] == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN")
+	var prototype: Array = by_title.get("ORIGINAL PROTOTYPE", [])
+	_check("ORIGINAL PROTOTYPE: one name row, not in TEAM", prototype.size() == 1
+		and prototype[0].get("name", "") == "RAYHAN SATRIO ADI NURDJAMAN" and prototype[0].get("sub", "") == "Former team member (first-person base, October 2026)"
+		and not team.any(func(e: Dictionary) -> bool: return e.get("name", "") == "RAYHAN SATRIO ADI NURDJAMAN"))
 	var data: Array = by_title.get("REAL DATA", [])
 	_check("REAL DATA: six sources, lines kept", data.size() == 6 and "\n" in data[2]["text"]
 		and (data[2]["text"] as String).contains("ESA/Gaia/DPAC"))
@@ -128,7 +132,7 @@ func _run() -> void:
 		and column.size.y > screen_height, "%.0f of %.0f" % [column.size.y, screen_height])
 	var widest: float = 0.0
 	for label: Label in credits.get_node("%Roll").find_children("*", "Label", true, false):
-		if label.text == "RAYHAN SATRIO ADI NURDJAMAN" or label.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN":
+		if label.text == "FAIQ HAIDAR DZIKRULLAH SATRIAWAN":
 			widest = maxf(widest, label.get_minimum_size().x)
 	_check("the longest team names fit on the screen", widest > 0.0 and widest < credits.get_node("%Root").size.x - 80.0,
 		"%.0f of %.0f" % [widest, credits.get_node("%Root").size.x])

@@ -4,8 +4,10 @@ extends Node3D
 
 ## M2's required near sample (plan item S): the reference patch by IRIS (its own sample_site_near.glb,
 ## in IRIS's frame, so this scene goes where IRIS is, replacing the level's SampleSiteNear). Kite brings
-## the empty sample container S-1 on its cargo mount (or in its storage tray), stops at the patch and presses E (interact_use):
+## the empty sample container S-1 loose in its storage tray, stops at the patch and presses E (interact_use):
 ## the container fills (its model swaps to the full one) and m2.near_sample_collected completes.
+## The jar rides loose, so careless driving can throw it out; MissionDirector won't count M2's dock
+## until S-1 is home again (in the tray or the workshop), and the manual claw picks it back up.
 ## In a campaign only during m2; outside a campaign any time.
 ##
 ## Simple version, no scoop animation: the container on Kite is the whole requirement.
@@ -53,18 +55,12 @@ func container_name() -> String:
 	return name.substr(0, 1).to_lower() + name.substr(1)
 
 
-## The empty container on `rover`'s cargo mount or in its storage tray, or null
+## The empty container loose in `rover`'s storage tray, or null
 func _container(rover: Robot) -> HotswapPart:
-	if rover == null:
+	var tray := rover.get_node_or_null("StorageBox") as StorageTray if rover else null
+	if tray == null:
 		return null
-	var parts: Array[HotswapPart] = []
-	var cargo := rover.get_node_or_null("CargoSocket") as HotswapSocket
-	if cargo and cargo.part:
-		parts.append(cargo.part)
-	var tray := rover.get_node_or_null("StorageBox") as StorageTray
-	if tray:
-		parts.append_array(tray.items())
-	for part in parts:
+	for part in tray.items():
 		if part.get_catalog_id() == container_id and not part.has_meta(&"sample"):
 			return part
 	return null
@@ -87,7 +83,7 @@ func get_hint(rover: Robot) -> String:
 	if rover == null or not campaign_allows() or site_distance(rover) > HINT_RANGE:
 		return ""
 	if _container(rover) == null:
-		return "%s: bring the empty %s (cargo mount or storage tray)" % [site_name, container_name()]
+		return "%s: bring the empty %s in Kite's storage tray" % [site_name, container_name()]
 	if site_distance(rover) > SAMPLE_RANGE:
 		return "%s: drive %.1f m closer" % [site_name, site_distance(rover) - SAMPLE_RANGE]
 	if rover.linear_velocity.length() > STOPPED_SPEED:
@@ -129,7 +125,7 @@ func _cue(rover: Robot) -> void:
 	if key == "ready":
 		line.subtitle = "%s. Stop by the patch and press %s to take a sample." % [site_name, InputBindings.action_text(&"interact_use", "E")]
 	else:
-		line.subtitle = "%s. Bring %s, on the cargo mount or in the storage tray, to take a sample here." % [site_name, container_name()]
+		line.subtitle = "%s. Bring %s in the storage tray to take a sample here." % [site_name, container_name()]
 	line.min_duration = 5.0
 	line.repeat_id = "kite_%s_%s" % [group, key]
 	DialogServer.play_dialog(line)

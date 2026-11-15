@@ -528,8 +528,6 @@ func _card_lines() -> PackedStringArray:
 		lines.append("[color=%s][b]%s[/b]  limit %.1f kg, arrives day %d[/color]" % [_hex(&"text" if picked else &"text_2"),
 			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
-		if entry.get("order_note", ""):
-			lines.append("    [b]%s[/b]" % entry["order_note"])
 		if CargoPlan.is_late(id):
 			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall and the north loop are in shade, so the thermal kit is needed on either route."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
@@ -544,6 +542,9 @@ func _card_lines() -> PackedStringArray:
 	var problem := confirm_blocked()
 	lines.append("")
 	lines.append("[color=%s]%s[/color]" % [_hex(&"warn"), problem] if problem else "[color=%s][b]Manifest valid.[/b][/color]" % _hex(&"text"))
+	if _manifest.has(MissionDirector.BATTERY_ITEM) and not _manifest[MissionDirector.BATTERY_ITEM]:
+		lines.append("[color=%s]%s: without it Kite can't reach the far rim.[/color]" % [_hex(&"warn"),
+			CargoPlan.item(MissionDirector.BATTERY_ITEM).get("name", "Battery")])
 	lines.append("[color=%s]Story days are compressed. Mass limits, arrival days and sun angles are game assumptions.[/color]" % _hex(&"dim"))
 	return lines
 
@@ -624,9 +625,12 @@ func route_needs(route: String, service_id: String) -> Array:
 		needs.append({"hazard": "Cold shade (%s)" % ", ".join(cold), "part": "thermal cover and heater", "kind": "thermal"})
 	var wh: float = RouteMarkers.energy_wh(route, grip_needed)
 	var metres: float = _route_metres(route) * RouteMarkers.SAFETY_MARGIN
+	var heater_wh: float = float(RouteMarkers.HEATER_WH.get(route, 0.0)) if cold else 0.0
 	var rover: Robot = _director().rover if _director() else null
 	var part: String = "a range of %d m" % roundi(metres) if _has_range(rover) else "about %d Wh" % roundi(wh)
-	needs.append({"hazard": "Distance", "part": part, "kind": "energy", "wh": wh, "metres": metres})
+	if heater_wh > 0.0 and _has_range(rover):
+		part += " plus %d Wh for the heater in shade" % roundi(heater_wh)
+	needs.append({"hazard": "Distance", "part": part, "kind": "energy", "wh": wh, "metres": metres, "heater_wh": heater_wh})
 	return needs
 
 
@@ -645,7 +649,9 @@ func _has_need(need: Dictionary, rover: Robot) -> bool:
 			return director.thermal_kit_fitted()
 		"energy":
 			if _has_range(rover):
-				return float(rover.call("range_estimate")) >= float(need["metres"])
+				# The heater's share comes off the range first: what is left must still cover the distance
+				var heater_m: float = float(need.get("heater_wh", 0.0)) / rover.planned_wh_per_metre()
+				return float(rover.call("range_estimate")) - heater_m >= float(need["metres"])
 			return rover.battery != null and rover.battery.capacity >= float(need["wh"])
 	return true
 

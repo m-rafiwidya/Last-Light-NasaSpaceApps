@@ -30,6 +30,13 @@ holders and licence of every third-party component in the engine).
 - **Sound effects:** Claude Code's synthesis scripts (`game/music/`), plus the Kenney CC0 samples and
   the GeneralUser GS soundfont (see Sound and music above), which `game/music/samples/SOURCES.md`
   lists.
+- **Voices:** ElevenLabs text to speech (`game/res/audio/voice/`), reading lines the team wrote.
+
+## Original prototype
+
+ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base, October 2026). His early commits
+in this repository are the original first-person prototype the game was built on; he left the team
+before judging.
 
 ## Title logo
 

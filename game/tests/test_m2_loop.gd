@@ -377,7 +377,7 @@ func _run() -> void:
 	_check("[install] the module is seated in IRIS's bay, once", cradle.occupant == module and _modules(level).size() == 1
 		and _modules(workshop).is_empty())
 
-	# 6b. The near sample: S-1 from the bench on the cargo mount, E at the site
+	# 6b. The near sample: S-1 from the bench into the storage tray, E at the site
 	var site: Node3D = get_first_node_in_group(&"near_sample_site")
 	await _ticks(0.3)
 	_check("[sample] next: the near sample, a waypoint to its site", CS.current_objective() == "m2.near_sample_collected"
@@ -391,8 +391,10 @@ func _run() -> void:
 	if s1:
 		s1.get_parent().remove_child(s1)
 		level.add_child(s1)
-		s1.global_position = cargo_socket.global_position
-		cargo_socket.mount(s1)
+		s1.global_position = rover.get_node("StorageBox").drop_point()
+		await _ticks(0.5)
+		# The jar rides loose; teleporting Kite below would leave it behind, so hold it as careful driving does
+		rover.get_node("StorageBox").set_secured(true)
 	var park: Vector3 = site.find_child("park_sample", true, false).global_position
 	await _place(park, -site.global_basis.z)
 	rover.linear_velocity = Vector3.ZERO

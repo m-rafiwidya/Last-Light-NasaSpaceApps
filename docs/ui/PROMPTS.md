@@ -38,7 +38,7 @@ Every prompt follows the handoff rules in `README_AI.md`: inspect what exists fi
 
 ## 8. In-game HUD
 
-> Coordinate with Goriorio first: the HUD reads mission state. Read the HUD section of docs/ui/UI_SPEC.md and docs/ui/boards/HUD.dc.html, and game/README_GAMEPLAY.md for the real objectives. Inspect hud.gd and robot_hud.gd and the signals the mission/rover systems already emit. Restyle and extend the HUD: objectives panel top-right driven by the real active objective, compass strip with target/home markers, battery bar with range estimate and return warning, radio subtitle line with speaker, context prompts with key chips from the InputMap, first-time control hints instead of the permanent control lists, and hide the friction-circle debug panel behind a debug toggle. Keep each camera view's existing overlay. Don't change mission logic.
+> Coordinate with the former teammate first: the HUD reads mission state. Read the HUD section of docs/ui/UI_SPEC.md and docs/ui/boards/HUD.dc.html, and game/README_GAMEPLAY.md for the real objectives. Inspect hud.gd and robot_hud.gd and the signals the mission/rover systems already emit. Restyle and extend the HUD: objectives panel top-right driven by the real active objective, compass strip with target/home markers, battery bar with range estimate and return warning, radio subtitle line with speaker, context prompts with key chips from the InputMap, first-time control hints instead of the permanent control lists, and hide the friction-circle debug panel behind a debug toggle. Keep each camera view's existing overlay. Don't change mission logic.
 
 ## 9. Mission console
 

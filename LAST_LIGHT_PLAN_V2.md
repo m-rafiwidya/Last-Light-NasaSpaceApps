@@ -32,8 +32,8 @@ Paste this section into each AI session before its task.
 |---|---|
 | **Fahd** | `moon_level.tscn`, `missions.json`, `cargo.json`, workshop, console, reports, cutscenes, saves, the lander |
 | **Rafi** | `src/field/`, `src/iris/`, field and IRIS tests |
-| **Goriorio (Rayhan)** | the rover, its parts and sockets (`src/robot/`), `lines.json`, `dialogue_triggers.json` |
-| **Rafi, for G1 only** | battery and wheel values, `Robot.ground_traction` and `range_estimate()` in `src/robot/` (taken over from Goriorio, who is less available) |
+| **Former teammate** | the rover, its parts and sockets (`src/robot/`), `lines.json`, `dialogue_triggers.json` |
+| **Rafi, for G1 only** | battery and wheel values, `Robot.ground_traction` and `range_estimate()` in `src/robot/` (taken over from the former teammate, who is less available) |
 | **Faiq** | story text, voices, narrator, report wording |
 
 ---
@@ -165,7 +165,7 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 | F0b | Fahd | Hide skip-flight in M1 Planning | button absent in M1 |
 | F0c | Fahd | Guidance shows objective + waypoint; step text only when stuck | no "open the console" text unless stuck |
 | F0d | Fahd | Opening: music under title and space shots, louder descent rumble, touchdown thump, hatch sound (`cutscene_sound.gd`); add narrator lines | opening is never silent for long |
-| G0 | Goriorio | Add `.mp3` audio paths to every line in `lines.json` | every line has an audio path |
+| G0 | Former teammate | Add `.mp3` audio paths to every line in `lines.json` | every line has an audio path |
 | Q0 | Faiq | Record all voices and the narrator from the voice sheet | files in `game/res/audio/voice/` |
 
 ### Phase 1: the core tension (parallel)
@@ -181,8 +181,8 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 
 | ID | Owner | Task | Depends on |
 |---|---|---|---|
-| G2 | Goriorio | `StorageBox` socket (2–3 slots) on Kite | none |
-| G3 | Goriorio | Claw: the assisted pick first (reuse `cargo_delivery.gd`), then manual grab and release on the arm latch on top | G2 for release into the box |
+| G2 | Former teammate | `StorageBox` socket (2–3 slots) on Kite | none |
+| G3 | Former teammate | Claw: the assisted pick first (reuse `cargo_delivery.gd`), then manual grab and release on the arm latch on top | G2 for release into the box |
 | R2 | Rafi | Mark loose parts as `claw_target`; make the cargo crate work at the landing zone | G3 interface |
 | R3 | Rafi | Far sample scene (reuse `near_sample_site.gd` with the objective and container as settings) → `m3.far_sample_collected`, **optional**, a fuller report when done | G2 |
 | R4 | Rafi | Thermal pair near the logger → `m3.thermal_pair_recorded`, **required** | **done** (pushed); Fahd adds the ID to `missions.json` |
@@ -195,8 +195,8 @@ Each task has one owner, so up to three people (with their AIs) work in parallel
 
 | ID | Owner | Task |
 |---|---|---|
-| G4 | Goriorio | Radio shadow behind the crater rim (one ray to the base); high-gain antenna keeps the link |
-| G5 | Goriorio | Drop rule for carried or loose parts past a tilt or bump limit |
+| G4 | Former teammate | Radio shadow behind the crater rim (one ray to the base); high-gain antenna keeps the link |
+| G5 | Former teammate | Drop rule for carried or loose parts past a tilt or bump limit |
 | F4 | Fahd | Optional survey photos of landmarks (existing scan targets) |
 
 **Merge order:** phase 0 any time. In phase 2, G2 then G3 first, because the others plug into them. `missions.json` changes only through Fahd.
@@ -209,7 +209,7 @@ Start every AI session with: *"Read `LAST_LIGHT_PLAN_V2.md` (sections 1, 3 and 4
 
 - **Fahd's AI:** tasks F0a, F0b, F0c, F0d, then F1, then F2 and F3 when their dependencies land.
 - **Rafi's AI:** G1, then R1b, R3, R2, R5 (R1 and R4 are done).
-- **Goriorio's AI:** G0, then G2, G3, then G4 and G5. If Goriorio stays unavailable, Rafi picks up G2 and G3.
+- **Former teammate's AI:** G0, then G2, G3, then G4 and G5. If the former teammate stays unavailable, Rafi picks up G2 and G3.
 - **Faiq:** Q0 now, Q2 after the objectives are agreed.
 
 ---

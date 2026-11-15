@@ -50,6 +50,8 @@ func _physics_process(delta: float) -> void:
 		_add(stats, "electronics_wh", rover.electronics_power * delta / 3600.0)
 		_add(stats, "heater_wh", rover.heater_power * delta / 3600.0)
 		stats["capacity_wh"] = rover.battery.capacity
+		if moving:
+			stats["min_capacity_wh"] = minf(float(stats.get("min_capacity_wh", INF)), rover.battery.capacity)
 		stats["min_battery"] = minf(float(stats.get("min_battery", 1.0)), rover.battery.get_charge_fraction())
 	if director.cold_zone_at(rover.global_position):
 		_add(stats, "cold_s", delta)
