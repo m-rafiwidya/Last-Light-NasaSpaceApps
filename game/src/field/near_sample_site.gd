@@ -55,12 +55,19 @@ func container_name() -> String:
 	return name.substr(0, 1).to_lower() + name.substr(1)
 
 
-## The empty container loose in `rover`'s storage tray, or null
+## The empty container on `rover`'s cargo mount or loose in its storage tray, or null (the tray is the
+## risky choice: a loose jar can spill on the way home)
 func _container(rover: Robot) -> HotswapPart:
-	var tray := rover.get_node_or_null("StorageBox") as StorageTray if rover else null
-	if tray == null:
+	if rover == null:
 		return null
-	for part in tray.items():
+	var parts: Array[HotswapPart] = []
+	var cargo := rover.get_node_or_null("CargoSocket") as HotswapSocket
+	if cargo and cargo.part:
+		parts.append(cargo.part)
+	var tray := rover.get_node_or_null("StorageBox") as StorageTray
+	if tray:
+		parts.append_array(tray.items())
+	for part in parts:
 		if part.get_catalog_id() == container_id and not part.has_meta(&"sample"):
 			return part
 	return null
@@ -83,7 +90,7 @@ func get_hint(rover: Robot) -> String:
 	if rover == null or not campaign_allows() or site_distance(rover) > HINT_RANGE:
 		return ""
 	if _container(rover) == null:
-		return "%s: bring the empty %s in Kite's storage tray" % [site_name, container_name()]
+		return "%s: bring the empty %s (cargo mount or storage tray)" % [site_name, container_name()]
 	if site_distance(rover) > SAMPLE_RANGE:
 		return "%s: drive %.1f m closer" % [site_name, site_distance(rover) - SAMPLE_RANGE]
 	if rover.linear_velocity.length() > STOPPED_SPEED:
@@ -125,7 +132,7 @@ func _cue(rover: Robot) -> void:
 	if key == "ready":
 		line.subtitle = "%s. Stop by the patch and press %s to take a sample." % [site_name, InputBindings.action_text(&"interact_use", "E")]
 	else:
-		line.subtitle = "%s. Bring %s in the storage tray to take a sample here." % [site_name, container_name()]
+		line.subtitle = "%s. Bring %s, on the cargo mount or in the storage tray, to take a sample here." % [site_name, container_name()]
 	line.min_duration = 5.0
 	line.repeat_id = "kite_%s_%s" % [group, key]
 	DialogServer.play_dialog(line)

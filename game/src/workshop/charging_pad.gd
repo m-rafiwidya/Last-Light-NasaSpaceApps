@@ -27,8 +27,8 @@ const FAULT_TIME: float = 2.0
 ## Within this distance (m, horizontal) of the dock point the driven rover gets the dock hint
 const HINT_RANGE: float = 3.0
 
-## Charging power (W): a flat 100 Wh battery is full in 3 minutes
-@export var charge_power: float = 2000.0
+## Charging power (W): a flat 70 Wh battery is full in about a minute
+@export var charge_power: float = 4500.0
 
 var state: State = State.IDLE
 ## The rover on the pad (null when none)
