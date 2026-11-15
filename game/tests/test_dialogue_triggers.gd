@@ -1,10 +1,11 @@
 extends SceneTree
 ## DialogueTriggers and the DialogServer queue:
 ##   1. Data: every trigger names an existing line and a real mission or objective event.
-##   2. Queued sequences play one line at a time, in order; a direct play_dialog line stacks beside them.
+##   2. One line at a time: queued sequences in order; a direct play_dialog line waits for the line
+##      showing and plays next, before the queue's next line; the SubtitleStack never shows two.
 ##   3. Each trigger fires once; events fired outside a level wait for one.
 ##   4. Played triggers survive save_state/load_state, which emits nothing, and never replay.
-##   5. The skip key (dialogue_skip) ends only the radio line showing, in game, with a key chip; cutscenes ignore it.
+##   5. The skip key (dialogue_skip) ends the line showing (radio or direct), in game, with a key chip; cutscenes ignore it.
 ##   6. Repeatable alert lines don't replay within DialogServer.REPEAT_COOLDOWN, do after it.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_dialogue_triggers.gd
@@ -94,7 +95,14 @@ func _skip_and_cooldown() -> void:
 	DS.play_dialog(direct)
 	await _press_skip()
 	await _seconds(DS.SEQUENCE_GAP + 0.3)
-	_check("[skip] one press, one line: the direct line stays", direct in DS._active_dialogs and ended.size() == 2
+	_check("[skip] one press, one line: the waiting direct line plays next", direct in DS._active_dialogs and ended.size() == 2
+		and played.back() == direct and DS.is_sequence_pending(sequence), "%d ended" % ended.size())
+	await process_frame
+	var direct_box: Variant = hud.dialog_boxes.get(direct.get_instance_id())
+	_check("[skip] Kite's own line shows the key chip too", is_instance_valid(direct_box) and direct_box.skip_shown())
+	await _press_skip()
+	await _seconds(DS.SEQUENCE_GAP + 0.3)
+	_check("[skip] the key skips Kite's own line, the queue plays its next", ended.size() == 3 and ended[2] == direct
 		and played.back() == sequence.dialogs[2], "%d ended" % ended.size())
 	DS.stop_all()
 	played.clear()
@@ -200,8 +208,14 @@ func _run() -> void:
 	var scan := Dialog.new()
 	scan.speaker = "Rover"
 	scan.subtitle = "Scan report."
+	var radio: Dialog = played.back()
 	DS.play_dialog(scan)
-	_check("[queue] a direct line plays at once beside the radio line", active == 2 and played.back() == scan)
+	_check("[queue] a direct line waits for the radio line showing", active == 1 and played.back() == radio and DS.is_playing())
+	var start_wait: int = Time.get_ticks_msec()
+	while played.back() != scan and Time.get_ticks_msec() - start_wait < 30000:
+		await process_frame
+	_check("[queue] ... and plays right after it, before the queue's next line", played.size() == 2 and played[0] == radio
+		and played[1] == scan and active == 1, str(played.map(func(d: Dialog) -> String: return d.subtitle.left(25))))
 	var hud: Node = load("res://src/ui/subtitle_stack/subtitle_stack.tscn").instantiate()
 	root.add_child(hud)
 	DS.stop_all()
@@ -215,8 +229,15 @@ func _run() -> void:
 	await process_frame
 	DS.play_dialog(scan)
 	await process_frame
-	_check("[stack] the radio line and the direct line are both boxes in the SubtitleStack",
-		hud.get_node("Boxes").get_child_count() == 2 and hud.dialog_boxes.size() == 2)
+	_check("[stack] one box in the SubtitleStack: the radio line, the direct line waits",
+		hud.get_node("Boxes").get_child_count() == 1 and hud.dialog_boxes.size() == 1 and not hud.dialog_boxes.has(scan.get_instance_id()))
+	var most_boxes: int = 0
+	var start_stack: int = Time.get_ticks_msec()
+	while not hud.dialog_boxes.has(scan.get_instance_id()) and Time.get_ticks_msec() - start_stack < 30000:
+		most_boxes = maxi(most_boxes, hud.get_node("Boxes").get_child_count())
+		await process_frame
+	_check("[stack] the radio line fades out before the direct line fades in", most_boxes == 1
+		and hud.get_node("Boxes").get_child_count() == 1 and hud.dialog_boxes.has(scan.get_instance_id()), str(most_boxes))
 	DS.stop_all()
 	played.clear()
 	active = 0

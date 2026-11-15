@@ -96,7 +96,6 @@ func _ready() -> void:
 	root.add_child(subtitle_slot)
 	subtitles = SUBTITLE_STACK.instantiate()
 	subtitles.slot = subtitle_slot
-	subtitles.one_at_a_time = true
 	subtitles.backing = false
 	subtitles.skip_hint = false
 	root.add_child(subtitles)

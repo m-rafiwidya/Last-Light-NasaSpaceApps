@@ -16,7 +16,8 @@ extends SceneTree
 ##   9. Opening, played through: the plume starts only below 10 m and stops at engine cutoff; the
 ##      radio clicks on and off for every line, one touchdown thump; the music down by touchdown and
 ##      back after.
-##   10. Gameplay lines on foot (overlapping, then one alone): the HUD's backing shows only with them.
+##   10. Gameplay lines on foot (a direct line arriving during a radio line, then one alone): one line
+##      at a time, the direct one after the radio line; the HUD's backing shows only with them.
 ##   Throughout: no subtitle backing is ever visible while its text is empty or transparent, nor
 ##   more opaque than its text, and a cutscene's subtitles have no backing at all;
 ##   the cutscene camera never under the terrain (+0.9 m) nor inside the lander;
@@ -41,7 +42,7 @@ var line_times: Array = []
 var cam: Dictionary = {"frames": 0, "low": 0, "low_at": "", "inside": 0, "inside_at": ""}
 var plume: Dictionary = {"first_on_altitude": -1.0, "on_above_10": 0, "on_after_cutoff": 0, "frames_on": 0, "engine_was_on": false, "off_at_cutoff": false}
 var music_at_touchdown: float = 0.0
-var backing: Dictionary = {"frames": 0, "cutscene_frames": 0, "gameplay_frames": 0, "empty": 0, "cutscene_backing": 0, "at": ""}
+var backing: Dictionary = {"frames": 0, "cutscene_frames": 0, "gameplay_frames": 0, "empty": 0, "cutscene_backing": 0, "at": "", "gameplay_most": 0}
 
 
 func _initialize() -> void:
@@ -388,7 +389,7 @@ func _run() -> void:
 	_finish()
 
 
-## Lines on foot: two overlapping (the second arrives while the first is still up), then one alone
+## Lines on foot: a direct line arriving while a radio line is up waits for it, then one alone
 func _gameplay_lines() -> void:
 	await _wait(func() -> bool: return GS.state == GS.State.IN_GAME_PLAYER and not GS.cutscene_active, 30.0)
 	DS.stop_all()
@@ -397,10 +398,20 @@ func _gameplay_lines() -> void:
 	sequence.dialogs = [DT.make_dialog({"speaker": "Mira", "text": "Short line one."}),
 		DT.make_dialog({"speaker": "Hana", "text": "A second line, a little longer than the first, so the backing changes size."})]
 	DS.queue_sequence(sequence)
-	await _wait(func() -> bool: return not DS.is_sequence_waiting(sequence) and DS._active_dialogs.is_empty(), 30.0)
-	await _ticks(5.0)
+	await _wait(func() -> bool: return sequence.dialogs[0] in DS._active_dialogs, 30.0)
+	var order: Array[Dialog] = []
+	var record := func(d: Dialog) -> void: order.append(d)
+	DS.dialog_played.connect(record)
+	var direct: Dialog = DT.make_dialog({"speaker": "Kite", "text": "Scan report."})
+	DS.play_dialog(direct)
+	await _wait(func() -> bool: return not DS.is_playing(), 30.0)
+	DS.dialog_played.disconnect(record)
+	_check("[gameplay] the direct line plays right after the radio line, before the queue's next", order == [direct, sequence.dialogs[1]],
+		str(order.map(func(d: Dialog) -> String: return d.subtitle.left(20))))
+	await _ticks(2.0)
 	DS.play_dialog(DT.make_dialog({"speaker": "Mira", "text": "And one on its own."}))
 	await _ticks(8.0)
+	_check("[gameplay] never two lines on screen", backing["gameplay_most"] == 1, str(backing["gameplay_most"]))
 
 
 ## Every frame: each subtitle stack's backing against its text, measured from the nodes themselves
@@ -421,6 +432,8 @@ func _watch_backing(screen) -> void:
 			if not label.get_parsed_text().strip_edges().is_empty():
 				text = maxf(text, box.modulate.a)
 		var in_cutscene: bool = stack == screen.subtitles
+		if not in_cutscene:
+			backing["gameplay_most"] = maxi(backing["gameplay_most"], stack.shown_count())
 		backing["frames"] += 1
 		if in_cutscene:
 			backing["cutscene_frames"] += 1

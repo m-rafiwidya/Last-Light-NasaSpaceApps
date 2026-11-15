@@ -1,19 +1,16 @@
 class_name SubtitleStack
 
 extends PanelContainer
-## Every DialogServer line as a stacked DialogBox; each subtitle screen has one and follows every line.
+## Every DialogServer line as a DialogBox, one at a time; each subtitle screen has one and follows every line.
 ## It owns a reserved area at the bottom centre (HUD board: left / right 400 of 1600, bottom 44) and
 ## places itself there every frame: inside `slot` when the screen gives it one (the console), else
 ## centred above the bottom edge, narrowed or moved beside a `keep_out` control (the rover stats),
-## lifted above it only when neither fits. It never reaches up into a `keep_below` control (the
-## objective panel): the oldest lines go first. At most MAX_ENTRIES lines show at once; a line
-## always shows in full, wrapped. With `one_at_a_time` (cutscenes) only one line ever shows: a line
-## fades out as soon as it ends, and the next waits until it is gone, then fades in.
+## lifted above it only when neither fits. A line always shows in full, wrapped. Only one line ever
+## shows: a line fades out as soon as it ends, and the next waits until it is gone, then fades in.
 ## The backing (theme variation SubtitleBacking) is drawn here, never by the panel style: as opaque as
 ## the most opaque line in it, so it fades and resizes with its text and is never seen empty.
 ## `backing` false (cutscenes: the text sits on the letterbox bar) draws none.
 
-const MAX_ENTRIES: int = 2
 const BOTTOM: float = 53.0
 const SIDE: float = 53.0
 const MIN_WIDTH: float = 560.0
@@ -27,14 +24,11 @@ var dialog_boxes: Dictionary = {}
 var slot: Control = null
 ## Controls the stack must stay clear of
 var keep_out: Array[Control] = []
-## Controls the stack must stay under
-var keep_below: Array[Control] = []
-var one_at_a_time: bool = false
 var backing: bool = true
 ## The skip key chip on the radio line DialogServer would skip (off in cutscenes)
 var skip_hint: bool = true
 var _backing_color: Color = Color(0.0, 0.0, 0.0, 0.8)
-## Lines waiting for the shown one to leave (one_at_a_time)
+## Lines waiting for the shown one to leave
 var _waiting: Array[Dialog] = []
 
 @onready var boxes: VBoxContainer = $Boxes
@@ -136,24 +130,6 @@ func place() -> void:
 		else:
 			bottom = minf(bottom, rect.position.y - GAP)
 	_set_rect(left, bottom, width)
-	_stay_below()
-
-
-## Drops the oldest lines at once while the stack reaches into a keep_below control
-func _stay_below() -> void:
-	var shown: Array = boxes.get_children().filter(func(box: Node) -> bool: return box.visible)
-	if shown.size() < 2:
-		return
-	for other in keep_below:
-		if is_instance_valid(other) and other.is_visible_in_tree() and other.get_global_rect().grow(GAP).intersects(get_global_rect()):
-			var oldest: Control = shown[0]
-			oldest.hide()
-			oldest.queue_free()
-			for key in dialog_boxes.keys():
-				if dialog_boxes[key] == oldest:
-					dialog_boxes.erase(key)
-			_set_rect(position.x, position.y + size.y, size.x)
-			return
 
 
 func _set_rect(left: float, bottom: float, width: float) -> void:
@@ -164,7 +140,7 @@ func _set_rect(left: float, bottom: float, width: float) -> void:
 
 
 func _on_dialog_played(dialog: Dialog) -> void:
-	if one_at_a_time and (boxes.get_child_count() > 0 or not _waiting.is_empty()):
+	if boxes.get_child_count() > 0 or not _waiting.is_empty():
 		for box in boxes.get_children():
 			box.fade_out(0.0, SINGLE_FADE, false)
 		_waiting.append(dialog)
@@ -177,19 +153,8 @@ func _show(dialog: Dialog) -> void:
 	dialog_box.set_line(dialog.speaker, dialog.subtitle)
 	boxes.add_child(dialog_box)
 	_ignore_mouse(dialog_box)
-	if one_at_a_time:
-		dialog_box.fade_in(SINGLE_FADE, false)
-	else:
-		dialog_box.fade_in()
+	dialog_box.fade_in(SINGLE_FADE, false)
 	dialog_boxes[dialog.get_instance_id()] = dialog_box
-	_limit_entries()
-
-
-## The oldest lines beyond MAX_ENTRIES leave at once
-func _limit_entries() -> void:
-	var shown: Array = boxes.get_children().filter(func(box: Node) -> bool: return not box.leaving)
-	for i in maxi(shown.size() - MAX_ENTRIES, 0):
-		shown[i].fade_out(0.0)
 
 
 func _on_dialog_ended(dialog: Dialog) -> void:
@@ -198,10 +163,7 @@ func _on_dialog_ended(dialog: Dialog) -> void:
 	dialog_boxes.erase(dialog.get_instance_id())
 	if is_instance_valid(dialog_box):
 		dialog_box.show_skip(false)
-		if one_at_a_time:
-			dialog_box.fade_out(0.0, SINGLE_FADE, false)
-		else:
-			dialog_box.fade_out()
+		dialog_box.fade_out(0.0, SINGLE_FADE, false)
 
 
 func _ignore_mouse(node: Node) -> void:

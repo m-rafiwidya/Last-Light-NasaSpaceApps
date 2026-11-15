@@ -24,7 +24,6 @@ func _ready() -> void:
 	tips.avoid = $SubtitleStack
 	add_child(tips)
 	$SubtitleStack.keep_out.assign([%Stats])
-	$SubtitleStack.keep_below.assign([$MissionHint])
 	get_viewport().size_changed.connect(_fit_stats)
 	_fit_stats()
 	%PartTooltip.avoid = $SubtitleStack

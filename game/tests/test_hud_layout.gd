@@ -112,7 +112,7 @@ func _check_top_left(campaign: Node) -> void:
 		await process_frame
 
 
-## Two long radio lines in the console (every tab) and on the rover HUD (stats filled, mast view)
+## A long radio line in the console (every tab) and on the rover HUD (stats filled, mast view)
 func _check_subtitle_areas(campaign: Node) -> void:
 	var console_scene: PackedScene = load("res://src/ui/mission_console/mission_console.tscn")
 	var hud_scene: PackedScene = load("res://src/ui/robot_hud/robot_hud.tscn")
@@ -193,10 +193,9 @@ func _check_subtitle_areas(campaign: Node) -> void:
 
 func _add_lines(stack: Control) -> void:
 	var dialog_box_scene: PackedScene = stack.dialog_box_scene
-	for line in [LINE + " " + LINE, LINE]:
-		var box: Control = dialog_box_scene.instantiate()
-		box.set_line("CONTROL", line)
-		stack.boxes.add_child(box)
+	var box: Control = dialog_box_scene.instantiate()
+	box.set_line("CONTROL", " ".join([LINE, LINE, LINE]))
+	stack.boxes.add_child(box)
 
 
 func _buttons(node: Node) -> Array[Control]:

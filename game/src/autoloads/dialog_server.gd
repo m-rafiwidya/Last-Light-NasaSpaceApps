@@ -11,8 +11,7 @@ signal dialog_ended(dialog: Dialog)
 signal sequence_finished(sequence: DialogSequence, completed: bool)
 
 const CHARACTERS_PER_SECOND: float = 1000.0 / 60.0
-## Pause between the lines of a sequence. Shorter than the DialogBox hold + fade-out,
-## so consecutive lines are on screen together and the HUD stacks them.
+## Pause between two lines: the shown one fades out (SubtitleStack.SINGLE_FADE) before the next fades in
 const SEQUENCE_GAP: float = 0.35
 
 ## Bus the voice lines play on (Settings > Audio > Voice Volume)
@@ -32,6 +31,9 @@ var _sequence_dialog: Dialog = null
 var _queue: Array[DialogSequence] = []
 var _queue_running: bool = false
 var _last_played: Dictionary = {}  # repeat_id -> clock
+## Direct lines waiting for the shown line to end; they go before the queue's next line
+var _pending: Array[Dialog] = []
+var _free_at: float = 0.0
 
 
 func _ready() -> void:
@@ -52,12 +54,12 @@ func skip_allowed() -> bool:
 	return GameState.is_in_game() or GameState.state == GameState.State.MISSION_CONSOLE
 
 
-## The queued radio line the skip key would end now, or null
+## The line the skip key would end now (whichever is showing), or null
 func skippable_dialog() -> Dialog:
-	return _sequence_dialog if _sequence_dialog in _active_dialogs else null
+	return _active_dialogs[0] if not _active_dialogs.is_empty() else null
 
 
-## Ends the radio line showing now; the queue goes on to the next. False when none is showing.
+## Ends the line showing now; the next one plays. False when none is showing.
 func skip_current() -> bool:
 	var dialog := skippable_dialog()
 	var timer: SceneTreeTimer = _timers.get(dialog)
@@ -83,11 +85,10 @@ func get_dialog_duration(dialog: Dialog) -> float:
 
 
 func is_playing() -> bool:
-	return not _active_dialogs.is_empty() or _active_sequence != null or not _queue.is_empty()
+	return not _active_dialogs.is_empty() or _active_sequence != null or not _queue.is_empty() or not _pending.is_empty()
 
 
-## Plays `sequence` after every sequence queued before it, so queued lines never overlap.
-## Direct play_dialog() lines still play at once, next to them.
+## Plays `sequence` after every sequence queued before it. Only one line plays at a time.
 func queue_sequence(sequence: DialogSequence) -> void:
 	_queue.append(sequence)
 	if not _queue_running:
@@ -134,15 +135,27 @@ func _run_queue() -> void:
 	_queue_running = false
 
 
-## Plays one line. Returns true if it played to the end (or was skipped), false if it was
-## cancelled, or ignored because the same Dialog is already playing or its repeat_id is cooling down.
+## Plays one line: at once when none is showing, else right after the shown one (before the queue's
+## next line). Returns true if it played to the end (or was skipped), false if it was cancelled, or
+## ignored because the same Dialog is already playing or waiting or its repeat_id is cooling down.
 func play_dialog(dialog: Dialog) -> bool:
-	if dialog in _active_dialogs or is_cooling_down(dialog.repeat_id):
+	return await _play(dialog, true)
+
+
+func _play(dialog: Dialog, direct: bool) -> bool:
+	if dialog in _active_dialogs or dialog in _pending or is_cooling_down(dialog.repeat_id):
 		return false
 	if dialog.repeat_id != "":
 		_last_played[dialog.repeat_id] = clock
 
 	var generation := _generation
+	if direct:
+		_pending.append(dialog)
+	while not _may_start(dialog, direct):
+		await get_tree().process_frame
+		if generation != _generation:
+			return false
+	_pending.erase(dialog)
 	_active_dialogs.append(dialog)
 	_start_audio(dialog)
 	dialog_played.emit(dialog)
@@ -156,9 +169,16 @@ func play_dialog(dialog: Dialog) -> bool:
 
 	_timers.erase(dialog)
 	_active_dialogs.erase(dialog)
+	_free_at = clock + SEQUENCE_GAP
 	_stop_audio(dialog)
 	dialog_ended.emit(dialog)
 	return true
+
+
+func _may_start(dialog: Dialog, direct: bool) -> bool:
+	if not _active_dialogs.is_empty() or clock < _free_at:
+		return false
+	return _pending.front() == dialog if direct else _pending.is_empty()
 
 
 ## Plays every line in order. Returns true if the whole sequence completed.
@@ -178,7 +198,7 @@ func play_dialog_sequence(dialog_sequence: DialogSequence) -> bool:
 	var last_index := dialogs.size() - 1
 	for i in dialogs.size():
 		_sequence_dialog = dialogs[i]
-		var played := await play_dialog(dialogs[i])
+		var played := await _play(dialogs[i], false)
 		if generation == _generation:
 			_sequence_dialog = null
 		if not played:
@@ -216,6 +236,8 @@ func stop_all() -> void:
 	_sequence_dialog = null
 	_timers.clear()
 	_queue.clear()
+	_pending.clear()
+	_free_at = 0.0
 	_queue_running = false
 	var ended := _active_dialogs.duplicate()
 	_active_dialogs.clear()

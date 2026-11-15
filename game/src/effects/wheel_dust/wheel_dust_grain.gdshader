@@ -20,6 +20,8 @@ uniform float min_pixels = 1.2;
 // lit from behind you is then about 0.7 as bright as the flat ground under the Moon's 16.7 degree
 // sun seen at a low angle (by that law, the clump's disc 0.5, that ground 0.74)
 uniform float brightness = 2.2;
+// The sun height `brightness` was fitted at; at others the sun's light follows the ground behind the grain
+uniform float reference_sun_elevation = 16.72;   // degrees
 uniform float forward_scatter = 0.5;   // Henyey-Greenstein g
 uniform float forward_cap = 6.0;
 // The 3D view's height in pixels (WheelDust sets it every frame from its viewport)
@@ -77,6 +79,14 @@ void light() {
 	float hg = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * mu, 1.5);   // 4 pi times HG: 1 on average
 	// Forward scattering for the sun only: local lights (the workshop's lamps cast no shadows) would
 	// otherwise light grains behind a wall six times over
-	float phase = LIGHT_IS_DIRECTIONAL ? 0.5 * sphere + 0.5 * min(hg, forward_cap) : 0.5 * sphere;
+	float phase = 0.5 * sphere;
+	if (LIGHT_IS_DIRECTIONAL) {
+		vec3 up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		float mu0 = max(dot(LIGHT, up), 0.01);
+		float mu0_reference = sin(radians(reference_sun_elevation));
+		float mu_ground = max(dot(VIEW, up), 0.05);
+		float ground = (mu0 / (mu0 + mu_ground)) / (mu0_reference / (mu0_reference + mu_ground));
+		phase = (phase + 0.5 * min(hg, forward_cap)) * ground;
+	}
 	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * phase * brightness / PI;
 }
