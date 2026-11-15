@@ -35,6 +35,8 @@ const SAMPLE_MISSION: String = "m2"
 const SAMPLE_OBJECTIVE: String = "m2.near_sample_collected"
 const SAMPLE_ID: String = "sample_container"
 const SAMPLE_MISSING: String = "SAMPLE NOT ABOARD: sample container S-1 fell out of the tray on the way, %d m from here. Drive back to it, pick it up with the claw (R, then click) into the tray, then dock again."
+const BATTERY_ITEM: String = "standard_battery"
+const BATTERY_RESUPPLY: String = "Mission control sent the 100 Wh battery with the recovery. It is on the rack: fit it before you try the far rim again."
 const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
 const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
 const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the pad."
@@ -484,6 +486,22 @@ func sample_distance() -> float:
 	return 0.0
 
 
+## The cargo order is the only way to get the 100 Wh battery, and M3 can't be done without it: a
+## player who skipped it gets it after a failed far-rim run (the failure and the recovery are the cost)
+func _resupply_battery() -> void:
+	if CampaignState.current_mission() != COLD_MISSION or CargoPlan.is_ordered(BATTERY_ITEM):
+		return
+	CampaignState.add_item(CargoPlan.ITEM_PREFIX + BATTERY_ITEM)
+	if workshop:
+		workshop.account_rack()
+	Debug.add_log(BATTERY_RESUPPLY)
+	var line := Dialog.new()
+	line.speaker = "Mira"
+	line.subtitle = BATTERY_RESUPPLY
+	line.min_duration = 6.0
+	DialogServer.play_dialog(line)
+
+
 ## Kite on its way back: the mission's work out there is done
 func returning() -> bool:
 	var mission := CampaignState.current_mission()
@@ -598,6 +616,8 @@ func _end_stranding(rescued: bool) -> void:
 		alert = ""
 	stranded = false
 	stranded_cause = ""
+	if rescued:
+		_resupply_battery()
 	_stranded_detail = {}
 	stranded_changed.emit(false)
 
@@ -686,6 +706,7 @@ func _finish_recovery() -> void:
 	_returned_by_recovery = true
 	leave_cargo()
 	dock_rover()
+	_resupply_battery()
 	if rover.battery:
 		rover.battery.add_charge(rover.battery.capacity)
 	_last_position = rover.global_position

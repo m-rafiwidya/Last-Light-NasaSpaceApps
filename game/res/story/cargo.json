@@ -24,15 +24,15 @@
 			"name": "Courier lander",
 			"limit_kg": 30.0,
 			"arrival_day": 4,
-			"description": "Small, fast lander. Little room: the module plus light kit.",
+			"description": "Small, fast lander, lands in daylight. Little room: no space for the grip wheels, so Kite must take the long route.",
 			"phases": [["Launch", 0], ["Transfer", 1], ["Lunar arrival", 3], ["Delivery", 4]]
 		},
 		{
 			"id": "freighter",
 			"name": "Freighter lander",
-			"limit_kg": 40.0,
+			"limit_kg": 45.0,
 			"arrival_day": 11,
-			"description": "Larger, slower lander on a low-energy transfer. Room for heavy parts.",
+			"description": "Larger, slower lander on a low-energy transfer. Room for everything, but it lands near nightfall: Kite needs the thermal kit.",
 			"phases": [["Launch", 0], ["Transfer", 1], ["Lunar arrival", 9], ["Delivery", 11]]
 		}
 	],
@@ -44,6 +44,13 @@
 			"description": "IRIS's replacement radio-power unit. Required.",
 			"parts": [{"scene": "res://src/robot/socket/radio_module_part.tscn", "count": 1}],
 			"crate": true
+		},
+		{
+			"id": "standard_battery",
+			"name": "Standard battery, 100 Wh",
+			"description": "2.5 times the energy for 2 kg more. Kite's 40 Wh pack can't reach the far rim and back.",
+			"parts": [{"scene": "res://src/robot/socket/battery_part.tscn", "count": 1}],
+			"stock": {"rack": ["Slot12"]}
 		},
 		{
 			"id": "grip_wheels",
