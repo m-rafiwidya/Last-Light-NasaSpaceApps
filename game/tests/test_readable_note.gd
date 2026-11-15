@@ -95,8 +95,10 @@ func _run() -> void:
 		not iris_note.visible and not iris_note.toggle() and not iris_note.is_showing())
 	CS.complete_objective("m2.telemetry_received")
 	await _ticks(0.1)
+	DS.stop_all()                                # Hana's line on that objective would hold the note back
+	await _ticks(0.1)
 	_check("iris: readable after it", iris_note.visible and iris_note.toggle() and iris_note.is_showing()
-		and shown.back().subtitle.begins_with("IRIS — FINAL FIELD CHECK"))
+		and shown.any(func(d: Resource) -> bool: return d.subtitle.begins_with("IRIS — FINAL FIELD CHECK")))
 	iris_note.toggle()
 
 	# 3. Logger note
