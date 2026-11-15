@@ -40,7 +40,13 @@ const CRATE_AT := Vector3(0.7, 0.0, 0.0)
 const HALF_X: float = 5.0
 const HALF_Z: float = 4.0
 const CEILING: float = 3.0
-const DOOR_OPEN_ANGLE: float = -90.0
+## The bay door slides sideways along the outside of the east wall: out of the opening first
+const DOOR_SLIDE: float = 4.0
+const DOOR_STANDOFF: float = 0.15
+## How far from the door plane a rover still counts as in the doorway (m), and the half width
+const DOORWAY_DEPTH: float = 1.2
+const DOORWAY_HALF_WIDTH: float = 2.8
+const DOOR_PLANE_Y: float = 3.92
 const CURTAIN_Z: float = -3.85
 ## How far past the curtain the player must be to count as inside on arrival
 const ARRIVAL_DEPTH: float = 1.0
@@ -86,6 +92,7 @@ var _door_target: float = 0.0
 var _door_manual: bool = false
 var _door_clear_time: float = 0.0
 var _door_leaf: Node3D = null
+var _door_rest: Vector3 = Vector3.ZERO
 var _door_light: GeometryInstance3D = null
 var _personnel_leaf: Node3D = null
 var _personnel_rest: Vector3 = Vector3.ZERO
@@ -286,6 +293,7 @@ func _build_doors() -> void:
 	var door_part := _part("ws_wall_bay_door_01")
 	_door_leaf = door_part.get_node("ws_wall_bay_door/bay_door")
 	_door_light = door_part.get_node("ws_wall_bay_door/bay_door_light")
+	_door_rest = to_local(_door_leaf.global_position)
 	var personnel_part := _part("ws_partition_door_01")
 	_personnel_leaf = personnel_part.get_node("ws_partition_door/personnel_door")
 	_personnel_rest = _personnel_leaf.position
@@ -723,8 +731,26 @@ func _mounted_parts() -> Array:
 
 
 func _doorway_occupied() -> bool:
+	return not _robots_in_area().is_empty() or _robot_in_doorway()
+
+
+func _robots_in_area() -> Array:
+	var list: Array = []
 	for body in _door_area.get_overlapping_bodies():
 		if body is Robot:
+			list.append(body)
+	return list
+
+
+## Any rover, driven or parked, close enough to the door plane that the leaf would touch it
+func _robot_in_doorway() -> bool:
+	var list: Array = _robots_in_area()
+	for r in [rover, GameState.robot]:
+		if is_instance_valid(r) and not list.has(r):
+			list.append(r)
+	for r: Node3D in list:
+		var p: Vector3 = to_local(r.global_position)
+		if absf(p.x + 1.0) < DOORWAY_HALF_WIDTH and absf(-p.z - DOOR_PLANE_Y) < DOORWAY_DEPTH:
 			return true
 	return false
 
@@ -751,7 +777,7 @@ func _update_bay_door(delta: float) -> void:
 			wanted = true                           # on foot in the test level: walk in and out
 	if driving and is_instance_valid(GameState.robot) and _is_inside(GameState.robot.global_position):
 		wanted = true
-	if wanted:
+	if wanted or _robot_in_doorway():
 		_door_target = 1.0
 		_door_clear_time = 0.0
 	elif _door_target > 0.5 and not _door_manual:
@@ -762,7 +788,9 @@ func _update_bay_door(delta: float) -> void:
 			if _door_clear_time >= door_close_delay:
 				_door_target = 0.0
 	door_open = move_toward(door_open, _door_target, delta / door_open_time)
-	_door_leaf.rotation_degrees = Vector3(DOOR_OPEN_ANGLE * smoothstep(0.0, 1.0, door_open), 0.0, 0.0)
+	var out: float = smoothstep(0.0, 0.2, door_open) * DOOR_STANDOFF
+	var slide: float = smoothstep(0.15, 1.0, door_open) * DOOR_SLIDE
+	_door_leaf.global_position = to_global(_door_rest + Vector3(slide, 0.0, -out))
 	_door_shadow_seal.visible = door_open <= 0.0
 	var moving: bool = door_open > 0.0 and door_open < 1.0
 	var color := Color(0.3, 1.0, 0.4) if door_open <= 0.0 else Color(1.0, 0.65, 0.15)

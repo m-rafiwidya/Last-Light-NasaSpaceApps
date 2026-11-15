@@ -126,8 +126,11 @@ func _skip_and_cooldown() -> void:
 	CS.start_mission("m1")
 	DS.stop_all()
 	DS.clock += DS.REPEAT_COOLDOWN + 1.0
-	_check("[cooldown] one-time story triggers are unaffected: still once", DT.fire("mission_started:m1") == null
-		and CS.is_trigger_played("mission_started:m1|mira_m1_01"))
+	CS.complete_objective("m1.workshop_entered")
+	DS.stop_all()
+	DS.clock += DS.REPEAT_COOLDOWN + 1.0
+	_check("[cooldown] one-time story triggers are unaffected: still once", DT.fire("objective:m1.workshop_entered") == null
+		and CS.is_trigger_played("objective:m1.workshop_entered|mira_m1_01"))
 	DS.stop_all()
 	hud.queue_free()
 	GS.state = state_before
@@ -171,12 +174,20 @@ func _run() -> void:
 	# --- 3a. outside a level: held --------------------------------------------------------------
 	CS.reset()
 	CS.start_mission("m1")
-	_check("[hold] a line fired outside a level is marked played but waits", CS.is_trigger_played("mission_started:m1|mira_m1_01")
-		and not DS.is_playing() and DT.sequence_for("mission_started:m1") != null)
+	var crew_m1: Array = load("res://src/levels/crew_requests.gd").radio_lines("m1")
+	_check("[crew] M1's crew requests wait for the walk-in: nothing at mission start, they follow mira_m1_01",
+		DT.sequence_for("mission_started:m1") == null and DT.crew_event("m1") == "objective:m1.workshop_entered"
+		and not CS.is_trigger_played("mission_started:m1|" + crew_m1[0]["id"]) and not DS.is_playing())
+	CS.complete_objective("m1.workshop_entered")
+	var entry_lines: Array = DT.sequence_for("objective:m1.workshop_entered").dialogs.map(func(d: Dialog) -> String: return d.subtitle)
+	_check("[crew] on entering: mira_m1_01, then the crew requests, in one sequence", entry_lines == [DT.lines["mira_m1_01"]["text"]]
+		+ crew_m1.map(func(l: Dictionary) -> String: return l["text"]), str(entry_lines.size()))
+	_check("[hold] a line fired outside a level is marked played but waits", CS.is_trigger_played("objective:m1.workshop_entered|mira_m1_01")
+		and not DS.is_playing() and DT.sequence_for("objective:m1.workshop_entered") != null)
 	GS.player = load("res://src/player/player.gd").new()
 	root.get_node("SceneLoader").level_loaded.emit("test")
 	_check("[hold] it plays once a level is loaded", DS.is_playing() and played.size() == 1
-		and played[0].subtitle == DT.lines["mira_m1_01"]["text"])
+		and played[0].subtitle == DT.lines["mira_m1_01"]["text"], str(played.map(func(d: Dialog) -> String: return d.subtitle.left(25))))
 	DS.stop_all()
 	played.clear()
 	active = 0
@@ -214,6 +225,7 @@ func _run() -> void:
 
 	CS.reset()
 	CS.start_mission("m1")
+	CS.complete_objective("m1.workshop_entered")
 	CS.complete_objective("m1.kite_prepared")
 	CS.complete_objective("m1.iris_scanned")
 	CS.complete_objective("m1.kite_docked")
@@ -226,8 +238,20 @@ func _run() -> void:
 	var crew: Array = load("res://src/levels/crew_requests.gd").radio_lines("m1")
 	for i in crew.size():
 		expected.insert(1 + i, crew[i]["text"])
-	_check("[queue] lines play in order, all of them", order == expected, str(order.size()))
+	_check("[queue] lines play in order, all of them", order == expected, str(order.map(func(t: String) -> String: return t.left(25))) + str(expected.map(func(t: String) -> String: return t.left(25))))
 	_check("[queue] never two queued lines at once", max_active == 1, str(max_active))
+
+	# --- M2 and M3: the crew requests stay after the mission_started lines -------------------------
+	for mission in ["m2", "m3"]:
+		CS.start_mission(mission)
+		var mission_lines: Array = DT.sequence_for("mission_started:" + mission).dialogs.map(func(d: Dialog) -> String: return d.subtitle)
+		var opening: Array = DT.lines_for("mission_started:" + mission).map(func(d: Dialog) -> String: return d.subtitle)
+		var crew_lines: Array = load("res://src/levels/crew_requests.gd").radio_lines(mission).map(func(l: Dictionary) -> String: return l["text"])
+		_check("[crew] %s: the crew requests follow the mission_started lines" % mission, DT.crew_event(mission) == "mission_started:" + mission
+			and mission_lines == opening + crew_lines, str(mission_lines.size()))
+		DS.stop_all()
+		played.clear()
+		active = 0
 
 	# --- 3b. once -----------------------------------------------------------------------------
 	played.clear()

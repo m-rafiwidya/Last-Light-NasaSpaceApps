@@ -348,6 +348,27 @@ func _run() -> void:
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.3)
 
+	# 7b. M2 and M3: the objective and the waypoint; a step's text only as the stuck hint
+	var m1_objective: String = CS.current_objective()
+	var m1_step: String = guidance.hud_step_text()
+	_check("m1: the step text is on the HUD", m1_step != "" and hint.step_label.text == m1_step and overlay.step_label.text == m1_step, m1_step)
+	for mission_id in ["m2", "m3"]:
+		CS._current = mission_id
+		guidance.stuck_time = 0.0
+		await _ticks(0.4)
+		var first_step: Dictionary = guidance.current_step()
+		_check("%s: objective shown, no step text (HUD and tracker)" % mission_id, CS.current_objective() != ""
+			and not first_step.is_empty() and guidance.step_text() != "" and hint.objective_label.text.begins_with("OBJECTIVE")
+			and hint.step_label.text == "" and overlay.step_label.text == "" and hint.stuck_label.text == "",
+			"%s / %s / %s" % [hint.step_label.text, overlay.step_label.text, hint.stuck_label.text])
+		guidance.stuck_time = guidance.STUCK_TIME + 1.0
+		await _ticks(0.2)
+		_check("%s: when stuck, the step's stuck text shows" % mission_id, first_step.get("stuck", "") != ""
+			and hint.stuck_label.text == first_step["stuck"] and hint.step_label.text == "", hint.stuck_label.text)
+	CS._current = "m1"
+	await _ticks(0.3)
+	_check("m1 again: the step text is back", CS.current_objective() == m1_objective and hint.step_label.text != "", hint.step_label.text)
+
 	# 8. No mission
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	CS.reset()

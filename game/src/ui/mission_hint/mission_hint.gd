@@ -37,7 +37,7 @@ func _process(_delta: float) -> void:
 	objective_label.text = ("OBJECTIVE  " + CampaignState.objective_title(objective)) if objective else ""
 	var guidance := get_tree().get_first_node_in_group(&"guidance") as Guidance
 	var guided := guidance != null and Guidance.enabled()
-	step_label.text = guidance.step_text() if guided else ""
+	step_label.text = guidance.hud_step_text() if guided else ""
 	stuck_label.text = guidance.stuck_text() if guided else ""
 	var director := get_tree().get_first_node_in_group(&"mission_director") as MissionDirector
 	var rover: Robot = Debug.current_robot

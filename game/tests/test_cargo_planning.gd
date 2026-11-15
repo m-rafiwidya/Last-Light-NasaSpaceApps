@@ -143,6 +143,7 @@ func _run() -> void:
 	console._on_action_pressed()
 	_check("[flight] Confirm starts the flight", console.flying() and _action().disabled
 		and not CS.is_objective_done("m2.cargo_ordered"))
+	_check("[flight] no skip button in the flight sequence", console._planning.find_children("*", "Button", true, false).all(func(b: Button) -> bool: return b.text != "SKIP FLIGHT"))
 	console.set_item("thermal_turret", true)
 	_check("[flight] the manifest is locked in flight", not console.manifest_ids().has("thermal_turret"))
 	await _ticks(0.5)

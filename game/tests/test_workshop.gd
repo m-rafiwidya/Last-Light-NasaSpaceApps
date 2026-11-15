@@ -134,6 +134,7 @@ func _run() -> void:
 		await _decor_checks()
 		await _drive_checks()
 		await _door_checks()
+		await _parked_under_door_checks()
 	print("RESULT %s" % ("ALL PASS" if failures == 0 else "%d CHECKS FAILED" % failures))
 	quit(1 if failures else 0)
 
@@ -628,6 +629,53 @@ func _door_checks() -> void:
 	await _ticks(0.5)
 	workshop._on_door_panel_interacted(GS.player)
 	await _ticks(3.0)
+
+
+## Kite parked under the bay door (not driven): the door opens, stays open, slides clear of the
+## doorway, never closes on the rover, and reverses if the rover arrives while it closes
+func _parked_under_door_checks() -> void:
+	_place_rover(-1.0, 3.9, 0.0)
+	await _ticks(0.5)
+	var hit: bool = false
+	var min_open: float = 1.0
+	var settled: bool = false
+	for k in 100:
+		await _ticks(0.1)
+		if k > 40:
+			settled = true
+		if settled:
+			min_open = minf(min_open, workshop.door_open)
+		for item in workshop._door_bodies:
+			if rover.get_colliding_bodies().has(item[0]):
+				hit = true
+	_check("parked under the door: it opens and stays open past the close delay", min_open >= 1.0, "min open %.2f" % min_open)
+	var leaf_x: float = _kit_of(workshop._door_leaf.global_position).x
+	var leaf_y: float = _kit_of(workshop._door_leaf.global_position).y
+	_check("bay door: slid sideways along the wall, clear of the opening", leaf_x > 2.9 and leaf_y > 3.95, "leaf origin kit x %.2f y %.2f" % [leaf_x, leaf_y])
+	workshop._on_door_panel_interacted(GS.player)
+	await _ticks(1.0)
+	_check("parked under the door: the panel can't close it", workshop.door_open >= 1.0, "open %.2f" % workshop.door_open)
+	_place_rover(_dock().x, _dock().y, 0.0)
+	await _ticks(7.0)
+	_check("bay door closes once the doorway is empty", workshop.door_open == 0.0, "open %.2f" % workshop.door_open)
+	var closing_ok: bool = false
+	workshop._door_target = 1.0
+	await _ticks(3.0)
+	workshop._door_manual = false
+	workshop._door_target = 0.0
+	workshop._door_clear_time = workshop.door_close_delay
+	while workshop.door_open > 0.6:
+		await physics_frame
+	_place_rover(-1.0, 3.9, 0.0)
+	await _ticks(3.5)
+	closing_ok = workshop.door_open >= 1.0
+	for item in workshop._door_bodies:
+		if rover.get_colliding_bodies().has(item[0]):
+			hit = true
+	_check("parked under the door: it reverses when the rover arrives mid-close", closing_ok, "open %.2f" % workshop.door_open)
+	_check("parked under the door: never touched by the door", not hit)
+	_place_rover(_dock().x, _dock().y, 0.0)
+	await _ticks(7.0)
 
 
 # 7 ---------------------------------------------------------------------------------------------

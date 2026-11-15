@@ -55,7 +55,7 @@ func _process(_delta: float) -> void:
 	var objective := CampaignState.current_objective()
 	objective_label.text = ("OBJECTIVE  " + CampaignState.objective_title(objective)) if objective else ""
 	var on := Guidance.enabled() and guidance != null
-	step_label.text = guidance.step_text() if on else ""
+	step_label.text = guidance.hud_step_text() if on else ""
 	stuck_label.text = guidance.stuck_text() if on else ""
 	for label in [objective_label, step_label, stuck_label]:
 		label.visible = label.text != ""
