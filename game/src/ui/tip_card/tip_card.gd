@@ -61,6 +61,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	InputBindings.events.changed.connect(_refresh_keys)
+	CampaignState.campaign_reset.connect(dismiss)
 
 
 ## Shows `id` unless it was shown before in this campaign or another tip is up
