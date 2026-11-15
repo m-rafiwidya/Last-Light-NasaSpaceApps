@@ -2,15 +2,16 @@ class_name GuidanceOverlay
 
 extends CanvasLayer
 
-const NORMAL := Color(0.85, 0.95, 1.0)
-const ACCENT := Color(1.0, 0.8, 0.35)
-const STUCK := Color(0.75, 0.85, 0.9)
+## The v2 theme (docs/ui/UI_SPEC.md): Exo 2 text, colour tokens on "UIColor"
+const UI_THEME: Theme = preload("res://res/ui_theme_v2.tres")
+## Dark backing behind text and marker shapes, so light text reads over bright terrain
+const BACKING := Color(0.0, 0.0, 0.0, 0.55)
 const EDGE_MARGIN: float = 72.0
 const MARKER_SIZE: float = 14.0
 const MARKER_LIFT: float = 1.5
 
 var guidance: Guidance = null
-var tracker := VBoxContainer.new()
+var tracker := PanelContainer.new()
 var objective_label := Label.new()
 var step_label := Label.new()
 var stuck_label := Label.new()
@@ -24,21 +25,24 @@ func _init() -> void:
 	name = "GuidanceOverlay"
 	layer = 2
 	tracker.name = "Tracker"
+	tracker.theme = UI_THEME
+	tracker.theme_type_variation = &"HudBacking"
 	tracker.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	tracker.offset_left = 64.0
 	tracker.offset_top = 100.0
 	tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for item in [[objective_label, 26, NORMAL], [step_label, 28, ACCENT], [stuck_label, 22, STUCK]]:
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tracker.add_child(column)
+	for item in [[objective_label, &"LabelHudObjective"], [step_label, &"LabelHudStep"], [stuck_label, &"LabelHudStuck"]]:
 		var label: Label = item[0]
-		label.add_theme_font_size_override("font_size", item[1])
-		label.add_theme_color_override("font_color", item[2])
-		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		label.add_theme_constant_override("outline_size", 6)
-		tracker.add_child(label)
+		label.theme_type_variation = item[1]
+		column.add_child(label)
 	stuck_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stuck_label.custom_minimum_size.x = 640.0
+	stuck_label.custom_minimum_size.x = 560.0
 	add_child(tracker)
 	marker.name = "Waypoint"
+	marker.theme = UI_THEME
 	marker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	marker.draw.connect(_draw_marker)
@@ -54,7 +58,7 @@ func _process(_delta: float) -> void:
 	stuck_label.text = guidance.stuck_text() if on else ""
 	for label in [objective_label, step_label, stuck_label]:
 		label.visible = label.text != ""
-	tracker.visible = state == GameState.State.IN_GAME_PLAYER
+	tracker.visible = state == GameState.State.IN_GAME_PLAYER and (objective_label.visible or step_label.visible or stuck_label.visible)
 	marker.visible = on and state == GameState.State.IN_GAME_ROBOT and guidance.is_waypoint()
 	if marker.visible:
 		marker.queue_redraw()
@@ -97,20 +101,39 @@ func marker_text() -> String:
 	return "%s  %d m" % [guidance.current_step().get("label", ""), roundi(distance)]
 
 
+## A v2 theme colour token ("text", "warn", ...)
+static func ui_color(token: StringName) -> Color:
+	return UI_THEME.get_color(token, &"UIColor")
+
+
 func _draw_marker() -> void:
 	if not place_marker():
 		return
-	var font := ThemeDB.fallback_font
+	var font: Font = marker.get_theme_font(&"font", &"LabelHudWorld")
+	var font_size: int = marker.get_theme_font_size(&"font_size", &"LabelHudWorld")
+	var light: Color = ui_color(&"text")
 	var text := marker_text()
 	var at := marker_position
 	var label_at: Vector2
 	if marker_on_screen:
 		var r := MARKER_SIZE
-		marker.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -r), at + Vector2(r, 0), at + Vector2(0, r), at + Vector2(-r, 0)]), ACCENT)
-		label_at = at + Vector2(-120, -r - 10)
+		_draw_shape(PackedVector2Array([at + Vector2(0, -r), at + Vector2(r, 0), at + Vector2(0, r), at + Vector2(-r, 0)]), at, light)
+		label_at = at + Vector2(-120, -r - 14)
 	else:
 		var side := marker_direction.orthogonal()
-		marker.draw_colored_polygon(PackedVector2Array([at + marker_direction * 22.0, at + side * 14.0, at - side * 14.0]), ACCENT)
+		_draw_shape(PackedVector2Array([at + marker_direction * 22.0, at + side * 14.0, at - side * 14.0]), at, light)
 		label_at = at - marker_direction * 40.0 + Vector2(-120, 8)
-	marker.draw_string_outline(font, label_at, text, HORIZONTAL_ALIGNMENT_CENTER, 240, 24, 6, Color.BLACK)
-	marker.draw_string(font, label_at, text, HORIZONTAL_ALIGNMENT_CENTER, 240, 24, ACCENT)
+	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, 240, font_size).x
+	var back := Rect2(label_at.x + (240.0 - width) * 0.5 - 8.0, label_at.y - font.get_ascent(font_size) - 3.0,
+		width + 16.0, font.get_height(font_size) + 6.0)
+	marker.draw_rect(back, BACKING)
+	marker.draw_string(font, label_at, text, HORIZONTAL_ALIGNMENT_CENTER, 240, font_size, light)
+
+
+## A marker shape in `color` over the same shape grown 35 % about `center`, in the backing colour
+func _draw_shape(points: PackedVector2Array, center: Vector2, color: Color) -> void:
+	var grown := PackedVector2Array()
+	for point in points:
+		grown.append(center + (point - center) * 1.35)
+	marker.draw_colored_polygon(grown, BACKING)
+	marker.draw_colored_polygon(points, color)

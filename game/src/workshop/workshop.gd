@@ -584,6 +584,11 @@ func get_dock_transform() -> Transform3D:
 	return Transform3D(global_basis, to_global(anchors["dock_point"]))
 
 
+## True when `world_point` is within the building's footprint
+func contains(world_point: Vector3) -> bool:
+	return _is_inside(world_point)
+
+
 func _is_inside(world_point: Vector3) -> bool:
 	var p := to_local(world_point)
 	return absf(p.x) < HALF_X and absf(p.z) < HALF_Z

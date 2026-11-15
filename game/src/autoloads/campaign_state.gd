@@ -19,6 +19,7 @@ var _done_missions: Dictionary = {}
 var _flags: Dictionary = {}
 var _items: Dictionary = {}
 var _played_triggers: Dictionary = {}
+var _shown_tips: Dictionary = {}
 var play_time_sec: float = 0.0
 var recoveries: int = 0
 
@@ -166,6 +167,14 @@ func is_trigger_played(id: String) -> bool:
 	return _played_triggers.has(id)
 
 
+func mark_tip_shown(id: String) -> void:
+	_shown_tips[id] = true
+
+
+func is_tip_shown(id: String) -> bool:
+	return _shown_tips.has(id)
+
+
 func has_objective(id: String) -> bool:
 	return _objective_mission.has(id)
 
@@ -181,6 +190,7 @@ func reset() -> void:
 	_flags.clear()
 	_items.clear()
 	_played_triggers.clear()
+	_shown_tips.clear()
 	play_time_sec = 0.0
 	recoveries = 0
 
@@ -208,6 +218,7 @@ func save_state() -> Dictionary:
 		"flags": _flags.keys(),
 		"items": _items.duplicate(),
 		"triggers_played": _played_triggers.keys(),
+		"tips_shown": _shown_tips.keys(),
 		"play_time_sec": play_time_sec,
 		"recoveries": recoveries,
 	}
@@ -237,6 +248,10 @@ func load_state(data: Dictionary) -> bool:
 	if played is Array:
 		for trigger in played:
 			_played_triggers[str(trigger)] = true
+	var tips: Variant = data.get("tips_shown")
+	if tips is Array:
+		for tip in tips:
+			_shown_tips[str(tip)] = true
 	var time: Variant = data.get("play_time_sec")
 	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
 	var recovered: Variant = data.get("recoveries")

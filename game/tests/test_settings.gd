@@ -9,7 +9,7 @@ extends SceneTree
 ##      vsync, Engine.max_fps, field of view, brightness, the quality preset (MSAA, Terrain
 ##      Detail / Dust and Tracks, Custom). Controls: sensitivity and invert, toggle crouch.
 ##   2. Key bindings: a slab rebinds its action in the InputMap, a key in use is swapped (the note
-##      says so), the console's key is refused, Esc only cancels; key chips, the HUD hint and the
+##      says so), the console's key is refused, Esc only cancels; key chips and the
 ##      part tooltip show the new key; RESET BINDINGS puts the project's keys back (and nothing
 ##      stays saved); locked rows show their key.
 ##   3. Hidden rows (Language, Camera Shake, Speaker Setup, Motion Blur) are hidden and stay so
@@ -234,7 +234,7 @@ func _check_general() -> void:
 	server.play_dialog(dialog)
 	await _frames(2)
 	var box: Control = boxes.get_node("Boxes").get_child(-1) if boxes.get_node("Boxes").get_child_count() > 0 else null
-	var label: RichTextLabel = box.get_node("Content/RichTextLabel") if box else null
+	var label: RichTextLabel = box.get_node("Content/Column/RichTextLabel") if box else null
 	_check("[General] a playing line shows its subtitle at 24 px", boxes.visible and label != null
 		and label.get_theme_font_size(&"normal_font_size") == 24)
 	var voice_player: AudioStreamPlayer = null
@@ -486,8 +486,7 @@ func _check_bindings() -> void:
 	var chip: Node = load("res://src/ui/components/key_chip.tscn").instantiate()
 	root.add_child(chip)
 	chip.action = &"interact_use"
-	var hud_hint: Label = root.get_node("Main/UIManager/HUD/MarginContainer/Hint")
-	_check("[Keys] the HUD hint shows the project's keys", hud_hint.text.begins_with("WASD: move") and hud_hint.text.contains("E: use"))
+	_check("[Keys] the on-foot HUD has no permanent key-hint line", root.get_node("Main/UIManager/HUD/MarginContainer").get_node_or_null("Hint") == null)
 
 	await _bind("Move Forward", KEY_K)
 	_check("[Keys] rebinding changes the InputMap", InputBindings.key_code(InputBindings.key_event(&"move_forward")) == KEY_K
@@ -503,7 +502,6 @@ func _check_bindings() -> void:
 	_key_event(KEY_W, false)
 	await _frames(2)
 	_check("[Keys] the binding is saved", _saved("bindings", "move_forward") == KEY_K)
-	_check("[Keys] the HUD hint follows", hud_hint.text.begins_with("KASD: move"), hud_hint.text.get_slice("\n", 0))
 
 	# Conflict: K is Move Forward's, so the two swap
 	var note: Label = settings.find_child("BindingNote", true, false)
@@ -531,10 +529,9 @@ func _check_bindings() -> void:
 	_check("[Keys] Esc can't be bound through the API either", InputBindings.rebind(&"move_jump", _esc()) != ""
 		and InputBindings.key_code(InputBindings.key_event(&"move_jump")) == KEY_SPACE)
 
-	# Key chips, the tooltip prompt, the HUD hint
+	# Key chips, the tooltip prompt
 	await _bind("Interact", KEY_G)
 	_check("[Keys] key chips show the new key", chip.key_text() == "G" and chip.get_child(0).get_child(0).text == "G")
-	_check("[Keys] the HUD hint shows it", hud_hint.text.contains("G: use"))
 	_check("[Keys] tooltip prompts use it", InputBindings.with_current_keys('Press "E" to talk') == 'Press "G" to talk'
 		and InputBindings.with_current_keys("Park again and press E.") == "Park again and press G.")
 
@@ -556,8 +553,8 @@ func _check_bindings() -> void:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	_check("[Keys] ... and nothing stays saved", not config.has_section("bindings"))
-	_check("[Keys] ... and the slabs, chips and hint show them", _slab("Move Forward").text == "W" and _slab("Interact").text == "E"
-		and chip.key_text() == "E" and hud_hint.text.begins_with("WASD: move") and note.text == "")
+	_check("[Keys] ... and the slabs and chips show them", _slab("Move Forward").text == "W" and _slab("Interact").text == "E"
+		and chip.key_text() == "E" and note.text == "")
 	_relaunch()
 	_check("[Keys] still the project's after a launch", InputBindings.key_code(InputBindings.key_event(&"move_forward")) == KEY_W)
 	chip.queue_free()
