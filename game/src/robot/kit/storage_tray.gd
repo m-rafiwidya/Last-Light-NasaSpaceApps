@@ -50,7 +50,10 @@ func fits(part: HotswapPart) -> bool:
 		box = b if first else box.merge(b)
 		first = false
 	size = box.size
-	return not first and maxf(size.x, size.z) <= INSIDE.x and minf(size.x, size.z) <= INSIDE.z and size.y <= INSIDE.y
+	# A millimetre's slack: the sample container is exactly INSIDE.y tall, and float noise from how it
+	# lies decided whether it "fit"
+	const SLACK: float = 0.001
+	return not first and maxf(size.x, size.z) <= INSIDE.x + SLACK and minf(size.x, size.z) <= INSIDE.z + SLACK 		and size.y <= INSIDE.y + SLACK
 
 
 ## Locks the tray's parts to Kite (on) or lets them ride loose again where they are (off). For

@@ -7,6 +7,7 @@ extends SceneTree
 ##   5. Out of reach: looking 3 m ahead says so and the arm stays put.
 ##   6. Stow: R stows the arm; deployed again with a part held, driving off stows it and the part drops.
 ##   7. Control leaving Kite (back to the player, e.g. to walk out and rescue it) stands the claw down.
+##   8. Cargo: with the mount full R doesn't start the claw and the hint says why.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_manual_claw.gd
 
@@ -193,6 +194,19 @@ func _run() -> void:
 		and not rover.get_node("Visuals").arm_scripted, "had %s" % had)
 	GS.drive(rover)
 	await _ticks(0.3)
+
+	# 8. With cargo on the mount the claw stays off, and the hint says why
+	var crate: RigidBody3D = (load("res://src/field/cargo_crate_part.tscn") as PackedScene).instantiate()
+	level.add_child(crate)
+	var socket: Node = rover.get_node("CargoSocket")
+	crate.global_position = socket.global_position
+	socket.mount(crate)
+	await _ticks(1.0)
+	await _press(&"arm_toggle")
+	await _ticks(1.0)
+	_check("cargo: with the mount full R doesn't start the claw, and the hint says why",
+		not claw.active and claw.get_hint().contains("cargo mount"), claw.get_hint())
+	socket.unmount().queue_free()
 
 	print("RESULT test_manual_claw %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)

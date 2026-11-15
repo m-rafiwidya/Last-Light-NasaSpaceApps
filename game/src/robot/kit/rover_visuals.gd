@@ -370,14 +370,14 @@ func arm_ground_clearance(lookahead: float = 0.0) -> float:
 	return lowest
 
 
+## The mesh's convex hull points: the lowest point of a mesh, however it's turned, is always one of
+## them, and there are far fewer than its vertices (sorting every vertex 3x a tick lagged the arm)
 func _vertices(mesh: MeshInstance3D) -> Array:
 	if not _mesh_vertices.has(mesh):
-		var unique: Dictionary = {}
-		var surfaces: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
-		for i in surfaces:
-			for v in mesh.mesh.surface_get_arrays(i)[Mesh.ARRAY_VERTEX]:
-				unique[v] = true
-		_mesh_vertices[mesh] = unique.keys()
+		var points: Array = []
+		if mesh.mesh and mesh.mesh.get_surface_count() > 0:
+			points = Array((mesh.mesh.create_convex_shape(true, false) as ConvexPolygonShape3D).points)
+		_mesh_vertices[mesh] = points
 	return _mesh_vertices[mesh]
 
 
