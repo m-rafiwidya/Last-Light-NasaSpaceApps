@@ -34,6 +34,16 @@ func route(id: String) -> PackedVector2Array:
 
 
 ## Where both routes start: in front of the workshop's door, on the apron
+## Easter egg: Indonesia's Merah Putih (red over white) on a stake beside the cargo landing zone,
+## always up whatever the mission, unlike the route flags
+const MERAH_PUTIH_AT := Vector2(9.0, 350.0)
+const MERAH := Color(0.81, 0.07, 0.15)
+const PUTIH := Color(0.96, 0.96, 0.94)
+
+## Every flag's pivot at its pole top; _process turns them to face the camera about the pole
+var _flag_pivots: Array[Node3D] = []
+
+
 func start() -> Vector2:
 	var workshop: Node3D = get_node_or_null(workshop_path)
 	var apron: Vector3 = workshop.to_global(Vector3(1.5, 0.0, -12.0)) if workshop else Vector3.ZERO
@@ -62,11 +72,14 @@ func _ready() -> void:
 	for id in TITLES:
 		var points: PackedVector2Array = route(id)
 		for i in points.size() - 1:
-			_stake(terrain, points[i], COLORS[id], "")
+			add_child(_stake(terrain, points[i], [COLORS[id]], ""))
 		var from: Vector2 = start()
 		var along: Vector2 = (points[0] - from).normalized()
 		var sign_at: Vector2 = from + along * SIGN_DISTANCE + along.orthogonal() * SIGN_SIDE * SIGN_SIDES[id]
-		_stake(terrain, sign_at, COLORS[id], TITLES[id].to_upper(), SIGN_EXTRA_HEIGHT[id])
+		add_child(_stake(terrain, sign_at, [COLORS[id]], TITLES[id].to_upper(), SIGN_EXTRA_HEIGHT[id]))
+	var merah_putih: Node3D = _stake(terrain, MERAH_PUTIH_AT, [MERAH, PUTIH], "")
+	merah_putih.name = "MerahPutih"
+	get_parent().add_child.call_deferred(merah_putih)       # outside this node, so M3's gate doesn't hide it
 	_update_visibility()
 
 
@@ -86,13 +99,22 @@ func _update_visibility() -> void:
 
 func _process(_delta: float) -> void:
 	_update_visibility()
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	for pivot in _flag_pivots:
+		if is_instance_valid(pivot) and pivot.is_visible_in_tree():
+			var to_cam: Vector3 = cam.global_position - pivot.global_position
+			pivot.rotation.y = atan2(to_cam.x, to_cam.z)
 
 
-func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String, extra_height: float = 0.0) -> void:
+## A pole with a flag of `stripes` (colours, top to bottom) and an optional label; the caller adds it.
+## Positions are world ones: this node and the level root sit at the origin.
+func _stake(terrain: MoonTerrain, at: Vector2, stripes: Array, text: String, extra_height: float = 0.0) -> Node3D:
 	var stake := Node3D.new()
 	stake.name = "Stake"
-	add_child(stake)
-	stake.global_position = Vector3(at.x, terrain.height_at(at.x, at.y), at.y)
+	stake.position = Vector3(at.x, terrain.height_at(at.x, at.y), at.y)
+	var color: Color = stripes[0]
 	var pole := MeshInstance3D.new()
 	var cylinder := CylinderMesh.new()
 	cylinder.top_radius = 0.035
@@ -105,18 +127,25 @@ func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String, extra
 	pole.mesh = cylinder
 	pole.position.y = (POLE_HEIGHT + extra_height) * 0.5
 	stake.add_child(pole)
-	var flag := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.5, 0.32, 0.02)
-	var flag_material := StandardMaterial3D.new()
-	flag_material.albedo_color = color
-	flag_material.emission_enabled = true
-	flag_material.emission = color
-	flag_material.emission_energy_multiplier = 0.4
-	box.material = flag_material
-	flag.mesh = box
-	flag.position = Vector3(0.27, POLE_HEIGHT + extra_height - 0.2, 0.0)
-	stake.add_child(flag)
+	var pivot := Node3D.new()
+	pivot.name = "FlagPivot"
+	pivot.position.y = POLE_HEIGHT + extra_height - 0.2
+	stake.add_child(pivot)
+	_flag_pivots.append(pivot)
+	var stripe_height: float = 0.32 / stripes.size()
+	for i in stripes.size():
+		var flag := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.5, stripe_height, 0.02)
+		var flag_material := StandardMaterial3D.new()
+		flag_material.albedo_color = stripes[i]
+		flag_material.emission_enabled = true
+		flag_material.emission = stripes[i]
+		flag_material.emission_energy_multiplier = 0.4
+		box.material = flag_material
+		flag.mesh = box
+		flag.position = Vector3(0.27, 0.16 - stripe_height * (i + 0.5), 0.0)
+		pivot.add_child(flag)
 	if text:
 		var label := Label3D.new()
 		label.text = text
@@ -126,3 +155,4 @@ func _stake(terrain: MoonTerrain, at: Vector2, color: Color, text: String, extra
 		label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		label.position.y = POLE_HEIGHT + extra_height + 0.35
 		stake.add_child(label)
+	return stake
