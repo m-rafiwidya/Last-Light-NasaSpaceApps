@@ -1,27 +1,17 @@
 extends UIScreen
 
 var fade_tween: Tween = null
+var tips := TipCard.new()
 
 
 func _ready() -> void:
 	add_child(BoundaryHint.new(false))
-	InputBindings.events.changed.connect(_update_hint)
-	_update_hint()
+	add_child(tips)
 	hide()
 
 
-## The controls line, with the keys as bound now (InputBindings)
-func _update_hint() -> void:
-	var key := InputBindings.action_text
-	$MarginContainer/Hint.text = (
-		"%s: move   %s: sprint   %s: jump   %s: crouch   Mouse: look\n" % [
-			InputBindings.keys_text([&"move_forward", &"move_left", &"move_backward", &"move_right"]),
-			key.call(&"move_sprint"), key.call(&"move_jump"), key.call(&"move_crouch")]
-		+ "%s: use / pick up / drop   %s: throw   %s: helmet light   %s: pause" % [
-			key.call(&"interact_use"), key.call(&"interact_primary"), key.call(&"lights"), key.call(&"ui_cancel")])
-
-
 func _process(_delta: float) -> void:
+	_update_tips()
 	if is_instance_valid(GameState.player):
 		var player: Player = GameState.player
 		var target: Object = player.looking_at_object
@@ -31,6 +21,16 @@ func _process(_delta: float) -> void:
 		%PartTooltip.show_for(target if not player.hide_crosshair else null, true, target != null and target == player.held_object)
 	else:
 		%PartTooltip.hide()
+
+
+## The on-foot tip, the first time the player is in the workshop
+func _update_tips() -> void:
+	var workshop := get_tree().get_first_node_in_group(&"workshop") as Workshop
+	if GameState.state == GameState.State.IN_GAME_PLAYER and workshop and is_instance_valid(GameState.player):
+		if workshop.contains(GameState.player.global_position):
+			tips.offer(&"on_foot")
+	elif GameState.state == GameState.State.IN_GAME_ROBOT:
+		tips.dismiss()
 
 
 ## True when E does something with `target`: a prop, or a trigger (not an empty socket's)

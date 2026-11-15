@@ -10,8 +10,8 @@ const ZOOM_HINT_TIME: float = 1.8
 const ZOOM_HINT_FADE: float = 0.4
 
 var fade_tween: Tween = null
+var tips := TipCard.new()
 var _cargo_label: Label = null
-var _hint_text: String = ""
 
 
 func _ready() -> void:
@@ -20,6 +20,7 @@ func _ready() -> void:
 	add_child(CargoHint.new())
 	add_child(ScanHint.new())
 	add_child(MissionHint.new())
+	add_child(tips)
 	# CARGO under BATTERY: what the cargo mount holds (IRIS_KIT.md 5.3)
 	_cargo_label = Label.new()
 	_cargo_label.name = "Cargo"
@@ -27,7 +28,6 @@ func _ready() -> void:
 	_cargo_label.text = "CARGO  --"
 	%Battery.get_parent().add_child(_cargo_label)
 	%Battery.get_parent().move_child(_cargo_label, %Battery.get_index() + 1)
-	InputBindings.events.changed.connect(func() -> void: _hint_text = "")
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 
@@ -35,6 +35,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	_update_tips()
 	var looking_at_prop: bool = false
 	if is_instance_valid(Debug.current_robot):
 		%Speed.text = "SPEED  %4.1f m/s%s" % [Debug.current_robot.linear_velocity.length(),
@@ -62,6 +63,15 @@ func _process(_delta: float) -> void:
 	%InteractCrosshair.visible = looking_at_prop
 
 
+## The driving tip, the first time Kite is driven
+func _update_tips() -> void:
+	var workshop := get_tree().get_first_node_in_group(&"workshop") as Workshop
+	if GameState.state != GameState.State.IN_GAME_ROBOT:
+		tips.dismiss()
+	elif workshop and workshop.rover == GameState.robot:
+		tips.offer(&"drive")
+
+
 func _update_battery_label(robot: Robot) -> void:
 	var battery: BatteryPart = robot.battery
 	if not battery:
@@ -77,29 +87,6 @@ func _update_battery_label(robot: Robot) -> void:
 func _update_cargo_label(robot: Robot) -> void:
 	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
 	_cargo_label.text = "CARGO  " + (socket.part.get_display_name() if socket and socket.part else "empty")
-	# Where the mast camera can't pick things up (the Moon), E only delivers cargo
-	var hint: Label = $MarginContainer/Hint
-	if _hint_text.is_empty():
-		_hint_text = _controls_hint()
-	var key := InputBindings.action_text
-	hint.text = _hint_text if robot.pickup_enabled else _hint_text.replace(
-		"%s: pick up / drop   %s: throw" % [key.call(&"interact_use"), key.call(&"interact_primary")],
-		"%s: deliver cargo" % key.call(&"interact_use"))
-
-
-## The controls lines, with the keys as bound now (InputBindings; rebuilt after a change)
-func _controls_hint() -> String:
-	var key := InputBindings.action_text
-	return (
-		"%s: drive   Mouse: look   %s: pick up / drop   %s: throw   %s: exit robot\n" % [
-			InputBindings.keys_text([&"move_forward", &"move_left", &"move_backward", &"move_right"]),
-			key.call(&"interact_use"), key.call(&"interact_primary"), key.call(&"ui_cancel")]
-		+ "%s: deploy / stow arm   %s: arm joint   %s / %s: move joint   %s: reset upright\n" % [
-			key.call(&"arm_toggle"), InputBindings.keys_text([&"arm_joint_1", &"arm_joint_2", &"arm_joint_3",
-			&"arm_joint_4", &"arm_joint_5"]), key.call(&"arm_rotate_down"), key.call(&"arm_rotate_up"),
-			key.call(&"robot_reset")]
-		+ "%s: camera view   %s: headlights   Wheel / two-finger scroll / pinch / %s %s: zoom (mast camera)" % [
-			key.call(&"camera_next"), key.call(&"lights"), key.call(&"camera_zoom_in"), key.call(&"camera_zoom_out")])
 
 
 func _update_view_label(robot: Robot) -> void:

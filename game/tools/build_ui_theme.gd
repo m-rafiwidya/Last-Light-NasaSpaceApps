@@ -108,6 +108,20 @@ func _labels(c: Dictionary) -> void:
 	# Loading screen: stage text and percentage
 	_label("LabelLoadingStage", PLEX_MONO, 12, 5, c.text_3)
 	_label("LabelLoadingPercent", PLEX_MONO, 12, 3, c.muted)
+	# In-game guidance text (tracker, rover mission hint, waypoint and world labels): Exo 2, light
+	# text and greys; only the alert is red
+	_label("LabelHudObjective", EXO_600, 15, 0, c.text_2)
+	_label("LabelHudStep", EXO_600, 18, 0, c.text)
+	_label("LabelHudStuck", EXO_500, 14, 0, c.text_3)
+	_label("LabelHudAlert", EXO_600, 17, 0, c.warn)
+	_label("LabelHudWorld", EXO_600, 14, 0, c.text)
+	# Radio subtitle body (RichTextLabel); the speaker above it is LabelEyebrow (Michroma 11, muted)
+	theme.set_type_variation("RichSubtitle", "RichTextLabel")
+	theme.set_font("normal_font", "RichSubtitle", _font(EXO_500, 0))
+	theme.set_font("bold_font", "RichSubtitle", _font(EXO_600, 0))
+	theme.set_font("italics_font", "RichSubtitle", _font(EXO_500, 0))
+	theme.set_font("bold_italics_font", "RichSubtitle", _font(EXO_600, 0))
+	theme.set_color("default_color", "RichSubtitle", c.text)
 
 
 func _flat(color: Color, slant: float = 0.0, height: float = 0.0) -> StyleBoxFlat:
@@ -386,6 +400,31 @@ func _panels(c: Dictionary) -> void:
 	framed.shadow_color = Color(c.text.r, c.text.g, c.text.b, 0.12)
 	framed.shadow_size = _px(18)
 	theme.set_stylebox("panel", "FramedPanel", framed)
+
+	# HUD text backing: plain black at 55 %, so light text stays readable over bright terrain. The
+	# flush one has no padding (the subtitle stack's boxes bring their own)
+	for variation in ["HudBacking", "HudBackingFlush"]:
+		theme.set_type_variation(variation, "PanelContainer")
+		var backing := StyleBoxFlat.new()
+		backing.bg_color = Color(0, 0, 0, 0.55)
+		if variation == "HudBacking":
+			backing.content_margin_left = 14.0 * SCALE
+			backing.content_margin_right = 14.0 * SCALE
+			backing.content_margin_top = 9.0 * SCALE
+			backing.content_margin_bottom = 9.0 * SCALE
+		theme.set_stylebox("panel", variation, backing)
+
+	# "New control" / "Tip" card (HUD board): ink at 70 %, 2 px left rule in text
+	theme.set_type_variation("TipCardPanel", "PanelContainer")
+	var tip := StyleBoxFlat.new()
+	tip.bg_color = Color(c.ink.r, c.ink.g, c.ink.b, 0.7)
+	tip.border_color = c.text
+	tip.border_width_left = 2
+	tip.content_margin_left = 18.0 * SCALE
+	tip.content_margin_right = 18.0 * SCALE
+	tip.content_margin_top = 12.0 * SCALE
+	tip.content_margin_bottom = 12.0 * SCALE
+	theme.set_stylebox("panel", "TipCardPanel", tip)
 
 	# Unselected card: 1 px #2A2A2E, no glow, no brackets
 	theme.set_type_variation("CardPanel", "PanelContainer")

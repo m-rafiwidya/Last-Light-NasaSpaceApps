@@ -180,10 +180,9 @@ func _check_lights(tag: String, level: Node) -> void:
 	var lights: Node3D = rover.headlights
 	var player: Node = GS.player
 	var helmet: SpotLight3D = player.helmet_light
-	var hud_hint := root.get_node("Main/UIManager/HUD").find_child("Hint", true, false) as Label
-	var rover_hint := root.get_node("Main/UIManager/RobotHUD").find_child("Hint", true, false) as Label
 	_check(tag + ": helmet light and headlights start off", not helmet.visible and not lights.visible)
-	_check(tag + ": the on-foot hint shows L", hud_hint != null and hud_hint.is_visible_in_tree() and "L: helmet light" in hud_hint.text)
+	_check(tag + ": no permanent key-hint line on either HUD", root.get_node("Main/UIManager/HUD").find_child("Hint", true, false) == null
+		and root.get_node("Main/UIManager/RobotHUD").find_child("Hint", true, false) == null)
 
 	# On foot
 	await _key(KEY_L)
@@ -198,7 +197,6 @@ func _check_lights(tag: String, level: Node) -> void:
 	# Driving
 	GS.drive(rover)
 	await _ticks(0.2)
-	_check(tag + ": the rover hint shows L", rover_hint != null and rover_hint.is_visible_in_tree() and "L: headlights" in rover_hint.text)
 	await _key(KEY_L)
 	_check(tag + ": L while driving turns the headlights on", lights.visible and rover.headlights_on)
 	_check(tag + ": ... and leaves the helmet light as it was (on)", helmet.visible)

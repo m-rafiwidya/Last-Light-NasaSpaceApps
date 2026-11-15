@@ -22,7 +22,7 @@ func _apply_subtitles() -> void:
 
 func _on_dialog_played(dialog: Dialog) -> void:
 	var dialog_box: Control = dialog_box_scene.instantiate()
-	dialog_box.set_text(dialog.get_display_text())
+	dialog_box.set_line(dialog.speaker, dialog.subtitle)
 	boxes.add_child(dialog_box)
 	_ignore_mouse(dialog_box)
 	dialog_box.fade_in()

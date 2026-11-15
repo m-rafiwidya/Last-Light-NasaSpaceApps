@@ -34,14 +34,22 @@ func _on_general_setting_changed(key: String) -> void:
 
 
 func _apply_font_size() -> void:
-	var label: RichTextLabel = $Content/RichTextLabel
+	var label: RichTextLabel = $Content/Column/RichTextLabel
 	var font_size: int = roundi(FONT_SIZE * GeneralSettings.subtitle_scale())
 	for font_size_name in FONT_SIZE_NAMES:
 		label.add_theme_font_size_override(font_size_name, font_size)
 
 
 func set_text(text: String):
-	$Content/RichTextLabel.text = text
+	$Content/Column/RichTextLabel.text = text
+
+
+## The line's text, with the speaker's name on its own small line above it (none: no name line)
+func set_line(speaker: String, text: String) -> void:
+	var name_label: Label = $Content/Column/Speaker
+	name_label.text = speaker.to_upper()
+	name_label.visible = not speaker.is_empty()
+	set_text(text)
 
 
 func fade_in():

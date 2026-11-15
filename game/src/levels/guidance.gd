@@ -306,9 +306,11 @@ func _refresh_highlight() -> void:
 		label.fixed_size = true
 		label.no_depth_test = true
 		label.pixel_size = 0.0008
-		label.font_size = 40
-		label.outline_size = 10
-		label.modulate = Color(1.0, 0.8, 0.35)
+		label.font = GuidanceOverlay.UI_THEME.get_font(&"font", &"LabelHudWorld")
+		label.font_size = 36
+		label.outline_size = 4
+		label.outline_modulate = Color(0.0, 0.0, 0.0, 0.8)
+		label.modulate = GuidanceOverlay.ui_color(&"text")
 		label.render_priority = 10
 		label.outline_render_priority = 9
 		add_child(label)

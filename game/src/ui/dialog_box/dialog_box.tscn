@@ -1,11 +1,13 @@
 [gd_scene format=3 uid="uid://b4pifos02jsqh"]
 
 [ext_resource type="Script" uid="uid://bfe3d6lsdburg" path="res://src/ui/dialog_box/dialog_box.gd" id="1_tx2l6"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_theme"]
 
 [node name="DialogBox" type="Control" unique_id=731751869]
 clip_contents = true
 layout_mode = 3
 anchors_preset = 0
+theme = ExtResource("2_theme")
 script = ExtResource("1_tx2l6")
 
 [node name="Content" type="MarginContainer" parent="." unique_id=1327507438]
@@ -21,8 +23,18 @@ theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
-[node name="RichTextLabel" type="RichTextLabel" parent="Content" unique_id=560067576]
+[node name="Column" type="VBoxContainer" parent="Content"]
 layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Speaker" type="Label" parent="Content/Column"]
+visible = false
+layout_mode = 2
+theme_type_variation = &"LabelEyebrow"
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Content/Column" unique_id=560067576]
+layout_mode = 2
+theme_type_variation = &"RichSubtitle"
 theme_override_font_sizes/normal_font_size = 24
 theme_override_font_sizes/bold_font_size = 24
 theme_override_font_sizes/bold_italics_font_size = 24
