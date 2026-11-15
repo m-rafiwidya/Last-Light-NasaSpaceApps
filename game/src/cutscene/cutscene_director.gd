@@ -15,6 +15,8 @@ const SKIP_HOLD: float = 1.0
 const SKIP_FADE: float = 0.3
 const MAX_STEP: float = 1.0 / 20.0
 const DIALOGUE_GRACE: float = 4.0
+## Longest a shot is held at its end for its lines to finish
+const MAX_SHOT_HOLD: float = 12.0
 const CAMERA_CLEARANCE: float = 1.0
 const CAMERA_FAR: float = 50000.0
 const OPENING_EVENT: String = "campaign_start"
@@ -52,6 +54,9 @@ var _phase_time: float = 0.0
 var _skip_armed: bool = false
 var _held_dialogue: bool = false
 var _queue: Array[String] = []
+## Seconds the shots were held for their lines (this cutscene)
+var held_time: float = 0.0
+var _shot_hold: float = 0.0
 
 
 func _ready() -> void:
@@ -144,6 +149,8 @@ func play(id: String, after_state: int = -1) -> bool:
 	camera.far = float(level.get("camera_far")) if level.get("camera_far") != null else CAMERA_FAR
 	level.add_child(camera)
 	time = 0.0
+	held_time = 0.0
+	_shot_hold = 0.0
 	skip_hold = 0.0
 	skipped = false
 	_skip_armed = not Input.is_action_pressed(&"cutscene_skip")
@@ -176,7 +183,7 @@ func _process(delta: float) -> void:
 			_update_skip_input(step, screen)
 			if phase != Phase.PLAYING:
 				return
-			time += step
+			time = _hold_for_dialogue(time, step)
 			_evaluate(time)
 			if time >= _total:
 				_phase_time = 0.0
@@ -191,8 +198,23 @@ func _process(delta: float) -> void:
 				_finish()
 		Phase.WAIT_DIALOGUE:
 			_phase_time += step
-			if _phase_time >= DIALOGUE_GRACE or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_pending(s)):
+			if _phase_time >= DIALOGUE_GRACE or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_waiting(s)):
 				_finish()
+
+
+## Lines play one at a time, so a shot's line can be pushed past its end by the one before: the
+## shot then stays on its last moment (actions included) until that line has started, rather than
+## cutting away before it
+func _hold_for_dialogue(t: float, step: float) -> float:
+	var shot: Dictionary = _shot_at(t)
+	var next: float = t + step
+	if shot.is_empty() or shot == _shots.back() or next < shot["end"] or _shot_hold >= MAX_SHOT_HOLD \
+			or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_waiting(s)):
+		_shot_hold = 0.0
+		return next
+	_shot_hold += step
+	held_time += step
+	return maxf(t, shot["end"] - 0.001)
 
 
 func _update_skip_input(step: float, screen: CutsceneScreen) -> void:
@@ -346,6 +368,8 @@ func _shot_at(t: float) -> Dictionary:
 
 
 func _apply_end_states() -> void:
+	for line in _lines:
+		line["done"] = true
 	_evaluate(_total)
 	for action in _actions:
 		if action["data"].get("do") == "path":

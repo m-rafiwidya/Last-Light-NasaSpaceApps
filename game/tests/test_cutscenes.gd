@@ -10,6 +10,10 @@ extends SceneTree
 ##   5. IRIS: m2.iris_activated plays it from the rover, input blocked, pause returns to it, the
 ##      robot state and camera restored after, never twice.
 ##   6. Opening, played through (a second campaign): every line once, in order, then the held line.
+##   7. Layout at five window sizes: the title card and its caption inside the safe margins, the
+##      longest line inside the bottom bar, clear of the skip key.
+##   Throughout: during every cutscene at most one line is on screen (and playing), always inside
+##   the bottom bar.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_cutscenes.gd
 
@@ -21,6 +25,10 @@ var DT: Node
 var SI: GDScript
 var failures: int = 0
 var played: Array[String] = []
+const SIZES: Array[Vector2i] = [
+	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1080), Vector2i(1024, 640),
+]
+var watch: Dictionary = {"frames": 0, "most_shown": 0, "most_playing": 0, "outside": 0, "outside_at": ""}
 
 
 func _initialize() -> void:
@@ -86,6 +94,7 @@ func _run() -> void:
 		return
 	_clear_dir()
 	var screen = root.get_node("Main").find_child("CutsceneScreen", true, false)
+	process_frame.connect(_watch_lines.bind(screen))
 
 	# 1. Data
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://res/story/cutscenes.json"))
@@ -148,13 +157,14 @@ func _run() -> void:
 	_check("[skip] the player's state, camera and input are back", GS.state == GS.State.IN_GAME_PLAYER
 		and root.get_viewport().get_camera_3d() == GS.player.camera and GS.player.controller.is_input_enabled()
 		and not GS.cutscene_active and not cutscenes.is_playing())
-	_check("[skip] end states: player at the hatch, lander landed, engine off", flat.call(GS.player.global_position).distance_to(flat.call(hatch)) < 0.5
-		and lander.global_position.is_equal_approx(lander_rest) and not lander.engine_on and not lander.engine_glow.visible,
+	_check("[skip] end states: player at the hatch, lander landed, engine off, ramp down", flat.call(GS.player.global_position).distance_to(flat.call(hatch)) < 0.5
+		and lander.global_position.is_equal_approx(lander_rest) and not lander.engine_on and not lander.engine_glow.visible and lander.is_deployed(),
 		"%.2f m" % flat.call(GS.player.global_position).distance_to(flat.call(hatch)))
 	_check("[skip] still marked played, the cutscene camera gone", CS.is_cutscene_played("opening")
 		and level.get_node_or_null("CutsceneCamera") == null)
 	await _wait(func() -> bool: return played.has(DT.lines["mira_m1_01"]["text"]), 10.0)
-	_check("[skip] the held trigger line plays after", not DT.hold and played.has(DT.lines["mira_m1_01"]["text"]))
+	_check("[skip] the held trigger line plays after, the cut opening lines don't", not DT.hold and played.has(DT.lines["mira_m1_01"]["text"])
+		and not played.has(data["lines"]["cs_open_09"]["text"]))
 	await _ticks(0.8)
 	_check("[skip] the screen is gone", not screen.visible)
 
@@ -262,8 +272,66 @@ func _run() -> void:
 	var counts: Dictionary = {}
 	for text in played:
 		counts[text] = counts.get(text, 0) + 1
+	_check("[lines] during every cutscene at most one line on screen and playing", watch["frames"] > 1000
+		and watch["most_shown"] == 1 and watch["most_playing"] == 1, str(watch))
+	_check("[lines] every line inside the bottom bar", watch["outside"] == 0, str(watch["outside_at"]))
+	print("RESULT [lines] the opening's shots were held %.1f s for their lines" % cutscenes.held_time)
 	_check("[full] no line played twice", counts.values().all(func(n: int) -> bool: return n == 1), str(counts.values()))
+	await _layout_checks(data)
 	_finish()
+
+
+## Every frame of a cutscene: how many lines are shown and playing, and whether a shown line
+## leaves the bottom bar (once the bars are in)
+func _watch_lines(screen) -> void:
+	if GS == null or not GS.cutscene_active or not screen.visible:
+		return
+	watch["frames"] += 1
+	watch["most_shown"] = maxi(watch["most_shown"], screen.subtitles.shown_count())
+	watch["most_playing"] = maxi(watch["most_playing"], DS._active_dialogs.size())
+	if screen.bars < 0.999:
+		return
+	var bar: Rect2 = screen.bottom_bar_rect().grow(0.5)
+	for box in screen.subtitles.boxes.get_children():
+		if box.visible and not bar.encloses(box.get_global_rect()):
+			watch["outside"] += 1
+			watch["outside_at"] = "%s in %s" % [box.get_global_rect(), bar]
+
+
+func _layout_checks(data: Dictionary) -> void:
+	var longest: String = ""
+	for id in data["lines"]:
+		if longest.is_empty() or data["lines"][id]["text"].length() > data["lines"][longest]["text"].length():
+			longest = id
+	var title: Dictionary = data["cutscenes"]["opening"]["shots"][0]["title"]
+	for size in SIZES:
+		var view := SubViewport.new()
+		view.size = size
+		root.add_child(view)
+		var screen = load("res://src/ui/cutscene_screen/cutscene_screen.gd").new()
+		view.add_child(screen)
+		await process_frame
+		screen.begin(true)
+		screen.set_title(title["text"], title["caption"], 1.0, 1.0)
+		DS.stop_all()
+		DS.play_dialog(DT.make_dialog(data["lines"][longest]))
+		await _ticks(1.2)
+		var label := "[layout] %dx%d" % [size.x, size.y]
+		var room: float = size.x - 2.0 * screen.safe_margin(size.x)
+		for l in [screen.title_label, screen.title_caption]:
+			var width: float = l.get_theme_font(&"font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size(&"font_size")).x
+			_check("%s %s inside the safe margins" % [label, l.name], width <= room and l.get_global_rect().size.x <= size.x,
+				"%.0f of %.0f px, size %d" % [width, room, l.get_theme_font_size(&"font_size")])
+		var bar: Rect2 = screen.bottom_bar_rect()
+		var shown: Array = screen.subtitles.boxes.get_children()
+		var line_rect: Rect2 = screen.subtitles.get_global_rect()
+		_check(label + " the longest line inside the bottom bar, clear of the skip key", shown.size() == 1
+			and bar.grow(0.5).encloses(shown[0].get_global_rect()) and bar.size.y <= size.y * 0.3
+			and not line_rect.intersects(screen.skip_box.get_global_rect()),
+			"line %s, bar %s" % [shown[0].get_global_rect() if shown.size() > 0 else "none", bar])
+		DS.stop_all()
+		view.queue_free()
+		await process_frame
 
 
 func _finish() -> void:

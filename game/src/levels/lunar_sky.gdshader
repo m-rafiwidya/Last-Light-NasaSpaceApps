@@ -44,13 +44,89 @@ vec4 sample_wrapped(sampler2D map, vec2 uv) {
 }
 
 
+vec3 equatorial_of(vec2 uv) {
+	float ra = (0.5 - uv.x) * 2.0 * PI;
+	float dec = (0.5 - uv.y) * PI;
+	return vec3(cos(dec) * cos(ra), cos(dec) * sin(ra), sin(dec));
+}
+
+
+// Under a long lens (several pixels per texel), instead of magnified soft squares: a texel
+// brighter than its eight neighbours is a star, drawn as a point about a pixel across at the
+// centroid of its 3 x 3 excess over their minimum, carrying all of it; the minimum, bilinear, is
+// the background
+vec3 point_stars(vec2 uv, vec3 e, float pixel) {
+	const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+	const float SIGMA = 0.9;
+	const float GAIN = 1.5;
+	ivec2 size = textureSize(star_map, 0);
+	vec2 tc = uv * vec2(size) - 0.5;
+	ivec2 base = ivec2(floor(tc)) - ivec2(1);
+	vec2 f = fract(tc);
+	vec3 block[16];
+	for (int j = 0; j < 4; j++) {
+		for (int i = 0; i < 4; i++) {
+			ivec2 c = ivec2((base.x + i + size.x) % size.x, clamp(base.y + j, 0, size.y - 1));
+			block[j * 4 + i] = texelFetch(star_map, c, 0).rgb;
+		}
+	}
+	vec3 floor_of[4];
+	vec3 color = vec3(0.0);
+	for (int k = 0; k < 4; k++) {
+		int ci = 1 + k % 2;
+		int cj = 1 + k / 2;
+		vec3 centre = block[cj * 4 + ci];
+		vec3 low = centre;
+		bool peak = true;
+		for (int dj = -1; dj <= 1; dj++) {
+			for (int di = -1; di <= 1; di++) {
+				vec3 v = block[(cj + dj) * 4 + ci + di];
+				low = min(low, v);
+				peak = peak && dot(v, LUMA) <= dot(centre, LUMA);
+			}
+		}
+		floor_of[k] = low;
+		if (!peak) {
+			continue;
+		}
+		vec3 flux = vec3(0.0);
+		vec2 centroid = vec2(0.0);
+		float weight = 0.0;
+		for (int dj = -1; dj <= 1; dj++) {
+			for (int di = -1; di <= 1; di++) {
+				vec3 excess = block[(cj + dj) * 4 + ci + di] - low;
+				flux += excess;
+				centroid += vec2(float(di), float(dj)) * dot(excess, LUMA);
+				weight += dot(excess, LUMA);
+			}
+		}
+		if (weight <= 0.0) {
+			continue;
+		}
+		vec2 spot = (vec2(base + ivec2(ci, cj)) + 0.5 + centroid / weight) / vec2(size);
+		float d = length(e - equatorial_of(spot)) / pixel;
+		color += flux * GAIN * exp(-d * d / (2.0 * SIGMA * SIGMA));
+	}
+	color += mix(mix(floor_of[0], floor_of[1], f.x), mix(floor_of[2], floor_of[3], f.x), f.y);
+	return color;
+}
+
+
 vec3 stars(vec3 dir) {
 	vec3 e = world_to_equatorial * dir;
 	float ra = atan(e.y, e.x);
 	float dec = asin(clamp(e.z, -1.0, 1.0));
 	vec2 uv = vec2(fract(0.5 - ra / (2.0 * PI)), 0.5 - dec / PI);
-	// The 4k map is about one texel per pixel at the cameras' fields of view: no mips needed
-	return textureLod(star_map, uv, 0.0).rgb * star_energy;
+	// The 4k map is about one texel per pixel at the players' fields of view (60 degrees and up):
+	// no mips needed. Narrower views (the mast zoom, the opening's long lens) draw point stars.
+	vec3 smooth_stars = textureLod(star_map, uv, 0.0).rgb;
+	float pixel = max(max(length(dFdx(dir)), length(dFdy(dir))), 1e-7);
+	float pixels_per_texel = PI / float(textureSize(star_map, 0).y) / pixel;
+	float sharp = smoothstep(1.65, 2.4, pixels_per_texel);
+	if (sharp > 0.0) {
+		smooth_stars = mix(smooth_stars, point_stars(uv, e, pixel), sharp);
+	}
+	return smooth_stars * star_energy;
 }
 
 
