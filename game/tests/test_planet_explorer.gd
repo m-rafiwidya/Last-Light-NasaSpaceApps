@@ -248,7 +248,7 @@ func _run() -> void:
 	_check("Curiosity's badge", badge.visible and badge.text.ends_with("THE ROVER THAT INSPIRED OURS"))
 	tabs[2].pressed.emit()
 	await _seconds(0.7)
-	_check("Earth: four team markers and the subtitle", explorer._markers.size() == 4
+	_check("Earth: three team markers and the subtitle", explorer._markers.size() == 3
 		and explorer.find_child("Subtitle", true, false).visible and explorer.selected_id == &"")
 	explorer.marker(&"fahd").pressed.emit()
 	await process_frame

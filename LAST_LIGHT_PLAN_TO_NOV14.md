@@ -30,14 +30,14 @@ Owners edit only their own files (see `workflow.md`). If you need a change in so
 | # | Item | Owner | Done when |
 |---|---|---|---|
 | A | Merge Rafi's 3 PRs in order: `feat/field-interactions`, `feat/cargo-crate`, `feat/field-logger`. Place them in the level. | Rafi merges, Fahd places | M2 and M3 can be completed start to finish with **no debug commands** |
-| B | **Mass affects driving.** Loaded part mass changes Kite's acceleration/top speed and energy use. | Goriorio (fallback Fahd) | A test shows a loaded Kite is slower and uses more Wh than an empty one on the same drive |
+| B | **Mass affects driving.** Loaded part mass changes Kite's acceleration/top speed and energy use. | Former teammate (fallback Fahd) | A test shows a loaded Kite is slower and uses more Wh than an empty one on the same drive |
 | C | **Two landmarks** on the short route: one big crater to route around, one boulder field with rocks up to 3 m. The long route stays gentler. | Fahd | The short route is visibly rougher; the long route avoids both |
 | D | **Temperature pair in M3**: one ground reading in sun, one in shade (reuse `cold_zone.gd`). Far sample is a stretch goal. Near sample stays optional. | Rafi | M3 can require the pair, and the guidance placeholders have real targets (Rafi tells Fahd the targets; Fahd edits `missions.json`) |
 | E | **Payoff moments**: IRIS lights turn on, the antenna moves modestly, the first packet arrives at the console. | Rafi | Installing the module visibly and audibly brings IRIS online |
 | F | **Sectioned mission report**: objectives, science, rover, resources, assistance. A "why" line per section (for example, "short route crossed shade: heater used X Wh"). A comparison line against the last run. No single opaque score. | Fahd | The Downlink report shows all sections after each mission, with numbers read from game state |
 | G | **Crew requests**: Hana and Mira each ask for one thing per mission. The report ends with "request met or missed". Text only. | Faiq writes, Fahd wires | Each mission shows one request, and the report reflects the real state |
 | H | **Opening scene**: a 30 to 45 second skippable card (year, crew, Kite on the pad, Mira's first line). | Fahd | New game shows it once, with a skip |
-| I | **Dialogue queue** (minimal): plays line by ID from `lines.json` and `dialogue_triggers.json`, shows the subtitle, plays an optional audio file, one voice at a time, with a skip key and a repeat cooldown. | Goriorio (fallback Fahd) | A trigger plays a subtitle, and audio when `res/audio/voice/<id>.ogg` exists |
+| I | **Dialogue queue** (minimal): plays line by ID from `lines.json` and `dialogue_triggers.json`, shows the subtitle, plays an optional audio file, one voice at a time, with a skip key and a repeat cooldown. | Former teammate (fallback Fahd) | A trigger plays a subtitle, and audio when `res/audio/voice/<id>.ogg` exists |
 | J | **Voice lines**: 12 to 15 key lines only (opening, IRIS restore, logger find, ending, Evan's notes). Radio filter on all. Subtitles always on. | Faiq with the team | Files named by line ID are dropped in and play with no code change |
 | K | **Evan's notes** as props: workshop note, IRIS final field check (after M2), logger audio with the "second label underneath" hint. | Faiq text, Rafi props | Each is readable or audible and skippable |
 | L | **Data sources screen** at the end of the game, reading a JSON file so it can be filled in on 14 Nov without code changes. | Fahd | Shows LROC Apollo 12 DTM (2 m), SLDEM and a placeholder list |
@@ -48,7 +48,7 @@ Owners edit only their own files (see `workflow.md`). If you need a change in so
 
 ## 5. Schedule
 
-- **Wed 11:** item A. Goriorio confirms today whether they can do B and I (nothing pushed since 9 Oct). If not, Fahd takes them and C moves to Thursday.
+- **Wed 11:** item A. The former teammate confirms today whether they can do B and I (nothing pushed since 9 Oct). If not, Fahd takes them and C moves to Thursday.
 - **Thu 12:** B, C, D, E, F, G, H, I in that rough order. **Thu night: one timed full playthrough, then feature freeze.** Note the real playthrough length.
 - **Fri 13:** export, bug fixes only, read the two new guides, name the presenter. Voice and audio files may still be dropped in because they need no code.
 - **14 to 15 Nov:** check the challenge Resources tab for data, fill the data-sources file, record the demo video, submit.
@@ -79,10 +79,10 @@ Start each in **plan mode** for items B and I (new systems), then switch to norm
 **Common opening line for every prompt:**
 > Read `LAST_LIGHT_PLAN_TO_NOV14.md`, `CLAUDE.md`, `workflow.md` and `game/README.md`. You are working on item <X> only. Follow section 7.
 
-**Goriorio, item B (mass):**
+**Former teammate, item B (mass):**
 > Item B. Find where Kite's drive force and energy use are computed (`src/robot/robot.gd`, part scripts). Propose, then implement, a small change so the total mounted-part mass changes acceleration, top speed and Wh use. Keep the formula simple and put the constants in one place. Add one headless test showing a loaded Kite is slower and uses more energy than an empty one.
 
-**Goriorio, item I (dialogue queue):**
+**Former teammate, item I (dialogue queue):**
 > Item I. Inspect the existing dialogue resource schema and `lines.json` / `dialogue_triggers.json` first. Build the smallest queue that plays a line by ID: subtitle, optional audio at `res/audio/voice/<id>.ogg`, one at a time, skip key, repeat cooldown. Do not change the file formats without telling Faiq and Fahd. Add a headless test for the queue order and cooldown.
 
 **Fahd (C, F, H, L, then N):**
@@ -104,7 +104,7 @@ Start each in **plan mode** for items B and I (new systems), then switch to norm
 
 ## 10. Open questions (the group answers today)
 
-1. Goriorio: can you do B and I? If not, Fahd takes them.
+1. Former teammate: can you do B and I? If not, Fahd takes them.
 2. Who presents the demo?
 3. Which two team members record Mira and Hana, and who does Evan?
 4. Do we meet the 2026 submission requirements? Read the Submission Guide on 13 Nov.

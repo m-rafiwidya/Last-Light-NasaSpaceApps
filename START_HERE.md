@@ -4,7 +4,7 @@
 
 The target is one complete playable chapter: prepare Kite at a lunar workshop, inspect and restore IRIS, recover a field logger, collect useful comparison records, return and transmit. Three outings reuse one NASA-derived terrain patch. The story ends at home; Mars is a future assignment.
 
-**Team:** Fahd = Fahd Muhammad Zahid · Rafi = Muhammad Rafi Widyatama · Faiq = Faiq Haidar Dzikrullah Satriawan · Satinize = Rayhan Satrio Adi Nurdjaman
+**Team:** Fahd = Fahd Muhammad Zahid · Rafi = Muhammad Rafi Widyatama · Faiq = Faiq Haidar Dzikrullah Satriawan
 
 ## Which file each person needs
 
@@ -12,7 +12,7 @@ The target is one complete playable chapter: prepare Kite at a lunar workshop, i
 |---|---|
 | [Tandborste-Game-and-Story-Plan.md](Tandborste-Game-and-Story-Plan.md) | Shared final direction, story and production scope |
 | [TEAM_MESSAGE.md](TEAM_MESSAGE.md) | Plain Indo/English group explanation |
-| [game/README_GAMEPLAY.md](game/README_GAMEPLAY.md) | Goriorio: mission state, interactions, choices and acceptance checks |
+| [game/README_GAMEPLAY.md](game/README_GAMEPLAY.md) | Former teammate: mission state, interactions, choices and acceptance checks |
 | [game/docs/ASSET_BRIEF.md](game/docs/ASSET_BRIEF.md) | Fahd: prioritised models, imports, collision and source references |
 | [game/docs/STORY_SCRIPT.md](game/docs/STORY_SCRIPT.md) | Faiq: complete dialogue, logs, triggers and ending |
 | [game/docs/VOICE_AND_AUDIO.md](game/docs/VOICE_AND_AUDIO.md) | Record the team's 28 radio lines plus one archive performance |
