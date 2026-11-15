@@ -1,7 +1,7 @@
 .godot/
 .import/
 export.cfg
-data_*/
+/data_*/
 dist/
 *.vs
 *.tmp
