@@ -115,7 +115,7 @@ func _run() -> void:
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	console.select_section(console.Section.MISSION)
 	var action: Button = console.get_node("%Action")
-	_check("[start] the console offers the next mission", action.visible and not action.disabled and action.text.begins_with("Start next mission"), action.text)
+	_check("[start] the console offers the next mission", action.visible and not action.disabled and action.text.to_lower().begins_with("start next mission"), action.text)
 	console._on_action_pressed()
 	await _ticks(0.5)
 	_check("[start] m3 is current, m3.logger_recovered first", CS.current_mission() == "m3" and CS.current_objective() == "m3.logger_recovered"
@@ -163,7 +163,7 @@ func _run() -> void:
 	GS.change_state_to(GS.State.IN_GAME_PLAYER)
 	await _ticks(0.3)
 	console.select_section(console.Section.DOWNLINK)
-	_check("[downlink] Send archive is enabled", action.visible and not action.disabled and action.text == "Send archive", action.text)
+	_check("[downlink] Send archive is enabled", action.visible and not action.disabled and action.text.nocasecmp_to("Send archive") == 0, action.text)
 	console._on_action_pressed()
 	await _ticks(console.DOWNLINK_TIME + 0.5)
 	_check("[downlink] m3.archive_sent and m3 complete, no debug command used", CS.is_objective_done("m3.archive_sent")

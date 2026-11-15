@@ -11,10 +11,8 @@ func _init() -> void:
 	horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	offset_top = 240.0
-	add_theme_font_size_override("font_size", 28)
-	add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
-	add_theme_color_override("font_outline_color", Color.BLACK)
-	add_theme_constant_override("outline_size", 8)
+	theme = preload("res://res/ui_theme_v2.tres")
+	theme_type_variation = &"LabelHudPrompt"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hide()
 

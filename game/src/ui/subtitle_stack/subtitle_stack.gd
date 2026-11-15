@@ -2,9 +2,28 @@ class_name SubtitleStack
 
 extends PanelContainer
 ## Every DialogServer line as a stacked DialogBox; each subtitle screen has one and follows every line.
+## It owns a reserved area at the bottom centre (HUD board: left / right 400 of 1600, bottom 44) and
+## places itself there every frame: inside `slot` when the screen gives it one (the console), else
+## centred above the bottom edge, narrowed or moved beside a `keep_out` control (the rover stats),
+## lifted above it only when neither fits. It never reaches up into a `keep_below` control (the
+## objective panel): the oldest lines go first. At most MAX_ENTRIES lines show at once; a line
+## always shows in full, wrapped.
+
+const MAX_ENTRIES: int = 2
+const BOTTOM: float = 53.0
+const SIDE: float = 53.0
+const MIN_WIDTH: float = 560.0
+const MAX_WIDTH: float = 960.0
+const GAP: float = 24.0
 
 var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
 var dialog_boxes: Dictionary = {}
+## A Control whose rect is the reserved area (its minimum height follows the stack's)
+var slot: Control = null
+## Controls the stack must stay clear of
+var keep_out: Array[Control] = []
+## Controls the stack must stay under
+var keep_below: Array[Control] = []
 
 @onready var boxes: VBoxContainer = $Boxes
 
@@ -14,10 +33,75 @@ func _ready() -> void:
 	DialogServer.dialog_ended.connect(_on_dialog_ended)
 	GeneralSettings.section.changed.connect(func(_key: String) -> void: _apply_subtitles())
 	_apply_subtitles()
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	place()
+
+
+func _process(_delta: float) -> void:
+	place()
 
 
 func _apply_subtitles() -> void:
 	visible = GeneralSettings.subtitles()
+
+
+## The rect the stack takes for its current lines
+func place() -> void:
+	var view: Vector2 = get_viewport_rect().size
+	var width: float = clampf(view.x * 0.5, MIN_WIDTH, MAX_WIDTH)
+	var bottom: float = view.y - BOTTOM
+	if slot and slot.is_visible_in_tree():
+		var area: Rect2 = slot.get_global_rect()
+		width = minf(area.size.x, MAX_WIDTH)
+		_set_rect(area.position.x + (area.size.x - width) / 2.0, area.end.y, width)
+		slot.custom_minimum_size.y = size.y
+		return
+	width = minf(width, view.x - 2.0 * SIDE)
+	var left: float = (view.x - width) / 2.0
+	for other in keep_out:
+		if not is_instance_valid(other) or not other.is_visible_in_tree():
+			continue
+		var rect: Rect2 = other.get_global_rect()
+		if rect.end.x + GAP <= left or rect.position.x - GAP >= left + width:
+			continue
+		# Narrow the band symmetrically to clear it, else beside it, else above it
+		var inset: float = rect.end.x + GAP if rect.get_center().x < view.x / 2.0 else view.x - rect.position.x + GAP
+		var clear: float = minf(view.x - 2.0 * inset, width)
+		var beside: float = view.x - inset - SIDE
+		if clear >= MIN_WIDTH:
+			width = clear
+			left = (view.x - width) / 2.0
+		elif beside >= MIN_WIDTH:
+			width = minf(beside, MAX_WIDTH)
+			left = inset if rect.get_center().x < view.x / 2.0 else view.x - inset - width
+		else:
+			bottom = minf(bottom, rect.position.y - GAP)
+	_set_rect(left, bottom, width)
+	_stay_below()
+
+
+## Drops the oldest lines at once while the stack reaches into a keep_below control
+func _stay_below() -> void:
+	var shown: Array = boxes.get_children().filter(func(box: Node) -> bool: return box.visible)
+	if shown.size() < 2:
+		return
+	for other in keep_below:
+		if is_instance_valid(other) and other.is_visible_in_tree() and other.get_global_rect().grow(GAP).intersects(get_global_rect()):
+			var oldest: Control = shown[0]
+			oldest.hide()
+			oldest.queue_free()
+			for key in dialog_boxes.keys():
+				if dialog_boxes[key] == oldest:
+					dialog_boxes.erase(key)
+			_set_rect(position.x, position.y + size.y, size.x)
+			return
+
+
+func _set_rect(left: float, bottom: float, width: float) -> void:
+	size.x = width
+	var height: float = get_combined_minimum_size().y
+	size = Vector2(width, height)
+	position = Vector2(left, bottom - height)
 
 
 func _on_dialog_played(dialog: Dialog) -> void:
@@ -27,6 +111,14 @@ func _on_dialog_played(dialog: Dialog) -> void:
 	_ignore_mouse(dialog_box)
 	dialog_box.fade_in()
 	dialog_boxes[dialog.get_instance_id()] = dialog_box
+	_limit_entries()
+
+
+## The oldest lines beyond MAX_ENTRIES leave at once
+func _limit_entries() -> void:
+	var shown: Array = boxes.get_children().filter(func(box: Node) -> bool: return not box.leaving)
+	for i in maxi(shown.size() - MAX_ENTRIES, 0):
+		shown[i].fade_out(0.0)
 
 
 func _on_dialog_ended(dialog: Dialog) -> void:

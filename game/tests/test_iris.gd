@@ -305,7 +305,7 @@ func _run() -> void:
 	await _ticks(0.5)
 	var hud := root.get_node("Main").find_child("RobotHUD", true, false)
 	var cargo_line: Label = hud.find_child("Cargo", true, false)
-	_check("load: the robot HUD's CARGO line names it", cargo_line != null and cargo_line.text.begins_with("CARGO  Diagnostic cartridge"),
+	_check("load: the robot HUD's CARGO line names it", cargo_line != null and cargo_line.text.begins_with("Diagnostic cartridge"),
 		cargo_line.text if cargo_line else "no label")
 	var door: Vector3 = workshop.to_global(Vector3(-0.5, 0.0, -6.0))
 	var apron: Vector3 = workshop.to_global(Vector3(1.5, 0.0, -12.0))     # right of the base sign

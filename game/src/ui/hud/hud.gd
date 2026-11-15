@@ -8,6 +8,7 @@ func _ready() -> void:
 	add_child(BoundaryHint.new(false))
 	tips.avoid = $SubtitleStack
 	add_child(tips)
+	%PartTooltip.avoid = $SubtitleStack
 	hide()
 
 

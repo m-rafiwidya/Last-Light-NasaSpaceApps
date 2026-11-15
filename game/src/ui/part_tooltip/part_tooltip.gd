@@ -10,9 +10,10 @@ extends PanelContainer
 ## Used by the player HUD and the robot HUD; hidden while Settings > General > Show Tooltips is off.
 
 const OFFSET: Vector2 = Vector2(36.0, 28.0)
-const COLOR_DIM := Color(0.8, 0.84, 0.9, 0.75)
-const COLOR_STATS := Color(0.55, 0.85, 1.0)
-const COLOR_PROMPT := Color(1.0, 0.85, 0.4)
+const GAP: float = 24.0
+
+## Kept clear of this control (the subtitle stack): the panel moves up when they would meet
+var avoid: Control = null
 
 var _title: Label
 var _description: Label
@@ -23,28 +24,22 @@ var _prompt: Label
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.03, 0.05, 0.08, 0.78)
-	style.border_color = Color(0.55, 0.8, 1.0, 0.4)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(12)
-	add_theme_stylebox_override("panel", style)
+	theme = preload("res://res/ui_theme_v2.tres")
+	theme_type_variation = &"TipPanel"
 	var lines := VBoxContainer.new()
-	lines.add_theme_constant_override("separation", 2)
+	lines.add_theme_constant_override("separation", 4)
 	add_child(lines)
-	_title = _line(lines, 26, Color.WHITE)
-	_description = _line(lines, 18, Color.WHITE)
-	_mounts = _line(lines, 18, COLOR_DIM)
-	_stats = _line(lines, 18, COLOR_STATS)
-	_prompt = _line(lines, 18, COLOR_PROMPT)
+	_title = _line(lines, &"LabelTipName")
+	_description = _line(lines, &"LabelTooltipBody")
+	_mounts = _line(lines, &"LabelTipKey")
+	_stats = _line(lines, &"LabelTooltipStats")
+	_prompt = _line(lines, &"LabelTooltipPrompt")
 	hide()
 
 
-func _line(parent: Node, size: int, color: Color) -> Label:
+func _line(parent: Node, variation: StringName) -> Label:
 	var label := Label.new()
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", color)
+	label.theme_type_variation = variation
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	parent.add_child(label)
 	return label
@@ -90,6 +85,8 @@ func show_for(target: Object, on_foot: bool, holding: bool) -> void:
 	show()
 	reset_size()
 	position = get_viewport_rect().size / 2.0 + OFFSET
+	if avoid and avoid.is_visible_in_tree() and avoid.size.y > 0.0 and get_global_rect().intersects(avoid.get_global_rect()):
+		position.y = avoid.get_global_rect().position.y - GAP - size.y
 
 
 func _set_line(label: Label, text: String) -> void:

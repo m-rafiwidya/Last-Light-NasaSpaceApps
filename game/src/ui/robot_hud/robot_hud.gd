@@ -8,11 +8,11 @@ extends UIScreen
 # how long it takes to fade out at the end
 const ZOOM_HINT_TIME: float = 1.8
 const ZOOM_HINT_FADE: float = 0.4
+## Viewport width under which the stats block goes compact
+const COMPACT_BELOW: float = 1400.0
 
 var fade_tween: Tween = null
 var tips := TipCard.new()
-var _cargo_label: Label = null
-var _heater_label: Label = null
 
 
 func _ready() -> void:
@@ -23,20 +23,11 @@ func _ready() -> void:
 	add_child(MissionHint.new())
 	tips.avoid = $SubtitleStack
 	add_child(tips)
-	# CARGO under BATTERY: what the cargo mount holds (IRIS_KIT.md 5.3)
-	_cargo_label = Label.new()
-	_cargo_label.name = "Cargo"
-	_cargo_label.add_theme_font_size_override("font_size", 32)
-	_cargo_label.text = "CARGO  --"
-	%Battery.get_parent().add_child(_cargo_label)
-	%Battery.get_parent().move_child(_cargo_label, %Battery.get_index() + 1)
-	# HEATER under CARGO, only while the heater draws
-	_heater_label = Label.new()
-	_heater_label.name = "Heater"
-	_heater_label.add_theme_font_size_override("font_size", 32)
-	_heater_label.hide()
-	%Battery.get_parent().add_child(_heater_label)
-	%Battery.get_parent().move_child(_heater_label, _cargo_label.get_index() + 1)
+	$SubtitleStack.keep_out.assign([%Stats])
+	$SubtitleStack.keep_below.assign([$MissionHint])
+	get_viewport().size_changed.connect(_fit_stats)
+	_fit_stats()
+	%PartTooltip.avoid = $SubtitleStack
 	hide()
 	$CanvasModulate.color = Color(1.0, 1.0, 1.0, 0.0)
 
@@ -47,32 +38,61 @@ func _process(_delta: float) -> void:
 	_update_tips()
 	var looking_at_prop: bool = false
 	if is_instance_valid(Debug.current_robot):
-		%Speed.text = "SPEED  %4.1f m/s%s" % [Debug.current_robot.linear_velocity.length(),
-			"  BRAKE" if Debug.current_robot.braking else ""]
-		var looking_at = Debug.current_robot.looking_at_object
+		var robot: Robot = Debug.current_robot
+		%Speed.text = "%.1f m/s%s" % [robot.linear_velocity.length(), "  ·  brake" if robot.braking else ""]
+		var looking_at = robot.looking_at_object
 		if not is_instance_valid(looking_at):
 			looking_at = null           # freed since the robot's last physics tick
-		looking_at_prop = looking_at is RigidBody3D and Debug.current_robot.pickup_enabled
-		var holding: bool = looking_at != null and looking_at == Debug.current_robot.holder.held_object
+		looking_at_prop = looking_at is RigidBody3D and robot.pickup_enabled
+		var holding: bool = looking_at != null and looking_at == robot.holder.held_object
 		%PartTooltip.show_for(looking_at, false, holding)
-		_update_battery_label(Debug.current_robot)
-		_update_cargo_label(Debug.current_robot)
-		_heater_label.visible = Debug.current_robot.heater_power > 0.0
-		_heater_label.text = "HEATER  %4.0f W" % Debug.current_robot.heater_power
-		_update_arm_label(Debug.current_robot)
-		_update_view_label(Debug.current_robot)
+		_update_battery_label(robot)
+		_update_cargo_label(robot)
+		_set_row(%Heater, %HeaterCaption, "%.0f W" % robot.heater_power if robot.heater_power > 0.0 else "")
+		_update_arm_label(robot)
+		_update_view_label(robot)
 	else:
-		%View.text = "VIEW  --"
+		%View.text = "--"
 		%ZoomHint.hide()
-		%Speed.text = "SPEED  --"
-		%Battery.text = "BATTERY  --"
-		_cargo_label.text = "CARGO  --"
-		_heater_label.hide()
-		%Arm.text = "ARM  --"
+		%Speed.text = "--"
+		_set_battery("--", "", 0.0, false)
+		%Cargo.text = "--"
+		%Mass.text = "--"
+		_set_row(%Heater, %HeaterCaption, "")
+		%Arm.text = "--"
 		%PartTooltip.hide()
 	var aiming: bool = is_instance_valid(Debug.current_robot) and Debug.current_robot.is_aiming()
 	%Crosshair.visible = aiming and not looking_at_prop
 	%InteractCrosshair.visible = looking_at_prop
+
+
+## A narrower stats block on narrow screens, so the subtitles fit beside it
+func _fit_stats() -> void:
+	var compact: bool = get_viewport().get_visible_rect().size.x < COMPACT_BELOW
+	%Stats.custom_minimum_size.x = 280.0 if compact else 360.0
+	%BatteryBar.compact = compact
+	for caption in %Stats.get_node("Rows").get_children():
+		if caption.name.ends_with("Caption"):
+			caption.custom_minimum_size.x = 80.0 if compact else 108.0
+
+
+func _set_row(value: Label, caption: Label, text: String) -> void:
+	value.text = text
+	value.visible = text != ""
+	caption.visible = value.visible
+
+
+## Red only for a real warning
+func _set_warn(label: Label, warn: bool, normal: StringName = &"LabelHudValue") -> void:
+	label.theme_type_variation = &"LabelHudValueWarn" if warn else normal
+
+
+func _set_battery(text: String, power: String, fraction: float, low: bool) -> void:
+	%Battery.text = text
+	%Power.text = power
+	%BatteryBar.fraction = fraction
+	%BatteryBar.low = low
+	_set_warn(%Battery, low, &"LabelHudValueStrong")
 
 
 ## The driving tip, the first time Kite is driven
@@ -87,30 +107,29 @@ func _update_tips() -> void:
 func _update_battery_label(robot: Robot) -> void:
 	var battery: BatteryPart = robot.battery
 	if not battery:
-		%Battery.text = "BATTERY  none" if robot.require_battery else "BATTERY  --"
-		%Battery.modulate = Color(1.0, 0.4, 0.3) if robot.require_battery else Color.WHITE
+		_set_battery("No battery" if robot.require_battery else "--", "", 0.0, robot.require_battery)
 		return
 	var fraction: float = battery.get_charge_fraction()
-	%Battery.text = "BATTERY  %3d%%  %4.0f W" % [roundi(fraction * 100.0), robot.electrical_power + robot.electronics_power + robot.heater_power]
-	# Turn red when the battery is low enough that the motor starts to sag
-	%Battery.modulate = Color(1.0, 0.4, 0.3) if fraction <= battery.sag_threshold else Color.WHITE
+	# Red when the battery is low enough that the motor starts to sag
+	_set_battery("%d%%" % roundi(fraction * 100.0), "%.0f W" % (robot.electrical_power + robot.electronics_power
+		+ robot.heater_power), fraction, fraction <= battery.sag_threshold)
 
 
 func _update_cargo_label(robot: Robot) -> void:
 	var socket := robot.get_node_or_null("CargoSocket") as HotswapSocket
-	var load_text: String = "%s %.1f kg" % [socket.part.get_display_name(), socket.part.mass] if socket and socket.part else "empty"
+	%Cargo.text = "%s  %.1f kg" % [socket.part.get_display_name(), socket.part.mass] if socket and socket.part else "Empty"
 	var extra: float = robot.mass - Robot.REFERENCE_MASS
-	_cargo_label.text = "CARGO  %s   KITE %.0f kg%s" % [load_text, robot.mass, "  (%+.0f kg)" % extra if absf(extra) >= 0.5 else ""]
+	%Mass.text = "%.0f kg%s" % [robot.mass, "  (%+.0f kg)" % extra if absf(extra) >= 0.5 else ""]
 
 
 func _update_view_label(robot: Robot) -> void:
 	var rig := robot.get_node_or_null("CameraRig") as RoverCamera
 	if rig == null:
-		%View.text = "VIEW  --"
+		%View.text = "--"
 		%ZoomHint.hide()
 		return
 	_update_zoom_hint(rig)
-	var text: String = "VIEW  " + rig.view_name()
+	var text: String = rig.view_name()
 	if rig.view == RoverCamera.View.MAST and rig.mast_zoom() > 1.05:
 		text += "  %.1fx" % rig.mast_zoom()
 	%View.text = text
@@ -136,25 +155,25 @@ func _update_zoom_hint(rig: RoverCamera) -> void:
 func _update_arm_label(robot: Robot) -> void:
 	var visuals := robot.get_node_or_null("Visuals") as RoverVisuals
 	if visuals == null:
-		%Arm.text = "ARM  --"
+		%Arm.text = "--"
 		return
 	var text: String
 	if visuals.arm_scripted:
-		text = "ARM  delivering cargo"
+		text = "Delivering cargo"
 	elif visuals.cargo_loaded():
-		text = "ARM  cargo loaded: automatic only"
+		text = "Cargo loaded: automatic only"
 	elif not visuals.arm_target.is_empty():
-		text = "ARM  deploying" if visuals.arm_deployed else "ARM  stowing"
+		text = "Deploying" if visuals.arm_deployed else "Stowing"
 	elif not visuals.arm_deployed:
-		text = "ARM  stowed"
+		text = "Stowed"
 	else:
 		var index: int = robot.controller.arm_joint - 1
 		var joint: String = RoverVisuals.ARM_JOINT_NAMES[index]
-		text = "ARM  %s %s  %+.0f" % [joint, RoverVisuals.ARM_JOINT_LABELS[index], visuals.arm_joints[joint]]
+		text = "%s %s  %+.0f" % [joint, RoverVisuals.ARM_JOINT_LABELS[index], visuals.arm_joints[joint]]
 	if visuals.arm_blocked:
 		text += "  (ground)"
 	%Arm.text = text
-	%Arm.modulate = Color(1.0, 0.4, 0.3) if visuals.arm_blocked else Color.WHITE
+	_set_warn(%Arm, visuals.arm_blocked)
 
 
 func fade_in():

@@ -422,24 +422,39 @@ func _build_console_screen() -> void:
 	viewport.size = Vector2i(640, 360)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.disable_3d = true
+	var root := Control.new()
+	root.theme = preload("res://res/ui_theme_v2.tres")
+	root.size = Vector2(640, 360)
+	viewport.add_child(root)
 	var background := ColorRect.new()
-	background.color = Color(0.04, 0.07, 0.08)
-	background.size = Vector2(640, 360)
-	viewport.add_child(background)
+	background.color = root.get_theme_color(&"bg", &"UIColor")
+	background.size = root.size
+	root.add_child(background)
 	var box := VBoxContainer.new()
-	box.position = Vector2(32, 26)
-	box.size = Vector2(576, 308)
-	box.add_theme_constant_override("separation", 14)
-	viewport.add_child(box)
-	for item in [["SERVICE BAY CONSOLE", 30, Color(0.95, 0.68, 0.25)], ["", 34, Color(0.75, 0.95, 0.85)],
-			["", 34, Color(0.75, 0.95, 0.85)], ["", 34, Color(0.75, 0.95, 0.85)], ["E  MISSION CONSOLE", 30, Color(0.95, 0.68, 0.25)]]:
+	box.position = Vector2(36, 28)
+	box.size = Vector2(568, 260)
+	box.add_theme_constant_override("separation", 12)
+	root.add_child(box)
+	for variation in [&"LabelWorldScreenHeading", &"LabelWorldScreenRow", &"LabelWorldScreenRow", &"LabelWorldScreenRow",
+			&"LabelWorldScreenAction"]:
 		var line := Label.new()
-		line.text = item[0]
-		line.add_theme_font_size_override("font_size", item[1])
-		line.add_theme_color_override("font_color", item[2])
+		line.theme_type_variation = variation
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(line)
 		_screen_lines.append(line)
+		if _screen_lines.size() == 1:
+			var rule := ColorRect.new()
+			rule.color = root.get_theme_color(&"rule", &"UIColor")
+			rule.custom_minimum_size.y = 1.0
+			box.add_child(rule)
+	_screen_lines[0].text = "SERVICE BAY CONSOLE"
+	var chip := KeyChip.new()
+	chip.action = &"interact_use"
+	chip.fallback_key = "E"
+	chip.label_text = "Mission console"
+	chip.scale = Vector2.ONE * 1.6
+	chip.position = Vector2(36, 300)
+	root.add_child(chip)
 	add_child(viewport)
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -468,7 +483,7 @@ func _update_screen() -> void:
 	_screen_lines[2].text = battery
 	_screen_lines[3].text = "BAY DOOR  " + ("OPEN" if door_open >= 1.0 else "CLOSED" if door_open <= 0.0 else "MOVING")
 	var objective := CampaignState.current_objective()
-	_screen_lines[4].text = ("NEXT  " + CampaignState.objective_title(objective).to_upper()) if objective else "E  MISSION CONSOLE"
+	_screen_lines[4].text = ("NEXT  " + CampaignState.objective_title(objective).to_upper()) if objective else ""
 
 
 func _build_rack_stock() -> void:

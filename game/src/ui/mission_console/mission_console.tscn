@@ -1,193 +1,245 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/mission_console/mission_console.gd" id="1_mcscr"]
-[ext_resource type="Theme" uid="uid://be3ngjxfbjuew" path="res://res/computer_theme/computer_theme.tres" id="2_mcthm"]
-[ext_resource type="FontFile" path="res://res/fonts/IBMPlexMono-Bold.ttf" id="3_mcfnt"]
+[ext_resource type="Theme" path="res://res/ui_theme_v2.tres" id="2_mcthm"]
+[ext_resource type="Script" path="res://src/ui/components/starfield.gd" id="3_stars"]
 [ext_resource type="Script" path="res://src/ui/button_style_components/button_sound_component.gd" id="4_mcsnd"]
+[ext_resource type="PackedScene" path="res://src/ui/components/back_button.tscn" id="5_back"]
+[ext_resource type="Script" path="res://src/ui/components/solid_button.gd" id="6_solid"]
+[ext_resource type="Script" path="res://src/ui/components/key_chip.gd" id="7_chip"]
 [ext_resource type="PackedScene" path="res://src/ui/subtitle_stack/subtitle_stack.tscn" id="91_subs"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
-bg_color = Color(0.674814, 0.674815, 0.674814, 1)
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.278431, 0.278431, 0.278431, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.0576, 0.09696, 0.32, 1)
-border_width_top = 32
-border_color = Color(0.1974, 0.25192, 0.47, 1)
-border_blend = true
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_title"]
 
 [node name="MissionConsole" type="CanvasLayer"]
 script = ExtResource("1_mcscr")
 
-[node name="Window" type="PanelContainer" parent="."]
+[node name="Window" type="Control" parent="."]
 unique_name_in_owner = true
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -684.0
-offset_top = -506.0
-offset_right = 685.0
-offset_bottom = 507.0
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_mcthm")
-theme_override_styles/panel = SubResource("StyleBoxFlat_window")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Window"]
+[node name="Starfield" type="Control" parent="Window"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_stars")
+
+[node name="Frame" type="MarginContainer" parent="Window"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 144
+theme_override_constants/margin_top = 77
+theme_override_constants/margin_right = 144
+theme_override_constants/margin_bottom = 67
+
+[node name="Column" type="VBoxContainer" parent="Window/Frame"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
 
-[node name="TitleBar" type="PanelContainer" parent="Window/VBoxContainer"]
+[node name="Header" type="HBoxContainer" parent="Window/Frame/Column"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_title")
+mouse_filter = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Window/VBoxContainer/TitleBar"]
-layout_mode = 2
-
-[node name="RichTextLabel" type="RichTextLabel" parent="Window/VBoxContainer/TitleBar/HBoxContainer"]
+[node name="HeaderTitle" type="Label" parent="Window/Frame/Column/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/default_color = Color(1, 1, 1, 1)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_title")
-bbcode_enabled = true
-text = "[b]MISSION CONSOLE[/b]"
-fit_content = true
-vertical_alignment = 1
+theme_type_variation = &"LabelSettingsTitle"
+text = "MISSION CONSOLE"
 
-[node name="Close" type="Button" parent="Window/VBoxContainer/TitleBar/HBoxContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 0)
-layout_mode = 2
-focus_mode = 0
-theme_override_colors/font_color = Color(0.196143, 0.196143, 0.196143, 1)
-theme_override_fonts/font = ExtResource("3_mcfnt")
-text = "X"
-
-[node name="MarginContainer" type="MarginContainer" parent="Window/VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="HSplitContainer" type="HSplitContainer" parent="Window/VBoxContainer/MarginContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-split_offset = 405
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer"]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
-layout_mode = 2
-text = "Sections"
-
-[node name="ItemList" type="ItemList" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-focus_mode = 0
-fixed_icon_size = Vector2i(64, 64)
-
-[node name="VSplitContainer" type="VSplitContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer"]
-layout_mode = 2
-split_offset = 495
-
-[node name="VBoxContainer2" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
-custom_minimum_size = Vector2(0, 256)
-layout_mode = 2
-
-[node name="Label" type="Label" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
-layout_mode = 2
-text = "Attachments"
-
-[node name="PanelContainer" type="PanelContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ScrollContainer" type="ScrollContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="MarginContainer" type="MarginContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 16
-
-[node name="Attachments" type="HBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer2/PanelContainer/ScrollContainer/MarginContainer"]
+[node name="HeaderInfo" type="Label" parent="Window/Frame/Column/Header"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 8
+horizontal_alignment = 2
+autowrap_mode = 3
+theme_type_variation = &"LabelCaption"
+text = "Workshop"
+
+[node name="HeaderGap" type="Control" parent="Window/Frame/Column"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Rule" type="ColorRect" parent="Window/Frame/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BodyGap" type="Control" parent="Window/Frame/Column"]
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BodyScroll" type="ScrollContainer" parent="Window/Frame/Column"]
+unique_name_in_owner = true
+layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+horizontal_scroll_mode = 0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer"]
-layout_mode = 2
-
-[node name="Title" type="RichTextLabel" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/bold_italics_font_size = 32
-theme_override_font_sizes/italics_font_size = 32
-theme_override_font_sizes/mono_font_size = 32
-theme_override_font_sizes/normal_font_size = 32
-theme_override_font_sizes/bold_font_size = 32
-bbcode_enabled = true
-text = "[b][i]Title[/i][/b]"
-fit_content = true
-scroll_active = false
-
-[node name="Description" type="RichTextLabel" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-bbcode_enabled = true
-
-[node name="HBoxContainer" type="HBoxContainer" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
-layout_mode = 2
-
-[node name="DownlinkProgress" type="ProgressBar" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-max_value = 1.0
-
-[node name="Action" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
-unique_name_in_owner = true
+[node name="Body" type="HBoxContainer" parent="Window/Frame/Column/BodyScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-focus_mode = 0
-theme_override_font_sizes/font_size = 32
-text = "Send inspection"
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
 
-[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/Action"]
-script = ExtResource("4_mcsnd")
+[node name="Nav" type="VBoxContainer" parent="Window/Frame/Column/BodyScroll/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 17
 
-[node name="ControlKite" type="Button" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer"]
+[node name="Tabs" type="VBoxContainer" parent="Window/Frame/Column/BodyScroll/Body/Nav"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 17
+
+[node name="NavGap" type="Control" parent="Window/Frame/Column/BodyScroll/Body/Nav"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="ControlKite" type="Button" parent="Window/Frame/Column/BodyScroll/Body/Nav"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 0
 focus_mode = 0
-theme_override_font_sizes/font_size = 40
+theme_type_variation = &"SolidButtonLarge"
 text = "CONTROL KITE"
 
-[node name="ButtonSoundComponent" type="Node" parent="Window/VBoxContainer/MarginContainer/HSplitContainer/VSplitContainer/VBoxContainer/HBoxContainer/ControlKite"]
+[node name="ButtonSoundComponent" type="Node" parent="Window/Frame/Column/BodyScroll/Body/Nav/ControlKite"]
 script = ExtResource("4_mcsnd")
+
+[node name="Content" type="VBoxContainer" parent="Window/Frame/Column/BodyScroll/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 26
+
+[node name="Title" type="Label" parent="Window/Frame/Column/BodyScroll/Body/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LabelConsoleTitle"
+text = "Title"
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Window/Frame/Column/BodyScroll/Body/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ScrollBody" type="VBoxContainer" parent="Window/Frame/Column/BodyScroll/Body/Content/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 26
+
+[node name="Description" type="RichTextLabel" parent="Window/Frame/Column/BodyScroll/Body/Content/Scroll/ScrollBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"RichConsoleBody"
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 3
+
+[node name="Attachments" type="HBoxContainer" parent="Window/Frame/Column/BodyScroll/Body/Content/Scroll/ScrollBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DownlinkProgress" type="ProgressBar" parent="Window/Frame/Column/BodyScroll/Body/Content"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+theme_type_variation = &"ThinProgress"
+max_value = 1.0
+show_percentage = false
+
+[node name="Actions" type="HBoxContainer" parent="Window/Frame/Column/BodyScroll/Body/Content"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Action" type="Button" parent="Window/Frame/Column/BodyScroll/Body/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+autowrap_mode = 3
+focus_mode = 0
+script = ExtResource("6_solid")
+text = "Send inspection"
+
+[node name="ButtonSoundComponent" type="Node" parent="Window/Frame/Column/BodyScroll/Body/Content/Actions/Action"]
+script = ExtResource("4_mcsnd")
+
+[node name="SubtitleGap" type="Control" parent="Window/Frame/Column"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SubtitleSlot" type="Control" parent="Window/Frame/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FooterGap" type="Control" parent="Window/Frame/Column"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Footer" type="HBoxContainer" parent="Window/Frame/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 34
+alignment = 2
+
+[node name="NextSection" type="HBoxContainer" parent="Window/Frame/Column/Footer"]
+layout_mode = 2
+script = ExtResource("7_chip")
+action = &"ui_focus_next"
+label_text = "Next section"
+fallback_key = "Tab"
+
+[node name="CloseHint" type="HBoxContainer" parent="Window/Frame/Column/Footer"]
+layout_mode = 2
+script = ExtResource("7_chip")
+action = &"ui_cancel"
+label_text = "Close console"
+fallback_key = "Esc"
+
+[node name="Close" parent="Window" instance=ExtResource("5_back")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 67.0
+offset_top = 58.0
+offset_right = 124.6
+offset_bottom = 115.6
+focus_mode = 0
 
 [node name="SubtitleStack" parent="." instance=ExtResource("91_subs")]
