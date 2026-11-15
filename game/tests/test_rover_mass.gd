@@ -35,7 +35,7 @@ var worst_step_excess := 0.0
 var cold_seconds := 0.0
 var heater_wh := 0.0
 var CS: Node
-const M1_DONE: Array = ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
 const M2_DONE: Array = ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
 	"m2.kite_docked", "m2.telemetry_received"]
 

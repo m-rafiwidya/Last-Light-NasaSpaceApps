@@ -10,6 +10,8 @@ var triggers: Array[Dictionary] = []
 var lines: Dictionary = {}
 var _sequences: Dictionary = {}
 var _held: Array[DialogSequence] = []
+## While true (a cutscene that owns the dialogue), fired lines wait for release()
+var hold: bool = false
 
 
 func _ready() -> void:
@@ -110,18 +112,25 @@ static func make_dialog(entry: Dictionary) -> Dialog:
 func _on_campaign_reset() -> void:
 	_sequences.clear()
 	_held.clear()
+	hold = false
 	DialogServer.stop_all()
 
 
 func _in_level() -> bool:
-	return SceneLoader.loading_scene_id.is_empty() and is_instance_valid(GameState.player)
+	return SceneLoader.loading_scene_id.is_empty() and is_instance_valid(GameState.player) and not hold
+
+
+## Ends a hold: the lines fired meanwhile are queued, in order
+func release() -> void:
+	hold = false
+	_on_level_loaded("")
 
 
 func _on_level_loaded(_level_name) -> void:
-	var held := _held.duplicate()
-	_held.clear()
 	if not _in_level():
 		return
+	var held := _held.duplicate()
+	_held.clear()
 	for sequence in held:
 		DialogServer.queue_sequence(sequence)
 

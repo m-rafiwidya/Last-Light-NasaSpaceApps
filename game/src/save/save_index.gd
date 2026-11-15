@@ -180,10 +180,10 @@ static func mission_image(mission_id: String) -> Texture2D:
 static func write_fake_saves() -> int:
 	# [local date and time, mission, objectives done, minutes played]
 	var samples: Array = [
-		["2026-10-12T22:41:00", "m2", ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked",
+		["2026-10-12T22:41:00", "m2", ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked",
 			"m1.inspection_sent", "m2.cargo_ordered", "m2.module_loaded"], 16],
-		["2026-10-12T22:27:00", "m1", ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked"], 7],
-		["2026-10-11T21:05:00", "m1", ["m1.kite_prepared"], 3],
+		["2026-10-12T22:27:00", "m1", ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked"], 7],
+		["2026-10-11T21:05:00", "m1", ["m1.workshop_entered", "m1.kite_prepared"], 3],
 	]
 	var bias_sec: int = int(Time.get_time_zone_from_system().get("bias", 0)) * 60
 	var written: int = 0

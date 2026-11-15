@@ -60,7 +60,8 @@ func _process(_delta: float) -> void:
 	for label in [objective_label, step_label, stuck_label]:
 		label.visible = label.text != ""
 	tracker.visible = state == GameState.State.IN_GAME_PLAYER and (objective_label.visible or step_label.visible or stuck_label.visible)
-	marker.visible = on and state == GameState.State.IN_GAME_ROBOT and guidance.is_waypoint()
+	var walking: bool = state == GameState.State.IN_GAME_PLAYER and guidance.current_step().get("on_foot", false)
+	marker.visible = on and (state == GameState.State.IN_GAME_ROBOT or walking) and guidance.is_waypoint()
 	if marker.visible:
 		marker.queue_redraw()
 
@@ -94,9 +95,9 @@ func place_marker() -> bool:
 
 func marker_text() -> String:
 	var distance: float = 0.0
-	var rover: Robot = GameState.robot
-	if is_instance_valid(rover) and is_instance_valid(guidance.target):
-		var offset := guidance.target.global_position - rover.global_position
+	var from: Node3D = GameState.robot if GameState.state == GameState.State.IN_GAME_ROBOT else GameState.player
+	if is_instance_valid(from) and is_instance_valid(guidance.target):
+		var offset := guidance.target.global_position - from.global_position
 		offset.y = 0.0
 		distance = offset.length()
 	return "%s  %d m" % [guidance.current_step().get("label", ""), roundi(distance)]

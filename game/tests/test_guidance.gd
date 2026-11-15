@@ -132,7 +132,12 @@ func _run() -> void:
 	hint = root.get_node("Main").find_child("MissionHint", true, false)
 	player = GS.player
 	CS.objective_completed.connect(func(id: String) -> void: completed.append(id))
+	if CS.is_objective_done("m1.workshop_entered") and not completed.has("m1.workshop_entered"):
+		completed.append("m1.workshop_entered")
 	await _ticks(1.0)
+	_expect("m1.workshop_entered")
+	_check("arrival: spawned inside the workshop, the walk-in is done", CS.is_objective_done("m1.workshop_entered")
+		and CS.current_objective() == "m1.kite_prepared", CS.current_objective())
 	var overlay = guidance.overlay
 	var battery: RigidBody3D = workshop.rack_stock.get_node("Slot12")
 

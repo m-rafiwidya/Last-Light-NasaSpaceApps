@@ -4,7 +4,7 @@ extends SceneTree
 ##   1. M2: Receive telemetry is disabled until the dock (the optional sample never blocks it),
 ##      then shows the telemetry report and completes m2.
 ##   2. M3: Send archive is disabled until the logger and the dock, then shows the archive report.
-##   3. Ending: fires once on m3, IRIS camera cut (no online_changed) with player input off, closing lines, result
+##   3. Ending: fires once on m3, the ending cutscene on IRIS (no online_changed) with player input off, closing lines, result
 ##      screen with the right counts, campaign marked complete and saved.
 ##   4. Load: the completed slot loads into free play without replaying the ending.
 ##
@@ -171,9 +171,11 @@ func _run() -> void:
 		and saved is Dictionary and saved["campaign"]["triggers_played"].has("mission_completed:m3|mira_m3_end"))
 	await _ticks(0.3)
 	var camera: Camera3D = root.get_viewport().get_camera_3d()
-	_check("[ending] the IRIS camera cut is current, input off", camera != null and camera.name == "EndingCamera"
-		and GS.state == GS.State.IN_GAME_MENU and not GS.player.controller.is_input_enabled(), str(camera))
-	_check("[ending] a caption over the cut", result.get_node("%Caption").visible)
+	_check("[ending] the IRIS cutscene camera is current, input off", camera != null and camera.name == "CutsceneCamera"
+		and GS.state == GS.State.CUTSCENE and not GS.player.controller.is_input_enabled(), str(camera))
+	var screen: Node = root.get_node("Main").find_child("CutsceneScreen", true, false)
+	_check("[ending] a caption over the cut, letterboxed", screen.visible and screen.caption.visible
+		and screen.caption.text.contains("IRIS online") and screen.bars > 0.0)
 	await _ticks(2.0)
 	_check("[ending] the cut frames IRIS running, online and antenna tracked", iris.is_online
 		and iris.antenna_pose().is_equal_approx(iris.ANTENNA_TRACKED), str(iris.antenna_pose()))

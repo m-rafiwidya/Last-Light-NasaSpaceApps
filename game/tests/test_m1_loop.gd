@@ -209,7 +209,7 @@ func _run() -> void:
 	console.select_section(console.Section.MISSION)
 	var mission_text: String = console.get_node("%Description").text
 	_check("console: the Mission section lists the objectives with their state",
-		mission_text.count("[s]") == 3 and mission_text.contains("Downlink the inspection"), mission_text)
+		mission_text.count("[s]") == 4 and mission_text.contains("Downlink the inspection"), mission_text)
 	console.select_section(console.Section.DOWNLINK)
 	var action: Button = console.get_node("%Action")
 	_check("console: Send inspection is enabled after the dock", action.visible and not action.disabled

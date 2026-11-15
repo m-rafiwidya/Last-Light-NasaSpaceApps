@@ -92,7 +92,7 @@ func _run() -> void:
 	# 1. CampaignState round trip
 	CS.reset()
 	CS.start_mission("m1")
-	for objective in ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
+	for objective in ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]:
 		CS.complete_objective(objective)
 	CS.start_mission("m2")
 	CS.complete_objective("m2.cargo_ordered")
@@ -179,7 +179,10 @@ func _run() -> void:
 	workshop._on_restock_interacted(null)
 	await physics_frame
 	_check("[rack] Restock keeps it the same", _rack(workshop) == full_rack, str(_rack(workshop)))
-	_check("[moon] nothing saved before progress", not FileAccess.file_exists(SI.slot_path("slot_1")))
+	var early: Variant = JSON.parse_string(FileAccess.get_file_as_string(SI.slot_path("slot_1"))) \
+		if FileAccess.file_exists(SI.slot_path("slot_1")) else null
+	_check("[moon] the walk into the workshop is the first progress saved", early is Dictionary
+		and early["campaign"]["objectives"] == ["m1.workshop_entered"], str(early))
 	var light = null
 	var grip = null
 	for part in workshop.rack_stock.get_children():

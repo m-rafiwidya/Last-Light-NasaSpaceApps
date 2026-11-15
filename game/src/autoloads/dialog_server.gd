@@ -139,6 +139,17 @@ func play_dialog_sequence(dialog_sequence: DialogSequence) -> bool:
 	return completed
 
 
+## Drops `sequence` from the queue, or cuts it off if it is playing; the rest of the queue still plays
+func cancel_sequence(sequence: DialogSequence) -> void:
+	if sequence in _queue:
+		_queue.erase(sequence)
+	elif sequence != null and sequence == _active_sequence:
+		var rest := _queue.duplicate()
+		stop_all()
+		for queued in rest:
+			queue_sequence(queued)
+
+
 ## Cancels everything that is playing. Running coroutines notice on their next wake-up.
 func stop_all() -> void:
 	_generation += 1

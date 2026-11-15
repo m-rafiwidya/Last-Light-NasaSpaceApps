@@ -9,7 +9,7 @@ extends SceneTree
 
 const MODULE: String = "res://src/robot/socket/radio_module_part.tscn"
 const LOGGER: String = "res://src/robot/socket/field_logger_part.tscn"
-const M1_DONE: Array = ["m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
+const M1_DONE: Array = ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned", "m1.kite_docked", "m1.inspection_sent"]
 const M2_DONE: Array = ["m2.cargo_ordered", "m2.module_loaded", "m2.module_installed", "m2.iris_activated",
 	"m2.kite_docked", "m2.telemetry_received"]
 
@@ -122,6 +122,7 @@ func _run() -> void:
 	socket = rover.get_node("CargoSocket")
 	var far_logger: Node = level.get_node("FarLogger")
 	await _ticks(1.0)
+	completed.clear()
 
 	# 1. The module
 	_state("m2", M1_DONE, ["m1"])

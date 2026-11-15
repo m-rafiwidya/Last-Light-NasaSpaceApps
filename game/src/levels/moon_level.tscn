@@ -22,6 +22,7 @@
 [ext_resource type="PackedScene" path="res://src/field/field_logger_pickup.tscn" id="44_logger_pickup"]
 [ext_resource type="Script" path="res://src/levels/route_markers.gd" id="45_route_markers"]
 [ext_resource type="Script" path="res://src/levels/terrain/boulder_field.gd" id="46_boulders"]
+[ext_resource type="PackedScene" path="res://src/field/lander.tscn" id="47_lander"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
 shader = ExtResource("9_sky_shader")
@@ -171,6 +172,9 @@ long_route = PackedVector2Array(-185, 40, -150, -110, -60, -125, -12, -100, 2, -
 [node name="BoulderField" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, -4, 12)
 script = ExtResource("46_boulders")
+
+[node name="Lander" parent="." instance=ExtResource("47_lander")]
+transform = Transform3D(-0.9847, 0, -0.1745, 0, 1, 0, 0.1745, 0, -0.9847, -307.6, -5.74, 211.8)
 
 [node name="MissionDirector" type="Node" parent="." node_paths=PackedStringArray("workshop")]
 script = ExtResource("40_director")
