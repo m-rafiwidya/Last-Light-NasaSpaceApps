@@ -7,7 +7,8 @@ extends PanelContainer
 ## centred above the bottom edge, narrowed or moved beside a `keep_out` control (the rover stats),
 ## lifted above it only when neither fits. It never reaches up into a `keep_below` control (the
 ## objective panel): the oldest lines go first. At most MAX_ENTRIES lines show at once; a line
-## always shows in full, wrapped.
+## always shows in full, wrapped. With `one_at_a_time` (cutscenes) only one line ever shows: a line
+## fades out as soon as it ends, and the next waits until it is gone, then fades in.
 
 const MAX_ENTRIES: int = 2
 const BOTTOM: float = 53.0
@@ -15,6 +16,7 @@ const SIDE: float = 53.0
 const MIN_WIDTH: float = 560.0
 const MAX_WIDTH: float = 960.0
 const GAP: float = 24.0
+const SINGLE_FADE: float = 0.25
 
 var dialog_box_scene: PackedScene = preload("res://src/ui/dialog_box/dialog_box.tscn")
 var dialog_boxes: Dictionary = {}
@@ -24,6 +26,9 @@ var slot: Control = null
 var keep_out: Array[Control] = []
 ## Controls the stack must stay under
 var keep_below: Array[Control] = []
+var one_at_a_time: bool = false
+## Lines waiting for the shown one to leave (one_at_a_time)
+var _waiting: Array[Dialog] = []
 
 @onready var boxes: VBoxContainer = $Boxes
 
@@ -38,7 +43,14 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if not _waiting.is_empty() and boxes.get_child_count() == 0:
+		_show(_waiting.pop_front())
 	place()
+
+
+## How many lines are on screen (fading ones included)
+func shown_count() -> int:
+	return boxes.get_children().filter(func(box: Node) -> bool: return not box.is_queued_for_deletion()).size()
 
 
 func _apply_subtitles() -> void:
@@ -105,11 +117,23 @@ func _set_rect(left: float, bottom: float, width: float) -> void:
 
 
 func _on_dialog_played(dialog: Dialog) -> void:
+	if one_at_a_time and (boxes.get_child_count() > 0 or not _waiting.is_empty()):
+		for box in boxes.get_children():
+			box.fade_out(0.0, SINGLE_FADE, false)
+		_waiting.append(dialog)
+		return
+	_show(dialog)
+
+
+func _show(dialog: Dialog) -> void:
 	var dialog_box: Control = dialog_box_scene.instantiate()
 	dialog_box.set_line(dialog.speaker, dialog.subtitle)
 	boxes.add_child(dialog_box)
 	_ignore_mouse(dialog_box)
-	dialog_box.fade_in()
+	if one_at_a_time:
+		dialog_box.fade_in(SINGLE_FADE, false)
+	else:
+		dialog_box.fade_in()
 	dialog_boxes[dialog.get_instance_id()] = dialog_box
 	_limit_entries()
 
@@ -122,10 +146,14 @@ func _limit_entries() -> void:
 
 
 func _on_dialog_ended(dialog: Dialog) -> void:
+	_waiting.erase(dialog)
 	var dialog_box: Variant = dialog_boxes.get(dialog.get_instance_id())
 	dialog_boxes.erase(dialog.get_instance_id())
 	if is_instance_valid(dialog_box):
-		dialog_box.fade_out()
+		if one_at_a_time:
+			dialog_box.fade_out(0.0, SINGLE_FADE, false)
+		else:
+			dialog_box.fade_out()
 
 
 func _ignore_mouse(node: Node) -> void:

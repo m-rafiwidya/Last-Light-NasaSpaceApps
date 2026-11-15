@@ -13,8 +13,23 @@ signal finished(id: String, skipped: bool)
 const DATA_PATH: String = "res://res/story/cutscenes.json"
 const SKIP_HOLD: float = 1.0
 const SKIP_FADE: float = 0.3
-const MAX_STEP: float = 1.0 / 20.0
+## Longest step a frame advances the cutscene: a hitch is caught up, so the picture keeps time
+## with the lines (their timers run on the real clock)
+const MAX_STEP: float = 0.1
+## Reading time of a cutscene line without a recording: characters a second, plus a lead
+const READING_RATE: float = 14.0
+const READING_LEAD: float = 0.5
+## The full astronaut shown in the player's place while a camera looks on (the first-person body
+## has no helmet, neck or shoulders and must never be seen from outside)
+const STAND_IN: PackedScene = preload("res://res/models/astronaut_kit/astronaut_fp.glb")
+const STAND_IN_SCALE: float = 0.95
+## place_player: the stand-in steps out to the marker from this far behind it, at this speed
+const STEP_OUT: float = 0.9
+const STEP_SPEED: float = 0.75
+const WALK_STRIDE: float = 1.3333
 const DIALOGUE_GRACE: float = 4.0
+## Longest a shot is held at its end for its lines to finish
+const MAX_SHOT_HOLD: float = 12.0
 const CAMERA_CLEARANCE: float = 1.0
 const CAMERA_FAR: float = 50000.0
 const OPENING_EVENT: String = "campaign_start"
@@ -52,6 +67,14 @@ var _phase_time: float = 0.0
 var _skip_armed: bool = false
 var _held_dialogue: bool = false
 var _queue: Array[String] = []
+## Seconds the shots were held for their lines (this cutscene)
+var held_time: float = 0.0
+## The full astronaut standing in for the player (null when not shown)
+var stand_in: Node3D = null
+var _step_from: Vector3
+var _step_to: Vector3
+var _step_time: float = -1.0
+var _shot_hold: float = 0.0
 
 
 func _ready() -> void:
@@ -68,6 +91,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_remove_stand_in()
 	if phase != Phase.IDLE:
 		GameState.cutscene_active = false
 		if _held_dialogue:
@@ -144,11 +168,17 @@ func play(id: String, after_state: int = -1) -> bool:
 	camera.far = float(level.get("camera_far")) if level.get("camera_far") != null else CAMERA_FAR
 	level.add_child(camera)
 	time = 0.0
+	held_time = 0.0
+	_shot_hold = 0.0
 	skip_hold = 0.0
 	skipped = false
 	_skip_armed = not Input.is_action_pressed(&"cutscene_skip")
 	GameState.cutscene_active = true
 	GameState.change_state_to(GameState.State.CUTSCENE)
+	var places_player: bool = _actions.any(func(a: Dictionary) -> bool: return a["data"].get("do") == "place_player")
+	if _previous_state == GameState.State.IN_GAME_PLAYER and not places_player and is_instance_valid(GameState.player):
+		var look: Vector3 = -GameState.player.camera.global_basis.z
+		_show_stand_in(GameState.player.global_position, look)
 	var screen := _screen()
 	if screen:
 		screen.begin(bool(cutscene.get("letterbox", true)))
@@ -170,13 +200,14 @@ func _process(delta: float) -> void:
 	if phase == Phase.IDLE:
 		return
 	var step: float = minf(delta, MAX_STEP)
+	_update_stand_in(step)
 	var screen := _screen()
 	match phase:
 		Phase.PLAYING:
 			_update_skip_input(step, screen)
 			if phase != Phase.PLAYING:
 				return
-			time += step
+			time = _hold_for_dialogue(time, step)
 			_evaluate(time)
 			if time >= _total:
 				_phase_time = 0.0
@@ -191,8 +222,23 @@ func _process(delta: float) -> void:
 				_finish()
 		Phase.WAIT_DIALOGUE:
 			_phase_time += step
-			if _phase_time >= DIALOGUE_GRACE or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_pending(s)):
+			if _phase_time >= DIALOGUE_GRACE or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_waiting(s)):
 				_finish()
+
+
+## Lines play one at a time, so a shot's line can be pushed past its end by the one before: the
+## shot then stays on its last moment (actions included) until that line has started, rather than
+## cutting away before it
+func _hold_for_dialogue(t: float, step: float) -> float:
+	var shot: Dictionary = _shot_at(t)
+	var next: float = t + step
+	if shot.is_empty() or shot == _shots.back() or next < shot["end"] or _shot_hold >= MAX_SHOT_HOLD \
+			or not _own.any(func(s: DialogSequence) -> bool: return DialogServer.is_sequence_waiting(s)):
+		_shot_hold = 0.0
+		return next
+	_shot_hold += step
+	held_time += step
+	return maxf(t, shot["end"] - 0.001)
 
 
 func _update_skip_input(step: float, screen: CutsceneScreen) -> void:
@@ -220,6 +266,7 @@ func _begin_skip() -> void:
 func _finish() -> void:
 	var id := playing_id
 	phase = Phase.IDLE
+	_remove_stand_in()
 	GameState.cutscene_active = false
 	var screen := _screen()
 	if screen:
@@ -346,6 +393,8 @@ func _shot_at(t: float) -> Dictionary:
 
 
 func _apply_end_states() -> void:
+	for line in _lines:
+		line["done"] = true
 	_evaluate(_total)
 	for action in _actions:
 		if action["data"].get("do") == "path":
@@ -356,8 +405,11 @@ func _queue_line(id: String) -> void:
 	var entry: Variant = lines.get(id)
 	if not entry is Dictionary:
 		return
+	var dialog: Dialog = DialogueTriggers.make_dialog(entry)
+	if dialog.audio_stream == null:
+		dialog.min_duration = maxf(dialog.min_duration, dialog.subtitle.length() / READING_RATE + READING_LEAD)
 	var sequence := DialogSequence.new()
-	sequence.dialogs = [DialogueTriggers.make_dialog(entry)]
+	sequence.dialogs = [dialog]
 	_own.append(sequence)
 	DialogServer.queue_sequence(sequence)
 
@@ -501,7 +553,8 @@ func _apply_action(action: Dictionary) -> void:
 			_place_player(node as Node3D)
 
 
-## Stands the player on `marker`, facing its -Z
+## Stands the player on `marker`, facing its -Z, and the stand-in there (stepping out to it while
+## the cutscene plays; a skip puts it straight there)
 func _place_player(marker: Node3D) -> void:
 	var player: Player = GameState.player
 	if marker == null or not is_instance_valid(player):
@@ -511,6 +564,54 @@ func _place_player(marker: Node3D) -> void:
 	var look: Vector3 = -marker.global_basis.z
 	if player.controller:
 		player.controller.camera_azimuth = atan2(-look.x, -look.z)
+	_show_stand_in(marker.global_position, look, phase == Phase.PLAYING)
+
+
+## The full astronaut at `at` facing `look`; `step_out` walks it there from STEP_OUT behind
+func _show_stand_in(at: Vector3, look: Vector3, step_out: bool = false) -> void:
+	look.y = 0.0
+	look = look.normalized() if look.length() > 0.01 else Vector3.FORWARD
+	if stand_in == null:
+		stand_in = STAND_IN.instantiate()
+		stand_in.name = "PlayerStandIn"
+		level.add_child(stand_in)
+	# The model faces its +Z
+	stand_in.global_basis = Basis(Vector3.UP, atan2(look.x, look.z)).scaled(Vector3.ONE * STAND_IN_SCALE)
+	_step_to = at
+	_step_from = at - look * STEP_OUT if step_out else at
+	_step_time = 0.0
+	stand_in.global_position = _step_from
+	_play_stand_in("walk" if step_out else "idle")
+
+
+func _update_stand_in(step: float) -> void:
+	if stand_in == null or _step_time < 0.0:
+		return
+	_step_time += step
+	var length: float = _step_from.distance_to(_step_to)
+	var done: float = 1.0 if length < 0.01 else clampf(_step_time * STEP_SPEED / length, 0.0, 1.0)
+	stand_in.global_position = _step_from.lerp(_step_to, done)
+	if done >= 1.0:
+		_step_time = -1.0
+		_play_stand_in("idle")
+
+
+func _play_stand_in(clip: String) -> void:
+	var players: Array = stand_in.find_children("*", "AnimationPlayer", true, false)
+	if players.is_empty():
+		return
+	var animations: AnimationPlayer = players[0]
+	if not animations.has_animation(clip):
+		return
+	var length: float = animations.get_animation(clip).length
+	animations.play(clip, 0.25, length * STEP_SPEED / WALK_STRIDE if clip == "walk" else 1.0)
+
+
+func _remove_stand_in() -> void:
+	if is_instance_valid(stand_in):
+		stand_in.queue_free()
+	stand_in = null
+	_step_time = -1.0
 
 
 ## A node by path from the level root, or @kite (the workshop's rover) / @player

@@ -5,7 +5,9 @@ extends UIScreen
 ## What a CutsceneDirector draws over its camera: letterbox bars (2.39:1, bg colour), a black
 ## cover for title cards and fades, the title card (Michroma mission title + Exo 2 caption), a
 ## caption line in the top bar, the subtitles in the bottom bar and the hold-to-skip key with its
-## fill line. Built in code; UIManager adds it under the pause menu.
+## fill line. Built in code; UIManager adds it under the pause menu. The title and its caption
+## shrink (size and letter spacing together) to fit between the safe margins; the subtitles show
+## one line at a time, centred in the bottom bar, which grows if a line needs more room.
 
 const THEME: Theme = preload("res://res/ui_theme_v2.tres")
 const SUBTITLE_STACK: PackedScene = preload("res://src/ui/subtitle_stack/subtitle_stack.tscn")
@@ -19,6 +21,15 @@ const LINE := Color("#2A2A2E")
 const SIDE: float = 64.0
 const SKIP_WIDTH: float = 168.0
 const SKIP_IDLE_ALPHA: float = 0.45
+## Safe margin each side: a share of the width, at least SIDE
+const SAFE_SHARE: float = 0.05
+const CAPTION_SIZE: int = 24
+const SUBTITLE_MAX_WIDTH: float = 960.0
+const SUBTITLE_MIN_WIDTH: float = 360.0
+const SUBTITLE_PAD: float = 14.0
+## The bottom bar never grows past this share of the height for a line
+const MAX_BAR_SHARE: float = 0.3
+const STEADY_FRAMES: int = 3
 
 var root: Control
 var top_bar: ColorRect
@@ -36,6 +47,11 @@ var bars: float = 0.0
 var letterbox: bool = true
 var _bar_tween: Tween = null
 var _black_tween: Tween = null
+var _bar_need: float = 0.0
+var _fitted: Dictionary = {}
+var _bases: Dictionary = {}
+var _last_height: float = 0.0
+var _steady: int = 0
 
 
 func _init() -> void:
@@ -66,7 +82,7 @@ func _ready() -> void:
 	title_box.add_child(title_label)
 	title_caption = _label("TitleCaption", &"LabelCaption")
 	title_caption.add_theme_color_override(&"font_color", TEXT_2)
-	title_caption.add_theme_font_size_override(&"font_size", 24)
+	title_caption.add_theme_font_size_override(&"font_size", CAPTION_SIZE)
 	title_box.add_child(title_caption)
 
 	caption = _label("Caption", &"LabelCaption")
@@ -80,6 +96,7 @@ func _ready() -> void:
 	root.add_child(subtitle_slot)
 	subtitles = SUBTITLE_STACK.instantiate()
 	subtitles.slot = subtitle_slot
+	subtitles.one_at_a_time = true
 	root.add_child(subtitles)
 
 	skip_box = VBoxContainer.new()
@@ -106,7 +123,19 @@ func _process(_delta: float) -> void:
 
 func _layout() -> void:
 	var view: Vector2 = root.get_viewport_rect().size
-	var full: float = maxf((view.y - view.x / ASPECT) * 0.5, view.y * 0.1)
+	var margin: float = safe_margin(view.x)
+	_fit(title_label, &"LabelMissionTitle", -1, view.x - 2.0 * margin)
+	_fit(title_caption, &"LabelCaption", CAPTION_SIZE, view.x - 2.0 * margin)
+	skip_box.reset_size()
+	var width: float = subtitle_width(view.x)
+	var text_height: float = subtitles.size.y if subtitles.visible and subtitles.shown_count() > 0 else 0.0
+	# Only once the line is wrapped at the band's width and its height has settled (the first
+	# frames can report it wrapped narrower)
+	_steady = _steady + 1 if text_height == _last_height and absf(subtitles.size.x - minf(width, subtitles.MAX_WIDTH)) < 1.0 else 0
+	_last_height = text_height
+	if text_height > 0.0 and _steady >= STEADY_FRAMES:
+		_bar_need = clampf(text_height + 2.0 * SUBTITLE_PAD, _bar_need, view.y * MAX_BAR_SHARE)
+	var full: float = maxf(maxf((view.y - view.x / ASPECT) * 0.5, view.y * 0.1), _bar_need)
 	var bar: float = full * bars
 	top_bar.position = Vector2.ZERO
 	top_bar.size = Vector2(view.x, bar)
@@ -115,9 +144,8 @@ func _layout() -> void:
 	caption.position = Vector2(0.0, maxf(bar * 0.5 - caption.size.y * 0.5, 24.0))
 	caption.size = Vector2(view.x, caption.size.y)
 	var bar_top: float = view.y - maxf(bar, full)
-	subtitle_slot.position = Vector2(view.x * 0.25, bar_top + 16.0)
-	subtitle_slot.size = Vector2(view.x * 0.5, 0.0)
-	skip_box.reset_size()
+	subtitle_slot.position = Vector2((view.x - width) * 0.5, bar_top + (full - text_height) * 0.5)
+	subtitle_slot.size = Vector2(width, 0.0)
 	skip_box.position = Vector2(view.x - SIDE - skip_box.size.x,
 		view.y - maxf(full, skip_box.size.y + 32.0) * 0.5 - skip_box.size.y * 0.5)
 
@@ -125,6 +153,7 @@ func _layout() -> void:
 ## Shows the screen: the bars slide in (or stay out without `with_letterbox`), nothing else shown
 func begin(with_letterbox: bool) -> void:
 	letterbox = with_letterbox
+	_bar_need = 0.0
 	show()
 	set_title("", "", 0.0, 0.0)
 	set_caption("")
@@ -180,6 +209,49 @@ func set_caption(text: String) -> void:
 func set_skip(progress: float, holding: bool) -> void:
 	skip_fill.size = Vector2(SKIP_WIDTH * progress, 2.0)
 	skip_box.modulate.a = 1.0 if holding else SKIP_IDLE_ALPHA
+
+
+func safe_margin(width: float) -> float:
+	return maxf(SIDE, width * SAFE_SHARE)
+
+
+## The subtitle band's width: centred, clear of the skip key on the right
+func subtitle_width(width: float) -> float:
+	return clampf(width - 2.0 * (SIDE + skip_box.size.x + 32.0), SUBTITLE_MIN_WIDTH, SUBTITLE_MAX_WIDTH)
+
+
+## The bottom bar's rect when fully in
+func bottom_bar_rect() -> Rect2:
+	var view: Vector2 = root.get_viewport_rect().size
+	var full: float = maxf(maxf((view.y - view.x / ASPECT) * 0.5, view.y * 0.1), _bar_need)
+	return Rect2(0.0, view.y - full, view.x, full)
+
+
+## Sizes `label` (its theme type's font and size, or `base_size`) down, size and letter spacing
+## together, until its text fits `room` pixels
+func _fit(label: Label, type: StringName, base_size: int, room: float) -> void:
+	var key := "%s|%d" % [label.text, roundi(room)]
+	if _fitted.get(label) == key:
+		return
+	_fitted[label] = key
+	if not _bases.has(label):
+		_bases[label] = [THEME.get_font(&"font", type), base_size if base_size > 0 else THEME.get_font_size(&"font_size", type)]
+	var base: Font = _bases[label][0]
+	var size: int = _bases[label][1]
+	var spacing: int = base.spacing_glyph if base is FontVariation else 0
+	var font: Font = base
+	var fitted: int = size
+	if not label.text.is_empty():
+		var width: float = base.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var scale: float = minf(room / maxf(width, 1.0), 1.0)
+		fitted = floori(size * scale)
+		if scale < 1.0 and base is FontVariation:
+			font = base.duplicate()
+			font.spacing_glyph = floori(spacing * scale)
+		while fitted > 8 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > room:
+			fitted -= 1
+	label.add_theme_font_override(&"font", font)
+	label.add_theme_font_size_override(&"font_size", fitted)
 
 
 func _tween_bars(target: float) -> Tween:

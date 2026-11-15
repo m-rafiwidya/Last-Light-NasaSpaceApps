@@ -58,6 +58,11 @@ func is_sequence_pending(sequence: DialogSequence) -> bool:
 	return sequence != null and (sequence == _active_sequence or sequence in _queue)
 
 
+## True while `sequence` is queued and hasn't started
+func is_sequence_waiting(sequence: DialogSequence) -> bool:
+	return sequence != null and sequence in _queue
+
+
 ## Upper bound (s) for the playing and queued sequences to finish
 func queued_duration() -> float:
 	var total: float = 0.0

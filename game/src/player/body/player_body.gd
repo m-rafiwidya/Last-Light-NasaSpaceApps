@@ -154,10 +154,11 @@ func _ready() -> void:
 
 func _on_game_state_changed(_old, new_state) -> void:
 	# While driving (and paused from driving), the console's seated operator is the player's
-	# body (Workshop), and the player stands at the console where it sits
+	# body (Workshop), and the player stands at the console where it sits. A cutscene's camera
+	# never sees it (it has no helmet, neck or shoulders): its director shows a full stand-in
 	var menu: bool = (new_state == GameState.State.PAUSED or new_state == GameState.State.IN_GAME_MENU
 			or new_state == GameState.State.CREDITS or new_state == GameState.State.CUTSCENE)
-	visible = not (new_state == GameState.State.IN_GAME_ROBOT
+	visible = not (new_state == GameState.State.IN_GAME_ROBOT or GameState.cutscene_active
 		or (menu and GameState.last_in_game_state == GameState.State.IN_GAME_ROBOT))
 
 

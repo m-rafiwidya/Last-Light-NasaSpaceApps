@@ -56,24 +56,31 @@ func set_line(speaker: String, text: String) -> void:
 	set_text(text)
 
 
-func fade_in():
-	reveal = 0.0
+## Fades the line in; `grow` also opens its height (stacked lines slide), else only the alpha
+func fade_in(seconds: float = 0.5, grow: bool = true):
+	reveal = 0.0 if grow else 1.0
 	modulate = Color.TRANSPARENT
 	var tween := _create_tween(Tween.EASE_OUT)
-	tween.tween_property(self, "reveal", 1.0, 0.5)
-	tween.parallel().tween_property(self, "modulate", Color.WHITE, 0.5)
+	if grow:
+		tween.tween_property(self, "reveal", 1.0, seconds)
+	else:
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(self, "modulate", Color.WHITE, seconds)
 
 
-## Fades the line out after `hold` seconds on screen
-func fade_out(hold: float = 3.0):
+## Fades the line out after `hold` seconds on screen; `shrink` also closes its height
+func fade_out(hold: float = 3.0, seconds: float = 0.5, shrink: bool = true):
 	if leaving:
 		return
 	leaving = hold <= 0.0
 	var tween := _create_tween(Tween.EASE_IN)
 	if hold > 0.0:
 		tween.tween_interval(hold)
-	tween.tween_property(self, "reveal", 0.0, 0.5)
-	tween.parallel().tween_property(self, "modulate", Color.TRANSPARENT, 0.5)
+	if shrink:
+		tween.tween_property(self, "reveal", 0.0, seconds)
+	else:
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(self, "modulate", Color.TRANSPARENT, seconds)
 	tween.tween_callback(queue_free)
 
 
