@@ -548,7 +548,7 @@
 						}
 					},
 					{
-						"text": "At the far rim, switch to the mast view, aim at sunlit ground and press E; then aim at a shadow (Kite's own, or the marker post's) and press E",
+						"text": "Within 40 m of Evan's logger, switch to the mast view, aim at sunlit ground and press E; then a shade reading near the logger: try the marker post's shadow or Kite's own",
 						"label": "Far rim",
 						"target": "path:FarLogger",
 						"hint_from": "group:thermal_sensor",

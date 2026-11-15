@@ -9,8 +9,9 @@ extends Node3D
 ## otherwise SUN. Works with any sun: the Courier's high sun leaves only short shadows (Kite's own,
 ## IRIS's), the Freighter's low sun long terrain ones.
 ##
-## It completes no objective: MissionDirector reads `has_pair()` or listens to `pair_completed`.
-## Readings live on this node only (not saved): a reload before the pair is done starts it over.
+## It completes no objective: MissionDirector listens to `reading_taken` and, through `message_source`,
+## writes what the subtitle says after the temperature. Readings live on this node only (not saved)
+## and are cleared when a mission starts.
 ## Place one anywhere in the Moon level; it finds the sky itself. `highlight_node` is for Guidance
 ## (unset: Fahd points it at something that casts a usable shadow, e.g. IRIS).
 
@@ -34,11 +35,18 @@ const SHADE_CELSIUS: float = -150.0   # simulated: regolith cools fast once shad
 @export var highlight_node: Node3D
 ## The latest reading of each kind: {"sun": celsius, "shade": celsius}
 var readings: Dictionary = {}
+## (kind, point) -> the line after the temperature; unset: the sensor's own sun / shade prompt
+var message_source: Callable
 var _sky: Node = null
 
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	CampaignState.mission_started.connect(_on_mission_started)
+
+
+func _on_mission_started(_id: String) -> void:
+	readings.clear()
 
 
 func has_pair() -> bool:
@@ -90,11 +98,12 @@ func record(point: Vector3, normal: Vector3 = Vector3.UP) -> String:
 	var celsius: float = SHADE_CELSIUS if kind == "shade" else sun_celsius(elevation)
 	readings[kind] = celsius
 	reading_taken.emit(kind, celsius, point)
+	var follow: String = str(message_source.call(kind, point)) if message_source.is_valid() else \
+		("Sun and shade pair recorded." if has_pair() else "Now take a %s reading." % ("sun" if kind == "shade" else "shade"))
 	var line := Dialog.new()
 	line.speaker = "Kite"
-	line.subtitle = "Radiometer: %+d °C, %s (simulated).%s" % [roundi(celsius),
-		"in shade" if kind == "shade" else "in sunlight",
-		" Sun and shade pair recorded." if has_pair() else " Now take a %s reading." % ("sun" if kind == "shade" else "shade")]
+	line.subtitle = "Radiometer: %+d °C, %s (simulated). %s" % [roundi(celsius),
+		"in shade" if kind == "shade" else "in sunlight", follow]
 	line.min_duration = 5.0
 	DialogServer.play_dialog(line)
 	if has_pair() and not had_pair:
