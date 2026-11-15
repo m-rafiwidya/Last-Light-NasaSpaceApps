@@ -235,8 +235,11 @@ func _physics_process(delta: float) -> void:
 				and GameState.robot == robot:
 			activate()
 		return
+	# Driving off, losing the tool, or control leaving Kite (back to the workshop, or a human
+	# carrying it home) stows the arm; anything held drops
 	if absf(robot.controller.desired_speed) > 0.05 or robot.linear_velocity.length() > DRIVE_SPEED \
-			or not is_instance_valid(delivery._latch()):
+			or not is_instance_valid(delivery._latch()) or GameState.robot != robot \
+			or GameState.state != GameState.State.IN_GAME_ROBOT:
 		deactivate()
 		return
 	var aim: Vector3 = aim_point()

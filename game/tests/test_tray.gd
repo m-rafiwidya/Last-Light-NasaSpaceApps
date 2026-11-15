@@ -6,6 +6,8 @@ extends SceneTree
 ##   4. Reckless: full throttle straight across the boulder field (not its cleared lane) and a
 ##      full-reverse stop throw at least one out (bumps do it: in lunar gravity Kite can't brake
 ##      harder than the parts' own friction holds them on flat ground).
+##   5. Secured (set_secured, for a human carrying Kite): tilted 70 degrees the jars stay; released
+##      they ride loose again.
 ## Prints how far the parts moved in the tray, for tuning the rim, friction and bounce.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_tray.gd
@@ -183,6 +185,7 @@ func _run() -> void:
 		jars[k].global_transform = Transform3D(rover.global_basis, tray.drop_point() + rover.global_basis.x * (0.05 if k else -0.05))
 		jars[k].linear_velocity = Vector3.ZERO
 		jars[k].angular_velocity = Vector3.ZERO
+		jars[k].sleeping = false
 	await _ticks(2.0)
 	_check("reckless: both jars back in the tray at the lane's start", _inside() == 2, "%d inside" % _inside())
 	before = _local()
@@ -202,8 +205,38 @@ func _run() -> void:
 			await physics_frame
 	await _drive(-1.0, 0.0, 1.5)
 	await _ticks(2.0)
-	print("INFO reckless: %d of 2 still inside, moved %s" % [_inside(), _moved(before)])
+	print("INFO reckless: %d of 2 still inside, moved %s; mounted %s, frozen %s" % [_inside(), _moved(before),
+		jars.map(func(j: RigidBody3D) -> bool: return j.is_mounted()), jars.map(func(j: RigidBody3D) -> bool: return j.freeze)])
 	_check("reckless: full speed through the boulders and a hard stop throw something out", _inside() < 2, "%d inside" % _inside())
+
+	# 5. Secured (a human carrying Kite home): tilted on its side the jars stay; released, they ride loose
+	rover.global_transform = Transform3D(Basis.IDENTITY, _ground(rover.global_position) + Vector3.UP * 0.4)
+	rover.linear_velocity = Vector3.ZERO
+	rover.angular_velocity = Vector3.ZERO
+	await _ticks(2.0)
+	for k in jars.size():
+		jars[k].global_transform = Transform3D(rover.global_basis, tray.drop_point() + rover.global_basis.x * (0.05 if k else -0.05))
+		jars[k].linear_velocity = Vector3.ZERO
+		jars[k].angular_velocity = Vector3.ZERO
+		jars[k].sleeping = false                           # moving a sleeping body doesn't wake it
+	await _ticks(2.0)
+	_check("secured: both jars in the tray before lifting", _inside() == 2, "%d inside, at %s" % [_inside(), _local()])
+	tray.set_secured(true)
+	var lifted: Transform3D = rover.global_transform
+	rover.freeze = true
+	for i in 2 * TICKS:                                   # held up and rolled 70 degrees over
+		var t: float = minf(i / float(TICKS), 1.0)
+		rover.global_transform = Transform3D(lifted.basis.rotated(lifted.basis.z, deg_to_rad(70.0) * t),
+			lifted.origin + Vector3.UP * (0.6 * t))
+		await physics_frame
+	_check("secured: tilted 70 degrees in the air, both jars stay in the tray", _inside() == 2, "%d inside" % _inside())
+	rover.global_transform = lifted
+	rover.freeze = false
+	await _ticks(1.0)
+	tray.set_secured(false)
+	await _ticks(1.0)
+	_check("secured: released again, they ride loose in the tray", _inside() == 2
+		and jars.all(func(j: RigidBody3D) -> bool: return not j.freeze and j.get_parent() == level), "%d inside" % _inside())
 
 	print("RESULT test_tray %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)

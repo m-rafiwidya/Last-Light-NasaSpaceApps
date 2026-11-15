@@ -4,7 +4,7 @@ extends Node3D
 
 ## One of Evan's notes (game/docs/STORY_SCRIPT.md), a small readable prop (the decor kit's service
 ## note). Reading shows the text as an "Evan:" subtitle through DialogServer, with the voice file
-## res://res/audio/voice/<note_id>.ogg when it exists (text only otherwise). E again while it shows
+## res://res/audio/voice/<note_id>.ogg or .mp3 when it exists (text only otherwise). E again while it shows
 ## skips it.
 ##
 ## Read on foot: the player aims at it and presses E (an InteractTrigger, layer 5, like the sockets).
@@ -21,7 +21,7 @@ const VOICE_DIR: String = "res://res/audio/voice/"
 const TRIGGER_SIZE := Vector3(0.4, 0.3, 0.4)
 const READ_SPEED: float = 15.0        # characters per second for the subtitle's minimum time
 
-## Names the voice file (<note_id>.ogg)
+## Names the voice file (<note_id>.ogg or .mp3)
 @export var note_id: String = ""
 @export var speaker: String = "Evan"
 @export_multiline var text: String = ""
@@ -90,9 +90,11 @@ func toggle() -> bool:
 	line.speaker = speaker
 	line.subtitle = text
 	line.min_duration = maxf(4.0, text.length() / READ_SPEED)
-	var voice: String = VOICE_DIR + note_id + ".ogg"
-	if not note_id.is_empty() and ResourceLoader.exists(voice):
-		line.audio_stream = load(voice)
+	for extension in [".ogg", ".mp3"]:   # ElevenLabs downloads are .mp3
+		var voice: String = VOICE_DIR + note_id + extension
+		if not note_id.is_empty() and ResourceLoader.exists(voice):
+			line.audio_stream = load(voice)
+			break
 	DialogServer.play_dialog(line)
 	_showing = line
 	was_read = true

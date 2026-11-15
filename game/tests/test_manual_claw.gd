@@ -6,6 +6,7 @@ extends SceneTree
 ##   4. Place: looking at the storage tray, a click lets go and it drops into the tray.
 ##   5. Out of reach: looking 3 m ahead says so and the arm stays put.
 ##   6. Stow: R stows the arm; deployed again with a part held, driving off stows it and the part drops.
+##   7. Control leaving Kite (back to the player, e.g. to walk out and rescue it) stands the claw down.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_manual_claw.gd
 
@@ -172,6 +173,26 @@ func _run() -> void:
 	_check("stow: driving off stows the arm and drops what it held", grabbed and not claw.active and claw.held == null
 		and not jar.freeze, "grabbed %s, active %s, held %s, jar frozen %s, mounted %s, parent %s, desired %.2f" % [grabbed, claw.active, claw.held,
 		jar.freeze, jar.is_mounted(), jar.get_parent().name, rover.controller.desired_speed])
+
+	# 7. Control leaving Kite (back to the player) stands the claw down
+	jar.freeze = false
+	jar.global_transform = Transform3D(rover.global_basis, tray.drop_point())
+	await _ticks(2.0)
+	await _press(&"arm_toggle")
+	for i in 6 * TICKS:
+		if claw.active:
+			break
+		await physics_frame
+	await _look_at(tray.global_position)
+	claw.hover = 0.0
+	await _ticks(2.0)
+	var had: bool = claw.toggle_grab()
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	await _ticks(0.5)
+	_check("control: leaving Kite stands the claw down and drops what it held", had and not claw.active and claw.held == null
+		and not rover.get_node("Visuals").arm_scripted, "had %s" % had)
+	GS.drive(rover)
+	await _ticks(0.3)
 
 	print("RESULT test_manual_claw %s" % ("PASS" if failures == 0 else "FAIL (%d)" % failures))
 	quit(1 if failures else 0)

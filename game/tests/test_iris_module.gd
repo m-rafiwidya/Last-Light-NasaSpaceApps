@@ -3,7 +3,8 @@ extends SceneTree
 ##   1. Setup: IRIS has a ModuleCradle on the module seat, in group iris_module_cradle, with the
 ##      bay's mesh as highlight_node and the park_module marker; empty, IRIS offline.
 ##   2. Order: in m2 with the module on Kite's cargo mount and Kite parked at the bay, the install
-##      is refused until m2.cargo_ordered and m2.module_loaded are done.
+##      is refused until every M2 objective before m2.module_installed is done (missions.json:
+##      cargo ordered, retrieved from the landing zone, module loaded).
 ##   3. Position: too far from the bay refuses it and the hint says to come closer.
 ##   4. Install: parked and stopped, the hint says "In position"; try_install seats the module on
 ##      the seat (within 5 mm), empties the cargo mount, completes m2.module_installed and
@@ -97,10 +98,15 @@ func _run() -> void:
 	await _place(cradle.park_marker.global_position, facing)
 	_check("order: parked at the bay", cradle.park_distance(rover) <= cradle.PARK_RANGE,
 		"%.2f m" % cradle.park_distance(rover))
-	_check("order: refused before m2.cargo_ordered and m2.module_loaded",
+	var before: Array = []
+	for objective in CS.mission_objectives("m2"):
+		if objective == "m2.module_installed":
+			break
+		before.append(objective)
+	_check("order: refused before " + ", ".join(before),
 		not cradle.try_install(rover) and cargo.part == module and not CS.is_objective_done("m2.module_installed"))
-	CS.complete_objective("m2.cargo_ordered")
-	CS.complete_objective("m2.module_loaded")
+	for objective in before:
+		CS.complete_objective(objective)
 	_check("order: allowed after them", cradle.campaign_allows())
 
 	# 3. Position
@@ -126,10 +132,15 @@ func _run() -> void:
 	_check("install: IRIS comes online from the flag", iris.is_online)
 	_check("install: IRIS's highlight_node is its online indicator",
 		iris.highlight_node != null and iris.highlight_node.name == "iris_indicator", str(iris.highlight_node))
-	_check("install: the indicator is lit", iris.highlight_node.material_override.emission_energy_multiplier > 0.0)
+	var indicator: Material = iris.highlight_node.material_override
+	_check("install: the indicator pulses as IRIS comes online", indicator.emission_energy_multiplier > iris.INDICATOR_LIT + 1.0,
+		str(indicator.emission_energy_multiplier))
 	await _ticks(iris.ANTENNA_TIME)
 	_check("install: the antenna turned to its tracking pose",
 		iris.antenna_pose().distance_to(iris.ANTENNA_TRACKED) < 0.5, str(iris.antenna_pose()))
+	await _ticks(iris.PULSE_TIME)
+	_check("install: then it stays steadily lit", is_equal_approx(indicator.emission_energy_multiplier, iris.INDICATOR_LIT),
+		str(indicator.emission_energy_multiplier))
 	_check("install: a second try does nothing", not cradle.try_install(rover) and cradle.occupant == module)
 
 	# 5. Load
