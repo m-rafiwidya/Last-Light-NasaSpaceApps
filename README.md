@@ -42,15 +42,31 @@ in-game Data Sources screen.
 
 ## Team
 
-Fahd Muhammad Zahid (Institut Teknologi Bandung), Muhammad Rafi Widyatama (Universiti Malaya) and
-Faiq Haidar Dzikrullah Satriawan (Monash University). The early base code was written by a former
-teammate who withdrew before judging; it is used with his permission ([CREDITS.md](CREDITS.md)).
+Three Indonesian students in three countries:
+
+- **Fahd Muhammad Zahid** (Institut Teknologi Bandung): lead developer. Built the Apollo 12 terrain
+  from NASA data, the levels and missions, the console and its forecast, the UI, and integrated and
+  merged everyone's work.
+- **Muhammad Rafi Widyatama** (Universiti Malaya, mechanical engineering): Kite's engineering and the
+  Mission 3 balance (part masses, energy and grip trade-offs, the route tests), the hand-controlled
+  claw and storage tray, story and voice lines, and the playtest-driven fixes.
+- **Faiq Haidar Dzikrullah Satriawan** (Monash University): the story, the characters' dialogue and
+  the voice lines, and the cutscene and dialogue triggers.
+
+All three of us brainstormed the game and the missions, researched the NASA sources, playtested,
+found bugs and decided what changed after each playtest.
+
+The early base code was written by a former teammate who withdrew before judging; it is used with
+his permission ([CREDITS.md](CREDITS.md)).
 
 ## How it was made
 
-- **Timeline:** development began on 28 September 2026 and continued through the event weekend
-  (14 to 15 November), when we added the hand-controlled claw and storage tray, the astronaut rescue
-  with suit oxygen, saving, the voiced dialogue, the required sample, playtest fixes and the trailer.
+- **Timeline:** we formed the team in late September 2026 to prepare for Space Apps and started early.
+  The first week went into a general first-person base (player, dialogue, console, a first rover).
+  From 8 October we built the game itself around NASA's data and the mission design challenge: the
+  Apollo 12 terrain, lunar gravity, Kite's parts and the three missions. On the event weekend
+  (14 to 15 November) we added the hand-controlled claw and storage tray, the astronaut rescue with
+  suit oxygen, saving, the voiced dialogue, the required sample, playtest fixes and the trailer.
   The full history is in this repository.
 - **AI tools:** Claude (Anthropic), through Claude Code, for code, the Blender scripts that build the
   models, and music and sound scripts; ElevenLabs for the voices. The mission design, balance, story
