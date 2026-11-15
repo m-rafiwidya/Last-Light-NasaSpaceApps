@@ -176,10 +176,8 @@ func _learned_wh_per_m(loaded: bool) -> float:
 
 # Where Kite stops for IRIS: 12 m short of the station, on the base side
 const IRIS := Vector2(-212.0, 146.0)
-const LOGGER := Vector2(2.0, -59.0)
-const SHORT_ROUTE: Array = [Vector2(-88.0, 30.0), LOGGER]
-# Sunlit and longer: wide of the short route's shade, south round to the far rim
-const LONG_ROUTE: Array = [Vector2(-180.0, 120.0), Vector2(-150.0, -20.0), Vector2(-110.0, -100.0), Vector2(-30.0, -110.0), LOGGER]
+# Waypoint reached within this (m): close enough to keep to the crater's lines
+const CAPTURE: float = 5.0
 # A first-time player's time stopped at the destination (scanning, installing, looking around), s
 const STOP_M1: float = 90.0
 const STOP_M2: float = 150.0
@@ -222,7 +220,7 @@ func _drive_route(points: Array) -> Dictionary:
 			if to.length() < best - 1.0:
 				best = to.length()
 				last_progress = t
-			if to.length() < 8.0:
+			if to.length() < CAPTURE:
 				reached += 1
 				break
 			if t - last_progress > 25.0:
@@ -275,38 +273,40 @@ func _route_run(name: String, out: Array, back: Array, out_cargo: String, back_c
 		print("      in active cold zones %.0f s, heater %.2f Wh (%.1f%%)" % [cold_seconds, heater_wh, 100.0 * heater_wh / rover.battery.capacity])
 
 
-# M3 in progress after an order by `service` (the Freighter arrives late: M3 near nightfall)
+# M3 in progress after an order by `service` (the Freighter arrives late: M3 near nightfall), with its sun
 func _set_m3(service: String) -> void:
 	CS.load_state({"current": "m3", "objectives": M1_DONE + M2_DONE + ["m3.logger_recovered"], "missions_done": ["m1", "m2"],
 		"flags": ["iris_online", "cargo_delivered"], "items": {"cargo.service." + service: 1, "cargo.thermal_kit": 1}})
+	director.apply_mission_sun()
 
 
 func _routes() -> void:
-	var cartridge: String = "res://src/robot/socket/cartridge_part.tscn"
-	var short_back: Array = SHORT_ROUTE.slice(0, SHORT_ROUTE.size() - 1)
-	short_back.reverse()
-	var long_back: Array = LONG_ROUTE.slice(0, LONG_ROUTE.size() - 1)
-	long_back.reverse()
+	var markers: Node = level.get_node("RouteMarkers")
+	var out: Dictionary = {}
+	var back: Dictionary = {}
+	for id in ["short", "long"]:
+		out[id] = Array(markers.route(id))
+		back[id] = out[id].slice(0, out[id].size() - 1)
+		back[id].reverse()
+		print("INFO %s route: %.0f m along its waypoints, there and back" % [id, markers.round_trip(id)])
 	if "long_only" in OS.get_cmdline_user_args():
-		await _route_run("M3 long, empty", LONG_ROUTE, long_back, "", "", false, STOP_M3)
+		await _route_run("M3 long, empty", out["long"], back["long"], "", "", false, STOP_M3)
 		quit(0)
 		return
+	var cartridge: String = "res://src/robot/socket/cartridge_part.tscn"
 	await _route_run("M1 IRIS, empty", [IRIS], [], "", "", false, STOP_M1)
 	await _route_run("M1 IRIS, cartridge out", [IRIS], [], cartridge, "", false, STOP_M1)
 	await _route_run("M2 IRIS, empty", [IRIS], [], "", "", false, STOP_M2)
 	await _route_run("M2 IRIS, module out", [IRIS], [], MODULE, "", false, STOP_M2)
-	await _route_run("M3 short, empty", SHORT_ROUTE, short_back, "", "", false, STOP_M3)
-	await _route_run("M3 short, thermal kit + logger back", SHORT_ROUTE, short_back, "", LOGGER_PART, true, STOP_M3)
-	await _route_run("M3 long, empty", LONG_ROUTE, long_back, "", "", false, STOP_M3)
-	await _route_run("M3 long, thermal kit + logger back", LONG_ROUTE, long_back, "", LOGGER_PART, true, STOP_M3)
-	for service in ["courier", "freighter"]:
-		_set_m3(service)
-		await _route_run("M3 short, kit + logger, %s" % service, SHORT_ROUTE, short_back, "", LOGGER_PART, true, STOP_M3)
-		await _route_run("M3 long, kit + logger, %s" % service, LONG_ROUTE, long_back, "", LOGGER_PART, true, STOP_M3)
+	for grip in [false, true]:
+		if grip:
+			await _set_grip_wheels(true)
+		for service in ["courier", "freighter"]:
+			_set_m3(service)
+			for id in ["short", "long"]:
+				await _route_run("M3 %s, %s, %s" % [id, service, "grip" if grip else "standard"], out[id], back[id], "", LOGGER_PART, true, STOP_M3)
 	CS.reset()
-	await _set_grip_wheels(true)
-	await _route_run("M3 short, grip wheels + kit + logger", SHORT_ROUTE, short_back, "", LOGGER_PART, true, STOP_M3)
-	await _route_run("M3 long, grip wheels + kit + logger", LONG_ROUTE, long_back, "", LOGGER_PART, true, STOP_M3)
+	director.apply_mission_sun()
 	quit(0)
 
 
@@ -405,11 +405,11 @@ func _run() -> void:
 		absf(learned_after_stop - learned_loaded) < learned_loaded * 0.05,
 		"%.4f before, %.4f after the stop" % [learned_loaded, learned_after_stop])
 
-	# 7. Heater: draws only in an active cold zone (M3, daylight: the short route's shade) with it fitted
-	_set_m3("courier")
+	# 7. Heater: draws only in an active cold zone (Freighter M3: Head's west wall at dusk) with it fitted
+	_set_m3("freighter")
 	for socket_name in THERMAL:
 		await _mount_in(socket_name, THERMAL[socket_name])
-	var shade: Vector3 = level.get_node("ColdZones/ShortRouteShade").global_position
+	var shade := Vector3(-76.0, 0.0, -50.0)
 	await _place()
 	var sunlit: float = rover.heater_power
 	rover.global_transform = Transform3D(Basis.IDENTITY, Vector3(shade.x, START.y, shade.z))

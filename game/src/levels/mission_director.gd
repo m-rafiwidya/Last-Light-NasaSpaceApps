@@ -25,6 +25,10 @@ const COLD_LIMIT: float = 20.0
 const COLD_WARNING: String = "COLD: Kite is in shade without its thermal cover and heater. Cold shutdown in %d s: get back to sunlight."
 const COLD_MESSAGE: String = "Kite's electronics got too cold. Emergency recovery: Kite is being returned to the pad."
 const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
+const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the pad."
+## Kite away from the pad and still this long (s): the console offers the emergency recovery
+const STILL_FOR: float = 8.0
+const STILL_SPEED: float = 0.2
 
 @export var workshop: Workshop
 
@@ -40,13 +44,19 @@ var _last_charge: float = -1.0
 var _distance: float = 0.0
 var _energy: float = 0.0
 var cold_time: float = 0.0
+var still_time: float = 0.0
+var _level_sun := Vector2.ZERO
 
 
 func _ready() -> void:
 	add_to_group(&"mission_director")
 	rover = workshop.rover if workshop else null
 	pad = workshop.pad if workshop else null
+	var sky := _sky()
+	if sky:
+		_level_sun = Vector2(sky.sun_azimuth, sky.sun_elevation)
 	CampaignState.mission_started.connect(func(_id: String) -> void: _prepare_mission())
+	CampaignState.campaign_reset.connect(apply_mission_sun)
 	CampaignState.flag_changed.connect(_on_flag_changed)
 	CampaignState.objective_completed.connect(_on_progress)
 	CampaignState.mission_completed.connect(_on_progress)
@@ -130,11 +140,31 @@ func _watch(target: Node) -> void:
 
 
 func _prepare_mission() -> void:
+	apply_mission_sun()
 	if CampaignState.current_mission() != "m1" or CampaignState.is_objective_done("m1.kite_prepared"):
 		return
 	if rover and rover.battery_socket and rover.battery_socket.part:
 		var battery := rover.battery_socket.unmount()
 		battery.queue_free()
+
+
+func _sky() -> LunarSky:
+	return get_parent().get_node_or_null("WorldEnvironment") as LunarSky
+
+
+## M3 (and after it) shows the sun of its local day (CargoPlan), so the shade the player sees is
+## the shade the cold zones use; before it, the level's own sun
+func apply_mission_sun() -> void:
+	var sky := _sky()
+	if sky == null:
+		return
+	var sun: Vector2 = _level_sun
+	var service: String = CargoPlan.delivered_service()
+	if service and (CampaignState.current_mission() == COLD_MISSION or CampaignState.is_mission_completed(COLD_MISSION)):
+		sun = CargoPlan.sun_on_day(CargoPlan.m3_day(service))
+	if not is_equal_approx(sky.sun_azimuth, sun.x) or not is_equal_approx(sky.sun_elevation, sun.y):
+		sky.sun_azimuth = sun.x
+		sky.sun_elevation = sun.y
 
 
 func try_complete(objective: String) -> bool:
@@ -186,6 +216,7 @@ func _physics_process(delta: float) -> void:
 			_finish_recovery()
 		return
 	_update_cold(delta)
+	_update_still(delta)
 	if recovering or CampaignState.current_mission().is_empty() or rover.battery == null:
 		return
 	if rover.battery.is_empty() and not pad.is_in_zone(rover):
@@ -268,6 +299,25 @@ func _update_cold(delta: float) -> void:
 	if cold_time >= COLD_LIMIT:
 		cold_time = 0.0
 		_start_recovery(COLD_MESSAGE)
+
+
+func _update_still(delta: float) -> void:
+	var away: bool = not pad.is_in_zone(rover)
+	still_time = still_time + delta if away and rover.linear_velocity.length() < STILL_SPEED else 0.0
+
+
+## Kite is out on a mission, away from the pad and hasn't moved for STILL_FOR s (stuck in the
+## crater, wedged in boulders): the console may call the emergency recovery
+func can_request_recovery() -> bool:
+	return not recovering and not CampaignState.current_mission().is_empty() and rover.battery != null \
+		and still_time >= STILL_FOR
+
+
+func request_recovery() -> bool:
+	if not can_request_recovery():
+		return false
+	_start_recovery(STUCK_MESSAGE)
+	return true
 
 
 func _start_recovery(message: String = RECOVERY_MESSAGE) -> void:
