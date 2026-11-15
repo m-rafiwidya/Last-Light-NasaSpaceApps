@@ -20,6 +20,7 @@ func _ready() -> void:
 	add_child(CargoHint.new())
 	add_child(ScanHint.new())
 	add_child(MissionHint.new())
+	tips.avoid = $SubtitleStack
 	add_child(tips)
 	# CARGO under BATTERY: what the cargo mount holds (IRIS_KIT.md 5.3)
 	_cargo_label = Label.new()

@@ -11,6 +11,8 @@ const LINGER: float = 1.2
 const FADE_IN: float = 0.4
 const FADE_OUT: float = 0.5
 const LOOK_DISTANCE: float = 150.0
+const MARGIN: Vector2 = Vector2(53.0, 48.0)
+const GAP: float = 24.0
 const USED_ALPHA: float = 0.4
 const MOVE: Array = [&"move_forward", &"move_left", &"move_backward", &"move_right"]
 ## Per tip: rows of {label, actions (keys read from the bindings) or key (fixed text)}
@@ -36,6 +38,8 @@ var _look: float = 0.0
 var _rows: VBoxContainer = VBoxContainer.new()
 var _chips: Array[KeyChip] = []
 var _row_nodes: Array[Control] = []
+## Kept clear of: the card lifts above it when they would meet
+var avoid: Control
 
 
 func _init() -> void:
@@ -43,11 +47,11 @@ func _init() -> void:
 	theme = UI_THEME
 	theme_type_variation = &"TipCardPanel"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	grow_vertical = Control.GROW_DIRECTION_BEGIN
-	offset_right = -53.0
-	offset_bottom = -48.0
+	anchor_left = 1.0
+	anchor_top = 1.0
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	minimum_size_changed.connect(_place)
 	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rows.add_theme_constant_override(&"separation", 8)
 	add_child(_rows)
@@ -89,7 +93,7 @@ func offer(id: StringName) -> void:
 	_refresh_keys()
 	modulate.a = 0.0
 	show()
-	reset_size()
+	_place()
 
 
 func dismiss() -> void:
@@ -106,7 +110,24 @@ func _refresh_keys() -> void:
 		var row: Dictionary = rows[i]
 		_chips[i].fallback_key = row["key"] if row.has("key") else InputBindings.keys_text(row["actions"])
 		_chips[i].refresh()
-	reset_size()
+	_place()
+
+
+## Pins the card's bottom-right corner to the screen corner and sizes it to its content, so it grows
+## up and left; above `avoid` when that is in the way
+func _place() -> void:
+	var need: Vector2 = get_combined_minimum_size()
+	var area: Vector2 = get_parent_area_size()
+	var bottom: float = -MARGIN.y
+	if avoid and avoid.is_visible_in_tree() and avoid.size.y > 0.0:
+		var stack: Rect2 = avoid.get_global_rect()
+		if stack.end.x + GAP > area.x - MARGIN.x - need.x:
+			bottom = minf(bottom, stack.position.y - GAP - area.y)
+	bottom = maxf(bottom, need.y - area.y)
+	offset_right = -MARGIN.x
+	offset_left = offset_right - need.x
+	offset_bottom = bottom
+	offset_top = bottom - need.y
 
 
 func _input(event: InputEvent) -> void:
@@ -118,6 +139,7 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	age += delta
+	_place()
 	var rows: Array = TIPS[tip]
 	for i in rows.size():
 		var row: Dictionary = rows[i]

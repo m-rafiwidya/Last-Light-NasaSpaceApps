@@ -16,8 +16,15 @@ const WHEEL_ROWS: Array[int] = [0, 0, 2, 2, 1, 1]
 
 const RADIUS: float = 44.0
 const HEADER_HEIGHT: float = 26.0
-const COLUMN_X: Array[float] = [62.0, 226.0]
-const ROW_Y: Array[float] = [HEADER_HEIGHT + 40.0, HEADER_HEIGHT + 180.0, HEADER_HEIGHT + 320.0]
+const PANEL_WIDTH: float = 340.0
+const COLUMN_X: Array[float] = [76.0, 264.0]
+const ROW_Y: Array[float] = [HEADER_HEIGHT + 72.0, HEADER_HEIGHT + 222.0, HEADER_HEIGHT + 372.0]
+# Name / percentage baseline above a circle, the load text baseline below it, the load bar's
+# distance outside it, and the padding under the last row
+const LABEL_ABOVE: float = 60.0
+const LABEL_BELOW: float = 66.0
+const BAR_OUTSIDE: Array[float] = [24.0, 20.0]
+const PADDING_BOTTOM: float = 16.0
 const TRAIL_LENGTH: int = 28
 # Dot is allowed to leave the circle a bit so over-the-limit slip is visible
 const MAX_DISPLAY_RATIO: float = 1.3
@@ -45,8 +52,20 @@ var _panel_style: StyleBoxFlat
 var _chassis_style: StyleBoxFlat
 
 
+## Where the circles, labels and load bars are drawn, in the panel's own coordinates
+static func content_bounds() -> Rect2:
+	var left: float = COLUMN_X[0] - RADIUS - BAR_OUTSIDE[0] - 3.0
+	var right: float = COLUMN_X[1] + RADIUS + BAR_OUTSIDE[1] + 7.0
+	var top: float = ROW_Y[0] - LABEL_ABOVE - 10.0
+	var bottom: float = ROW_Y[2] + LABEL_BELOW + 3.0
+	return Rect2(left, top, right - left, bottom - top)
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	custom_minimum_size = Vector2(PANEL_WIDTH, content_bounds().end.y + PADDING_BOTTOM)
+	GeneralSettings.section.changed.connect(func(_key: String) -> void: visible = GeneralSettings.show_traction())
+	visible = GeneralSettings.show_traction()
 
 	_panel_style = StyleBoxFlat.new()
 	_panel_style.bg_color = Color(0.03, 0.05, 0.08, 0.55)
@@ -64,6 +83,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if not visible:
+		return
 	var layer: CanvasLayer = get_canvas_layer_node()
 	if layer and not layer.visible:
 		return
@@ -214,9 +235,9 @@ func _draw_wheel_circle(wheel: int, font: Font) -> void:
 
 	# Wheel name, grip percentage and load
 	var label_width: float = RADIUS * 2.0
-	draw_string(font, Vector2(center.x - RADIUS, center.y - RADIUS - 12.0), WHEEL_NAMES[wheel], HORIZONTAL_ALIGNMENT_LEFT, label_width, 13, COLOR_TEXT)
-	draw_string(font, Vector2(center.x - RADIUS, center.y - RADIUS - 12.0), "%3d%%" % roundi(utilisation * 100.0), HORIZONTAL_ALIGNMENT_RIGHT, label_width, 13, Color(color, alpha))
-	draw_string(font, Vector2(center.x - RADIUS, center.y + RADIUS + 22.0), "%d N" % roundi(_load[wheel]), HORIZONTAL_ALIGNMENT_CENTER, label_width, 11, COLOR_TEXT_DIM)
+	draw_string(font, Vector2(center.x - RADIUS, center.y - LABEL_ABOVE), WHEEL_NAMES[wheel], HORIZONTAL_ALIGNMENT_LEFT, label_width, 13, COLOR_TEXT)
+	draw_string(font, Vector2(center.x - RADIUS, center.y - LABEL_ABOVE), "%3d%%" % roundi(utilisation * 100.0), HORIZONTAL_ALIGNMENT_RIGHT, label_width, 13, Color(color, alpha))
+	draw_string(font, Vector2(center.x - RADIUS, center.y + LABEL_BELOW), "%d N" % roundi(_load[wheel]), HORIZONTAL_ALIGNMENT_CENTER, label_width, 11, COLOR_TEXT_DIM)
 
 	_draw_load_bar(wheel, center)
 
@@ -225,7 +246,7 @@ func _draw_wheel_circle(wheel: int, font: Font) -> void:
 ## share of the robot's weight; the bar tops out at twice that.
 func _draw_load_bar(wheel: int, center: Vector2) -> void:
 	var bar_height: float = RADIUS * 2.0
-	var bar_x: float = center.x - RADIUS - 24.0 if wheel % 2 == 0 else center.x + RADIUS + 20.0
+	var bar_x: float = center.x - RADIUS - BAR_OUTSIDE[0] if wheel % 2 == 0 else center.x + RADIUS + BAR_OUTSIDE[1]
 	var top: float = center.y - RADIUS
 	var ratio: float = clampf(_load[wheel] / (_static_load * 2.0), 0.0, 1.0)
 

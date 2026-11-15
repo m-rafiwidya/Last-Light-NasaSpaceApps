@@ -8,13 +8,15 @@ extends RefCounted
 ##   show_tooltips  the part tooltip next to the crosshair (player and robot HUD)
 ##   show_fps       the FPS counter in the top-right corner (FpsCounter)
 ##   guidance       mission guidance: the current step, highlights, labels and waypoints (Guidance)
+##   show_traction  the rover HUD's wheel friction circles, a developer view (FrictionCircles)
 ## Listen to `section.changed` to follow a change.
 
 const SUBTITLE_SIZE_MIN: float = 50.0
 const SUBTITLE_SIZE_MAX: float = 200.0
 
 static var section := SettingsSection.new("general",
-	{"subtitles": true, "subtitle_size": 100.0, "show_tooltips": true, "show_fps": false, "guidance": true},
+	{"subtitles": true, "subtitle_size": 100.0, "show_tooltips": true, "show_fps": false, "guidance": true,
+		"show_traction": false},
 	{"subtitle_size": Vector2(SUBTITLE_SIZE_MIN, SUBTITLE_SIZE_MAX)})
 
 
@@ -37,3 +39,7 @@ static func show_fps() -> bool:
 
 static func guidance() -> bool:
 	return section.get_value("guidance")
+
+
+static func show_traction() -> bool:
+	return section.get_value("show_traction")

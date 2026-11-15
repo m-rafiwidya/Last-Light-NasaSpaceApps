@@ -122,6 +122,11 @@ func parse_command(input: String):
 				if argc >= 2:
 					GeneralSettings.section.set_value("guidance", argv[1].to_lower() not in ["false", "0", "off"])
 				add_log("Guidance: %s" % ("on" if GeneralSettings.guidance() else "off"))
+			"traction":
+				# The rover HUD's wheel friction circles: traction on|off, or no argument to flip it
+				var show: bool = not GeneralSettings.show_traction() if argc < 2 else argv[1].to_lower() not in ["false", "0", "off"]
+				GeneralSettings.section.set_value("show_traction", show)
+				add_log("Traction display: %s" % ("on" if show else "off"))
 			"campaign":
 				for line in CampaignState.debug_dump():
 					_log_and_print(line)
