@@ -29,6 +29,10 @@
     "line": "mira_m2_02"
   },
   {
+    "on": "objective:m2.cargo_retrieved",
+    "line": "mira_m2_cargo_retrieved"
+  },
+  {
     "on": "objective:m2.module_loaded",
     "line": "mira_m2_03"
   },
