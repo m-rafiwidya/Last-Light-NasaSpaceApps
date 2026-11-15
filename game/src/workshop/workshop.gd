@@ -710,6 +710,9 @@ func _on_restock_interacted(_player: Player) -> void:
 
 ## The rover's own starting parts join the rack's pool, so from now on the rack shows the pool
 ## minus what is mounted on the rover (account_rack, Restock)
+var _carried_parts: Array = []
+
+
 func set_rover_pool(starting: Array) -> void:
 	_stock.set_extras(starting)
 	_pool_ready = true
@@ -744,12 +747,21 @@ func _on_cargo_flag(flag: String, _value: bool) -> void:
 	account_rack()
 
 
+## Parts a loaded save put in Kite's tray: taken from the pool like mounted ones, so the rack
+## doesn't show them again
+func set_carried_parts(parts: Array) -> void:
+	_carried_parts = parts.duplicate()
+
+
 func _mounted_parts() -> Array:
 	var parts: Array = []
 	if rover:
 		for socket: HotswapSocket in rover.find_children("*", "HotswapSocket", true, false):
 			if socket.part:
 				parts.append(socket.part)
+	for part in _carried_parts:
+		if is_instance_valid(part) and not parts.has(part):
+			parts.append(part)
 	return parts
 
 

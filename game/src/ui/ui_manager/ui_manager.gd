@@ -19,6 +19,9 @@ func _ready() -> void:
 	$LoadingScreen.finished_fade_in.connect(SceneLoader._on_finished_fade_in)
 	# Settings > General > Show FPS Counter, above every screen
 	add_child(FpsCounter.new())
+	var toast := SaveToast.new()
+	toast.name = "SaveToast"
+	add_child(toast)
 	# Under the pause menu, over the HUDs
 	var cutscene_screen := CutsceneScreen.new()
 	add_child(cutscene_screen)
@@ -52,7 +55,7 @@ func _process(_delta: float) -> void:
 			$Console.popup()
 	_sync_console_state()
 	var popup_was_open: bool = _popup_was_open
-	_popup_was_open = $MainMenu.is_popup_open() or $PauseMenu.is_settings_open() or $Credits.is_open() or data_sources.is_open()
+	_popup_was_open = $MainMenu.is_popup_open() or $PauseMenu.is_overlay_open() or $Credits.is_open() or data_sources.is_open()
 	if console_was_open or Debug.console_open or popup_was_open or _popup_was_open:
 		return
 	if Input.is_action_just_pressed("ui_cancel"):

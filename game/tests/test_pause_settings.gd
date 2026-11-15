@@ -328,8 +328,17 @@ func _check_pause() -> void:
 	_check("[pause] PAUSED", pause.find_child("Title", true, false).text == "PAUSED")
 	var items: Array = pause.find_child("Nav", true, false).find_children("*", "Button", true, false).filter(
 		func(b: Node) -> bool: return b.is_visible_in_tree())
-	_check("[pause] the five items in order", items.map(func(b: Node) -> String: return b.text)
-		== ["RESUME", "SWITCH TO MOON", "SETTINGS", "QUIT TO MENU", "QUIT TO DESKTOP"], str(items.map(func(b: Node) -> String: return b.text)))
+	_check("[pause] the six items in order, no level switch", items.map(func(b: Node) -> String: return b.text)
+		== ["RESUME", "SAVE GAME", "LOAD GAME", "SETTINGS", "QUIT TO MENU", "QUIT TO DESKTOP"],
+		str(items.map(func(b: Node) -> String: return b.text)))
+	var save_button: Button = pause.find_child("SaveGame", true, false)
+	var load_button: Button = pause.find_child("LoadGame", true, false)
+	var SI: GDScript = load("res://src/save/save_index.gd")
+	_check("[pause] no campaign here: SAVE GAME disabled, the note says why", save_button.disabled
+		and pause.save_note.visible and pause.save_note.text == SI.NO_CAMPAIGN, pause.save_note.text)
+	_check("[pause] LOAD GAME needs a save", load_button.disabled == SI.list_saves().is_empty())
+	_check("[pause] the save toast is there, hidden", root.get_node_or_null("Main/UIManager/SaveToast") != null
+		and root.get_node("Main/UIManager/SaveToast").text() == "")
 	_check("[pause] all items are in", items.all(func(b: Control) -> bool: return b.modulate.a > 0.99))
 	_check("[pause] the items are centred", items.all(func(b: Control) -> bool:
 		return absf(b.get_global_rect().get_center().x - 960.0) < 2.0))
@@ -368,3 +377,28 @@ func _check_pause() -> void:
 	resume.pressed.emit()
 	await _wait(0.8)
 	_check("[pause] RESUME resumes", GS.state == GS.State.IN_GAME_PLAYER and not pause_root.visible)
+
+	# LOAD GAME: the save list in load-only mode (no Delete, no START NEW CAMPAIGN); Esc returns
+	DirAccess.make_dir_recursive_absolute(SI.save_dir())
+	var fake_slots: int = SI.write_fake_saves()
+	await _key(KEY_ESCAPE)
+	await _wait(1.0)
+	_check("[load] LOAD GAME enabled with saves", fake_slots == 3 and not load_button.disabled)
+	load_button.pressed.emit()
+	await _wait(0.7)
+	var popup: Node = pause.find_child("LoadPopup", true, false)
+	_check("[load] the save list opens over the pause menu", popup.is_open and pause.is_overlay_open()
+		and popup.get_cards().size() == 3)
+	_check("[load] load only: no Delete, no START NEW CAMPAIGN", popup.get_cards().all(func(c: Node) -> bool:
+		return c.find_child("Delete", true, false) == null) and not popup.find_child("StartList", true, false).visible)
+	await _key(KEY_ESCAPE)
+	await _wait(0.7)
+	_check("[load] Esc closes it, still paused, LOAD GAME focused", not popup.is_open and GS.state == GS.State.PAUSED
+		and load_button.has_focus())
+	SI.clear_fake_saves()
+	# Outside a campaign QUIT TO MENU doesn't ask
+	pause.find_child("QuitToMenu", true, false).pressed.emit()
+	await _wait(0.1)
+	_check("[quit] no campaign: QUIT TO MENU quits at once", not pause.is_quit_confirm_open()
+		and SL.loading_scene_id == "main_menu")
+	await _wait_state(GS.State.MAIN_MENU)

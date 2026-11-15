@@ -79,12 +79,25 @@ static func _read_save(slot_id: String) -> Variant:
 	return data
 
 
+const NO_CAMPAIGN: String = "Start a campaign to save"
+const SAVED_TEXT: String = "Saved"
+const SAVING_TEXT: String = "Saving..."
+
+static var _queued: bool = false
+static var _queued_manual: bool = false
+static var _saved_play_time: float = 0.0
+static var _saved_progress: String = ""
+
+
 ## Writes the running campaign and `rover`'s parts to the current slot
-static func save_current(rover: Robot) -> Error:
+static func save_current(rover: Robot, autosave: bool = true) -> Error:
 	if current_slot.is_empty() or CampaignState.current_mission().is_empty():
 		return ERR_UNCONFIGURED
 	if not SaveGate.block_reason().is_empty():
 		return ERR_BUSY
+	var director: Node = _director()
+	if director and director.has_method(&"before_save"):
+		director.call(&"before_save")
 	var mission: String = CampaignState.current_mission()
 	var info := SaveSlotInfo.new()
 	info.slot_id = current_slot
@@ -94,15 +107,20 @@ static func save_current(rover: Robot) -> Error:
 	info.play_time_sec = int(CampaignState.play_time_sec)
 	info.story_progress = CampaignState.story_progress()
 	info.current_objective = CampaignState.objective_title(CampaignState.current_objective())
+	info.is_autosave = autosave
 	var data: Dictionary = {
 		"version": SAVE_VERSION,
 		"meta": info.to_dict(),
 		"campaign": CampaignState.save_state(),
 		"kite": KiteSave.capture(rover) if rover else pending_kite,
 	}
-	return write_save(current_slot, data)
+	var error: Error = write_save(current_slot, data)
+	if error == OK:
+		_mark_saved()
+	return error
 
 
+## Writes to a temp file and replaces the slot only when that worked, so a failed write keeps the last save
 static func write_save(slot_id: String, data: Dictionary) -> Error:
 	DirAccess.make_dir_recursive_absolute(save_dir())
 	var temp: String = slot_path(slot_id) + ".tmp"
@@ -110,8 +128,114 @@ static func write_save(slot_id: String, data: Dictionary) -> Error:
 	if file == null:
 		return FileAccess.get_open_error()
 	file.store_string(JSON.stringify(data, "\t"))
+	var error: Error = file.get_error()
 	file.close()
-	return DirAccess.rename_absolute(temp, slot_path(slot_id))
+	if error == OK:
+		error = DirAccess.rename_absolute(temp, slot_path(slot_id))
+	if error != OK and FileAccess.file_exists(temp):
+		DirAccess.remove_absolute(temp)
+	return error
+
+
+## "" when the running campaign can be saved now, else why not
+static func block_reason() -> String:
+	if current_slot.is_empty() or CampaignState.current_mission().is_empty() or _director() == null:
+		return NO_CAMPAIGN
+	return SaveGate.block_reason()
+
+
+## Saves at the end of this frame; requests in the same frame write once. An autosave waits silently
+## while SaveGate blocks and is written once it allows; a manual save that is blocked says why.
+static func request_save(autosave: bool = true) -> void:
+	_queued_manual = _queued_manual or not autosave
+	if _queued:
+		return
+	_queued = true
+	var tree := Engine.get_main_loop() as SceneTree
+	tree.process_frame.connect(_flush, CONNECT_ONE_SHOT)
+
+
+static func cancel_pending() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	for step in [_flush, _write]:
+		if tree.process_frame.is_connected(step):
+			tree.process_frame.disconnect(step)
+	_queued = false
+	_queued_manual = false
+
+
+static func _flush() -> void:
+	var manual: bool = _queued_manual
+	var reason: String = block_reason()
+	if reason == NO_CAMPAIGN or (reason and manual):
+		cancel_pending()
+		if manual:
+			_toast(&"show_failed", "Can't save: " + reason)
+		return
+	if reason:
+		(Engine.get_main_loop() as SceneTree).process_frame.connect(_flush, CONNECT_ONE_SHOT)
+		return
+	_toast(&"show_saving", SAVING_TEXT)
+	# One frame with "Saving..." on screen, then the write
+	(Engine.get_main_loop() as SceneTree).process_frame.connect(_write, CONNECT_ONE_SHOT)
+
+
+static func _write() -> void:
+	var manual: bool = _queued_manual
+	if not manual and SaveGate.block_reason():
+		_toast(&"hide_toast", "")
+		(Engine.get_main_loop() as SceneTree).process_frame.connect(_flush, CONNECT_ONE_SHOT)
+		return
+	_queued = false
+	_queued_manual = false
+	save_now(not manual)
+
+
+## Saves now and says how it went on the toast (manual saves and Save & Quit)
+static func save_now(autosave: bool = false) -> Error:
+	var reason: String = block_reason()
+	if reason:
+		_toast(&"show_failed", "Can't save: " + reason)
+		return ERR_UNCONFIGURED if reason == NO_CAMPAIGN else ERR_BUSY
+	var error: Error = save_current(_director().get(&"rover"), autosave)
+	if error == OK:
+		cancel_pending()
+		_toast(&"show_saved", SAVED_TEXT)
+	elif error == ERR_BUSY:
+		_toast(&"show_failed", "Can't save: " + SaveGate.block_reason())
+	else:
+		_toast(&"show_failed", "Save failed (%s). Your last save is kept." % error_string(error))
+	return error
+
+
+## True when the campaign has moved on since it was last saved or loaded
+static func has_unsaved_progress() -> bool:
+	if current_slot.is_empty() or CampaignState.current_mission().is_empty():
+		return false
+	return CampaignState.play_time_sec - _saved_play_time > 1.0 or _progress_key() != _saved_progress
+
+
+static func _mark_saved() -> void:
+	_saved_play_time = CampaignState.play_time_sec
+	_saved_progress = _progress_key()
+
+
+static func _progress_key() -> String:
+	var state: Dictionary = CampaignState.save_state()
+	state.erase("play_time_sec")
+	return JSON.stringify(state)
+
+
+static func _director() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.get_first_node_in_group(&"mission_director") if tree else null
+
+
+static func _toast(method: StringName, text: String) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var toast: Node = tree.get_first_node_in_group(&"save_toast") if tree else null
+	if toast:
+		toast.call(method, text)
 
 
 ## Restores the slot's campaign, then loads the Moon level (Kite's parts follow there). Tyre tracks
@@ -125,6 +249,8 @@ static func load_slot(slot_id: String) -> bool:
 	if CampaignState.current_mission().is_empty():
 		CampaignState.start_mission("m1")
 	current_slot = slot_id
+	cancel_pending()
+	_mark_saved()
 	TrackLog.clear_all()
 	pending_kite = data["kite"] if data.get("kite") is Dictionary else {}
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)
@@ -140,6 +266,8 @@ static func start_new_campaign(slot_id: String = "") -> void:
 	TrackLog.clear_all()
 	CampaignState.reset()
 	CampaignState.start_mission("m1")
+	cancel_pending()
+	_mark_saved()
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)
 
 

@@ -3,7 +3,7 @@ class_name SaveGate
 extends RefCounted
 
 ## Whether the game may be saved right now, and if not, why (the pause menu says it, SaveIndex obeys).
-## Not while the player is out on EVA (a snapshot of the world with the suit's oxygen running and
+## Not while the player carries something, Kite is loading cargo with its arm, or the player is out on EVA (a snapshot of the world with the suit's oxygen running and
 ## maybe Kite in their hands isn't a safe place to come back to), and not while Kite's claw holds
 ## or is lifting something (the held part isn't part of the saved loadout).
 ##
@@ -12,6 +12,8 @@ extends RefCounted
 
 const ON_EVA: String = "Return to the habitat to save"
 const CLAW_HOLDING: String = "Release the claw to save"
+const CARRYING: String = "Put down what you're carrying to save"
+const INSTALLING: String = "Wait for Kite to finish loading the cargo"
 
 
 ## "" when saving is allowed, else the sentence that says what to do first
@@ -23,12 +25,18 @@ static func block_reason(tree: SceneTree = null) -> String:
 	var eva: Node = tree.get_first_node_in_group(&"eva_rescue")
 	if eva != null and eva.call(&"on_eva"):
 		return ON_EVA
+	var player: Node = tree.root.get_node("GameState").get("player") if tree.root.has_node("GameState") else null
+	if is_instance_valid(player) and player.get("held_object") != null:
+		return CARRYING
 	var loader: Node = tree.root.get_node_or_null("SceneLoader")
 	var scene: Node = loader.get("current_scene") if loader else null
 	if scene:
 		for robot in scene.find_children("*", "RigidBody3D", true, false):
 			if claw_holds(robot):
 				return CLAW_HOLDING
+			var delivery: Node = robot.get_node_or_null("CargoDelivery")
+			if delivery != null and delivery.call(&"is_busy"):
+				return INSTALLING
 	return ""
 
 

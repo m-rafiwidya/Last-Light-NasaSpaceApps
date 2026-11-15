@@ -3,11 +3,14 @@ extends SceneTree
 ##   1. CampaignState round trip through JSON; load_state emits no signal; bad data changes nothing.
 ##   2. Slots: a new campaign takes the first empty slot, then the oldest when all are used.
 ##   3. Corrupt, old-version and incomplete files read as unreadable, don't load, can be deleted.
-##   4. On the Moon: completing an objective autosaves, quitting to the menu saves; loading the
+##   4. On the Moon: completing an objective autosaves, quitting alone doesn't save; loading the
 ##      slot gives the same campaign and Kite parts and charge, Kite docked, IRIS scanned, and no
 ##      objective or mission signal.
 ##   5. The M2 crate at the landing zone keeps its spot and mass through a load; saved aboard Kite out
-##      in the field, a load leaves it where Kite was (Kite back on the pad), still to fetch.
+##      in the field, a load puts Kite back there with the crate still aboard.
+##   6. Tray parts, a stranded Kite in the field, the toast ("Saving..." / "Saved" / a failed write that
+##      keeps the last save), the blocked reasons (carrying, EVA) with the pause menu's SAVE GAME and quit
+##      question, the autosave on coming back inside, and two loads in a row giving the same world.
 ## Saves go to user://saves_test (SaveIndex under a script run), cleared before and after.
 ##
 ##     Godot --headless --fixed-fps 240 --path game -s res://tests/test_saves.gd
@@ -206,6 +209,7 @@ func _run() -> void:
 	rover.battery_socket.mount(light)
 	await physics_frame
 	_check("[moon] fitting the battery completes m1.kite_prepared", CS.is_objective_done("m1.kite_prepared"))
+	await _frames(3)
 	var saved: Variant = _read("slot_1")
 	_check("[autosave] objective_completed wrote the slot", saved is Dictionary and saved["version"] == 1
 		and saved["campaign"]["objectives"].has("m1.kite_prepared"))
@@ -223,11 +227,16 @@ func _run() -> void:
 	var battery_name: String = str(rover.battery_socket.name)
 	var kite_before: Dictionary = KS.capture(rover)
 	var state_saved: Dictionary = CS.save_state()
+	_check("[save] save_now writes", SI.save_now() == OK)
+	light.charge = 20.0
+	var before_quit: String = FileAccess.get_file_as_string(SI.slot_path("slot_1"))
 	SL.load_scene("main_menu")
 	await _wait_state(GS.State.MAIN_MENU)
+	_check("[quit] quitting alone doesn't save", FileAccess.get_file_as_string(SI.slot_path("slot_1")) == before_quit)
 	saved = _read("slot_1")
-	_check("[quit] quitting to the menu saved the battery charge", saved is Dictionary
-		and is_equal_approx(saved["kite"]["sockets"][battery_name].get("charge", 0.0), 37.5))
+	_check("[save] the saved battery charge", saved is Dictionary
+		and is_equal_approx(saved["kite"]["sockets"][battery_name].get("charge", 0.0), 37.5)
+		and saved["meta"]["is_autosave"] == false)
 	_check("[menu] the card shows it", SI.list_saves().size() == 1 and SI.list_saves()[0].mission_title == "Wake Kite")
 
 	CS.reset()
@@ -247,8 +256,8 @@ func _run() -> void:
 	var charge_after: float = kite_after["sockets"][battery_name].get("charge", -1.0)
 	for k in [kite_before, kite_after]:
 		k["sockets"][battery_name].erase("charge")
-	_check("[load] Kite has the same parts", JSON.stringify(kite_after) == JSON.stringify(kite_before),
-		JSON.stringify(kite_after))
+	_check("[load] Kite has the same parts", JSON.stringify(kite_after["sockets"]) == JSON.stringify(kite_before["sockets"]),
+		JSON.stringify(kite_after["sockets"]))
 	_check("[load] the battery kept its charge", charge_after >= 37.5 - 0.01 and charge_after < 40.0, str(charge_after))
 	_check("[load] the high-grip wheel is on", rover.front_left_socket.part.get_catalog_id() == "wheel_high_grip"
 		and is_equal_approx(rover.front_left_socket.part.grip, 1.3))
@@ -273,8 +282,7 @@ func _run() -> void:
 	plan.deliver("courier", ["radio_module", "thermal_kit"])
 	await _ticks(1.0)
 	var crate_at: Vector3 = _crate(level).global_position
-	SL.load_scene("main_menu")
-	await _wait_state(GS.State.MAIN_MENU)
+	await _save_and_quit()
 	CS.reset()
 	SI.load_slot("slot_1")
 	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
@@ -293,9 +301,9 @@ func _run() -> void:
 	rover.get_node("CargoSocket").mount(crate)
 	await _ticks(0.3)
 	out_there = rover.global_position
-	SL.load_scene("main_menu")
-	await _wait_state(GS.State.MAIN_MENU)
-	_check("[cargo] saved aboard Kite with where Kite was", _read("slot_1")["kite"]["sockets"]["CargoSocket"] is Dictionary)
+	await _save_and_quit()
+	_check("[cargo] saved aboard Kite with where Kite was", _read("slot_1")["kite"]["sockets"]["CargoSocket"] is Dictionary
+		and _read("slot_1")["kite"]["on_pad"] == false)
 	CS.reset()
 	SI.load_slot("slot_1")
 	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
@@ -303,14 +311,192 @@ func _run() -> void:
 	rover = level.get_node("ReadyRover")
 	await _ticks(2.0)
 	crate = _crate(level)
-	var off: Vector3 = (crate.global_position - out_there) if crate else Vector3.INF
+	var off: Vector3 = rover.global_position - out_there
 	off.y = 0.0
-	_check("[cargo] loaded: Kite on the pad without it, the crate left where Kite was, fetchable", crate != null
-		and _crate_count(level) == 1
-		and rover.get_node("CargoSocket").part == null and level.get_node("Workshop").pad.is_in_zone(rover)
-		and off.length() < 1.5 and level.get_node("MissionDirector").left_parts.has_parts()
+	_check("[cargo] loaded: Kite where it was, the crate still aboard, nothing left behind", crate != null
+		and _crate_count(level) == 1 and rover.get_node("CargoSocket").part == crate
+		and not level.get_node("Workshop").pad.is_in_zone(rover) and off.length() < 1.0
+		and not level.get_node("MissionDirector").left_parts.has_parts()
 		and not CS.is_objective_done("m2.cargo_retrieved"), "%.2f m" % off.length())
+	await _check_field_saves()
 	_finish()
+
+
+func _save_and_quit() -> void:
+	_check("[save] save_now before quitting", SI.save_now() == OK)
+	SL.load_scene("main_menu")
+	await _wait_state(GS.State.MAIN_MENU)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await process_frame
+
+
+func _load_moon() -> void:
+	CS.reset()
+	SI.load_slot("slot_1")
+	await _wait_state(GS.State.IN_GAME_PLAYER, "moon_level")
+	await _ticks(2.0)
+
+
+## What a load must give back: where Kite is, stranded, its charge and cargo, the tray, the rack
+func _world() -> Dictionary:
+	var level: Node = SL.current_scene
+	var rover = level.get_node("ReadyRover")
+	var director: Node = level.get_node("MissionDirector")
+	var tray: Node3D = rover.get_node("StorageBox")
+	var items: Array = []
+	for part in tray.items():
+		var local: Transform3D = tray.global_transform.affine_inverse() * part.global_transform
+		items.append([part.get_catalog_id(), local.origin])
+	items.sort_custom(func(a, b) -> bool: return a[0] < b[0] if a[0] != b[0] else a[1].x < b[1].x)
+	var loose: Dictionary = {}
+	for part in level.find_children("*", "RigidBody3D", true, false):
+		if part.has_method("get_catalog_id") and not part.is_mounted() and not part.is_queued_for_deletion() \
+				and not level.get_node("Workshop").rack_stock.is_ancestor_of(part) and not level.get_node("Workshop").bench_stock.is_ancestor_of(part):
+			loose[part.get_catalog_id()] = int(loose.get(part.get_catalog_id(), 0)) + 1
+	return {"at": rover.global_position, "stranded": director.stranded, "cause": director.stranded_cause,
+		"charge": rover.battery.charge, "cargo": rover.get_node("CargoSocket").part.get_catalog_id()
+		if rover.get_node("CargoSocket").part else "", "tray": items, "rack": _rack(level.get_node("Workshop")),
+		"loose": loose}
+
+
+func _same_world(a: Dictionary, b: Dictionary) -> bool:
+	if a["tray"].size() != b["tray"].size():
+		return false
+	for i in a["tray"].size():
+		if a["tray"][i][0] != b["tray"][i][0] or a["tray"][i][1].distance_to(b["tray"][i][1]) > 0.05:
+			return false
+	return a["at"].distance_to(b["at"]) < 0.3 and a["stranded"] == b["stranded"] and a["cause"] == b["cause"] \
+		and is_equal_approx(a["charge"], b["charge"]) and a["cargo"] == b["cargo"] and a["rack"] == b["rack"] \
+		and a["loose"] == b["loose"]
+
+
+func _check_field_saves() -> void:
+	var level: Node = SL.current_scene
+	var rover = level.get_node("ReadyRover")
+	var workshop: Node = level.get_node("Workshop")
+	var director: Node = level.get_node("MissionDirector")
+	var tray: Node3D = rover.get_node("StorageBox")
+	var toast: Node = root.get_node("Main/UIManager/SaveToast")
+	# Two sample jars into the tray (as test_tray), then Kite runs flat out here: stranded
+	var picked: Array = []
+	for x in [-0.05, 0.05]:
+		var part: RigidBody3D = (load(JAR) as PackedScene).instantiate()
+		level.add_child(part)
+		part.global_transform = Transform3D(rover.global_basis, tray.drop_point() + rover.global_basis.x * x)
+		picked.append(part)
+	rover.battery.drain(rover.battery.capacity)
+	await _ticks(2.0)
+	_check("[tray] two parts ride in the tray", picked.size() == 2 and tray.items().size() == 2, str(tray.items()))
+	_check("[stranded] Kite is stranded out in the field", director.stranded and director.stranded_cause == "battery"
+		and not workshop.pad.is_in_zone(rover))
+
+	# The toast: "Saving..." for a frame, then "Saved" once the file is written
+	var before: String = FileAccess.get_file_as_string(SI.slot_path("slot_1"))
+	SI.request_save(false)
+	SI.request_save()
+	await _frames(1)
+	_check("[toast] Saving... first", toast.state == toast.State.SAVING and toast.text() == "Saving...", toast.text())
+	await _frames(3)
+	_check("[toast] Saved after the write", toast.state == toast.State.SAVED and toast.text() == "Saved"
+		and FileAccess.get_file_as_string(SI.slot_path("slot_1")) != before, toast.text())
+	var saved: Dictionary = _world()
+	var file: Variant = _read("slot_1")
+	_check("[tray] saved with scene and transform in the tray", file["kite"]["tray"].size() == 2
+		and file["kite"]["tray"].all(func(e) -> bool: return e["scene"].begins_with("res://") and e["local"].size() == 12))
+	_check("[stranded] saved stranded, off the pad", file["kite"]["stranded"] == true and file["kite"]["on_pad"] == false
+		and file["kite"]["stranded_cause"] == "battery")
+
+	# A failed write says so and keeps the last save
+	var good: String = FileAccess.get_file_as_string(SI.slot_path("slot_1"))
+	DirAccess.make_dir_recursive_absolute(SI.slot_path("slot_1") + ".tmp")
+	var error: Error = SI.save_now()
+	_check("[toast] a failed write says so", error != OK and toast.state == toast.State.FAILED
+		and toast.text().contains("last save is kept"), toast.text())
+	_check("[save] the last valid save is kept", FileAccess.get_file_as_string(SI.slot_path("slot_1")) == good)
+	DirAccess.remove_absolute(SI.slot_path("slot_1") + ".tmp")
+
+	# Blocked: carrying something. SAVE GAME is disabled with the reason, an autosave waits for it
+	var player = GS.player
+	var spare: RigidBody3D = load(picked[0].scene_file_path).instantiate()
+	level.add_child(spare)
+	spare.global_position = player.global_position + Vector3.UP * 1.2
+	player.holder.pickup(spare)
+	await physics_frame
+	_check("[gate] carrying blocks saving", SI.block_reason() == SG.CARRYING, SI.block_reason())
+	GS.change_state_to(GS.State.PAUSED)
+	await _frames(2)
+	var pause: Node = root.get_node("Main/UIManager/PauseMenu")
+	var save_button: Button = pause.find_child("SaveGame", true, false)
+	_check("[pause] SAVE GAME disabled with the reason", save_button.disabled and pause.save_note.visible
+		and pause.save_note.text == SG.CARRYING)
+	pause.find_child("QuitToMenu", true, false).pressed.emit()
+	await _frames(1)
+	_check("[pause] quit asks: Save & Quit disabled while blocked", pause.is_quit_confirm_open()
+		and pause.quit_confirm.find_child("SaveAndQuit", true, false).disabled
+		and not pause.quit_confirm.find_child("QuitWithoutSaving", true, false).disabled)
+	pause.quit_confirm.find_child("Cancel", true, false).pressed.emit()
+	await _frames(1)
+	_check("[pause] Cancel stays paused", not pause.is_quit_confirm_open() and GS.state == GS.State.PAUSED)
+	GS.return_to_game()
+	await _frames(2)
+	before = FileAccess.get_file_as_string(SI.slot_path("slot_1"))
+	SI.request_save()
+	await _frames(5)
+	_check("[gate] a blocked autosave doesn't write", FileAccess.get_file_as_string(SI.slot_path("slot_1")) == before)
+	player.holder.release()
+	await _frames(5)
+	_check("[gate] it writes once saving is allowed", FileAccess.get_file_as_string(SI.slot_path("slot_1")) != before)
+	spare.queue_free()
+	await _frames(2)
+
+	# Out on EVA: blocked; coming back inside autosaves
+	var inside: Vector3 = player.global_position
+	player.global_position = workshop.global_position + Vector3(0.0, 1.0, 40.0)
+	await _ticks(0.2)
+	_check("[gate] EVA blocks saving", SI.block_reason() == SG.ON_EVA, SI.block_reason())
+	before = FileAccess.get_file_as_string(SI.slot_path("slot_1"))
+	player.global_position = inside
+	await _ticks(0.1)
+	await _frames(4)
+	_check("[autosave] coming back inside saves", FileAccess.get_file_as_string(SI.slot_path("slot_1")) != before)
+	saved = _world()
+	SI.save_now()
+
+	# Two loads in a row: the same Kite, tray, rack and floor; nothing teleported or refilled
+	await _quit_without_saving()
+	await _load_moon()
+	var first: Dictionary = _world()
+	_check("[load 1] Kite stranded where it was: same charge, cargo, tray, rack", _same_world(first, saved),
+		"%s\n  vs %s" % [first, saved])
+	await _ticks(2.0)
+	level = SL.current_scene
+	rover = level.get_node("ReadyRover")
+	_check("[load 1] still stranded, not refilled", level.get_node("MissionDirector").stranded and rover.battery.charge == 0.0
+		and not level.get_node("Workshop").pad.is_in_zone(rover))
+	_check("[load 1] the player starts in the workshop", level.get_node("Workshop").contains(GS.player.global_position))
+	level.get_node("Workshop").drive_from_console(GS.player)
+	await _frames(2)
+	_check("[load 1] Control Kite from the console works", GS.state == GS.State.IN_GAME_ROBOT and GS.robot == rover)
+	GS.change_state_to(GS.State.IN_GAME_PLAYER)
+	await _frames(2)
+	SI.save_now()
+	await _quit_without_saving()
+	await _load_moon()
+	var second: Dictionary = _world()
+	_check("[load 2] the same again, no duplicates", _same_world(second, first), "%s\n  vs %s" % [second, first])
+
+
+func _quit_without_saving() -> void:
+	GS.change_state_to(GS.State.PAUSED)
+	await _frames(2)
+	var pause: Node = root.get_node("Main/UIManager/PauseMenu")
+	pause.find_child("QuitToMenu", true, false).pressed.emit()
+	await _frames(1)
+	pause.quit_confirm.find_child("QuitWithoutSaving", true, false).pressed.emit()
+	await _wait_state(GS.State.MAIN_MENU)
 
 
 func _crate_count(level: Node) -> int:
@@ -326,6 +512,8 @@ func _crate(level: Node) -> RigidBody3D:
 
 
 const SlotInfoState = preload("res://src/save/save_slot_info.gd").State
+const SG = preload("res://src/save/save_gate.gd")
+const JAR: String = "res://src/robot/socket/sample_container_part.tscn"
 
 
 func _finish() -> void:

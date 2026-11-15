@@ -71,7 +71,7 @@ func parse_command(input: String):
 				else:
 					add_log("The credits play on the main menu or in a level only")
 			"testlevel":
-				# The test sandbox, no longer on the main menu (the pause menu still offers it)
+				# The test sandbox: on neither the main menu nor the pause menu
 				SceneLoader.load_scene("test_level")
 			"fakesaves":
 				# Sample save metadata so the PLAY popup's list can be previewed
