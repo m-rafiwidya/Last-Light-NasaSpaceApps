@@ -131,17 +131,20 @@ func _run() -> void:
 	await _key(KEY_SPACE)
 	_check("any key skips the opening sequence", not menu.is_intro_playing())
 	_check("PLAY has focus after the sequence", play.has_focus())
-	for b in [play, settings, quit_button]:
+	var data_sources: Button = menu.find_child("DataSources", true, false)
+	for b in [play, settings, data_sources, quit_button]:
 		_check("%s: focus_mode ALL, fully shown" % b.name, b.focus_mode == Control.FOCUS_ALL
 			and is_equal_approx(b.modulate.a, 1.0))
 
 	await _key(KEY_DOWN)
 	_check("down: PLAY -> SETTINGS", settings.has_focus())
 	await _key(KEY_DOWN)
-	_check("down: SETTINGS -> QUIT GAME", quit_button.has_focus())
-	await _key(KEY_UP)
-	await _key(KEY_UP)
-	_check("up twice: back on PLAY", play.has_focus())
+	_check("down: SETTINGS -> DATA SOURCES", data_sources.has_focus())
+	await _key(KEY_DOWN)
+	_check("down: DATA SOURCES -> QUIT GAME", quit_button.has_focus())
+	for i in 3:
+		await _key(KEY_UP)
+	_check("up three times: back on PLAY", play.has_focus())
 
 	# The loading screen takes the mouse until it has faded out and hidden
 	while loading.visible:

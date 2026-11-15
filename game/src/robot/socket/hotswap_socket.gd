@@ -166,6 +166,7 @@ func _show_refusal(candidate: HotswapPart, problem: String) -> void:
 		dialog.speaker = "Kite"
 		dialog.subtitle = "Can't mount this %s: %s" % [candidate.get_display_name().to_lower(), problem]
 		dialog.min_duration = 3.0
+		dialog.repeat_id = "kite_refused:" + dialog.subtitle
 		DialogServer.play_dialog(dialog)
 
 	if _blink_tween:

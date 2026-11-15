@@ -39,6 +39,7 @@ const ACTIONS: Array = [
 	[&"arm_rotate_up", "Raise Arm Joint"],
 	[&"arm_rotate_down", "Lower Arm Joint"],
 	[&"robot_reset", "Reset Rover Upright"],
+	[&"dialogue_skip", "Skip Radio Line"],
 	[&"toggle_fullscreen", "Toggle Fullscreen"],
 ]
 ## [action, label]: shown in the menu with their binding, not rebindable

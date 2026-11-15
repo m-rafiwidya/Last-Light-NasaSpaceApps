@@ -1,9 +1,12 @@
 extends Node
 ## Queues dialogue_triggers.json lines on DialogServer for CampaignState events, each once per campaign.
+## A trigger with "repeatable": true (the alerts) plays every time, but not within DialogServer.REPEAT_COOLDOWN.
 
 const TRIGGERS_PATH: String = "res://res/story/dialogue_triggers.json"
 const LINES_PATH: String = "res://res/story/lines.json"
-const EVENT_KINDS: PackedStringArray = ["objective", "mission_started", "mission_completed"]
+const EVENT_KINDS: PackedStringArray = ["objective", "mission_started", "mission_completed", "alert"]
+## alert:<name> events, fired by MissionDirector
+const ALERTS: PackedStringArray = ["low_battery", "cold", "recovery"]
 const LINE_MIN_DURATION: float = 3.0
 
 var triggers: Array[Dictionary] = []
@@ -31,7 +34,8 @@ func load_data() -> void:
 	if trigger_data is Array:
 		for trigger in trigger_data:
 			if trigger is Dictionary:
-				triggers.append({"on": str(trigger.get("on", "")), "line": str(trigger.get("line", ""))})
+				triggers.append({"on": str(trigger.get("on", "")), "line": str(trigger.get("line", "")),
+					"repeatable": trigger.get("repeatable", false) == true})
 	var line_data: Variant = _read_json(LINES_PATH)
 	lines = line_data if line_data is Dictionary else {}
 
@@ -52,6 +56,8 @@ func is_real_event(event: String) -> bool:
 	var id: String = event.trim_prefix(kind + ":")
 	if not event.contains(":") or not kind in EVENT_KINDS:
 		return false
+	if kind == "alert":
+		return id in ALERTS
 	return CampaignState.has_objective(id) if kind == "objective" else CampaignState.has_mission(id)
 
 
@@ -82,7 +88,15 @@ func fire(event: String) -> DialogSequence:
 	var dialogs: Array[Dialog] = []
 	for trigger in triggers:
 		var id := trigger_id(trigger)
-		if trigger["on"] != event or CampaignState.is_trigger_played(id) or not (lines.get(trigger["line"]) is Dictionary):
+		if trigger["on"] != event or not (lines.get(trigger["line"]) is Dictionary):
+			continue
+		if trigger["repeatable"]:
+			if not DialogServer.is_cooling_down(trigger["line"]):
+				var dialog := make_dialog(lines[trigger["line"]])
+				dialog.repeat_id = trigger["line"]
+				dialogs.append(dialog)
+			continue
+		if CampaignState.is_trigger_played(id):
 			continue
 		CampaignState.mark_trigger_played(id)
 		dialogs.append(make_dialog(lines[trigger["line"]]))
@@ -99,9 +113,14 @@ func fire(event: String) -> DialogSequence:
 	_sequences[event] = sequence
 	if _in_level():
 		DialogServer.queue_sequence(sequence)
-	else:
+	elif not event.begins_with("alert:"):
 		_held.append(sequence)
 	return sequence
+
+
+## A repeatable alert line (MissionDirector): low_battery, cold, recovery
+func alert(name: String) -> DialogSequence:
+	return fire("alert:" + name)
 
 
 static func make_dialog(entry: Dictionary) -> Dialog:

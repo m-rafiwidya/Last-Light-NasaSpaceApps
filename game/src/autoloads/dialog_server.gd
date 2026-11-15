@@ -17,17 +17,58 @@ const SEQUENCE_GAP: float = 0.35
 
 ## Bus the voice lines play on (Settings > Audio > Voice Volume)
 const AUDIO_BUS: StringName = &"Voice"
+const SKIP_ACTION: StringName = &"dialogue_skip"
+## A line with a repeat_id doesn't play again within this many seconds of game time
+const REPEAT_COOLDOWN: float = 20.0
 
+## Game time (s), paused with the tree; the repeat cooldown runs on it
+var clock: float = 0.0
 var _generation: int = 0
 var _active_dialogs: Array[Dialog] = []
 var _audio_players: Dictionary = {}  # Dialog -> AudioStreamPlayer
+var _timers: Dictionary = {}  # Dialog -> SceneTreeTimer
 var _active_sequence: DialogSequence = null
+var _sequence_dialog: Dialog = null
 var _queue: Array[DialogSequence] = []
 var _queue_running: bool = false
+var _last_played: Dictionary = {}  # repeat_id -> clock
 
 
 func _ready() -> void:
 	SceneLoader.level_unloaded.connect(_on_scene_loader_level_unloaded)
+
+
+func _process(delta: float) -> void:
+	clock += delta
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(SKIP_ACTION) and not event.is_echo() and skip_allowed() and skip_current():
+		get_viewport().set_input_as_handled()
+
+
+## Gameplay and the console; never in a cutscene or a menu
+func skip_allowed() -> bool:
+	return GameState.is_in_game() or GameState.state == GameState.State.MISSION_CONSOLE
+
+
+## The queued radio line the skip key would end now, or null
+func skippable_dialog() -> Dialog:
+	return _sequence_dialog if _sequence_dialog in _active_dialogs else null
+
+
+## Ends the radio line showing now; the queue goes on to the next. False when none is showing.
+func skip_current() -> bool:
+	var dialog := skippable_dialog()
+	var timer: SceneTreeTimer = _timers.get(dialog)
+	if timer == null:
+		return false
+	timer.time_left = 0.0
+	return true
+
+
+func is_cooling_down(repeat_id: String) -> bool:
+	return repeat_id != "" and _last_played.has(repeat_id) and clock - float(_last_played[repeat_id]) < REPEAT_COOLDOWN
 
 
 func _on_scene_loader_level_unloaded(_level_name) -> void:
@@ -93,11 +134,13 @@ func _run_queue() -> void:
 	_queue_running = false
 
 
-## Plays one line. Returns true if it played to the end, false if it was
-## cancelled or ignored because the same Dialog is already playing.
+## Plays one line. Returns true if it played to the end (or was skipped), false if it was
+## cancelled, or ignored because the same Dialog is already playing or its repeat_id is cooling down.
 func play_dialog(dialog: Dialog) -> bool:
-	if dialog in _active_dialogs:
+	if dialog in _active_dialogs or is_cooling_down(dialog.repeat_id):
 		return false
+	if dialog.repeat_id != "":
+		_last_played[dialog.repeat_id] = clock
 
 	var generation := _generation
 	_active_dialogs.append(dialog)
@@ -105,10 +148,13 @@ func play_dialog(dialog: Dialog) -> bool:
 	dialog_played.emit(dialog)
 
 	# process_always = false: pauses with the tree, scales with Engine.time_scale
-	await get_tree().create_timer(get_dialog_duration(dialog), false).timeout
+	var timer := get_tree().create_timer(get_dialog_duration(dialog), false)
+	_timers[dialog] = timer
+	await timer.timeout
 	if generation != _generation:
 		return false
 
+	_timers.erase(dialog)
 	_active_dialogs.erase(dialog)
 	_stop_audio(dialog)
 	dialog_ended.emit(dialog)
@@ -125,9 +171,17 @@ func play_dialog_sequence(dialog_sequence: DialogSequence) -> bool:
 	_active_sequence = dialog_sequence
 	var completed := true
 
-	var last_index := dialog_sequence.dialogs.size() - 1
-	for i in dialog_sequence.dialogs.size():
-		if not await play_dialog(dialog_sequence.dialogs[i]):
+	var dialogs: Array[Dialog] = []
+	for dialog in dialog_sequence.dialogs:
+		if not is_cooling_down(dialog.repeat_id):
+			dialogs.append(dialog)
+	var last_index := dialogs.size() - 1
+	for i in dialogs.size():
+		_sequence_dialog = dialogs[i]
+		var played := await play_dialog(dialogs[i])
+		if generation == _generation:
+			_sequence_dialog = null
+		if not played:
 			completed = false
 			break
 		if i == last_index:
@@ -159,6 +213,8 @@ func cancel_sequence(sequence: DialogSequence) -> void:
 func stop_all() -> void:
 	_generation += 1
 	_active_sequence = null
+	_sequence_dialog = null
+	_timers.clear()
 	_queue.clear()
 	_queue_running = false
 	var ended := _active_dialogs.duplicate()

@@ -54,10 +54,38 @@ func is_empty() -> bool:
 
 ## The line's text, with the speaker's name on its own small line above it (none: no name line)
 func set_line(speaker: String, text: String) -> void:
-	var name_label: Label = $Content/Column/Speaker
+	var name_label: Label = $Content/Column.find_child("Speaker", true, false)
 	name_label.text = speaker.to_upper()
 	name_label.visible = not speaker.is_empty()
 	set_text(text)
+
+
+## The skip key chip beside the speaker's name (SubtitleStack shows it on the skippable radio line)
+func show_skip(on: bool) -> void:
+	var chip: KeyChip = $Content/Column.get_node_or_null("Header/Skip")
+	if chip == null:
+		if not on:
+			return
+		var name_label: Label = $Content/Column/Speaker
+		var header := HBoxContainer.new()
+		header.name = "Header"
+		header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		$Content/Column.add_child(header)
+		$Content/Column.move_child(header, name_label.get_index())
+		name_label.reparent(header)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		chip = KeyChip.new()
+		chip.name = "Skip"
+		chip.fallback_key = "Q"
+		chip.action = DialogServer.SKIP_ACTION
+		chip.label_text = "Skip"
+		header.add_child(chip)
+	chip.visible = on
+
+
+func skip_shown() -> bool:
+	var chip: Node = $Content/Column.get_node_or_null("Header/Skip")
+	return chip != null and chip.visible
 
 
 ## Fades the line in; `grow` also opens its height (stacked lines slide), else only the alpha

@@ -31,6 +31,8 @@ var keep_out: Array[Control] = []
 var keep_below: Array[Control] = []
 var one_at_a_time: bool = false
 var backing: bool = true
+## The skip key chip on the radio line DialogServer would skip (off in cutscenes)
+var skip_hint: bool = true
 var _backing_color: Color = Color(0.0, 0.0, 0.0, 0.8)
 ## Lines waiting for the shown one to leave (one_at_a_time)
 var _waiting: Array[Dialog] = []
@@ -58,8 +60,18 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not _waiting.is_empty() and boxes.get_child_count() == 0:
 		_show(_waiting.pop_front())
+	_update_skip_hint()
 	place()
 	queue_redraw()
+
+
+func _update_skip_hint() -> void:
+	var skippable: Dialog = DialogServer.skippable_dialog() if skip_hint and DialogServer.skip_allowed() else null
+	var target: Variant = dialog_boxes.get(skippable.get_instance_id()) if skippable else null
+	for id in dialog_boxes:
+		var box: Variant = dialog_boxes[id]
+		if is_instance_valid(box):
+			box.show_skip(box == target)
 
 
 func _draw() -> void:
@@ -185,6 +197,7 @@ func _on_dialog_ended(dialog: Dialog) -> void:
 	var dialog_box: Variant = dialog_boxes.get(dialog.get_instance_id())
 	dialog_boxes.erase(dialog.get_instance_id())
 	if is_instance_valid(dialog_box):
+		dialog_box.show_skip(false)
 		if one_at_a_time:
 			dialog_box.fade_out(0.0, SINGLE_FADE, false)
 		else:

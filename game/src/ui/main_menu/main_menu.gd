@@ -40,6 +40,7 @@ var _sub_tween: Tween
 @onready var _play: Button = %Play
 @onready var _settings: Button = %Settings
 @onready var _quit: Button = %Quit
+@onready var _data_sources: Button = %DataSources
 @onready var _popup: PlayPopup = %PlayPopup
 @onready var _settings_screen: SettingsSubMenu = $SettingsSubMenu
 @onready var _explorer: PlanetExplorer = %PlanetExplorer
@@ -50,6 +51,7 @@ func _ready() -> void:
 	_popup.closed.connect(_on_popup_closed)
 	_settings.pressed.connect(_on_settings_pressed)
 	_quit.pressed.connect(_on_quit_pressed)
+	_data_sources.pressed.connect(_on_data_sources_pressed)
 	_settings_screen.back_requested.connect(_on_back_pressed)
 	_moon.moon_clicked.connect(_on_moon_clicked)
 	_explorer.back_requested.connect(_close_explorer)
@@ -68,7 +70,7 @@ func _ready() -> void:
 
 
 func _menu_buttons() -> Array[Button]:
-	return [_play, _settings, _quit]
+	return [_play, _settings, _data_sources, _quit]
 
 
 func _on_play_pressed() -> void:
@@ -137,6 +139,20 @@ func _on_settings_pressed() -> void:
 	sub_screen = SubScreen.SETTINGS
 	_set_menu_interactive(false)
 	_settings_screen.open()
+
+
+func _on_data_sources_pressed() -> void:
+	var screen := get_tree().get_first_node_in_group(&"data_sources") as DataSourcesScreen
+	if screen == null or not _shown or _popup.is_open or _settings_screen.is_open or _explorer.is_open:
+		return
+	_set_menu_interactive(false)
+	screen.closed.connect(_on_data_sources_closed, CONNECT_ONE_SHOT)
+	screen.open()
+
+
+func _on_data_sources_closed() -> void:
+	_set_menu_interactive(true)
+	_data_sources.grab_focus()
 
 
 func _on_quit_pressed() -> void:
@@ -215,7 +231,7 @@ func skip_intro() -> void:
 func _start_intro() -> void:
 	if not _shown:
 		return
-	var items: Array[Control] = [_play, _settings, _quit]
+	var items: Array[Control] = [_play, _settings, _data_sources, _quit]
 	_intro.play(_moon, %Drift, %Title, %TitleGroup, items)
 
 

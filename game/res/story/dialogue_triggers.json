@@ -70,5 +70,20 @@
   {
     "on": "mission_completed:m3",
     "line": "mira_m3_end"
+  },
+  {
+    "on": "alert:low_battery",
+    "line": "mira_alert_low_battery",
+    "repeatable": true
+  },
+  {
+    "on": "alert:cold",
+    "line": "mira_alert_cold",
+    "repeatable": true
+  },
+  {
+    "on": "alert:recovery",
+    "line": "mira_alert_recovery",
+    "repeatable": true
   }
 ]
