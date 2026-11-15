@@ -74,6 +74,7 @@ func _rack(workshop: Node) -> Dictionary:
 func _campaign(state: Dictionary) -> String:
 	var copy: Dictionary = state.duplicate()
 	copy.erase("play_time_sec")
+	copy.erase("mission_stats")
 	return JSON.stringify(copy)
 
 

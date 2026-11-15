@@ -36,11 +36,7 @@
 				"m1.inspection_sent": "Downlink the inspection from the console"
 			},
 			"report": [
-				"DIAGNOSIS  IRIS service panel S-1",
-				"J1 RADIO PWR: no supply. The radio-power module has failed.",
-				"J2 DATA: intact. Stored observations readable.",
-				"J3 HEATER: nominal.",
-				"Next: fit a replacement radio-power module (M2)."
+				"IRIS's radio-power module has failed, so the station cannot transmit. Its stored data is intact: fit a replacement module in M2."
 			],
 			"guidance": {
 				"m1.kite_prepared": [
@@ -231,11 +227,7 @@
 				"m2.near_sample_collected": "Optional: collect the near-site sample"
 			},
 			"report": [
-				"TELEMETRY  IRIS station link restored",
-				"RADIO: transmitting. Live surface and station readings are arriving again.",
-				"STORED DATA: received up to the last crewed field session.",
-				"GAP: the remote field logger on the far rim is not reporting. Its record is missing from the archive.",
-				"Next: recover the field logger (M3)."
+				"IRIS is transmitting again and its stored data has arrived. The far-rim field logger is silent, so its record is missing: recover it in M3."
 			],
 			"downlink": {
 				"objective": "m2.telemetry_received",
@@ -445,11 +437,7 @@
 				"m3.archive_sent": "Downlink the archive from the console"
 			},
 			"report": [
-				"ARCHIVE  IRIS field record complete",
-				"STATION: IRIS online, observations received.",
-				"FIELD LOGGER: recovered from the far rim, records intact.",
-				"LAST RECORD: the earlier crew's final field entry, logged by Evan, is now part of the archive.",
-				"The field archive is complete."
+				"The field logger's records are in, so the IRIS archive is complete. It ends with the earlier crew's last field entry, logged by Evan."
 			],
 			"downlink": {
 				"objective": "m3.archive_sent",
