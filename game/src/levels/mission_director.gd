@@ -31,6 +31,10 @@ const COLD_MISSION: String = "m3"
 const COLD_LIMIT: float = 20.0
 const COLD_WARNING: String = "COLD: Kite is in shade without its thermal cover and heater. Cold shutdown in %d s: get back to sunlight."
 const COLD_MESSAGE: String = "Kite's electronics got too cold. Emergency recovery: Kite is being returned to the pad."
+const SAMPLE_MISSION: String = "m2"
+const SAMPLE_OBJECTIVE: String = "m2.near_sample_collected"
+const SAMPLE_ID: String = "sample_container"
+const SAMPLE_MISSING: String = "SAMPLE NOT ABOARD: sample container S-1 fell out of the tray on the way, %d m from here. Drive back to it, pick it up with the claw (R, then click) into the tray, then dock again."
 const PAIR_MISSING: String = "THERMAL PAIR MISSING: record a sun and a shade ground temperature within 40 m of the far logger (thermal turret on the arm, mast view, E), then dock again."
 const THERMAL_KIT: Array[String] = ["thermal_cover", "thermal_heater"]
 const STUCK_MESSAGE: String = "Recovery requested: Kite is being returned to the pad."
@@ -296,6 +300,10 @@ func _on_docked(docked_rover: Robot) -> void:
 		alert = PAIR_MISSING
 		Debug.add_log(PAIR_MISSING)
 		return
+	if CampaignState.current_mission() == SAMPLE_MISSION and CampaignState.is_objective_done(SAMPLE_OBJECTIVE) and not sample_home():
+		alert = SAMPLE_MISSING % roundi(sample_distance())
+		Debug.add_log(alert)
+		return
 	var objective: String = DOCK_OBJECTIVES.get(CampaignState.current_mission(), "")
 	var charge: float = rover.battery.get_charge_fraction() if rover.battery else 0.0
 	if objective and try_complete(objective):
@@ -454,6 +462,28 @@ func has_part(catalog_id: String) -> bool:
 	return false
 
 
+## M2's sample made it home: S-1 in Kite's tray or a socket, or anywhere inside the workshop (true
+## if it no longer exists, so a lost jar can never block the mission)
+func sample_home() -> bool:
+	var tray := rover.get_node_or_null("StorageBox") as StorageTray
+	for node in get_parent().find_children("*", "HotswapPart", true, false):
+		var part := node as HotswapPart
+		if part.get_catalog_id() != SAMPLE_ID or part.is_queued_for_deletion():
+			continue
+		if (tray and tray.holds(part)) or (workshop and workshop.contains(part.global_position)):
+			return true
+		return has_part(SAMPLE_ID)
+	return true
+
+
+## How far S-1 is from Kite (m), 0 if it is gone
+func sample_distance() -> float:
+	for node in get_parent().find_children("*", "HotswapPart", true, false):
+		if (node as HotswapPart).get_catalog_id() == SAMPLE_ID:
+			return (node as Node3D).global_position.distance_to(rover.global_position)
+	return 0.0
+
+
 ## Kite on its way back: the mission's work out there is done
 func returning() -> bool:
 	var mission := CampaignState.current_mission()
@@ -490,6 +520,8 @@ func _try_pair() -> void:
 
 
 func _update_pair_alert() -> void:
+	if alert.begins_with("SAMPLE NOT ABOARD") and (not pad.is_in_zone(rover) or sample_home()):
+		alert = ""
 	if alert == PAIR_MISSING and (not pad.is_in_zone(rover) or CampaignState.is_objective_done(PAIR_OBJECTIVE)):
 		alert = ""
 

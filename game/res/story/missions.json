@@ -477,7 +477,7 @@
 				],
 				"m2.near_sample_collected": [
 					{
-						"text": "Take the near sample by IRIS with sample container S-1 on Kite",
+						"text": "Take the near sample by IRIS with sample container S-1 in Kite's storage tray",
 						"label": "Near sample site",
 						"target": "group:near_sample_site",
 						"key": "interact_use",
