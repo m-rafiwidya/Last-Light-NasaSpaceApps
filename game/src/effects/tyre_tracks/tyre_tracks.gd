@@ -18,7 +18,7 @@ extends Node
 ##      only materials of a `tyre_tracks_surface` (MoonTerrain's play tier, the test level's
 ##      TrackFloor) get them, so rovers, rocks and everything else never do.
 ## The log is kept per level scene for the session (TrackLog.for_level), so a level loaded again
-## shows its tracks again.
+## shows its tracks again. A save slot load or a new campaign empties it (SaveIndex): tracks aren't saved.
 
 const POINT_SPACING: float = 0.08
 ## A wheel unloaded for a moment (a bump) keeps its run if it touches again within this long (s)

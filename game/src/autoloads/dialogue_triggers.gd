@@ -20,6 +20,7 @@ func _ready() -> void:
 	CampaignState.objective_completed.connect(func(id: String) -> void: fire("objective:" + id))
 	CampaignState.mission_completed.connect(func(id: String) -> void: fire("mission_completed:" + id))
 	SceneLoader.level_loaded.connect(_on_level_loaded)
+	CampaignState.campaign_reset.connect(_on_campaign_reset)
 
 
 func load_data() -> void:
@@ -104,6 +105,12 @@ static func make_dialog(entry: Dictionary) -> Dialog:
 	if audio and ResourceLoader.exists(audio):
 		dialog.audio_stream = load(audio)
 	return dialog
+
+
+func _on_campaign_reset() -> void:
+	_sequences.clear()
+	_held.clear()
+	DialogServer.stop_all()
 
 
 func _in_level() -> bool:

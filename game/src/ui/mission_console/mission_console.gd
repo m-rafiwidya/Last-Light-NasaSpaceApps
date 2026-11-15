@@ -46,6 +46,7 @@ func _ready() -> void:
 	CampaignState.objective_completed.connect(func(_id: String) -> void: refresh())
 	CampaignState.mission_started.connect(func(_id: String) -> void: refresh())
 	CampaignState.mission_completed.connect(func(_id: String) -> void: refresh())
+	CampaignState.campaign_reset.connect(reset)
 	refresh()
 	hide()
 
@@ -64,6 +65,17 @@ func _process(delta: float) -> void:
 	_refresh -= delta
 	if _refresh <= 0.0:
 		refresh()
+
+
+## Drops a downlink or cargo order in progress and the planning choices (a new campaign or a loaded slot)
+func reset() -> void:
+	_sending = -1.0
+	_flight = -1.0
+	_order = {}
+	_service_id = ""
+	for entry in CargoPlan.items():
+		_manifest[entry["id"]] = entry.get("required", false)
+	select_section(Section.MISSION)
 
 
 func _show_section(index: int) -> void:

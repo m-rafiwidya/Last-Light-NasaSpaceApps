@@ -112,7 +112,8 @@ static func write_save(slot_id: String, data: Dictionary) -> Error:
 	return DirAccess.rename_absolute(temp, slot_path(slot_id))
 
 
-## Restores the slot's campaign, then loads the Moon level (Kite's parts follow there).
+## Restores the slot's campaign, then loads the Moon level (Kite's parts follow there). Tyre tracks
+## are not saved: every load starts the Moon with bare ground.
 ## False, changing nothing, when the file can't be read.
 static func load_slot(slot_id: String) -> bool:
 	var data: Variant = _read_save(slot_id)
@@ -122,6 +123,7 @@ static func load_slot(slot_id: String) -> bool:
 	if CampaignState.current_mission().is_empty():
 		CampaignState.start_mission("m1")
 	current_slot = slot_id
+	TrackLog.clear_all()
 	pending_kite = data["kite"] if data.get("kite") is Dictionary else {}
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)
 	return true
@@ -133,6 +135,7 @@ static func start_new_campaign(slot_id: String = "") -> void:
 	delete_slot(slot)
 	current_slot = slot
 	pending_kite = {}
+	TrackLog.clear_all()
 	CampaignState.reset()
 	CampaignState.start_mission("m1")
 	SceneLoader.load_scene(CAMPAIGN_LEVEL)

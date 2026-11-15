@@ -4,6 +4,8 @@ signal mission_started(id: String)
 signal mission_completed(id: String)
 signal objective_completed(id: String)
 signal flag_changed(name: String, value: bool)
+## The campaign was cleared (a new campaign or a loaded slot): holders of per-campaign state drop it
+signal campaign_reset
 
 const MISSIONS_PATH: String = "res://res/story/missions.json"
 const COMPLETE_FLAG: String = "campaign_complete"
@@ -193,6 +195,7 @@ func reset() -> void:
 	_shown_tips.clear()
 	play_time_sec = 0.0
 	recoveries = 0
+	campaign_reset.emit()
 
 
 func story_progress() -> float:
