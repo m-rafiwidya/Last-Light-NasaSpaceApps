@@ -24,10 +24,14 @@ var _played_triggers: Dictionary = {}
 var _shown_tips: Dictionary = {}
 var play_time_sec: float = 0.0
 var recoveries: int = 0
+## Per-mission stats for the downlink report (MissionStats fills them while the mission runs)
+var _mission_stats: Dictionary = {}
+var campaign_id: String = ""
 
 
 func _ready() -> void:
 	_load_missions()
+	campaign_id = _new_campaign_id()
 
 
 func _process(delta: float) -> void:
@@ -41,6 +45,7 @@ func start_mission(id: String) -> void:
 		return
 	_current = id
 	_done_missions.erase(id)
+	_mission_stats[id] = {"started_at": play_time_sec, "previous": MissionRecords.previous(id, campaign_id)}
 	mission_started.emit(id)
 
 
@@ -103,8 +108,20 @@ func is_campaign_complete() -> bool:
 	return has_flag(COMPLETE_FLAG)
 
 
-func record_recovery() -> void:
+func record_recovery(cause: String = "battery", distance_m: float = 0.0) -> void:
 	recoveries += 1
+	var stats := mission_stats(_current)
+	if not _current.is_empty() and not stats.get("sent", false):
+		stats["recoveries"] = stats.get("recoveries", []) + [{"cause": cause, "distance_m": distance_m}]
+
+
+## The stats of a mission (empty when it never started this campaign); MissionStats writes into it
+func mission_stats(id: String) -> Dictionary:
+	if id.is_empty():
+		return {}
+	if not _mission_stats.has(id):
+		_mission_stats[id] = {}
+	return _mission_stats[id]
 
 
 func complete_objective(id: String) -> void:
@@ -114,6 +131,9 @@ func complete_objective(id: String) -> void:
 	if _done_objectives.has(id):
 		return
 	_done_objectives[id] = true
+	var mission: String = _objective_mission[id]
+	if mission_downlink(mission).get("objective", "") == id:
+		_close_stats(mission)
 	objective_completed.emit(id)
 	_check_mission_done()
 
@@ -195,6 +215,8 @@ func reset() -> void:
 	_shown_tips.clear()
 	play_time_sec = 0.0
 	recoveries = 0
+	_mission_stats.clear()
+	campaign_id = _new_campaign_id()
 	campaign_reset.emit()
 
 
@@ -224,6 +246,8 @@ func save_state() -> Dictionary:
 		"tips_shown": _shown_tips.keys(),
 		"play_time_sec": play_time_sec,
 		"recoveries": recoveries,
+		"campaign_id": campaign_id,
+		"mission_stats": _mission_stats.duplicate(true),
 	}
 
 
@@ -259,6 +283,13 @@ func load_state(data: Dictionary) -> bool:
 	play_time_sec = maxf(float(time), 0.0) if time is int or time is float else 0.0
 	var recovered: Variant = data.get("recoveries")
 	recoveries = maxi(int(recovered), 0) if recovered is int or recovered is float else 0
+	if data.get("campaign_id") is String and data["campaign_id"] != "":
+		campaign_id = data["campaign_id"]
+	var stats: Variant = data.get("mission_stats")
+	if stats is Dictionary:
+		for mission_id in stats:
+			if _missions.has(str(mission_id)) and stats[mission_id] is Dictionary:
+				_mission_stats[str(mission_id)] = stats[mission_id].duplicate(true)
 	return true
 
 
@@ -276,6 +307,19 @@ func debug_dump() -> PackedStringArray:
 		item_parts.append("%s x%d" % [item, _items[item]])
 	lines.append("Items: %s" % (", ".join(item_parts) if not item_parts.is_empty() else "(none)"))
 	return lines
+
+
+## The downlink is sent: the mission's stats stop and become its record for the next campaign
+func _close_stats(mission: String) -> void:
+	var stats := mission_stats(mission)
+	if stats.get("sent", false):
+		return
+	stats["sent"] = true
+	stats["minutes"] = (play_time_sec - float(stats.get("started_at", play_time_sec))) / 60.0
+	var optional: Array = _missions[mission]["optional_objectives"]
+	stats["optional_done"] = optional.filter(func(o: String) -> bool: return _done_objectives.has(o))
+	stats["optional_skipped"] = optional.filter(func(o: String) -> bool: return not _done_objectives.has(o))
+	MissionRecords.store(mission, campaign_id, stats)
 
 
 func _check_mission_done() -> void:
@@ -314,6 +358,10 @@ func _load_missions() -> void:
 		_mission_order.append(id)
 		for objective in required + optional:
 			_objective_mission[objective] = id
+
+
+func _new_campaign_id() -> String:
+	return "%d-%d" % [int(Time.get_unix_time_from_system()), randi()]
 
 
 func _strings(value: Variant) -> Array:

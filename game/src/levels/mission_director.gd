@@ -35,6 +35,7 @@ const STILL_SPEED: float = 0.2
 var rover: Robot = null
 var pad: ChargingPad = null
 var ending: CampaignEnding = null
+var stats: MissionStats = null
 var recovering: bool = false
 var alert: String = ""
 var _recovery_time: float = 0.0
@@ -70,6 +71,9 @@ func _ready() -> void:
 	ending = CampaignEnding.new()
 	ending.name = "CampaignEnding"
 	add_child(ending)
+	stats = MissionStats.new()
+	stats.name = "MissionStats"
+	add_child(stats)
 	_start()
 
 
@@ -298,7 +302,7 @@ func _update_cold(delta: float) -> void:
 	alert = COLD_WARNING % ceili(maxf(COLD_LIMIT - cold_time, 0.0))
 	if cold_time >= COLD_LIMIT:
 		cold_time = 0.0
-		_start_recovery(COLD_MESSAGE)
+		_start_recovery(COLD_MESSAGE, "cold")
 
 
 func _update_still(delta: float) -> void:
@@ -316,16 +320,16 @@ func can_request_recovery() -> bool:
 func request_recovery() -> bool:
 	if not can_request_recovery():
 		return false
-	_start_recovery(STUCK_MESSAGE)
+	_start_recovery(STUCK_MESSAGE, "stuck")
 	return true
 
 
-func _start_recovery(message: String = RECOVERY_MESSAGE) -> void:
+func _start_recovery(message: String = RECOVERY_MESSAGE, cause: String = "battery") -> void:
 	recovering = true
 	_recovery_time = RECOVERY_DELAY
 	alert = message
 	Debug.add_log(message)
-	CampaignState.record_recovery()
+	CampaignState.record_recovery(cause, distance_to_pad())
 	recovery_started.emit(rover)
 
 

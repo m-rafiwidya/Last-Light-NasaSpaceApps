@@ -237,7 +237,7 @@ func _show_downlink() -> void:
 	if _sending >= 0.0:
 		_set_text("Downlink", "%s  %d%%" % [downlink.get("progress", "Sending..."), floori(_sending / DOWNLINK_TIME * 100.0)])
 	elif CampaignState.is_objective_done(objective):
-		_set_text("Downlink: report received", report_text(CampaignState.mission_report(mission)))
+		_set_text("Downlink: report received", report_text(MissionReport.sections(mission)))
 		var attachment: String = downlink.get("attachment", "")
 		if attachment and ResourceLoader.exists(attachment):
 			var rect := TextureRect.new()
@@ -595,12 +595,14 @@ func report_text(report: Variant) -> String:
 		return report
 	var parts: PackedStringArray = []
 	for entry in report:
-		var section_text := "[color=%s][b]%s[/b][/color]" % [_hex(&"text"), str(entry.get("title", "")).to_upper()]
+		var lines: PackedStringArray = []
+		if entry.get("title", "") != "":
+			lines.append("[color=%s][b]%s[/b][/color]" % [_hex(&"text"), str(entry["title"]).to_upper()])
 		if entry.get("why", "") != "":
-			section_text += "\n[color=%s]%s[/color]" % [_hex(&"muted"), entry["why"]]
+			lines.append("[color=%s]%s[/color]" % [_hex(&"muted"), entry["why"]])
 		if entry.get("body", "") != "":
-			section_text += "\n" + str(entry["body"])
-		parts.append(section_text)
+			lines.append(str(entry["body"]))
+		parts.append("\n".join(lines))
 	return "\n\n".join(parts)
 
 
