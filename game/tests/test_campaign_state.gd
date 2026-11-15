@@ -2,7 +2,7 @@ extends SceneTree
 ## The CampaignState autoload (res://res/story/missions.json is its mission data):
 ##   1. The data loads: m1, m2 and m3 start, and an unknown mission or objective only warns.
 ##   2. An objective completes (and signals) once; mission_completed fires when every required
-##      objective of the current mission is done, once; optional objectives don't count.
+##      objective of the current mission is done, once; m2 needs its near sample.
 ##   3. Flags signal only when the value changes.
 ##   4. Items add and remove; removing more than is held changes nothing.
 ##   5. reset() clears everything; the console commands drive the same state.
@@ -71,10 +71,12 @@ func _run() -> void:
 
 	_clear_logs()
 	CS.start_mission("m2")
-	CS.complete_objective("m2.near_sample_collected")
-	for id in ["m2.cargo_ordered", "m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked"]:
+	for id in ["m2.cargo_ordered", "m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed", "m2.iris_activated"]:
 		CS.complete_objective(id)
-	_check("an optional objective doesn't count", completed.is_empty() and CS.is_objective_done("m2.near_sample_collected"))
+	_check("the near sample comes after IRIS, before the dock", CS.current_objective() == "m2.near_sample_collected", CS.current_objective())
+	CS.complete_objective("m2.near_sample_collected")
+	CS.complete_objective("m2.kite_docked")
+	_check("m2 isn't completed before the downlink", completed.is_empty())
 	_check("m2's last objective is the telemetry downlink", CS.current_objective() == "m2.telemetry_received", CS.current_objective())
 	CS.complete_objective("m2.telemetry_received")
 	_check("the required objectives complete m2", completed == ["m2"])
@@ -95,9 +97,9 @@ func _run() -> void:
 	CS.start_mission("m2")
 	for id in ["m2.cargo_ordered", "m2.cargo_retrieved", "m2.module_loaded", "m2.module_installed", "m2.iris_activated", "m2.kite_docked", "m2.telemetry_received"]:
 		CS.complete_objective(id)
-	_check("m2 completes without its optional objective", completed == ["m2"] and not CS.is_objective_done("m2.near_sample_collected"))
+	_check("m2 doesn't complete without the near sample", completed.is_empty() and not CS.is_objective_done("m2.near_sample_collected"))
 	CS.complete_objective("m2.near_sample_collected")
-	_check("an optional objective after completion emits no second mission_completed", completed == ["m2"])
+	_check("the near sample completes m2, once", completed == ["m2"])
 
 	# --- flags --------------------------------------------------------------------------------
 	_clear_logs()

@@ -63,7 +63,8 @@
 		{
 			"id": "sampling_kit",
 			"name": "Sampling kit",
-			"description": "Scoop and two sample containers for the near and far sites.",
+			"required": true,
+			"description": "Scoop and two sample containers for the near and far sites. Required: M2 needs the near sample.",
 			"parts": [{"scene": "res://src/robot/socket/sample_scoop_part.tscn", "count": 1},
 				{"scene": "res://src/robot/socket/sample_container_part.tscn", "count": 1},
 				{"scene": "res://src/robot/socket/sample_container_far_part.tscn", "count": 1}],

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless test: the M2 cargo order (CargoPlan, the console's Planning tab) and its M3 effects.
-##   1. Plan: masses from the part scenes, the Courier can't fit the grip wheels, the module is
-##      required, a late Freighter needs the thermal kit.
+##   1. Plan: masses from the part scenes, the Courier can't fit the grip wheels, the module and the
+##      sampling kit (S-1 for M2's near sample) are required, a late Freighter needs the thermal kit.
 ##   2. Console: Planning closed before m1 is complete; Confirm disabled over the limit and without
 ##      the module; the flight can be skipped; delivery records the items once, completes
 ##      m2.cargo_ordered and lands the crate at the landing zone; unpacked in the bay it fills the
@@ -103,14 +103,16 @@ func _run() -> void:
 		and is_equal_approx(CargoPlan.item_mass("grip_wheels"), 20.0) and is_equal_approx(CargoPlan.item_mass("thermal_kit"), 1.5)
 		and is_equal_approx(CargoPlan.item_mass("sampling_kit"), 1.4)
 		and CargoPlan.item("thermal_turret").is_empty())
-	_check("[plan] the Courier can't fit the grip wheels", CargoPlan.validate("courier", ["radio_module", "grip_wheels"]).begins_with("Over"),
-		CargoPlan.validate("courier", ["radio_module", "grip_wheels"]))
+	_check("[plan] the Courier can't fit the grip wheels", CargoPlan.validate("courier", ["radio_module", "grip_wheels", "sampling_kit"]).begins_with("Over"),
+		CargoPlan.validate("courier", ["radio_module", "grip_wheels", "sampling_kit"]))
 	_check("[plan] the Courier fits all the light kit", CargoPlan.validate("courier",
 		["radio_module", "thermal_kit", "sampling_kit"]) == "")
-	_check("[plan] the module is required", CargoPlan.validate("courier", ["thermal_kit"]) != "")
+	_check("[plan] the module is required", CargoPlan.validate("courier", ["thermal_kit", "sampling_kit"]) != "")
+	_check("[plan] the sampling kit is required", CargoPlan.required_items().has("sampling_kit")
+		and CargoPlan.validate("courier", ["radio_module"]).begins_with("Sampling kit"), CargoPlan.validate("courier", ["radio_module"]))
 	_check("[plan] Courier: M3 in daylight; Freighter: near nightfall", not CargoPlan.is_late("courier") and CargoPlan.is_late("freighter"))
-	_check("[plan] a late Freighter needs the thermal kit", CargoPlan.validate("freighter", ["radio_module", "grip_wheels"]) != ""
-		and CargoPlan.validate("freighter", ["radio_module", "grip_wheels", "thermal_kit"]) == "")
+	_check("[plan] a late Freighter needs the thermal kit", CargoPlan.validate("freighter", ["radio_module", "grip_wheels", "sampling_kit"]) != ""
+		and CargoPlan.validate("freighter", ["radio_module", "grip_wheels", "thermal_kit", "sampling_kit"]) == "")
 
 	if not await _wait_state(GS.State.MAIN_MENU):
 		_check("main menu comes up", false)
@@ -149,6 +151,9 @@ func _run() -> void:
 	console.set_item("radio_module", false)
 	_check("[console] the module can't be removed", console.manifest_ids().has("radio_module")
 		and console._item_boxes["radio_module"].disabled)
+	console.set_item("sampling_kit", false)
+	_check("[console] the sampling kit can't be removed", console.manifest_ids().has("sampling_kit")
+		and console._item_boxes["sampling_kit"].disabled)
 	console._manifest["radio_module"] = false
 	console.refresh()
 	_check("[console] without the module: Confirm disabled", _action().disabled and console.confirm_blocked() != "")

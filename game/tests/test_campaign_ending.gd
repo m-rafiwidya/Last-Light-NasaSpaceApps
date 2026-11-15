@@ -1,8 +1,8 @@
 extends SceneTree
 ## Headless test: the M2 and M3 downlinks and the campaign ending, driven by the debug console's
 ## startmission / objective commands (no field interaction scenes needed).
-##   1. M2: Receive telemetry is disabled until the dock (the optional sample never blocks it),
-##      then shows the telemetry report and completes m2.
+##   1. M2: Receive telemetry is disabled until the near sample and the dock, then shows the
+##      telemetry report and completes m2.
 ##   2. M3: Send archive is disabled until the logger and the dock, then shows the archive report.
 ##   3. Ending: fires once on m3, the ending cutscene on IRIS (no online_changed) with player input off, closing lines, result
 ##      screen with the right counts, campaign marked complete and saved.
@@ -121,8 +121,11 @@ func _run() -> void:
 	_check("[m2] still disabled after IRIS is active but Kite isn't docked", _action().disabled)
 	_cmd("objective m2.kite_docked")
 	console.refresh()
-	_check("[m2] enabled once docked, with the optional sample not done", not _action().disabled
+	_check("[m2] still disabled when docked without the near sample", _action().disabled
 		and not CS.is_objective_done("m2.near_sample_collected"))
+	_cmd("objective m2.near_sample_collected")
+	console.refresh()
+	_check("[m2] enabled once the near sample is in and Kite is docked", not _action().disabled)
 	console._on_action_pressed()
 	await _ticks(0.5)
 	_check("[m2] the progress bar shows while receiving", console.get_node("%DownlinkProgress").visible
@@ -198,12 +201,12 @@ func _run() -> void:
 		and not DS.is_playing())
 	var summary: Dictionary = result.summary()
 	_check("[result] missions completed: m2 and m3", Array(summary["missions"]) == ["m2", "m3"], str(summary["missions"]))
-	_check("[result] the near sample is listed as skipped", Array(summary["optional_skipped"]) == ["m2.near_sample_collected"]
-		and summary["optional_done"].is_empty(), str(summary))
+	_check("[result] no optional tasks", summary["optional_skipped"].is_empty() and summary["optional_done"].is_empty(), str(summary))
 	_check("[result] one emergency recovery, play time counted", summary["recoveries"] == 1
 		and summary["play_time_sec"] >= int(play_time_before), str(summary))
 	var text: String = result.get_node("%Summary").text
-	_check("[result] the text lists skipped tasks, recoveries and Mars", text.contains("skipped")
+	_check("[result] no optional-tasks stat or skipped line; recoveries and Mars", not text.contains("skipped")
+		and result.stat_texts().all(func(t: Array) -> bool: return t[1] != "Optional tasks")
 		and result.stat_texts().has(["1", "Emergency recoveries"]) and text.contains("Mars"), text)
 	_check("[ending] ran once", ending_runs == 1, str(ending_runs))
 	_check("[ending] IRIS's online_changed never fired", online_changes == 0 and iris.is_online, str(online_changes))

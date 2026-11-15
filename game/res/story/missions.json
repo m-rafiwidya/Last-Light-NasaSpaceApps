@@ -224,12 +224,11 @@
 				"m2.module_loaded",
 				"m2.module_installed",
 				"m2.iris_activated",
+				"m2.near_sample_collected",
 				"m2.kite_docked",
 				"m2.telemetry_received"
 			],
-			"optional_objectives": [
-				"m2.near_sample_collected"
-			],
+			"optional_objectives": [],
 			"objective_titles": {
 				"m2.cargo_ordered": "Order the cargo delivery from the console's Planning tab",
 				"m2.cargo_retrieved": "Fetch the cargo crate from the landing zone",
@@ -238,16 +237,12 @@
 				"m2.iris_activated": "Bring IRIS online",
 				"m2.kite_docked": "Return Kite to the charging pad",
 				"m2.telemetry_received": "Receive IRIS's telemetry at the console",
-				"m2.near_sample_collected": "Optional: collect the near-site sample"
+				"m2.near_sample_collected": "Collect the near-site sample by IRIS"
 			},
 			"report": [
 				"IRIS is transmitting again and its stored data has arrived. The far-rim field logger is silent, so its record is missing: recover it in M3."
 			],
 			"downlink": {
-				"skip_note": {
-					"objective": "m2.near_sample_collected",
-					"text": "The near sample has not been collected. Receiving telemetry ends M2, and the optional sample cannot be taken afterwards."
-				},
 				"objective": "m2.telemetry_received",
 				"action": "Receive telemetry",
 				"progress": "Receiving IRIS's telemetry...",
@@ -482,9 +477,11 @@
 				],
 				"m2.near_sample_collected": [
 					{
-						"text": "Optional: collect the near-site sample",
+						"text": "Take the near sample by IRIS with sample container S-1 on Kite",
 						"label": "Near sample site",
-						"target": "group:near_sample_site"
+						"target": "group:near_sample_site",
+						"key": "interact_use",
+						"waypoint": true
 					}
 				]
 			},

@@ -279,7 +279,7 @@ func _run() -> void:
 	CS.load_state({"current": "m2", "objectives": ["m1.workshop_entered", "m1.kite_prepared", "m1.iris_scanned",
 		"m1.kite_docked", "m1.inspection_sent"], "missions_done": ["m1"], "flags": [], "items": {}})
 	var plan: GDScript = load("res://src/levels/cargo_plan.gd")
-	plan.deliver("courier", ["radio_module", "thermal_kit"])
+	plan.deliver("courier", ["radio_module", "thermal_kit", "sampling_kit"])
 	await _ticks(1.0)
 	var crate_at: Vector3 = _crate(level).global_position
 	await _save_and_quit()

@@ -335,6 +335,7 @@ func _build_doors() -> void:
 		curtain.add_child(shape)
 		curtain.position = Vector3(-1.0, 1.25, CURTAIN_Z)
 		add_child(curtain)
+		_apply_curtain()
 
 
 func _build_triggers() -> void:
