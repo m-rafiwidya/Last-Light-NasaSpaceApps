@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://src/robot/kit/rover_camera.gd" id="23_camera_rig"]
 [ext_resource type="Script" path="res://src/robot/kit/cargo_delivery.gd" id="24_cargo_delivery"]
 [ext_resource type="Script" path="res://src/robot/kit/rover_scanner.gd" id="25_scanner"]
+[ext_resource type="Script" path="res://src/robot/kit/claw_pick.gd" id="26_claw_pick"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6kj2t"]
 bounce = 0.5
@@ -284,6 +285,9 @@ trigger_offset = Vector3(0, 0.05, 0)
 
 [node name="CargoDelivery" type="Node" parent="."]
 script = ExtResource("24_cargo_delivery")
+
+[node name="ClawPick" type="Node" parent="."]
+script = ExtResource("26_claw_pick")
 
 [node name="RoverScanner" type="Node" parent="."]
 script = ExtResource("25_scanner")

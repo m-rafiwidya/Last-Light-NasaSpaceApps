@@ -21,6 +21,9 @@ func _process(_delta: float) -> void:
 	var rover: Robot = Debug.current_robot
 	var delivery: CargoDelivery = rover.get_node_or_null("CargoDelivery") if is_instance_valid(rover) else null
 	var hint: String = delivery.get_hint() if delivery else ""
+	var claw: ClawPick = rover.get_node_or_null("ClawPick") if is_instance_valid(rover) else null
+	if hint.is_empty() and claw:
+		hint = claw.get_hint()
 	var was_visible: bool = visible
 	visible = hint != ""
 	text = InputBindings.with_current_keys(hint)

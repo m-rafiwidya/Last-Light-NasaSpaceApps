@@ -384,6 +384,10 @@ func _on_controller_interact(value: bool) -> void:
 	var delivery := get_node_or_null("CargoDelivery") as CargoDelivery
 	if delivery and delivery.handle_interact():
 		return
+	# Then the arm's assisted pick (plan v2 G3): E next to a loose claw_target part
+	var claw := get_node_or_null("ClawPick") as ClawPick
+	if claw and claw.handle_interact():
+		return
 	if not is_aiming() or not pickup_enabled:
 		return
 
