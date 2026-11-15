@@ -61,8 +61,8 @@ Three Indonesian students in three countries:
 All three of us brainstormed the game and the missions, researched the NASA sources, playtested,
 found bugs and decided what changed after each playtest.
 
-The early base code was written by a former teammate who withdrew before judging; it is used with
-his permission ([CREDITS.md](CREDITS.md)).
+ORIGINAL PROTOTYPE: Rayhan Satrio Adi Nurdjaman, former team member (first-person base, October 2026), see
+[CREDITS.md](CREDITS.md).
 
 ## How it was made
 

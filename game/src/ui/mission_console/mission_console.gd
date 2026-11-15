@@ -528,8 +528,6 @@ func _card_lines() -> PackedStringArray:
 		lines.append("[color=%s][b]%s[/b]  limit %.1f kg, arrives day %d[/color]" % [_hex(&"text" if picked else &"text_2"),
 			entry["name"], float(entry["limit_kg"]), int(entry["arrival_day"])])
 		lines.append("    %s" % entry["description"])
-		if entry.get("order_note", ""):
-			lines.append("    [b]%s[/b]" % entry["order_note"])
 		if CargoPlan.is_late(id):
 			lines.append("    [b]Day %d: M3 near nightfall[/b] (sun ~%d° up in the west, %.1f days to sunset): Head crater's west wall and the north loop are in shade, so the thermal kit is needed on either route."
 				% [int(entry["arrival_day"]), roundi(CargoPlan.sun_elevation(day)), CargoPlan.days_to_sunset(day)])
@@ -544,6 +542,9 @@ func _card_lines() -> PackedStringArray:
 	var problem := confirm_blocked()
 	lines.append("")
 	lines.append("[color=%s]%s[/color]" % [_hex(&"warn"), problem] if problem else "[color=%s][b]Manifest valid.[/b][/color]" % _hex(&"text"))
+	if _manifest.has(MissionDirector.BATTERY_ITEM) and not _manifest[MissionDirector.BATTERY_ITEM]:
+		lines.append("[color=%s]%s: without it Kite can't reach the far rim.[/color]" % [_hex(&"warn"),
+			CargoPlan.item(MissionDirector.BATTERY_ITEM).get("name", "Battery")])
 	lines.append("[color=%s]Story days are compressed. Mass limits, arrival days and sun angles are game assumptions.[/color]" % _hex(&"dim"))
 	return lines
 

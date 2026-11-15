@@ -21,6 +21,10 @@ FAHD MUHAMMAD ZAHID | Institut Teknologi Bandung · Indonesia
 MUHAMMAD RAFI WIDYATAMA | Universiti Malaya · Malaysia
 FAIQ HAIDAR DZIKRULLAH SATRIAWAN | Monash University · Australia
 
+### ORIGINAL PROTOTYPE
+
+RAYHAN SATRIO ADI NURDJAMAN | Former team member (first-person base, October 2026)
+
 ### REAL DATA
 
 Apollo 12 site terrain and imagery
@@ -117,10 +121,6 @@ by S. Christian Collins
 NASA Space Apps Challenge 2026,
 the Melbourne local event organisers,
 and everyone who playtested Last Light.
-
-A former teammate, for the early base code:
-the player, the dialogue system, the console
-and the first rover. Used with permission.
 
 ### CLOSING NOTE
 
