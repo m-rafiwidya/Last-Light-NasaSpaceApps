@@ -27,6 +27,11 @@ const ANTENNA_TRACKED := Vector2(35.0, 40.0)
 const ANTENNA_TIME: float = 3.0
 const INDICATOR_ON := Color(0.35, 1.0, 0.45)
 const INDICATOR_OFF := Color(0.07, 0.075, 0.07)
+## Coming online (not on a load): the indicator beats PULSE_BEATS times over PULSE_TIME seconds and
+## lights the mast green, so the moment reads in the IRIS cutscene
+const PULSE_TIME: float = 4.0
+const PULSE_BEATS: float = 4.0
+const INDICATOR_LIT: float = 3.0
 # Words on the plates (text_* anchors): [words, plate size (m), cap height (m), handwritten]
 const INK := Color(0.11, 0.115, 0.125)
 const PEN := Color(0.10, 0.14, 0.32)
@@ -78,6 +83,8 @@ var _reader: Robot = null
 var _time: float = 0.0
 var _light := StandardMaterial3D.new()
 var _indicator := StandardMaterial3D.new()
+var _pulse: float = 0.0
+var _flash := OmniLight3D.new()
 var _antenna_pan: Node3D = null
 var _antenna_tilt: Node3D = null
 var _antenna: float = 0.0          # 0 parked .. 1 tracked
@@ -102,6 +109,10 @@ func _ready() -> void:
 	_indicator.roughness = 0.3
 	highlight_node = model.find_child("iris_indicator", true, false) as Node3D
 	(highlight_node as GeometryInstance3D).material_override = _indicator
+	_flash.light_color = INDICATOR_ON
+	_flash.omni_range = 4.0
+	_flash.visible = false
+	highlight_node.add_child(_flash)
 	_antenna_pan = model.find_child("iris_antenna_pan", true, false) as Node3D
 	_antenna_tilt = model.find_child("iris_antenna", true, false) as Node3D
 	module_socket = model.find_child("socket_module", true, false) as Node3D
@@ -172,7 +183,9 @@ func set_online(online: bool, instant: bool = false) -> void:
 	_pose_antenna()
 	_indicator.albedo_color = INDICATOR_ON if online else INDICATOR_OFF
 	_indicator.emission = INDICATOR_ON if online else Color.BLACK
-	_indicator.emission_energy_multiplier = 3.0 if online else 0.0
+	_indicator.emission_energy_multiplier = INDICATOR_LIT if online else 0.0
+	_pulse = PULSE_TIME if changed and online and not instant else 0.0
+	_flash.visible = _pulse > 0.0
 	if changed:
 		online_changed.emit(online)
 
@@ -254,6 +267,13 @@ func _process(delta: float) -> void:
 	if _antenna != target:
 		_antenna = move_toward(_antenna, target, delta / ANTENNA_TIME)
 		_pose_antenna()
+	if _pulse > 0.0:
+		_pulse = maxf(_pulse - delta, 0.0)
+		var beat: float = 0.5 - 0.5 * cos((1.0 - _pulse / PULSE_TIME) * PULSE_BEATS * TAU)
+		var strength: float = beat * _pulse / PULSE_TIME
+		_indicator.emission_energy_multiplier = INDICATOR_LIT + 12.0 * strength
+		_flash.light_energy = 3.0 * strength
+		_flash.visible = _pulse > 0.0
 	var color := Color(1.0, 0.15, 0.1)
 	var level: float = 1.0 if fmod(_time, 1.0) < 0.5 else 0.15
 	if _reading >= 0.0:
